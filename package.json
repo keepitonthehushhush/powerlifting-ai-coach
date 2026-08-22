@@ -1,0 +1,28 @@
+{
+  "name": "powerlifting-ai-coach",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An AI strength coach that programs, adjusts, and progresses powerlifters over time.",
+  "workspaces": ["web"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "node --watch server/dev.js",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "test": "node --test \"server/test/*.test.js\"",
+    "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
+    "@supabase/supabase-js": "^2.58.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "dotenv": "^16.4.7"
+  }
+}
