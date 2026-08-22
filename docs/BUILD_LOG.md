@@ -247,6 +247,116 @@ npm run verify:bundle    # expect: PASS - no server-side secrets found
 
 ---
 
+## Phase 1.5 — Enterprise / global hardening — **DONE** (verified in-database)
+
+Requested mid-build: bring this to the standard of something presented to a
+professional company operating globally. Four items, all verified against the
+live database.
+
+### 1.5.1 Rate limiting — **DONE, TESTED**
+
+Migrations `0005` and `0006`. Postgres-backed fixed-window counters, because
+serverless instances share no memory — an in-process counter makes the
+effective limit (quota x warm instances), which nobody controls.
+
+| Bucket | Quota | Window |
+|---|---|---|
+| `chat` | 60 | 1 hour |
+| `chat_daily` | 300 | 24 hours |
+| `write` | 240 | 1 hour |
+| `export` | 5 | 24 hours |
+
+**I shipped a flaw in `0005` and caught it before it left the database.** The
+`SECURITY INVOKER` function needed `INSERT`/`UPDATE` grants on the counter
+table for `authenticated`, which left it editable straight through PostgREST:
+
+```
+PATCH /rest/v1/rate_limit_counters?bucket=eq.chat   { "count": 0 }
+```
+
+The RLS policies were correct — a user could only edit *their own* row. That
+was exactly the problem: a rate limit the limited party can reset is not a rate
+limit. Migration `0006` moves the counters into the `private` schema and makes
+the function `SECURITY DEFINER`, so it is the only writer.
+
+**Verified against the live database:**
+
+| Check | Expected | Observed |
+|---|---|---|
+| Three successive calls increment atomically | 1, 2, 3 | 1, 2, 3 |
+| Sixth call on a quota of 5 | denied | `allowed: false` at `used: 6` |
+| `UPDATE private.rate_limit_counters` as `authenticated` | refused | `42501 permission denied for schema private` |
+| Counters cascade on account deletion | 0 residual | 0 residual |
+
+Quotas are defined inside the function, not passed in — a caller-supplied limit
+would be raised trivially by anyone invoking the RPC with their own JWT.
+
+The middleware **fails open**: if the limiter itself errors, the request
+proceeds and the failure is logged loudly. Turning a counter outage into a
+total outage is the worse failure here. A test pins that down so it is not
+silently reversed later.
+
+### 1.5.2 GDPR data rights — **DONE**
+
+Migration `0007` plus `server/src/routes/account.js`.
+
+- `GET /api/account/export` — every stored record as versioned JSON. Assembled
+  through the user-scoped client, so it cannot include another user's rows.
+  Downloaded from an in-memory blob, so health data never acquires a URL.
+- `DELETE /api/account` — requires the literal confirmation string
+  `DELETE MY ACCOUNT`, then calls `delete_my_account()`.
+
+`delete_my_account()` takes **no arguments at all** — the target is
+`auth.uid()` and cannot be redirected. Building it that way avoided adding the
+service role key, which would have undone ADR-1 for the sake of one endpoint.
+The cascade purge it depends on was already verified in section 1.3.
+
+### 1.5.3 Internationalisation — **DONE, TESTED**
+
+Closes the gap logged in `ARCHITECTURE.md 5.4`. Every UI string is now in a
+locale catalogue; English and Spanish ship.
+
+Hand-rolled rather than i18next: the app needs key lookup, interpolation, and
+`Intl` number/date formatting, and `Intl` is in the platform. A framework would
+add ~40 KB for requirements this app does not have. The honest limit — no
+plural rules, no gender agreement — is documented in the module with the
+threshold at which it should be replaced rather than grown badly.
+
+Six mechanical checks per locale, in CI: no missing keys, no orphan keys, no
+empty values, no interpolation-placeholder drift, and a check that the
+catalogue is actually translated rather than copied from English. A missing
+translation does not crash — `t()` falls back — so it would otherwise ship
+silently and render a page in two languages.
+
+### 1.5.4 Error monitoring — **DONE**
+
+Sentry, optional, off unless `SENTRY_DSN` is set. `beforeSend` runs the same
+redactor the logger uses over the **entire event object**, and additionally
+drops request bodies, cookies, query strings, all headers but `user-agent`, and
+every stack frame's captured variables — `profile` is in scope in half the
+routes here. Only 5xx is reported; a 429 is the system working. A missing SDK
+degrades to a warning, because a monitoring tool that can break the application
+it monitors is worse than none.
+
+### 1.5.5 Two linter warnings, accepted deliberately
+
+The advisor now reports `authenticated_security_definer_function_executable`
+for `consume_rate_limit` and `delete_my_account`. Both are **intentional** —
+they exist so users can call them — and both derive their target from
+`auth.uid()` rather than from any argument.
+
+The contrast with migration `0004` is the point worth making in an interview:
+there, the same class of finding described a real mistake and was fixed by
+moving the functions out of `public`. Here it describes the design. A linter
+finding is an argument to evaluate, not a checkbox to clear. Reasoning is
+written up in `docs/SECURITY.md 9`.
+
+### 1.5.6 Test count
+
+25 -> **36 passing**, all green.
+
+---
+
 ## Phase 2 — Real coaching features — **NOT STARTED**
 ## Phase 3 — Monetization — **NOT STARTED** (awaiting explicit go-ahead)
 ## Phase 4 — Portfolio polish — **IN PROGRESS** (README, ARCHITECTURE, SECURITY, CI written early)
