@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { useI18n } from '../i18n/index.jsx';
+import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 
 const EMPTY = {
   experience_level: '',
@@ -28,7 +30,8 @@ function toPayload(form) {
     current_bench: num(form.current_bench),
     current_deadlift: num(form.current_deadlift),
     goal: form.goal || null,
-    competition_date: form.goal === 'meet_prep' && form.competition_date ? form.competition_date : null,
+    competition_date:
+      form.goal === 'meet_prep' && form.competition_date ? form.competition_date : null,
     equipment_available: form.equipment_available || null,
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
     health_restrictions: form.health_restrictions ?? '',
@@ -38,6 +41,7 @@ function toPayload(form) {
 
 export function Intake() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -58,8 +62,9 @@ export function Intake() {
           }));
         }
       })
-      .catch(() => setError('Could not load your profile.'))
+      .catch(() => setError(t('intake.loadFailed')))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function update(field, value) {
@@ -80,52 +85,54 @@ export function Intake() {
     }
   }
 
-  if (loading) return <div className="centered muted">Loading…</div>;
+  if (loading) return <div className="centered muted">{t('common.loading')}</div>;
 
   const reportedRestriction = form.health_restrictions.trim().length > 0;
 
   return (
     <div className="page">
       <header className="page-header">
-        <h1>Your training profile</h1>
-        <p className="muted">
-          Coach uses this to write your program. Approximations are fine — it adjusts based on what
-          you actually log.
-        </p>
+        <div className="row">
+          <h1>{t('intake.title')}</h1>
+          <LanguageSwitcher />
+        </div>
+        <p className="muted">{t('intake.subtitle')}</p>
       </header>
 
       <form onSubmit={handleSubmit} className="card stack">
         <label>
-          Training experience
+          {t('intake.experience')}
           <select
             value={form.experience_level}
             onChange={(e) => update('experience_level', e.target.value)}
             required
           >
-            <option value="">Select…</option>
-            <option value="never_trained">Never trained with a barbell</option>
-            <option value="some_experience">Some experience, not currently consistent</option>
-            <option value="currently_training">Currently training consistently</option>
+            <option value="">{t('intake.select')}</option>
+            {['never_trained', 'some_experience', 'currently_training'].map((key) => (
+              <option key={key} value={key}>
+                {t(`intake.experienceOptions.${key}`)}
+              </option>
+            ))}
           </select>
         </label>
 
         <label>
-          Units
+          {t('intake.units')}
           <select value={form.units} onChange={(e) => update('units', e.target.value)}>
-            <option value="lb">Pounds (lb)</option>
-            <option value="kg">Kilograms (kg)</option>
+            <option value="lb">{t('intake.unitOptions.lb')}</option>
+            <option value="kg">{t('intake.unitOptions.kg')}</option>
           </select>
         </label>
 
         <div className="grid-4">
           {[
-            ['bodyweight', 'Bodyweight'],
-            ['current_squat', 'Squat'],
-            ['current_bench', 'Bench'],
-            ['current_deadlift', 'Deadlift'],
-          ].map(([field, label]) => (
+            ['bodyweight', 'intake.bodyweight'],
+            ['current_squat', 'intake.squat'],
+            ['current_bench', 'intake.bench'],
+            ['current_deadlift', 'intake.deadlift'],
+          ].map(([field, labelKey]) => (
             <label key={field}>
-              {label} ({form.units})
+              {t(labelKey)} ({form.units})
               <input
                 type="number"
                 min="0"
@@ -139,17 +146,20 @@ export function Intake() {
         </div>
 
         <label>
-          Goal
+          {t('intake.goal')}
           <select value={form.goal} onChange={(e) => update('goal', e.target.value)} required>
-            <option value="">Select…</option>
-            <option value="general_strength">Get generally stronger</option>
-            <option value="meet_prep">Compete in a powerlifting meet</option>
+            <option value="">{t('intake.select')}</option>
+            {['general_strength', 'meet_prep'].map((key) => (
+              <option key={key} value={key}>
+                {t(`intake.goalOptions.${key}`)}
+              </option>
+            ))}
           </select>
         </label>
 
         {form.goal === 'meet_prep' && (
           <label>
-            Competition date
+            {t('intake.competitionDate')}
             <input
               type="date"
               value={form.competition_date || ''}
@@ -159,7 +169,7 @@ export function Intake() {
         )}
 
         <label>
-          Days per week you can train
+          {t('intake.daysPerWeek')}
           <input
             type="number"
             min="1"
@@ -171,27 +181,24 @@ export function Intake() {
         </label>
 
         <label>
-          Equipment you have access to
+          {t('intake.equipment')}
           <textarea
             rows={2}
             value={form.equipment_available}
             onChange={(e) => update('equipment_available', e.target.value)}
-            placeholder="Full commercial gym; barbell, rack, bench, plates to 405…"
+            placeholder={t('intake.equipmentPlaceholder')}
             required
           />
         </label>
 
         <fieldset className="sensitive">
-          <legend>Injuries, pain, or medical conditions</legend>
-          <p className="muted small">
-            Coach needs this to train you safely. It is stored encrypted, visible only to your
-            account, and never written to application logs or error reports. Leave blank if none.
-          </p>
+          <legend>{t('intake.healthLegend')}</legend>
+          <p className="muted small">{t('intake.healthNote')}</p>
           <textarea
             rows={3}
             value={form.health_restrictions}
             onChange={(e) => update('health_restrictions', e.target.value)}
-            placeholder="e.g. left shoulder pain when benching; disc issue diagnosed 2023"
+            placeholder={t('intake.healthPlaceholder')}
           />
 
           {reportedRestriction && (
@@ -201,24 +208,19 @@ export function Intake() {
                 checked={form.cleared_to_train}
                 onChange={(e) => update('cleared_to_train', e.target.checked)}
               />
-              <span>
-                A doctor or physical therapist has cleared me to train with this condition.
-              </span>
+              <span>{t('intake.clearedLabel')}</span>
             </label>
           )}
 
           {reportedRestriction && !form.cleared_to_train && (
-            <p className="warning">
-              Coach will not write you a program until you have been cleared by a professional. It
-              will still answer questions in the meantime.
-            </p>
+            <p className="warning">{t('intake.clearanceWarning')}</p>
           )}
         </fieldset>
 
         {error && <p className="error">{error}</p>}
 
         <button type="submit" className="primary" disabled={busy}>
-          {busy ? 'Saving…' : 'Save and talk to Coach'}
+          {busy ? t('common.saving') : t('intake.submit')}
         </button>
       </form>
     </div>

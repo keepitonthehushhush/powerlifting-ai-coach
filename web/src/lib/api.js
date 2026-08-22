@@ -47,4 +47,9 @@ export const api = {
   getSessions: () => request('/sessions'),
   logSession: (session) => request('/sessions', { method: 'POST', body: JSON.stringify(session) }),
   getLibrary: () => request('/library'),
+
+  // Data subject rights.
+  exportData: () => request('/account/export'),
+  deleteAccount: (confirm) =>
+    request('/account', { method: 'DELETE', body: JSON.stringify({ confirm }) }),
 };

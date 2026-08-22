@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useI18n } from '../i18n/index.jsx';
+import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 
 export function Chat() {
   const { signOut } = useAuth();
+  const { t } = useI18n();
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -22,8 +25,9 @@ export function Chat() {
           setMessages(conversation.messages ?? []);
         }
       })
-      .catch(() => setError('Could not load your conversation.'))
+      .catch(() => setError(t('chat.loadFailed')))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -51,7 +55,9 @@ export function Chat() {
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m !== optimistic));
       setDraft(text);
-      setError(err.message);
+      // 429 gets a purpose-written message; the server's own text is used
+      // otherwise, since it is more specific than anything generic here.
+      setError(err.status === 429 ? err.message || t('chat.rateLimited') : err.message);
     } finally {
       setBusy(false);
     }
@@ -60,46 +66,42 @@ export function Chat() {
   return (
     <div className="page chat-page">
       <header className="page-header row">
-        <div>
-          <h1 className="brand small">Coach</h1>
-        </div>
+        <h1 className="brand small">{t('common.appName')}</h1>
         <nav className="row gap">
+          <LanguageSwitcher />
           <Link className="link" to="/intake">
-            Edit profile
+            {t('chat.editProfile')}
+          </Link>
+          <Link className="link" to="/account">
+            {t('account.title')}
           </Link>
           <button type="button" className="link" onClick={signOut}>
-            Sign out
+            {t('common.signOut')}
           </button>
         </nav>
       </header>
 
       <div className="transcript" role="log" aria-live="polite">
-        {loading && <p className="muted">Loading…</p>}
+        {loading && <p className="muted">{t('common.loading')}</p>}
 
         {!loading && messages.length === 0 && (
           <div className="empty">
-            <p>
-              Say hello and Coach will take it from there — it will ask what it needs before
-              writing anything.
-            </p>
-            <p className="fineprint">
-              Coach is an AI tool, not a medical professional. If you have current pain, an injury,
-              or a health condition, get clearance from a doctor or physical therapist first.
-            </p>
+            <p>{t('chat.emptyPrompt')}</p>
+            <p className="fineprint">{t('medical.disclaimer')}</p>
           </div>
         )}
 
         {messages.map((message, index) => (
           <article key={index} className={`bubble ${message.role}`}>
-            <div className="who">{message.role === 'user' ? 'You' : 'Coach'}</div>
+            <div className="who">{message.role === 'user' ? t('chat.you') : t('chat.coach')}</div>
             <div className="content">{message.content}</div>
           </article>
         ))}
 
         {busy && (
           <article className="bubble assistant pending">
-            <div className="who">Coach</div>
-            <div className="content muted">Thinking…</div>
+            <div className="who">{t('chat.coach')}</div>
+            <div className="content muted">{t('chat.thinking')}</div>
           </article>
         )}
 
@@ -116,12 +118,12 @@ export function Chat() {
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) send(e);
           }}
-          placeholder="How did that session go?"
+          placeholder={t('chat.placeholder')}
           disabled={busy}
-          aria-label="Message Coach"
+          aria-label={t('chat.inputLabel')}
         />
         <button type="submit" className="primary" disabled={busy || !draft.trim()}>
-          Send
+          {t('chat.send')}
         </button>
       </form>
     </div>

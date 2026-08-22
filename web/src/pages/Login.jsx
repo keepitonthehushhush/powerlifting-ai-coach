@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useI18n } from '../i18n/index.jsx';
+import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 
 export function Login() {
   const { session, signIn, signUp } = useAuth();
+  const { t } = useI18n();
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,21 +30,22 @@ export function Login() {
       return;
     }
     if (mode === 'signup' && !data.session) {
-      setStatus({ kind: 'info', text: 'Check your email to confirm your account, then sign in.' });
+      setStatus({ kind: 'info', text: t('auth.confirmEmail') });
     }
   }
 
   return (
     <div className="centered">
       <div className="card auth-card">
-        <h1 className="brand">Coach</h1>
-        <p className="muted">
-          Structured powerlifting programming that adapts to what you actually lift.
-        </p>
+        <div className="row">
+          <h1 className="brand">{t('common.appName')}</h1>
+          <LanguageSwitcher />
+        </div>
+        <p className="muted">{t('auth.tagline')}</p>
 
         <form onSubmit={handleSubmit} className="stack">
           <label>
-            Email
+            {t('auth.email')}
             <input
               type="email"
               value={email}
@@ -51,7 +55,7 @@ export function Login() {
             />
           </label>
           <label>
-            Password
+            {t('auth.password')}
             <input
               type="password"
               value={password}
@@ -63,7 +67,7 @@ export function Login() {
           </label>
 
           <button type="submit" className="primary" disabled={busy}>
-            {busy ? 'Working…' : mode === 'signup' ? 'Create account' : 'Sign in'}
+            {busy ? t('common.working') : mode === 'signup' ? t('auth.createAccount') : t('auth.signIn')}
           </button>
         </form>
 
@@ -77,13 +81,10 @@ export function Login() {
             setStatus(null);
           }}
         >
-          {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account'}
+          {mode === 'signup' ? t('auth.toSignIn') : t('auth.toSignUp')}
         </button>
 
-        <p className="fineprint">
-          Coach is an AI tool, not a medical professional. If you have current pain, an injury, or
-          a health condition, get clearance from a doctor or physical therapist before training.
-        </p>
+        <p className="fineprint">{t('medical.disclaimer')}</p>
       </div>
     </div>
   );

@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 
 import { requireAuth } from './middleware/requireAuth.js';
+import { rateLimit } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { chatRouter } from './routes/chat.js';
 import { profileRouter } from './routes/profile.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { libraryRouter } from './routes/library.js';
+import { accountRouter } from './routes/account.js';
+import { initMonitoring } from './lib/monitoring.js';
+import { logger } from './lib/logger.js';
 
 /**
  * The Express application, built as a plain app object with no server.listen()
@@ -17,10 +21,17 @@ import { libraryRouter } from './routes/library.js';
  * routes nor the middleware know which is running them, so moving this to a
  * container on Railway or Fly later is an entrypoint change, not a rewrite.
  * Choosing serverless first was a deployment decision, not an architectural
- * commitment - see ARCHITECTURE.md.
+ * commitment - see ARCHITECTURE.md, ADR-3.
  */
 export function createApp() {
   const app = express();
+
+  // Fire and forget: monitoring must never delay or block a request, and the
+  // app is fully functional without it.
+  initMonitoring().then((status) => {
+    if (status.enabled) logger.info('monitoring.enabled');
+    else logger.info('monitoring.disabled', { reason: status.reason });
+  });
 
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb' }));
@@ -38,6 +49,7 @@ export function createApp() {
       origin: allowedOrigins,
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Authorization'],
+      exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', 'Retry-After'],
     })
   );
 
@@ -50,10 +62,14 @@ export function createApp() {
   // easy mistake; this makes forgetting the safe outcome.
   app.use('/api', requireAuth);
 
-  app.use('/api/chat', chatRouter);
-  app.use('/api/profile', profileRouter);
-  app.use('/api/sessions', sessionsRouter);
+  // Rate limits are applied per router rather than globally, because the
+  // buckets differ by cost: a model call is expensive, a profile write is not,
+  // and a full data export is expensive in a different way.
+  app.use('/api/chat', rateLimit('chat'), rateLimit('chat_daily'), chatRouter);
+  app.use('/api/profile', rateLimit('write'), profileRouter);
+  app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/library', libraryRouter);
+  app.use('/api/account', accountRouter);
 
   app.use(notFound);
   app.use(errorHandler);

@@ -187,23 +187,150 @@ mentioning videos at all.
 
 ---
 
+---
+
+## 6. Rate limiting
+
+`/api/chat` is metered per user, because a valid session looping the endpoint
+is a direct line to an unbounded Anthropic bill.
+
+Counters live in Postgres rather than in process memory. Serverless functions
+share no memory, so an in-process counter is per-instance and the effective
+limit becomes (quota × number of warm instances) — a number nobody controls.
+Postgres is already in the request path, so using it avoids operating a Redis
+for one counter.
+
+| Bucket | Quota | Window |
+|---|---|---|
+| `chat` | 60 requests | 1 hour |
+| `chat_daily` | 300 requests | 24 hours |
+| `write` | 240 requests | 1 hour |
+| `export` | 5 requests | 24 hours |
+
+**A flaw found and fixed before this shipped.** The first implementation
+(migration `0005`) used a `SECURITY INVOKER` function, which required granting
+`INSERT` and `UPDATE` on the counter table to `authenticated`. That made the
+table writable through PostgREST directly:
+
+```
+PATCH /rest/v1/rate_limit_counters?bucket=eq.chat   { "count": 0 }
+```
+
+The RLS policies were correct — a user could only edit their own row. The
+problem was that the table was reachable at all: a rate limit the limited party
+can edit is not a rate limit. Migration `0006` moves the counters into the
+`private` schema, which PostgREST does not serve, and makes the function
+`SECURITY DEFINER` so it is the only writer. Verified: `UPDATE
+private.rate_limit_counters` as the `authenticated` role now returns
+`42501 permission denied for schema private`.
+
+Quotas are defined inside the database function, not passed as arguments. A
+caller-supplied limit would be trivially raised by anyone invoking the RPC with
+their own JWT.
+
+The middleware **fails open**: if the limit check itself errors, the request
+proceeds and the failure is logged loudly. Turning a counter outage into a
+total outage is the worse failure for a coaching app bounding its own spend.
+This would be the wrong default for something guarding authentication, and the
+choice is pinned down by a test so it is not silently reversed.
+
+---
+
+## 7. Data subject rights
+
+| Right | Implementation |
+|---|---|
+| Access (GDPR Art. 15, CCPA) | `GET /api/account/export` returns every stored record as JSON, assembled through the user-scoped client so it cannot include another user's rows. |
+| Erasure (GDPR Art. 17) | `DELETE /api/account` → `public.delete_my_account()`. Deletes the caller's `auth.users` row; `ON DELETE CASCADE` removes everything else. |
+| Portability | The export is machine-readable JSON with a versioned format field. |
+
+The export deliberately includes health data in the clear — that is the point
+of a subject-access request, and it is the one path where the logging redaction
+rules do not apply. The distinction that makes this correct: the data goes to
+the data subject over an authenticated TLS connection, not to an operator's log
+drain. The frontend assembles the download from an in-memory blob, so the file
+never acquires a URL.
+
+`delete_my_account()` takes **no arguments at all**. There is no parameter to
+manipulate; the target is `auth.uid()`. Building erasure this way avoided
+introducing the service role key — which would have undone the architecture's
+central decision (ADR-1) for the sake of one endpoint.
+
+**Retention.** Not yet implemented. Data is kept until the user deletes their
+account. A defined retention period with automated expiry is required before
+operating in the EU at any scale, and is listed below.
+
+---
+
+## 8. Error monitoring
+
+Sentry is optional and off unless `SENTRY_DSN` is set. When enabled, every
+event passes through `beforeSend`, which runs the same redactor the logger uses
+over the **entire event object**, not a hand-picked field list.
+
+Error trackers are unusually good at capturing exactly the wrong thing: a
+failed profile write carries the request body, a failed query carries its
+parameters, and a stack frame carries local variables — `profile` is in scope in
+half the routes here. So on top of key-based redaction, `beforeSend`
+unconditionally drops request bodies, cookies, query strings, all headers but
+`user-agent`, and every stack frame's captured variables. `sendDefaultPii` is
+false and trace sampling defaults to zero.
+
+Only 5xx responses are reported. A 400 or a 429 is the system working
+correctly; forwarding those trains everyone to ignore the alerts that matter.
+
+A missing or uninstalled SDK degrades to a logged warning. A monitoring tool
+that can break the application it monitors is worse than no monitoring tool.
+
+---
+
+## 9. Accepted linter warnings
+
+The Supabase security advisor reports two warnings, both for
+`authenticated_security_definer_function_executable`:
+
+- `public.consume_rate_limit(text)`
+- `public.delete_my_account()`
+
+**These are accepted, not overlooked.** The lint asks whether signed-in users
+being able to call a `SECURITY DEFINER` function is intentional. Here it is:
+both functions exist precisely so users can call them. Neither can be turned
+against another account —
+
+- both derive their target from `auth.uid()`, never from an argument;
+- `delete_my_account()` takes no arguments at all;
+- `consume_rate_limit()` takes one, validated against a closed whitelist;
+- both are `set search_path = ''` with fully-qualified references;
+- both explicitly raise when `auth.uid()` is null, since `SECURITY DEFINER`
+  bypasses the RLS that would otherwise refuse an anonymous caller;
+- `EXECUTE` is revoked from `anon` and `public`.
+
+The contrast with migration `0004` is the point. There, the same class of lint
+described a genuine mistake — two trigger functions sitting in `public` where
+nothing should ever have called them — and it was fixed by moving them out. A
+linter finding is an argument to evaluate, not a checkbox to clear; the two
+outcomes here are different because the situations are.
+
+---
+
 ## Known gaps
 
-Listed rather than omitted. None is a blocker for Phase 1; each is a real item.
+Listed rather than omitted. None is a blocker for the current phase; each is a
+real item.
 
-1. **No rate limiting.** A valid session can call `/api/chat` in a loop and run
-   up the Anthropic bill. Needs a per-user quota before any public launch.
-2. **Session writes are not transactional.** `POST /api/sessions` writes the
-   session and then its derived `progress_logs` rows as two calls, because
-   PostgREST exposes no multi-statement transaction over HTTP. A failure
-   between them leaves a session with no derived logs. The fix is a Postgres
-   function invoked via `rpc()`.
-3. **No audit log.** There is no record of who read or changed what. Any
+1. **No audit log.** There is no record of who read or changed what. Any
    serious health-data posture eventually needs one.
-4. **Email/password only.** No MFA, and password policy is whatever Supabase
+2. **No automated retention policy.** Deletion works and export works;
+   scheduled expiry of dormant accounts does not exist.
+3. **Email/password only.** No MFA, and password policy is whatever Supabase
    Auth is configured with.
-5. **No formal data-retention policy.** Deletion works; scheduled retention and
-   export (GDPR subject-access) are not built.
-6. **Bundle scanning is pattern-based.** It catches known secret shapes and the
-   literal values in the environment. A novel credential format in an unexpected
-   place would not be caught.
+4. **Rate limit counters are never swept.** Expired windows accumulate. The
+   `DELETE` is written in migration `0006`; it needs a `pg_cron` schedule.
+5. **Bundle scanning is pattern-based.** It catches known secret shapes and the
+   literal values in the environment. A novel credential format in an
+   unexpected place would not be caught.
+6. **Rate limiting is per-user, not per-IP.** It bounds cost from authenticated
+   abuse. It does nothing about signup-flood or credential-stuffing at the auth
+   layer, which is Supabase's to defend and has not been configured.
+7. **The Spanish catalogue has not been reviewed by a native speaker.** It is
+   complete and mechanically verified, which is not the same as being good.
