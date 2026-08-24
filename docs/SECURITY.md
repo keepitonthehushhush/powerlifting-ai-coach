@@ -320,8 +320,8 @@ real item.
 
 1. **No audit log.** There is no record of who read or changed what. Any
    serious health-data posture eventually needs one.
-2. **No automated retention policy.** Deletion works and export works;
-   scheduled expiry of dormant accounts does not exist.
+2. **No automated retention policy.** Deletion, export and consent withdrawal
+   all work; scheduled expiry of dormant accounts does not exist.
 3. **Email/password only.** No MFA, and password policy is whatever Supabase
    Auth is configured with.
 4. **Rate limit counters are never swept.** Expired windows accumulate. The
@@ -334,3 +334,11 @@ real item.
    layer, which is Supabase's to defend and has not been configured.
 7. **The Spanish catalogue has not been reviewed by a native speaker.** It is
    complete and mechanically verified, which is not the same as being good.
+8. **No terms of service, general privacy policy, or liability waiver.** The
+   Consumer Health Data Privacy Policy exists as a draft pending attorney
+   review; the others do not exist at all. See `LEGAL_CONSIDERATIONS.md`.
+9. **Default table privileges were wrong until migration `0009`.** Supabase
+   grants ALL on new `public` tables to `anon` and `authenticated`; a one-time
+   `REVOKE` does not cover tables created later. Fixed at the default-privilege
+   level, but worth re-auditing whenever a table is added:
+   `select table_name, grantee, privilege_type from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated');`

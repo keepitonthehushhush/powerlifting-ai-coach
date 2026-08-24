@@ -9,6 +9,7 @@ import { profileRouter } from './routes/profile.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { libraryRouter } from './routes/library.js';
 import { accountRouter } from './routes/account.js';
+import { consentRouter } from './routes/consent.js';
 import { initMonitoring } from './lib/monitoring.js';
 import { logger } from './lib/logger.js';
 
@@ -70,6 +71,9 @@ export function createApp() {
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/library', libraryRouter);
   app.use('/api/account', accountRouter);
+  // Not rate limited as a write: a user must always be able to withdraw
+  // consent, and MHMDA requires withdrawal to be no harder than granting.
+  app.use('/api/consent', consentRouter);
 
   app.use(notFound);
   app.use(errorHandler);

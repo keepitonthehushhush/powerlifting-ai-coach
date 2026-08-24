@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
+import { ConsentPanel } from '../components/ConsentPanel.jsx';
 
 /**
  * Data subject rights, exposed as an actual screen rather than a policy page.
@@ -60,6 +61,12 @@ export function Account() {
           {t('common.appName')}
         </Link>
       </header>
+
+      <section className="card stack">
+        <h2 className="h3">{t('consent.title')}</h2>
+        <p className="muted small">{t('consent.withdrawAnytime')}</p>
+        <ConsentPanel />
+      </section>
 
       <section className="card stack">
         <h2 className="h3">{t('account.exportHeading')}</h2>

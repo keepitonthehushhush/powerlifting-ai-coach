@@ -813,6 +813,139 @@ written up in `docs/SECURITY.md 9`.
 
 ---
 
+## Phase 1.6 — MHMDA consent flow — **DONE, TESTED**
+
+Migrations `0008`–`0010`, plus `/api/consent`, a consent screen, and a
+Consumer Health Data Privacy Policy page.
+
+### C.1 The design: a ledger, enforced by the database
+
+**Append-only.** Consent is never updated in place. Granting writes a row;
+withdrawing writes another; current state is the latest row per (user, type).
+A mutable boolean answers "do they consent now?"; a ledger answers "what did
+they agree to, when, and to which version of the policy?" — which is the
+question that actually gets asked afterwards. The `authenticated` role holds
+`INSERT` and `SELECT` on the ledger and nothing else, so history cannot be
+rewritten from the application at all.
+
+**Enforced in Postgres, not in the route.** A trigger on `user_profile` refuses
+to store health data unless collection consent is currently active. Same
+argument as RLS: a rule depending on every future code path remembering to
+check it will eventually be forgotten. The route only translates the database's
+refusal into a `403` a client can act on.
+
+That choice is also the legally stronger one. In *Pennsylvania v. Character
+Technologies* the company's per-chat disclaimers did not shield it, because
+regulators examined the actual user experience; the recommended mitigation was
+technical guardrails. A consent rule the code cannot bypass is a technical
+guardrail. A consent rule enforced by a route is a promise.
+
+**Health data consent is optional.** MHMDA requires consent to be freely
+given, and consent gating something unrelated to its purpose is not freely
+given. Coach works without injury data, just more conservatively — so only
+`terms_of_service` and `ai_processing` are required.
+
+### C.2 Two real bugs found while testing it
+
+**Bug 1: users could rewrite their own consent history.** The test asserted an
+`UPDATE` on `consent_records` would be refused. It succeeded.
+
+Cause: Supabase ships `ALTER DEFAULT PRIVILEGES` granting **ALL** on new
+`public` tables to both `anon` and `authenticated`. So
+`grant select, insert on consent_records to authenticated` was not a
+restriction — it was a no-op on top of a blanket grant that already included
+`UPDATE`, `DELETE` and `TRUNCATE`. And because the table was created *after*
+migration `0002`'s one-time `revoke all ... from anon`, **anon held privileges
+on it too**.
+
+RLS was still holding the line — no `UPDATE` policy exists, so the statement
+matched zero rows rather than rewriting history. But that is one layer of
+defence doing the work of two, and the failure was **silent**: an `UPDATE`
+affecting zero rows returns success.
+
+Audit of the whole schema found `exercise_library` also carrying
+`DELETE`/`UPDATE`/`TRUNCATE` for `authenticated`, which it should never have
+had.
+
+Migration `0009` fixes it in three parts, because revoking once is not enough —
+the *default privilege* is what keeps re-granting:
+
+1. `ALTER DEFAULT PRIVILEGES ... REVOKE ALL` so new tables get nothing;
+2. `REVOKE ALL` on existing tables from both roles;
+3. re-grant precisely, per table.
+
+`anon` now holds **zero privileges on every table**. The generalisable lesson:
+a one-time `REVOKE` in a migration does not protect tables created by later
+migrations.
+
+**Bug 2: a withdrawal could read as a grant.** Current consent was "the most
+recent row by `created_at`", and `created_at` defaulted to `now()`.
+
+In Postgres `now()` is **transaction start time** — identical for every
+statement in a transaction. A grant and a withdrawal recorded together carried
+the same timestamp, and `order by created_at desc limit 1` chose between them
+arbitrarily. **It chose the grant.** A user who withdrew consent was still
+recorded as having given it, and health data could still be written.
+
+For an audit ledger of a health-privacy consent that is close to the worst
+available outcome: the record says the user agreed when they did not. And it
+was not only a test artefact — any request recording two decisions together,
+such as "withdraw health data, keep terms", hits the same tie.
+
+Migration `0010` adds a monotonic identity column and orders by that, and
+switches `created_at` to `clock_timestamp()` so timestamps reflect when events
+actually happened. Clocks tie, and move backwards under NTP adjustment. They
+are the wrong primitive for ordering events you must be able to defend.
+
+### C.3 Verified against the live database
+
+Nine enforcement steps, all passing:
+
+| Check | Result |
+|---|---|
+| Store health data with no consent | refused, `check_violation` |
+| Non-health profile fields without health consent | allowed |
+| Store after granting consent | allowed |
+| `UPDATE` the consent ledger | refused, `insufficient_privilege` |
+| `DELETE` from the consent ledger | refused, `insufficient_privilege` |
+| Clear health data after withdrawal | **allowed** — withdrawal must never be blocked by the absence of what is being withdrawn |
+| Store *new* health data after withdrawal | refused |
+| Re-grant, then store again | allowed — consent is not one-way |
+| Ledger order after grant→withdraw→grant | `true,false,true`, timestamps distinct |
+
+Plus: audit trail preserved through all of it, non-health data untouched,
+`terms_of_service` unaffected by health consent changes, and account deletion
+still cascades the ledger to zero rows. Security advisor: clean apart from the
+two documented accepted lints.
+
+### C.4 What shipped
+
+- `POST /api/consent` — one decision at a time; withdrawal is the same call
+  with `granted: false`. Policy version comes from the **server**, never the
+  request: a client that could name the version could record consent to a
+  policy the user never saw.
+- Withdrawing health consent **also erases the stored health data**. Recording
+  that permission was withdrawn while keeping the data would make the
+  mechanism decorative.
+- `GET /api/consent` reports current state and flags consent given against a
+  superseded policy version as `stale`. A withdrawal is never stale —
+  re-prompting someone to reconsider a refusal is the dark pattern the
+  freely-given requirement exists to prevent.
+- A consent screen between signup and intake, and the same panel on the
+  account page, so withdrawal is exactly as easy as granting.
+- A Consumer Health Data Privacy Policy at its own route, as MHMDA requires,
+  readable **without signing in** — people are entitled to read what they would
+  be agreeing to before they agree. Marked as a draft pending attorney review,
+  and deliberately not machine-translated: a translated policy is a different
+  policy.
+
+Tests 86 → **96**.
+
+**Still outstanding for counsel:** terms of service, general privacy policy,
+the waiver, a defined retention period, and review of everything above.
+
+---
+
 ## Phase 2 — Real coaching features — **NOT STARTED**
 ## Phase 3 — Monetization — **NOT STARTED** (awaiting explicit go-ahead)
 ## Phase 4 — Portfolio polish — **IN PROGRESS** (README, ARCHITECTURE, SECURITY, CI written early)

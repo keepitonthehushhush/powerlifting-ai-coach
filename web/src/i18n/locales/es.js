@@ -88,6 +88,36 @@ export const es = {
     rateLimited: 'Has enviado muchos mensajes recientemente. Inténtalo de nuevo en un momento.',
   },
 
+  consent: {
+    title: 'Tus opciones de privacidad',
+    subtitle:
+      'Están separadas a propósito. Puedes cambiar cualquiera más adelante, y desactivar una nunca desactiva otra.',
+    required: '(obligatorio)',
+    requiredToContinue: 'Debes aceptar las opciones obligatorias antes de continuar.',
+    continue: 'Continuar al cuestionario',
+    readPolicy: 'Leer la Política de Privacidad de Datos de Salud',
+    withdrawAnytime:
+      'Puedes retirar cualquiera de estos permisos cuando quieras desde esta pantalla. Retirarlo es tan fácil como concederlo: un clic, sin correos ni esperas.',
+    recordedOn: 'Registrado el {date} (versión {version})',
+    staleVersion: 'Esta política se ha actualizado desde que diste tu consentimiento. Revísala y confírmala de nuevo.',
+    healthDataCleared:
+      'Consentimiento retirado. La información sobre lesiones y salud que teníamos guardada se ha eliminado.',
+    terms_of_service: {
+      label: 'Términos del servicio',
+      description: 'El acuerdo que regula tu uso de Coach, incluida la aceptación del riesgo del entrenamiento.',
+    },
+    ai_processing: {
+      label: 'Enviar tus datos de entrenamiento a nuestro proveedor de IA',
+      description:
+        'Tu perfil e historial de entrenamiento se envían a Anthropic, que opera el modelo de IA que escribe tu programación. Sin esto, Coach no puede generar nada.',
+    },
+    health_data_collection: {
+      label: 'Guardar tu información sobre lesiones y salud',
+      description:
+        'Opcional. Permite que Coach entrene teniendo en cuenta tus lesiones y aplique la norma de autorización médica. Coach funciona sin ello, solo de forma más conservadora. Desactivarlo elimina lo ya guardado.',
+    },
+  },
+
   account: {
     title: 'Tus datos',
     exportHeading: 'Descarga todo lo que guardamos sobre ti',

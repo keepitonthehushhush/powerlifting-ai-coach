@@ -48,6 +48,13 @@ export const api = {
   logSession: (session) => request('/sessions', { method: 'POST', body: JSON.stringify(session) }),
   getLibrary: () => request('/library'),
 
+  // Consent (MHMDA). Granting and withdrawing use the same call, because
+  // withdrawal must be no harder than granting.
+  getConsents: () => request('/consent'),
+  recordConsent: (consentType, granted) =>
+    request('/consent', { method: 'POST', body: JSON.stringify({ consent_type: consentType, granted }) }),
+  getConsentHistory: () => request('/consent/history'),
+
   // Data subject rights.
   exportData: () => request('/account/export'),
   deleteAccount: (confirm) =>

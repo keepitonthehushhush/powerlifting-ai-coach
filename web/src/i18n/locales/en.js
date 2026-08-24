@@ -84,6 +84,36 @@ export const en = {
     rateLimited: 'You have sent a lot of messages recently. Try again shortly.',
   },
 
+  consent: {
+    title: 'Your privacy choices',
+    subtitle:
+      'These are separate on purpose. You can change any of them later, and turning one off never turns off another.',
+    required: '(required)',
+    requiredToContinue: 'The required choices above must be accepted before you can continue.',
+    continue: 'Continue to intake',
+    readPolicy: 'Read the Consumer Health Data Privacy Policy',
+    withdrawAnytime:
+      'You can withdraw any of these at any time from this screen. Withdrawing is as easy as giving — one click, no email, no waiting.',
+    recordedOn: 'Recorded {date} (version {version})',
+    staleVersion: 'This policy has been updated since you agreed. Please review and confirm again.',
+    healthDataCleared:
+      'Consent withdrawn. The injury and health information we had stored has been erased.',
+    terms_of_service: {
+      label: 'Terms of service',
+      description: 'The agreement covering your use of Coach, including the training-risk acknowledgement.',
+    },
+    ai_processing: {
+      label: 'Sending your training data to our AI provider',
+      description:
+        'Your profile and training history are sent to Anthropic, which runs the AI model that writes your coaching. Without this, Coach cannot generate anything.',
+    },
+    health_data_collection: {
+      label: 'Storing your injury and health information',
+      description:
+        'Optional. Lets Coach train you around injuries and enforce the medical-clearance rule. Coach works without it, just more conservatively. Turning this off erases what is already stored.',
+    },
+  },
+
   account: {
     title: 'Your data',
     exportHeading: 'Download everything we hold about you',

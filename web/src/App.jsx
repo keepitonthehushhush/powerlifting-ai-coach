@@ -6,6 +6,8 @@ import { Login } from './pages/Login.jsx';
 import { Intake } from './pages/Intake.jsx';
 import { Chat } from './pages/Chat.jsx';
 import { Account } from './pages/Account.jsx';
+import { Consent } from './pages/Consent.jsx';
+import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 
 export function App() {
   return (
@@ -30,6 +32,17 @@ export function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/consent"
+              element={
+                <ProtectedRoute>
+                  <Consent />
+                </ProtectedRoute>
+              }
+            />
+            {/* The policy is reachable without signing in: people are entitled
+                to read what they would be agreeing to before they agree. */}
+            <Route path="/privacy/health-data" element={<HealthDataPolicy />} />
             <Route
               path="/account"
               element={

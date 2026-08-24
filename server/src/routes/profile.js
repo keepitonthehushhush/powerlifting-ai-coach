@@ -64,7 +64,21 @@ profileRouter.put('/', async (req, res, next) => {
       .select('*')
       .single();
 
-    if (error) throw new HttpError(502, 'Could not save your profile.', { code: error.code });
+    if (error) {
+      // 23514 is check_violation, which the consent trigger raises when health
+      // data is written without active collection consent (migration 0008).
+      // The database is the enforcement point; this only turns its refusal
+      // into something a client can act on.
+      if (error.code === '23514' && /consent/i.test(error.message ?? '')) {
+        throw new HttpError(
+          403,
+          'Injury and health information cannot be saved until you have given consent for it. ' +
+            'Record consent first, or leave the health field blank.',
+          { requires_consent: 'health_data_collection' }
+        );
+      }
+      throw new HttpError(502, 'Could not save your profile.', { code: error.code });
+    }
 
     // Which fields were touched, never their values - health_restrictions is
     // in this object.

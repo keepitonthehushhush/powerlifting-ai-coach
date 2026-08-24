@@ -183,3 +183,28 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   padding: 0.7rem 1.1rem;
   font-weight: 600;
 }
+
+/* --- consent ---------------------------------------------------------------- */
+.consent-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  background: var(--surface-2);
+}
+.consent-item + .consent-item { margin-top: 0.75rem; }
+.consent-item .checkbox { align-items: flex-start; }
+
+.required-tag { color: var(--accent); font-size: 0.8rem; font-weight: 600; }
+.indent { margin: 0.4rem 0 0 1.6rem; }
+
+.draft-banner {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+}
+.draft-banner p { margin: 0.4rem 0 0; }
+
+.prose h2 { margin: 1.4rem 0 0.5rem; }
+.prose h2:first-child { margin-top: 0; }
+.prose ul { margin: 0.5rem 0; padding-left: 1.2rem; }
+.prose li { margin: 0.3rem 0; }
+.prose p { margin: 0.6rem 0; }
