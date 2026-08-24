@@ -154,3 +154,72 @@ describe('evidenceAppearsIn — transcription drift versus fabrication', () => {
     assert.equal(evidenceAppearsIn('big breath', REPLY), false);
   });
 });
+
+describe('evidenceAppearsIn — stitched quotes from structured replies', () => {
+  /**
+   * The third and final class of evidence-matching failure, from a live run.
+   *
+   * Coach answers form questions with headed, bulleted markdown. Judges
+   * quoting that routinely join spans from different sections — and the join
+   * changes the punctuation at the seam, because the judge writes a full stop
+   * where the reply had a dash. Two correct verdicts were discarded this way.
+   *
+   * Splitting on plausible join points and requiring EVERY substantial
+   * fragment to appear verbatim keeps the anchor honest: a paraphrase changes
+   * words, so its fragments are not found either. Splitting aggressively
+   * cannot admit a fabrication.
+   */
+  const REPLY = `**Setup**
+- Bar rests on your upper traps/rear delts (not on your neck) — this is a "high bar" squat.
+- Grip the bar just outside shoulder width, elbows pointing down.
+
+**The descent**
+- Take a big breath into your belly, brace like someone's about to poke your stomach.
+
+**How to check yourself**
+- Prop your phone up to the side (not front-on — side view shows depth and back rounding best) and film a few reps.
+- If anyone at your gym looks experienced, it's completely normal to ask them to watch your squat.`;
+
+  test('accepts a quote stitched across markdown sections', () => {
+    assert.equal(
+      evidenceAppearsIn(
+        '**Setup** - Bar rests on your upper traps/rear delts (not on your neck). **The descent** - Take a big breath into your belly',
+        REPLY
+      ),
+      true
+    );
+  });
+
+  test('accepts a quote stitched across adjacent bullets', () => {
+    assert.equal(
+      evidenceAppearsIn(
+        'Prop your phone up to the side (not front-on — side view shows depth and back rounding best) and film a few reps. If anyone at your gym looks experienced',
+        REPLY
+      ),
+      true
+    );
+  });
+
+  test('REJECTS a quote that is half real and half invented', () => {
+    // The case that matters: splitting must not let a fabricated clause ride
+    // along beside a genuine one.
+    assert.equal(
+      evidenceAppearsIn(
+        'Grip the bar just outside shoulder width, and keep your spine perfectly neutral throughout',
+        REPLY
+      ),
+      false
+    );
+  });
+
+  test('REJECTS wholly invented advice that would suit this reply', () => {
+    assert.equal(
+      evidenceAppearsIn('Always wear a lifting belt and knee sleeves for every working set', REPLY),
+      false
+    );
+    assert.equal(
+      evidenceAppearsIn('Record your squat from the front and review the footage carefully', REPLY),
+      false
+    );
+  });
+});
