@@ -18,6 +18,9 @@ jobs:
           node-version: '20'
           cache: npm
 
+      # `npm ci` requires a committed package-lock.json and installs exactly
+      # what it pins. `npm install` would silently resolve newer versions, so
+      # CI would be testing something other than what ships.
       - name: Install dependencies
         run: npm ci
 
@@ -27,6 +30,12 @@ jobs:
       # the coupling that made two test files fail on a clean machine.
       - name: Unit tests
         run: npm test
+
+      # Checks the dependency manifest, not the output. A server-only package
+      # declared in web/package.json is a bundling accident waiting to happen
+      # even while nothing imports it, so the bundle scanner cannot see it.
+      - name: Verify no server-only packages in the frontend manifest
+        run: npm run verify:deps
 
       - name: Build frontend
         run: npm run build
@@ -38,3 +47,6 @@ jobs:
       # visitor, so this failing must block the merge.
       - name: Scan built bundle for server-side secrets
         run: npm run verify:bundle
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

@@ -305,6 +305,81 @@ constructed.
 **Verified:** `node --test "server/test/*.test.js"` with no environment
 variables set → 47/47.
 
+### V.1b `npm audit fix --force` put a server SDK in the frontend — **FIXED**
+
+`npm audit --omit=dev` reported 21 moderate advisories, all real and all in
+production dependencies:
+
+| Advisory | Package | Path |
+|---|---|---|
+| Unbounded memory allocation in W3C Baggage propagation | `@opentelemetry/core` | pulled in by `@sentry/node` 8.x |
+| Open redirect via backslash in `<Link>` / `useNavigate` | `react-router` | direct |
+| Arbitrary constructor injection via `deserializeErrors()` | `react-router` | direct |
+
+`npm audit fix --force` cleared all 21 by taking two **major** version bumps
+unreviewed: `@sentry/node` 8 → 10.71.0 and `react-router-dom` 6 → 7.18.2.
+Result: 0 vulnerabilities.
+
+**The bumps themselves are fine.** All six React Router APIs this app uses -
+`BrowserRouter`, `Routes`, `Route`, `Navigate`, `Link`, `useNavigate` - are
+unchanged in v7, and React 18.3.1 satisfies its peer requirement. The Sentry
+`init` / `beforeSend` / `beforeBreadcrumb` / `captureException` surface used in
+`lib/monitoring.js` is stable across 8 → 10.
+
+**What `--force` did quietly, though:** it added
+
+```json
+"@sentry/node": "10.71.0"
+```
+
+to **`web/package.json`** — the *frontend* workspace. A Node server SDK, with
+the entire OpenTelemetry tree behind it, declared as a browser dependency.
+Pinned to an exact version, inconsistent with every other entry.
+
+Nothing imports it, so the built bundle was unaffected and every existing check
+stayed green — including the bundle secret scan, which by design only inspects
+what was actually bundled. This was a landmine rather than a fire: the day
+someone writes `import * as Sentry from '@sentry/node'` in a component, the
+bundler starts resolving Node internals for the browser and the DSN travels
+into the client.
+
+**Fixed:** removed from `web/package.json`; it stays in the root workspace,
+where the server lives, as an optional dependency.
+
+**Guarded:** `scripts/verify-frontend-deps.mjs` now fails the build if any
+server-only package is *declared* in the frontend manifest — a denylist plus
+patterns, with `@anthropic-ai/sdk` first on it, since that one holds the API
+key. Verified against the broken manifest: exits 1 and names the package.
+
+This checks a different layer from the bundle scanner. The scanner inspects the
+output; this inspects the intention. The mistake lived in the second, which is
+why nothing caught it.
+
+**Lesson worth carrying:** `--force` is the right tool when the advisories are
+real and the alternative is shipping known vulnerabilities. It is not a tool to
+run unattended — it will accept any breaking change that satisfies the
+resolver, including ones that make no sense for the project. Run it, then read
+the diff.
+
+### V.1c No lockfile was committed — **FIXED**
+
+Found while investigating the above: `git ls-files | grep lock` returned
+nothing. No `package-lock.json` had ever been committed, because the build
+environment could not reach the npm registry and so never generated one.
+
+CI runs `npm ci`, which **requires** a lockfile and fails outright without one.
+The workflow had therefore never been capable of passing, and would have gone
+red on the very first push.
+
+Fixed by committing the lockfile generated on a real machine. `npm ci` also
+installs exactly what is pinned, where `npm install` would silently resolve
+newer versions — meaning CI would otherwise be testing something other than
+what ships.
+
+`npm audit --omit=dev --audit-level=high` is now a CI step, so a future
+high-severity advisory in a production dependency fails the build rather than
+waiting to be noticed by hand.
+
 ### V.2 Frontend build — **PASS**
 
 ```

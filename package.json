@@ -17,7 +17,9 @@
     "build": "npm run build -w web",
     "test": "node --test \"server/test/*.test.js\"",
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",
-    "safety:eval": "node scripts/safety-eval.mjs"
+    "safety:eval": "node scripts/safety-eval.mjs",
+    "verify:deps": "node scripts/verify-frontend-deps.mjs",
+    "verify": "npm run verify:deps && npm run verify:bundle"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
@@ -31,6 +33,6 @@
     "dotenv": "^16.4.7"
   },
   "optionalDependencies": {
-    "@sentry/node": "^8.47.0"
+    "@sentry/node": "^10.71.0"
   }
 }
