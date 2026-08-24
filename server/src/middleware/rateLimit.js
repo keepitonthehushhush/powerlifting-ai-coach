@@ -1,4 +1,4 @@
-import { HttpError } from './errorHandler.js';
+import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 
 /**

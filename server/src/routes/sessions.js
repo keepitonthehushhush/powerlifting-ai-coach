@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { HttpError } from '../middleware/errorHandler.js';
+import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 
 export const sessionsRouter = Router();

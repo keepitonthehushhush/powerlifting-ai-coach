@@ -247,6 +247,89 @@ npm run verify:bundle    # expect: PASS - no server-side secrets found
 
 ---
 
+## Verification findings — **RESOLVED**
+
+What the first clean-machine run turned up. Recorded because the failures are
+more instructive than the passes.
+
+### V.1 `npm test` failed on a clean machine — **FIXED**
+
+**Symptom.** `npm test` on macOS with no `.env` present: 27 passed, and two
+whole test *files* died before running a single assertion.
+
+```
+Error: Missing required environment variable: ANTHROPIC_API_KEY
+    at required (server/src/config.js:23:11)
+✖ server/test/config.test.js
+✖ server/test/rateLimit.test.js
+```
+
+**Why it passed for me and not for him.** I had been running the suite with
+variables inline (`ANTHROPIC_API_KEY=test node --test ...`). The `npm test`
+script set nothing. The CI workflow injected placeholders, so CI would have
+stayed green too. Three ways of running the same suite, one of them honest.
+
+**Root cause, which was a design flaw rather than a missing variable.**
+`config.js` did two things: it exported pure helpers, and it validated the
+environment at module load, throwing on anything missing. So importing the pure
+part paid the side effect.
+
+- `config.test.js` imported `assertNoLeakedSecrets` from `config.js` — and
+  triggered the throw it existed to test.
+- `rateLimit.test.js` never mentioned config at all. It imported `HttpError`
+  from `middleware/errorHandler.js`, which imports `config.js`. An *error
+  class* was dragging the entire environment in behind it.
+
+**Fix, in three parts:**
+
+| Change | Reason |
+|---|---|
+| `HttpError` extracted to `lib/httpError.js`, zero imports | A widely-shared value type must not live in a module that does work at import time |
+| Pure parsing extracted to `lib/env.js` (`required`, `optional`, `assertNoLeakedSecrets`, `buildConfig`) | Validation becomes callable without being performed |
+| `config.js` reduced to `export const config = buildConfig(process.env)` | Fail-fast at cold start is preserved, in exactly one place |
+
+**The rejected fix.** Making `npm test` load dotenv or inject dummy values.
+That would have turned the suite green in about thirty seconds while leaving
+the coupling in place — and left a test suite that only runs when production
+secrets are present.
+
+**Result.** 36 → **47 tests, passing with an entirely empty environment.** The
+eleven new ones cover the fail-fast behaviour itself, which had been the single
+piece of the config layer that was *structurally impossible* to test: any test
+importing the function triggered the throw before it could assert on it.
+
+The CI workflow's placeholder-secret block was removed rather than updated. Its
+absence is now the assertion: nothing under test should need a credential to be
+constructed.
+
+**Verified:** `node --test "server/test/*.test.js"` with no environment
+variables set → 47/47.
+
+### V.2 Frontend build — **PASS**
+
+```
+✓ 86 modules transformed
+dist/assets/index-DQNr0he3.js   406.98 kB │ gzip: 118.33 kB
+✓ built in 486ms
+```
+
+118 kB gzipped, almost all of it React, react-router and supabase-js. Fine for
+now; if it needs to come down, route-level code splitting on `/account` and
+`/intake` is the first move.
+
+### V.3 Bundle secret scan — **PASS**
+
+```
+Scanned 4 files in web/dist for server-side secrets.
+PASS - no server-side secrets found in the browser bundle.
+```
+
+The "the Anthropic key never reaches the browser" claim is now checked against
+the artefact that actually ships, on a real build, rather than argued from
+which variables carry a `VITE_` prefix.
+
+---
+
 ## Phase 1.5 — Enterprise / global hardening — **DONE** (verified in-database)
 
 Requested mid-build: bring this to the standard of something presented to a

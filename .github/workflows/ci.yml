@@ -21,14 +21,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Deliberately no `env:` block. The suite runs with an empty environment,
+      # which is the assertion: nothing under test should need a credential to
+      # be constructed. Injecting placeholder secrets here would hide exactly
+      # the coupling that made two test files fail on a clean machine.
       - name: Unit tests
         run: npm test
-        env:
-          # Placeholder values: these tests exercise pure logic and never open a
-          # socket. Real credentials are deliberately absent from CI.
-          ANTHROPIC_API_KEY: test-key-not-real
-          SUPABASE_URL: https://example.supabase.co
-          SUPABASE_PUBLISHABLE_KEY: sb_publishable_test
 
       - name: Build frontend
         run: npm run build

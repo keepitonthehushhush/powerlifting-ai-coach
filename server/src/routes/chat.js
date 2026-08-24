@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { buildSystemPrompt } from '../prompts/systemPrompt.js';
-import { HttpError } from '../middleware/errorHandler.js';
+import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
 

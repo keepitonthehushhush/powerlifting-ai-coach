@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HttpError } from '../middleware/errorHandler.js';
+import { HttpError } from '../lib/httpError.js';
 
 export const libraryRouter = Router();
 

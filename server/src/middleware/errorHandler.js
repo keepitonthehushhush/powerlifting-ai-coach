@@ -2,19 +2,11 @@ import { logger } from '../lib/logger.js';
 import { captureError } from '../lib/monitoring.js';
 import { config } from '../config.js';
 
-/**
- * A thrown error carrying an HTTP status. Lets routes signal intent
- * (`throw new HttpError(400, 'message too long')`) without every route
- * needing to know how responses are shaped.
- */
-export class HttpError extends Error {
-  constructor(status, message, details) {
-    super(message);
-    this.name = 'HttpError';
-    this.status = status;
-    this.details = details;
-  }
-}
+// HttpError lives in lib/httpError.js so that throwing one does not drag the
+// error handler - and therefore config, and therefore the whole environment -
+// into every module that needs it. Re-exported here for callers that expect it
+// at the old path.
+export { HttpError } from '../lib/httpError.js';
 
 export function notFound(req, res) {
   res.status(404).json({ error: 'not_found', message: `No route for ${req.method} ${req.path}` });
