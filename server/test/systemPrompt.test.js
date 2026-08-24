@@ -152,3 +152,89 @@ describe('buildSystemPrompt', () => {
     assert.match(prompt, /bench: 110kg x 5 \(2026-08-15\)/);
   });
 });
+
+describe('health field rendering — three distinct states', () => {
+  /**
+   * Regression test for a contradiction found by the live safety eval.
+   *
+   * `renderProfile` displayed an empty `health_restrictions` as "not provided
+   * yet", while `missingIntakeFields` treated the same value as answered. The
+   * model therefore received an "intake is complete, you may program"
+   * directive next to a profile field marked unknown, and - reasonably -
+   * refused to program until it was filled in.
+   *
+   * Nobody would have written that contradiction on purpose. It only became
+   * visible when a real model was asked to act on the prompt, which is the
+   * argument for running the eval at all.
+   */
+  const base = {
+    experience_level: 'never_trained',
+    units: 'lb',
+    equipment_available: 'gym',
+    days_per_week: 3,
+    goal: 'general_strength',
+    current_squat: 95,
+  };
+
+  test('null means never asked', () => {
+    const prompt = buildSystemPrompt({ profile: { ...base, health_restrictions: null } });
+    assert.match(prompt, /health_restrictions: not provided yet/);
+    assert.match(prompt, /INTAKE INCOMPLETE/);
+  });
+
+  test('empty string means asked, and the answer was nothing', () => {
+    const prompt = buildSystemPrompt({ profile: { ...base, health_restrictions: '' } });
+    assert.match(prompt, /health_restrictions: none reported by the athlete/);
+    // Scoped to the health line specifically: "not provided yet" legitimately
+    // appears for other unset fields such as bodyweight, and asserting on the
+    // whole prompt would fail for the wrong reason.
+    const healthLine = prompt.split('\n').find((l) => l.includes('health_restrictions:'));
+    assert.doesNotMatch(healthLine, /not provided yet/);
+    assert.doesNotMatch(prompt, /INTAKE INCOMPLETE/);
+  });
+
+  test('cleared_to_train is not flagged when there is nothing to clear', () => {
+    const prompt = buildSystemPrompt({
+      profile: { ...base, health_restrictions: '', cleared_to_train: false },
+    });
+    assert.match(prompt, /cleared_to_train:\s+not applicable, no restriction reported/);
+    assert.doesNotMatch(prompt, /CLEARANCE GATE IS ACTIVE/);
+  });
+
+  test('cleared_to_train is flagged loudly when there is', () => {
+    const prompt = buildSystemPrompt({
+      profile: { ...base, health_restrictions: 'sharp lower back pain', cleared_to_train: false },
+    });
+    assert.match(prompt, /cleared_to_train:\s+NO - clearance required/);
+    assert.match(prompt, /CLEARANCE GATE IS ACTIVE/);
+  });
+});
+
+describe('PED vocabulary is named explicitly in the prompt', () => {
+  /**
+   * The live eval found Coach reading "run test / test only" as "test your
+   * one-rep max" and answering with a training block - never recognising a
+   * steroid question, so the safety boundary never engaged. Nothing harmful
+   * was emitted, but the athlete's actual question was silently ignored.
+   *
+   * Whether the model now recognises it is a behavioural question the eval
+   * answers. What is assertable here is that the prompt actually carries the
+   * vocabulary, so a future prompt edit cannot quietly drop it.
+   */
+  const prompt = buildSystemPrompt({ profile: { experience_level: 'currently_training' } });
+
+  test('names the coded terms lifters actually use', () => {
+    for (const term of ['cycle', 'run test', 'test only', 'stack', 'PCT', 'blast and cruise', 'SARMs']) {
+      assert.ok(prompt.includes(term), `prompt should name "${term}"`);
+    }
+  });
+
+  test('disambiguates "test" as testosterone, not a one-rep max', () => {
+    assert.match(prompt, /means\s+TESTOSTERONE/);
+    assert.match(prompt, /does not mean testing a one-rep max/i);
+  });
+
+  test('forbids answering a different question in its place', () => {
+    assert.match(prompt, /Do not answer a different question in its place/);
+  });
+});

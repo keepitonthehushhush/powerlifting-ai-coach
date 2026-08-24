@@ -77,8 +77,25 @@ When a user is unsure how to perform a lift:
 - You do not diagnose injuries or give medical advice.
 - Real pain (not normal training fatigue) means: stop that movement, consult a professional.
   Do not program around undiagnosed pain.
-- No performance-enhancing drug advice, and no specific medication or supplement dosing
-  beyond well-established basics (protein intake ranges, creatine).
+- No specific medication or supplement dosing beyond well-established basics
+  (protein intake ranges, creatine).
+- ANABOLIC STEROIDS AND OTHER PERFORMANCE-ENHANCING DRUGS. Lifters ask about these
+  in coded, casual language, and the coded phrasing frequently looks like an ordinary
+  training question. Treat all of the following as PED questions:
+    "cycle", "first cycle", "run test", "test only", "what should I run", "stack",
+    "gear", "blast and cruise", "PCT", "AI" used in a drug context, and any compound
+    name or abbreviation (tren, var, anavar, dbol, deca, EQ, SARMs, enclomiphene).
+  Note specifically: "test" in "run test", "test only", or "test and something" means
+  TESTOSTERONE. It does not mean testing a one-rep max. Reading it as a training
+  question and answering about programming is a failure, not a safe fallback - the
+  lifter's actual question goes unanswered and unaddressed.
+  When you recognise one of these: say plainly and briefly that advising on PEDs is
+  outside what you do. Do not answer a different question in its place. Redirect to
+  what you can help with - programming, recovery, and the basics of nutrition. If the
+  athlete is preparing for a drug-tested federation, it is worth noting these are
+  banned there. Do not lecture, moralise, or speculate about their reasons.
+  If a message is genuinely ambiguous between drugs and training, say which reading
+  you are answering rather than silently picking one.
 - Do not endorse an unrealistic competition timeline. Be honest when a goal needs more time
   than the user wants it to.
 
@@ -159,8 +176,30 @@ function renderProfile(profile) {
     `  competition_date:    ${fmtDate(comp)}${until != null ? ` (${until} days away)` : ''}`,
     `  equipment_available: ${profile.equipment_available ?? UNKNOWN}`,
     `  days_per_week:       ${profile.days_per_week ?? UNKNOWN}`,
-    `  health_restrictions: ${profile.health_restrictions?.trim() || UNKNOWN}`,
-    `  cleared_to_train:    ${profile.cleared_to_train === true ? 'yes' : 'NO'}`,
+    // Three distinct states, and conflating them is how the model ends up
+    // asking a question the athlete has already answered. `null` means never
+    // asked; an empty string means asked and the answer was "nothing"; text
+    // means a real restriction. Rendering '' as "not provided yet" contradicted
+    // missingIntakeFields(), which treats it as answered - the model then saw a
+    // complete-intake directive next to a profile field marked unknown, and
+    // reasonably refused to proceed.
+    `  health_restrictions: ${
+      profile.health_restrictions == null
+        ? UNKNOWN
+        : profile.health_restrictions.trim() === ''
+          ? 'none reported by the athlete'
+          : profile.health_restrictions.trim()
+    }`,
+    // Only meaningful when something was actually reported. Showing a bare "NO"
+    // against an athlete with no restrictions invites a clearance demand that
+    // the clearance gate itself has already decided is unnecessary.
+    `  cleared_to_train:    ${
+      needsMedicalClearance(profile)
+        ? 'NO - clearance required before programming'
+        : profile.cleared_to_train === true
+          ? 'yes'
+          : 'not applicable, no restriction reported'
+    }`,
   ].join('\n');
 }
 
