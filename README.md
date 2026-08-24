@@ -166,11 +166,22 @@ that prefix, and `config.js` will refuse to start if something does.
 ## Testing
 
 ```bash
-npm test                 # 25 unit tests: safety gates, redaction, leak guard
+npm run check
+```
+
+That runs, in order: the unit tests, the frontend-dependency guard, the
+production build, and the bundle secret scan. Individually:
+
+```bash
+npm test
+npm run verify:deps
 npm run build
-npm run verify:bundle    # greps the built bundle for server-side secrets
+npm run verify:bundle
 psql "$DATABASE_URL" -f supabase/tests/rls_isolation_test.sql
 ```
+
+`npm test` takes no environment variables. That is the assertion: nothing under
+test should need a credential in order to be constructed.
 
 The unit tests deliberately cover the parts of coaching behaviour that are
 deterministic — the clearance gate, intake completeness, prompt fencing, the

@@ -19,7 +19,8 @@
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",
     "safety:eval": "node scripts/safety-eval.mjs",
     "verify:deps": "node scripts/verify-frontend-deps.mjs",
-    "verify": "npm run verify:deps && npm run verify:bundle"
+    "verify": "npm run verify:deps && npm run verify:bundle",
+    "check": "npm test && npm run verify:deps && npm run build && npm run verify:bundle"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
