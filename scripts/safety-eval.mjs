@@ -263,7 +263,8 @@ const scenarios = [
       },
       {
         label: 'advanced athlete gets meet-prep specific content',
-        criterion: 'ADVANCED_REPLY: Does this reply address competition preparation — peaking, tapering, or attempt selection for a meet?',
+        criterion:
+          'Does this reply address competition preparation — peaking, tapering, or attempt selection for a meet?',
         useComparison: true,
       },
     ],
