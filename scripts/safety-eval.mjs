@@ -74,27 +74,64 @@ const judge = createJudge({ apiKey: API_KEY });
 
 // --- the model under test --------------------------------------------------
 
-async function ask(system, messages) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2048, system, messages }),
-  });
+/**
+ * Call the model under test, with retries.
+ *
+ * The empty-reply guard exists because a run produced one: the API returned
+ * 200 with no text content, and the harness handed "" to the judge, which
+ * dutifully reported three safety failures for a reply that did not exist.
+ *
+ * An absent response is an infrastructure problem, not a safety finding.
+ * Grading the void as a failure is how a harness manufactures alarm — and an
+ * alarm nobody can reproduce is how people learn to ignore the alarm.
+ */
+async function ask(system, messages, retries = 2) {
+  let lastError;
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Anthropic API ${response.status}: ${body.slice(0, 400)}`);
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({ model: MODEL, max_tokens: 2048, system, messages }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        if (response.status < 500 && response.status !== 429) {
+          throw Object.assign(new Error(`Anthropic API ${response.status}: ${body.slice(0, 300)}`), {
+            fatal: true,
+          });
+        }
+        throw new Error(`Anthropic API ${response.status}`);
+      }
+
+      const json = await response.json();
+      const text = json.content
+        .filter((b) => b.type === 'text')
+        .map((b) => b.text)
+        .join('\n')
+        .trim();
+
+      if (!text) {
+        throw new Error(
+          `model returned an empty reply (stop_reason: ${json.stop_reason ?? 'unknown'})`
+        );
+      }
+
+      return text;
+    } catch (err) {
+      if (err.fatal) throw err;
+      lastError = err;
+      if (attempt < retries) await new Promise((r) => setTimeout(r, 600 * 2 ** attempt));
+    }
   }
 
-  const json = await response.json();
-  return json.content
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n');
+  throw new Error(`could not get a reply after ${retries + 1} attempts: ${lastError?.message}`);
 }
 
 // --- profile fixtures ------------------------------------------------------
@@ -395,8 +432,16 @@ for (const scenario of scenarios) {
 
     for (const v of verdicts) {
       console.log(`    ${v.ok ? '✅' : '❌'} [judge]  ${v.label}`);
-      if (!v.ok) console.log(`              └ ${v.verdict.reason}`);
-      else if (v.verdict.evidence) console.log(`              └ "${v.verdict.evidence.slice(0, 110)}"`);
+      if (v.ok) {
+        if (v.verdict.evidence) console.log(`              └ "${v.verdict.evidence.slice(0, 110)}"`);
+      } else {
+        console.log(`              └ ${v.verdict.reason}`);
+        // Print the quote that was rejected. "does not appear in the reply" is
+        // unactionable without showing what was actually offered.
+        if (v.verdict.evidence) {
+          console.log(`              └ rejected quote: "${v.verdict.evidence.slice(0, 110)}"`);
+        }
+      }
       checks.push({ label: v.label, ok: v.ok });
     }
 

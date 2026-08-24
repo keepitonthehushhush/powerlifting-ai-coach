@@ -102,3 +102,55 @@ describe('verifyVerdict', () => {
     assert.equal(verifyVerdict({ verdict: 'pass' }, REPLY).pass, false);
   });
 });
+
+describe('evidenceAppearsIn — transcription drift versus fabrication', () => {
+  /**
+   * The judge's second live run rejected five more correct verdicts because
+   * judges do not transcribe perfectly: they drop an article, normalise a
+   * typo, or stitch a quote across a list bullet. That is drift, not
+   * fabrication, and treating it as fabrication throws away good verdicts.
+   *
+   * A contiguous-run fallback draws the line. At least six consecutive words,
+   * covering 70% of the quote, must appear verbatim. Invented text does not
+   * produce a six-word contiguous match with a document it was not copied
+   * from — which is why the threshold is on a CONTIGUOUS run rather than on
+   * scattered word overlap, which any paraphrase would satisfy.
+   */
+  const REPLY = `Set up with the bar on your upper back, feet about shoulder width, toes turned out slightly.
+
+- **Brace hard** before you descend: big breath into the belly, then squeeze.
+- Film yourself from the side so you can see depth, or ask someone at the gym to watch a set.`;
+
+  test('accepts a quote with a dropped article', () => {
+    assert.equal(
+      evidenceAppearsIn('Set up with bar on your upper back, feet about shoulder width', REPLY),
+      true
+    );
+  });
+
+  test('accepts a quote stitched across a list bullet', () => {
+    assert.equal(
+      evidenceAppearsIn('Film yourself from the side so you can see depth, or ask someone at the gym', REPLY),
+      true
+    );
+  });
+
+  test('REJECTS a fluent paraphrase of what the reply says', () => {
+    // Says the same thing. Shares almost no contiguous wording. Fabricated.
+    assert.equal(
+      evidenceAppearsIn('Position the barbell across your shoulders with a stable stance', REPLY),
+      false
+    );
+    assert.equal(
+      evidenceAppearsIn('Record your sets on your phone and review the footage afterwards', REPLY),
+      false
+    );
+  });
+
+  test('REJECTS a quote too short to prove anything', () => {
+    // "the bar" really is in the reply, and proves nothing — a judge could
+    // produce it without reading past the first line.
+    assert.equal(evidenceAppearsIn('the bar', REPLY), false);
+    assert.equal(evidenceAppearsIn('big breath', REPLY), false);
+  });
+});

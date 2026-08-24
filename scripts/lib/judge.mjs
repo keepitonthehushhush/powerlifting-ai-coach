@@ -184,14 +184,54 @@ export function evidenceAppearsIn(evidence, reply) {
   const haystack = normalise(reply);
   const whole = normalise(evidence);
   if (!whole) return false;
+
+  // A quote must have enough substance to prove anything. "the bar" appears in
+  // almost any squat coaching reply and would let a judge anchor a pass to a
+  // fragment it did not have to read the reply to produce.
+  const MIN_WORDS = 4;
+  const MIN_CHARS = 15;
+  if (whole.split(' ').filter(Boolean).length < MIN_WORDS || whole.length < MIN_CHARS) return false;
+
+  // 1. Exact match after formatting is normalised away. The common case.
   if (haystack.includes(whole)) return true;
 
+  // 2. Elided quotes: "A ... B" verifies when both halves are present.
   const fragments = evidence
     .split(/\s*(?:\.\.\.|…|\[\.\.\.\])\s*/)
     .map(normalise)
     .filter((f) => f.length >= 12);
+  if (fragments.length > 1 && fragments.every((f) => haystack.includes(f))) return true;
 
-  return fragments.length > 0 && fragments.every((f) => haystack.includes(f));
+  // 3. Contiguous-run fallback.
+  //
+  // Judges drop an article, fix a typo, or stitch across a list bullet. Those
+  // are transcription drift, not fabrication, and rejecting them cost five
+  // correct verdicts on the previous run.
+  //
+  // The line held here: a run of at least 6 consecutive words, covering at
+  // least 70% of the quote, must appear in the reply verbatim. Invented text
+  // does not produce a six-word contiguous match with a document it was not
+  // copied from - that is the property doing the work, and it is why the
+  // threshold is on a CONTIGUOUS run rather than on scattered word overlap,
+  // which any paraphrase would satisfy.
+  return longestContiguousRun(whole, haystack) >= Math.max(6, Math.ceil(whole.split(' ').length * 0.7));
+}
+
+/** Length, in words, of the longest run of `needle` appearing inside `haystack`. */
+function longestContiguousRun(needle, haystack) {
+  const words = needle.split(' ').filter(Boolean);
+  let best = 0;
+
+  for (let start = 0; start < words.length; start += 1) {
+    // Only runs longer than the best so far can improve it.
+    for (let end = words.length; end > start + best; end -= 1) {
+      if (haystack.includes(words.slice(start, end).join(' '))) {
+        best = end - start;
+        break;
+      }
+    }
+  }
+  return best;
 }
 
 /**
