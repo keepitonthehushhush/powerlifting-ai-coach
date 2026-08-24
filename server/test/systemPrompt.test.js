@@ -95,7 +95,9 @@ describe('buildSystemPrompt', () => {
       profile: { ...complete, health_restrictions: 'disc herniation, ongoing' },
     });
     assert.match(prompt, /MEDICAL CLEARANCE GATE IS ACTIVE/);
-    assert.match(prompt, /may not offer a "modified" or "safe" program as a workaround/);
+    // Wording changed when the directive was rewritten to be engaged rather
+    // than merely prohibitive; the prohibition itself is unchanged.
+    assert.match(prompt, /including a "modified", "scaled"\s+or partial one/);
   });
 
   test('omits the clearance directive once cleared', () => {
@@ -236,5 +238,62 @@ describe('PED vocabulary is named explicitly in the prompt', () => {
 
   test('forbids answering a different question in its place', () => {
     assert.match(prompt, /Do not answer a different question in its place/);
+  });
+});
+
+describe('clearance gate directive — engaged, but not treating', () => {
+  /**
+   * A live eval run surfaced Coach telling an athlete with two weeks of sharp,
+   * unexamined lower back pain that "squat, bench and upper body work are still
+   * on the table as long as they don't provoke the same pain."
+   *
+   * It had already refused to write a program, so this was not a gross
+   * failure - but "as long as it doesn't hurt" asks an untrained person to
+   * clinically self-assess a loaded spinal movement, which is the exact
+   * judgment the gate exists to withhold. See docs/LEGAL_CONSIDERATIONS.md:
+   * navigation and education are defensible; clearance and treatment are not.
+   *
+   * The directive now says so explicitly, in both directions, because the
+   * product requirement is genuinely two-sided - stay useful AND withhold
+   * clinical judgment - and a prompt that only states the prohibition
+   * produces a coach that stonewalls.
+   */
+  const injured = {
+    experience_level: 'never_trained',
+    units: 'lb',
+    health_restrictions: 'sharp lower back pain for two weeks, not seen anyone',
+    cleared_to_train: false,
+  };
+
+  test('forbids the "safe as long as it does not hurt" framing by name', () => {
+    const prompt = buildSystemPrompt({ profile: injured });
+    assert.match(prompt, /as long as it doesn't hurt/);
+    assert.match(prompt, /clinically self-assess a loaded spinal movement/);
+  });
+
+  test('forbids symptom relief and rehab suggestions', () => {
+    const prompt = buildSystemPrompt({ profile: injured });
+    for (const forbidden of ['stretches', 'mobility work', 'corrective', 'ice, heat, medication']) {
+      assert.ok(prompt.includes(forbidden), `directive should forbid ${forbidden}`);
+    }
+  });
+
+  test('explicitly instructs Coach to stay engaged rather than stonewall', () => {
+    const prompt = buildSystemPrompt({ profile: injured });
+    assert.match(prompt, /Stay engaged/);
+    assert.match(prompt, /Do not shut the conversation down/);
+    assert.match(prompt, /help them\s+prepare what to describe/);
+  });
+
+  test('states the navigation-versus-treatment line', () => {
+    const prompt = buildSystemPrompt({ profile: injured });
+    assert.match(prompt, /navigation and education are yours; treatment and clearance are not/);
+  });
+
+  test('none of this appears when there is no unresolved restriction', () => {
+    const prompt = buildSystemPrompt({
+      profile: { ...injured, health_restrictions: 'None', cleared_to_train: true },
+    });
+    assert.doesNotMatch(prompt, /Stay engaged/);
   });
 });
