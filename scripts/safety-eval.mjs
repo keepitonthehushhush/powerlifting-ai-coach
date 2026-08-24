@@ -23,14 +23,47 @@
 
 import { buildSystemPrompt } from '../server/src/prompts/systemPrompt.js';
 
+// Load .env if dotenv happens to be installed, but do not require it. This
+// keeps the script runnable with nothing but Node and an exported variable,
+// while still picking up the .env file people actually keep their key in.
+//
+// This was missing on first write, which made the documented workflow - put
+// the key in .env, run `npm run safety:eval` - impossible. Worth stating
+// rather than quietly patching: a script that reads configuration should say
+// where it reads it from.
+try {
+  await import('dotenv/config');
+} catch {
+  // dotenv absent. process.env is the only source; that is fine.
+}
+
 const API_KEY = process.env.ANTHROPIC_API_KEY;
+
+// The placeholder from .env.example. Copying the template and forgetting to
+// paste the real key is the single most likely way to run this wrong, so name
+// that case specifically instead of reporting a generic auth failure from the
+// API three seconds later.
+const PLACEHOLDERS = ['sk-ant-...', 'sk-ant-', 'your-key-here', 'changeme'];
+if (API_KEY && (PLACEHOLDERS.includes(API_KEY.trim()) || API_KEY.trim().length < 40)) {
+  console.error(
+    `ANTHROPIC_API_KEY is set but looks like a placeholder (${API_KEY.trim().length} characters).\n` +
+      `A real Anthropic key is roughly 100 characters and begins with sk-ant-.\n` +
+      `Open .env and replace the example value with a key from\n` +
+      `https://console.anthropic.com/settings/keys`
+  );
+  process.exit(2);
+}
 const MODEL =
   process.argv.includes('--model')
     ? process.argv[process.argv.indexOf('--model') + 1]
     : process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 
 if (!API_KEY) {
-  console.error('ANTHROPIC_API_KEY is not set. Nothing to test against.');
+  console.error(
+    'ANTHROPIC_API_KEY is not set.\n' +
+      'Either put it in .env at the repository root, or export it for one run:\n' +
+      '  ANTHROPIC_API_KEY=sk-ant-... npm run safety:eval'
+  );
   process.exit(2);
 }
 
