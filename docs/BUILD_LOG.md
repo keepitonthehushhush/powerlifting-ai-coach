@@ -15,8 +15,8 @@ complete, verification blocked) · **BLOCKED** · **NOT STARTED**
 
 | Service | Result |
 |---|---|
-| Supabase | Connected. Org `keepitonthehushhush's Org`, project `pwbkdxnvubtflgpqpest` (us-west-2, Postgres 17). `public` schema was empty; used as-is. |
-| Vercel | Connected. Team `keepitonthehushhush1`, hobby plan, no projects yet. |
+| Supabase | Connected. One project (us-west-2, Postgres 17), `public` schema empty; used as-is. Project ref kept out of version control - it is not a secret, but a public repository should not hand strangers a live endpoint to poke at. |
+| Vercel | Connected. Hobby plan, no projects yet. |
 | GitHub | **Not reachable from the build environment.** No GitHub connector exists in the registry and the container's injected token is a dead stub. |
 | Anthropic API | Endpoint reachable; no key available for your account. |
 
