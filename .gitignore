@@ -32,3 +32,9 @@ yarn-error.log*
 # ---- Test / coverage --------------------------------------------------------
 coverage/
 .nyc_output/
+
+# ---- Generated eval output --------------------------------------------------
+# Regenerated on every run and different each time, since model output is not
+# deterministic. Findings that matter are written up in docs/BUILD_LOG.md
+# instead, where they can be read without re-running anything.
+safety-eval-results.txt
