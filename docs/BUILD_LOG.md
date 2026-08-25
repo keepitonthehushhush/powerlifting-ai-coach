@@ -1149,6 +1149,45 @@ Two changes, neither of them the obvious one:
   every write is a remove-then-add, so every abort is destructive. A script
   that mutates in place owes the reader that distinction.
 
+### D.5 The environment nobody checks — **FIXED**
+
+With `--no-sensitive` in place, production took all six variables cleanly.
+Preview took none, and said so only by printing an unanswered prompt six
+times:
+
+```
+? Git branch?
+```
+
+Preview variables can be scoped to a single git branch, so the CLI asks which
+one. The value arrives on stdin, and stdin is exhausted by the time the prompt
+appears, so each write died on a question that could not be answered.
+Production never prompts — branch scoping does not apply there — so the run
+looked successful in the environment being watched and failed in the one that
+was not.
+
+`--yes` accepts the default (all branches). The tempting alternative,
+`--value` on the command line, would put the Anthropic key in the process
+table for anyone on the machine to read; stdin plus `--yes` keeps it out.
+
+Two further changes, both prompted by the same run:
+
+- **`--force` instead of remove-then-add.** D.4 added a trap because clearing
+  each target before repopulating it made every abort destructive. Overwriting
+  in place removes the property the trap was warning about: an aborted run now
+  leaves values *stale* rather than *absent*, which is the difference between a
+  deployment that is out of date and one that cannot boot. Warning about a
+  hazard is worth less than not having it.
+- **Both targets are listed at the end**, not just production. The script had
+  reported exactly the environment that could not fail this way.
+
+**On reading `env ls`:** the `value` column shows the encrypted envelope
+(`eyJ2IjoidjIi…`) for non-sensitive variables. Earlier in this project that
+string was read as a wrong value and sent the diagnosis sideways. It is not
+plaintext and not a fault. The column that carries meaning is `type`.
+
+---
+
 **The check earned its keep.** `npm run verify:deployment` failed with exactly
 the two variable names, against a deployment that was `READY` and served a
 200. Nothing else in the pipeline disagreed with that deployment — tests

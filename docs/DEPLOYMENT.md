@@ -62,10 +62,17 @@ Three failure modes follow from all this, and this project hit each one:
 2. **A listing cannot tell you.** `vercel env ls` prints `Hidden` for every
    sensitive variable, so a correctly-set secret and a build-invisible one look
    identical.
-3. **A failure part-way through is worse than no change.** Setting a variable
-   means removing it first — `env add` on an existing name fails rather than
-   replacing — so an aborted run leaves the environment *emptier* than it
-   found it. The script traps this and says so.
+3. **Preview fails silently where production succeeds.** Preview variables can
+   be scoped to a single git branch, so `env add` prompts for one — and the
+   value arrives on stdin, which is exhausted by then. Without `--yes` every
+   preview write dies at an unanswerable prompt while production, which never
+   prompts, reports success. The environment nobody checks is the one that
+   breaks.
+
+Non-obvious, and worth knowing before it costs an hour: `env ls` prints the
+**encrypted envelope** (`eyJ2IjoidjIi…`) in the `value` column for
+non-sensitive variables. That is not the stored plaintext and not a sign the
+value is wrong. The column to read is `type`.
 
 Non-sensitive does **not** mean public-in-transit — values are still encrypted
 at rest. It controls whether the value can be read back and whether the build

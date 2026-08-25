@@ -39,11 +39,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# Each target is cleared before it is repopulated, so a failure part-way
-# through leaves that environment INCOMPLETE rather than merely unchanged. Say
-# so loudly: an empty environment and a stale one fail in very different ways,
-# and the person watching needs to know which one they are now looking at.
-trap 'echo; echo "FAILED part-way through. The environment is now incomplete - some variables were removed and not re-added. Fix the error above and run this script again; it is safe to re-run."' ERR
+# An aborted run leaves some variables updated and others stale. That is
+# recoverable - every write here is an in-place overwrite, so re-running fixes
+# it - but silence would leave the reader unable to tell a completed run from a
+# half-finished one, and those fail very differently.
+trap 'echo; echo "FAILED part-way through. Some variables were updated and others were not. Fix the error above and run this script again; every write is an overwrite, so re-running is safe."' ERR
 
 TARGETS=${1:-all}
 case "$TARGETS" in
@@ -92,26 +92,44 @@ printf 'Replace these on Vercel? [y/N] '
 read -r reply
 case "$reply" in [yY]*) ;; *) echo "Aborted."; exit 1 ;; esac
 
-for target in $TARGETS; do
-  for name in $BUILD_VARS $SECRET_VARS; do
-    # Remove first: `env add` on an existing name fails rather than replacing,
-    # and a partially-applied change is worse than a clean one.
-    $VERCEL env rm "$name" "$target" --yes >/dev/null 2>&1 || true
-  done
+# --force overwrites in place, so this replaces rather than remove-then-add. An
+# aborted run then leaves stale values rather than no values, which is the
+# difference between a deployment that is out of date and one that cannot boot.
+#
+# --yes matters only for preview, and only because of how the value is passed.
+# Preview variables can be scoped to a single git branch, so the CLI prompts
+# for one - but the value arrives on stdin, and stdin is exhausted by the time
+# the prompt appears. Without --yes every preview write dies at a prompt that
+# can never be answered. The alternative, --value on the command line, would
+# put the Anthropic key in the process table for anyone on the machine to read.
+#
+# Production does not prompt, which is exactly why this went unnoticed: the
+# environment that mattered succeeded and the one that did not is the one
+# nobody looks at.
+add_var() {
+  printf '%s' "$(read_env "$1")" | $VERCEL env add "$1" "$2" "$3" --force --yes
+}
 
+for target in $TARGETS; do
   for name in $BUILD_VARS; do
     # --no-sensitive is load-bearing. See the note at the top of this file.
-    printf '%s' "$(read_env "$name")" | $VERCEL env add "$name" "$target" --no-sensitive
+    add_var "$name" "$target" --no-sensitive
   done
 
   for name in $SECRET_VARS; do
-    printf '%s' "$(read_env "$name")" | $VERCEL env add "$name" "$target" --sensitive
+    add_var "$name" "$target" --sensitive
   done
 done
 
 echo
-echo "Current production environment:"
-$VERCEL env ls production || true
+for target in $TARGETS; do
+  echo "Current $target environment:"
+  # The `value` column shows the encrypted envelope (eyJ2IjoidjIi...) for
+  # non-sensitive variables, not the plaintext. It is not a wrong value. Read
+  # the `type` column: Non-sensitive reaches the build, Sensitive does not.
+  $VERCEL env ls "$target" || true
+  echo
+done
 
 cat <<'NEXT'
 
