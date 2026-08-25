@@ -135,6 +135,8 @@ export function Intake() {
           </select>
         </label>
 
+        <p className="muted small">{t('intake.liftsNote')}</p>
+
         <div className="grid-4">
           {[
             ['bodyweight', 'intake.bodyweight'],

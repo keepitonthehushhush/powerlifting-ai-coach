@@ -60,7 +60,7 @@ export const en = {
     nutritionPlaceholder: 'Cutting for a weight class, vegetarian, skip breakfast, whatever is relevant.',
     title: 'Your training profile',
     subtitle:
-      'Coach uses this to write your program. Approximations are fine — it adjusts based on what you actually log.',
+      'Coach Diaz uses this to write your program. Approximations are fine — it adjusts based on what you actually log.',
     experience: 'Training experience',
     select: 'Select…',
     experienceOptions: {
@@ -71,9 +71,11 @@ export const en = {
     units: 'Units',
     unitOptions: { lb: 'Pounds (lb)', kg: 'Kilograms (kg)' },
     bodyweight: 'Bodyweight',
-    squat: 'Squat',
-    bench: 'Bench',
-    deadlift: 'Deadlift',
+    squat: 'Squat — heaviest single',
+    bench: 'Bench press — heaviest single',
+    deadlift: 'Deadlift — heaviest single',
+    liftsNote:
+      'The most weight you have ever lifted for one rep on each — your one-rep max. If you have never tested a true max, put your best estimate or leave it blank; Coach Diaz will work it out from what you log. What matters is not entering a weight you did for several reps: your programming is calculated from these numbers, so a set of five entered as a max makes every prescribed weight too heavy.',
     goal: 'Goal',
     goalOptions: {
       general_strength: 'Get generally stronger',

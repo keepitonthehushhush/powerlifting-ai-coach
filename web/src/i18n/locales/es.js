@@ -75,9 +75,11 @@ export const es = {
     units: 'Unidades',
     unitOptions: { lb: 'Libras (lb)', kg: 'Kilogramos (kg)' },
     bodyweight: 'Peso corporal',
-    squat: 'Sentadilla',
-    bench: 'Press banca',
-    deadlift: 'Peso muerto',
+    squat: 'Sentadilla — mejor levantamiento único',
+    bench: 'Press banca — mejor levantamiento único',
+    deadlift: 'Peso muerto — mejor levantamiento único',
+    liftsNote:
+      'El peso máximo que has levantado en una sola repetición de cada uno: tu máximo de una repetición. Si nunca has probado un máximo real, pon tu mejor estimación o déjalo en blanco; Coach Diaz lo deducirá de lo que registres. Lo importante es no poner un peso que hiciste para varias repeticiones: tu programación se calcula a partir de estos números, así que una serie de cinco puesta como máximo hace que todos los pesos prescritos sean demasiado altos.',
     goal: 'Objetivo',
     goalOptions: {
       general_strength: 'Ganar fuerza general',
