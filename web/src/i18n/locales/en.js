@@ -8,7 +8,7 @@
  */
 export const en = {
   common: {
-    appName: 'Coach',
+    appName: 'Coach Diaz',
     loading: 'Loading…',
     saving: 'Saving…',
     working: 'Working…',
@@ -97,13 +97,13 @@ export const en = {
   chat: {
     editProfile: 'Edit profile',
     emptyPrompt:
-      'Say hello and Coach will take it from there — it will ask what it needs before writing anything.',
+      'Say hello and Coach Diaz will take it from there — it will ask what it needs before writing anything.',
     you: 'You',
     coach: 'Coach',
     thinking: 'Thinking…',
     placeholder: 'How did that session go?',
     send: 'Send',
-    inputLabel: 'Message Coach',
+    inputLabel: 'Message Coach Diaz',
     loadFailed: 'Could not load your conversation.',
     rateLimited: 'You have sent a lot of messages recently. Try again shortly.',
   },

@@ -12,7 +12,7 @@
  */
 export const es = {
   common: {
-    appName: 'Coach',
+    appName: 'Coach Diaz',
     loading: 'Cargando…',
     saving: 'Guardando…',
     working: 'Procesando…',
@@ -101,13 +101,13 @@ export const es = {
   chat: {
     editProfile: 'Editar perfil',
     emptyPrompt:
-      'Saluda y Coach continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',
+      'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',
     you: 'Tú',
     coach: 'Coach',
     thinking: 'Pensando…',
     placeholder: '¿Cómo fue esa sesión?',
     send: 'Enviar',
-    inputLabel: 'Escribir a Coach',
+    inputLabel: 'Escribir a Coach Diaz',
     loadFailed: 'No se pudo cargar tu conversación.',
     rateLimited: 'Has enviado muchos mensajes recientemente. Inténtalo de nuevo en un momento.',
   },
