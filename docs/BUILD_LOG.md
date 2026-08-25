@@ -1826,6 +1826,54 @@ behaviour is all edge cases, and edge cases are miserable to verify by clicking.
 
 Tests 207 → **223**.
 
+### D.16 A cap nobody could see — **FIXED**
+
+Reported as "invalid request and it seems broken". Chat returned `400 Invalid
+request.` on every attempt from one account.
+
+**Two failures, and the smaller one is the interesting one.**
+
+The immediate cause was a 4,000-character cap on a chat message, doing exactly
+what it was configured to do. Under a page of prose — an athlete describing
+their training history, or pasting a program, reaches it without trying.
+
+The second failure is why it took a round trip to find: the route returned
+zod's field errors to the client and **never logged them**, so from the server
+side every rejected field produced the identical sentence. I had fixed exactly
+this in `profile.js` hours earlier and fixed it *narrowly*, at one call site,
+so the gap was still open everywhere else. It is now in the terminal error
+handler, where every route that validates a body inherits it.
+
+Worth recording plainly: with no instrument available I spent several steps
+reasoning about the client code trying to deduce which field zod had rejected —
+the precise behaviour D.14 was written about. The user found it in one attempt
+by typing something short.
+
+**The fix, in three parts, because the cap was never the whole problem:**
+
+1. **Raised to 12,000.** A cap still belongs there — every character is
+   replayed through the history window on subsequent turns and paid for each
+   time — but it should not catch ordinary use.
+2. **The rejection explains itself.** A too-long message now returns its own
+   error naming both numbers, rather than "Invalid request." A person can act
+   on "18,400 characters and the limit is 12,000"; they cannot act on the
+   other.
+3. **The textarea enforces it first**, with a counter that appears at 80%. The
+   server check stays, because the client is not the control — but a person
+   should meet a limit as a boundary they can see, not as a failure after they
+   press send.
+
+**One detail that matters more than it looks:** the limit is sent to the client
+in the conversation response rather than hardcoded in the component.
+`CHAT_MAX_MESSAGE_LENGTH` is a deploy variable, so a duplicated constant would
+drift the moment anyone tuned it — and the drift would present as exactly this
+bug again, a silent rejection at a boundary the UI believed was somewhere else.
+A test fails if a numeric literal for the limit appears in the component.
+
+Tests 224 → **231**.
+
+---
+
 ---
 
 ## Phase 2 — Real coaching features — **IN PROGRESS**

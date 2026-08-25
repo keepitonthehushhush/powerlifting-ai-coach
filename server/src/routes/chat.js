@@ -96,6 +96,18 @@ chatRouter.post('/', async (req, res, next) => {
   try {
     const parsed = ChatRequest.safeParse(req.body);
     if (!parsed.success) {
+      // A message rejected for length is the one validation failure a person
+      // can actually act on, so it gets its own sentence with the numbers in
+      // it. "Invalid request." for a long paste tells them nothing and reads
+      // as the app being broken - which is exactly how it was reported.
+      const length = typeof req.body?.message === 'string' ? req.body.message.length : null;
+      if (length !== null && length > config.chat.maxMessageLength) {
+        throw new HttpError(
+          400,
+          `That message is ${length.toLocaleString()} characters and the limit is ${config.chat.maxMessageLength.toLocaleString()}. Send it in a couple of parts and the coach will keep the context.`,
+          { code: 'message_too_long', limit: config.chat.maxMessageLength, length }
+        );
+      }
       throw new HttpError(400, 'Invalid request.', parsed.error.flatten().fieldErrors);
     }
     const { message, conversationId } = parsed.data;
@@ -163,7 +175,15 @@ chatRouter.get('/conversation', async (req, res, next) => {
       .limit(1)
       .maybeSingle();
     if (error) throw new HttpError(502, 'Could not load the conversation.');
-    res.json({ conversation: data ?? null });
+
+    // The limit travels with the conversation so the client never hardcodes
+    // its own copy. CHAT_MAX_MESSAGE_LENGTH is a deploy variable; a duplicated
+    // constant in the frontend would drift the moment anyone tuned it, and the
+    // drift would show up as the same silent rejection this fixes.
+    res.json({
+      conversation: data ?? null,
+      limits: { maxMessageLength: config.chat.maxMessageLength },
+    });
   } catch (err) {
     next(err);
   }

@@ -80,7 +80,12 @@ export function buildConfig(env) {
       // long-running conversation cannot grow the request - and the bill -
       // without limit.
       historyWindow: Number(optional(env, 'CHAT_HISTORY_WINDOW', '30')),
-      maxMessageLength: Number(optional(env, 'CHAT_MAX_MESSAGE_LENGTH', '4000')),
+      // 4,000 was under a page of prose, and an athlete describing their
+      // training history or pasting a program hit it without warning. The cap
+      // still exists, because every character is replayed through the history
+      // window on subsequent turns and paid for each time - it just should not
+      // be tight enough to catch ordinary use.
+      maxMessageLength: Number(optional(env, 'CHAT_MAX_MESSAGE_LENGTH', '12000')),
     },
   };
 }

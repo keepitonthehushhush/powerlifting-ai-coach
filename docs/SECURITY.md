@@ -213,8 +213,12 @@ reports.
   rather than replacing them — the database remains the authority because it
   cannot be bypassed; validation exists to return a useful field-level error
   instead of an opaque constraint violation.
-- **Payload limits.** JSON bodies are capped at 256 KB; chat messages at 4,000
-  characters; history replay at 30 messages.
+- **Payload limits.** JSON bodies are capped at 256 KB; chat messages at 12,000
+  characters; history replay at 30 messages. The message cap is the one a real
+  person meets, so it is enforced in the textarea and explained in the error,
+  not only rejected — and the limit is sent to the client rather than
+  duplicated there, since a drifted copy would reproduce the silent failure it
+  was raised to fix.
 
 ---
 

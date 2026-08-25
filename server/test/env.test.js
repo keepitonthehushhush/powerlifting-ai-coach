@@ -93,7 +93,9 @@ describe('buildConfig', () => {
     assert.equal(config.anthropic.model, 'claude-sonnet-5');
     assert.equal(config.anthropic.maxTokens, 4096);
     assert.equal(config.chat.historyWindow, 30);
-    assert.equal(config.chat.maxMessageLength, 4000);
+    // Raised from 4,000 after a real user hit it mid-sentence and got
+    // "Invalid request." See server/test/messageLimit.test.js.
+    assert.equal(config.chat.maxMessageLength, 12000);
   });
 
   test('lets the environment override the model without a code change', () => {

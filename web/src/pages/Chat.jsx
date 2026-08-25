@@ -14,12 +14,16 @@ export function Chat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Null until the server tells us. Not defaulted to a number, because a
+  // guessed limit that disagrees with the server is the bug being fixed.
+  const [maxLength, setMaxLength] = useState(null);
   const endRef = useRef(null);
 
   useEffect(() => {
     api
       .getConversation()
-      .then(({ conversation }) => {
+      .then(({ conversation, limits }) => {
+        if (limits?.maxMessageLength) setMaxLength(limits.maxMessageLength);
         if (conversation) {
           setConversationId(conversation.id);
           setMessages(conversation.messages ?? []);
@@ -124,7 +128,18 @@ export function Chat() {
           placeholder={t('chat.placeholder')}
           disabled={busy}
           aria-label={t('chat.inputLabel')}
+          {...(maxLength ? { maxLength } : {})}
         />
+        {/* Only once it is nearly relevant. A counter sitting under an empty
+            box is clutter; a counter that appears at 80% is a warning. */}
+        {maxLength && draft.length > maxLength * 0.8 && (
+          <p className={draft.length >= maxLength ? 'error small' : 'muted small'}>
+            {t('chat.characterCount', {
+              count: draft.length.toLocaleString(),
+              limit: maxLength.toLocaleString(),
+            })}
+          </p>
+        )}
         <button type="submit" className="primary" disabled={busy || !draft.trim()}>
           {t('chat.send')}
         </button>

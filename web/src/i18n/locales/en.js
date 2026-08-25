@@ -122,6 +122,7 @@ export const en = {
   },
 
   chat: {
+    characterCount: '{count} of {limit} characters',
     logSession: 'Log session',
     editProfile: 'Edit profile',
     emptyPrompt:
