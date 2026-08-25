@@ -21,8 +21,27 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
+    // Supabase fires this on tab focus as well as on sign-in and sign-out,
+    // because it refreshes the access token when the tab becomes visible
+    // again. The refreshed session is a NEW object with a NEW token, so
+    // setting it unconditionally changes this context's identity several times
+    // an hour for a user who is doing nothing but switching windows.
+    //
+    // Downstream that was not harmless: ConsentProvider re-fetched, and
+    // ProtectedRoute showed its loading state while the fetch was in flight,
+    // which UNMOUNTED the page underneath. Anyone part-way through the intake
+    // form lost every field they had typed by switching to another app and
+    // back. That is the kind of bug that makes people abandon a signup.
+    //
+    // Nothing here needs the refreshed token: api.js reads the current one
+    // from the Supabase client on every request, so it is always fresh
+    // regardless of what this context holds. What consumers actually care
+    // about is WHO is signed in, so that is what this compares on.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
+      setSession((prev) => {
+        if (prev?.user?.id === next?.user?.id) return prev;
+        return next;
+      });
     });
 
     return () => listener.subscription.unsubscribe();

@@ -117,6 +117,55 @@ describe('the gate is actually wired up', () => {
     }
   });
 
+  // --- the remount regression ---------------------------------------------
+  //
+  // The consent gate, as first written, destroyed the intake form. Supabase
+  // refreshes its access token when a tab regains focus and fires
+  // onAuthStateChange; AuthProvider stored the new session object; that changed
+  // context identity; ConsentProvider refetched; ProtectedRoute rendered its
+  // loading state while the fetch was in flight - which UNMOUNTED the page
+  // below it. Switch to another app mid-intake, come back, every field blank.
+  //
+  // Asserted at the source level for the same reason as the wiring tests
+  // above: there is no DOM harness here, and these three properties are each
+  // one careless edit from being reverted.
+
+  test('a token refresh is not treated as a change of user', () => {
+    const auth = read('../../web/src/context/AuthContext.jsx');
+    assert.match(
+      auth,
+      /prev\?\.user\?\.id === next\?\.user\?\.id/,
+      'onAuthStateChange must compare identity, not store every refreshed session'
+    );
+    assert.match(auth, /return prev/, 'the previous session object must be kept when the user is unchanged');
+  });
+
+  test('consent is refetched per user, not per session object', () => {
+    const consent = read('../../web/src/context/ConsentContext.jsx');
+    assert.match(
+      consent,
+      /\[userId, load\]/,
+      'keying the effect on the session object refetches on every token refresh'
+    );
+  });
+
+  test('a revalidation does not unmount the page underneath it', () => {
+    const consent = read('../../web/src/context/ConsentContext.jsx');
+    const route = read('../../web/src/components/ProtectedRoute.jsx');
+    assert.match(consent, /'refreshing'/, 'a refetch must be distinguishable from a first load');
+    // The loading branch must not fire for a refresh.
+    const loadingBranch = route.slice(route.indexOf("status === 'idle'"), route.indexOf("gate.allowed"));
+    assert.ok(
+      !/refreshing/.test(loadingBranch),
+      'ProtectedRoute must not show its loading state while revalidating'
+    );
+    assert.match(
+      route,
+      /status !== 'refreshing'/,
+      'a revalidation in flight must not redirect a user who is already through the gate'
+    );
+  });
+
   test('the coach and intake routes are gated', () => {
     const app = read('../../web/src/App.jsx');
     for (const path of ['/coach', '/intake']) {

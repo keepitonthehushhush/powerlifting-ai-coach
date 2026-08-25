@@ -32,10 +32,20 @@ export function ProtectedRoute({ children, requireConsent = true }) {
     // Waiting is not the same as refused. Redirecting while the answer is
     // still in flight would bounce every returning user through the consent
     // screen on every cold load.
+    //
+    // But this only blocks on the FIRST load. A revalidation keeps the current
+    // page mounted, because replacing it unmounts everything below - and an
+    // unmounted form loses every character in it. That is not hypothetical: it
+    // is what this route did to the intake form every time somebody switched
+    // apps and came back, since Supabase refreshes its token on tab focus.
+    //
+    // The safety property is unchanged. A revalidation can only run for a
+    // person already past the gate, and if it comes back withholding consent
+    // the next render redirects them.
     if (status === 'idle' || status === 'loading') {
       return <div className="centered muted">{t('common.loading')}</div>;
     }
-    if (!gate.allowed) return <Navigate to="/consent" replace />;
+    if (!gate.allowed && status !== 'refreshing') return <Navigate to="/consent" replace />;
   }
 
   return children;

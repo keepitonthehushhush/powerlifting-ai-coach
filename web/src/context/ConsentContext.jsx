@@ -19,12 +19,17 @@ import { evaluateConsentGate } from '../lib/consentGate.js';
 const ConsentContext = createContext(null);
 
 export function ConsentProvider({ children }) {
-  const { session } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [state, setState] = useState(null);
   const [status, setStatus] = useState('idle');
 
   const load = useCallback(async () => {
-    setStatus('loading');
+    // 'refreshing' rather than 'loading' once something is already known. The
+    // distinction is what lets ProtectedRoute keep the current page mounted
+    // while this is in flight, instead of replacing it with a spinner and
+    // destroying whatever the person was typing.
+    setStatus((prev) => (prev === 'ready' ? 'refreshing' : 'loading'));
     try {
       setState(await api.getConsents());
       setStatus('ready');
@@ -37,14 +42,16 @@ export function ConsentProvider({ children }) {
     }
   }, []);
 
+  // Keyed on the user's id, not the session object. A refreshed token is the
+  // same person and must not trigger a refetch.
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       setState(null);
       setStatus('idle');
       return;
     }
     load();
-  }, [session, load]);
+  }, [userId, load]);
 
   const value = useMemo(
     () => ({ state, status, refresh: load, gate: evaluateConsentGate(state) }),
