@@ -8,6 +8,7 @@ import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { Login } from './pages/Login.jsx';
 import { Intake } from './pages/Intake.jsx';
 import { Chat } from './pages/Chat.jsx';
+import { LogSession } from './pages/LogSession.jsx';
 import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
@@ -31,6 +32,14 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <Intake />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/log"
+                element={
+                  <ProtectedRoute>
+                    <LogSession />
                   </ProtectedRoute>
                 }
               />

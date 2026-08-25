@@ -49,6 +49,29 @@ export const es = {
     },
   },
 
+  log: {
+    title: 'Registrar una sesión',
+    subtitle:
+      'Lo que realmente levantaste, no lo que estaba prescrito. Coach Diaz ajusta tu siguiente bloque a partir de esto, así que un mal día honesto es más útil que uno maquillado.',
+    date: 'Fecha',
+    exercise: 'Movimiento',
+    exercisePlaceholder: 'Sentadilla, press banca, peso muerto rumano…',
+    exerciseNumber: 'Ejercicio',
+    sets: 'Series',
+    reps: 'Reps',
+    weight: 'Peso',
+    rpe: 'RPE',
+    completed: 'Completado',
+    notCompleted: 'sin completar',
+    remove: 'Quitar',
+    addExercise: '+ Añadir movimiento',
+    notes: 'Notas',
+    notesPlaceholder: 'Se sintió pesado, la rodilla izquierda molestó en la última serie, lo corté…',
+    submit: 'Guardar sesión',
+    needExercise: 'Añade al menos un movimiento antes de guardar.',
+    backToCoach: 'Volver al entrenador',
+    recentTitle: 'Sesiones recientes',
+  },
   intake: {
     dateOfBirth: 'Fecha de nacimiento',
     dateOfBirthHint: 'Se usa para adaptar tu programación a tu edad. Coach Diaz todavía no puede guardar información de lesiones ni de hábitos de menores de 18 años, porque ese consentimiento debe darlo un padre, madre o tutor.',
@@ -103,6 +126,7 @@ export const es = {
   },
 
   chat: {
+    logSession: 'Registrar sesión',
     editProfile: 'Editar perfil',
     emptyPrompt:
       'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',

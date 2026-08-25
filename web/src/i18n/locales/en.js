@@ -45,6 +45,29 @@ export const en = {
     },
   },
 
+  log: {
+    title: 'Log a session',
+    subtitle:
+      'What you actually lifted, not what was prescribed. Coach Diaz adjusts your next block from this, so an honest bad day is more useful than a tidy one.',
+    date: 'Date',
+    exercise: 'Movement',
+    exercisePlaceholder: 'Squat, bench, RDL…',
+    exerciseNumber: 'Exercise',
+    sets: 'Sets',
+    reps: 'Reps',
+    weight: 'Weight',
+    rpe: 'RPE',
+    completed: 'Completed',
+    notCompleted: 'not completed',
+    remove: 'Remove',
+    addExercise: '+ Add movement',
+    notes: 'Notes',
+    notesPlaceholder: 'Felt heavy, left knee cranky on the last set, cut it short…',
+    submit: 'Save session',
+    needExercise: 'Add at least one movement before saving.',
+    backToCoach: 'Back to coach',
+    recentTitle: 'Recent sessions',
+  },
   intake: {
     dateOfBirth: 'Date of birth',
     dateOfBirthHint: 'Used to age-appropriate your programming. Coach Diaz cannot store injury or lifestyle information for under-18s yet, because consent for that has to come from a parent or guardian.',
@@ -99,6 +122,7 @@ export const en = {
   },
 
   chat: {
+    logSession: 'Log session',
     editProfile: 'Edit profile',
     emptyPrompt:
       'Say hello and Coach Diaz will take it from there — it will ask what it needs before writing anything.',

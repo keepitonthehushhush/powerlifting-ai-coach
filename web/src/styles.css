@@ -239,3 +239,19 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   overflow: hidden;
   white-space: nowrap;
 }
+
+/* One logged movement. Wraps to a stack on a phone, because this form is used
+   standing up between sets far more often than it is used at a desk. */
+.exercise-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem;
+  margin: 0;
+}
+.exercise-row .grow { flex: 1 1 12rem; }
+.exercise-row .narrow { flex: 0 1 5rem; }
+.exercise-row .checkbox { flex: 0 0 auto; }

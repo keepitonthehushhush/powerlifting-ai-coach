@@ -1785,9 +1785,52 @@ no stake in the existing answer.
 
 ---
 
+### D.15 Session logging, the feature everything else stands on — **DONE**
+
+The API for logging sessions has existed since Phase 1 and had never been
+reachable. `workout_sessions` held zero rows, which meant progression, charts
+and the coach's ability to adjust a block were all reading from nothing.
+
+**The design constraint is who uses it and when.** This screen gets used
+standing up, one-handed, between sets, by someone whose rest timer is running.
+Everything follows from that: numeric inputs so phones show the number pad,
+nothing required except naming a movement, and the form opens already carrying
+the shape of the last session.
+
+**Prefill is the feature, not a nicety.** Almost every session is "same as last
+time, maybe heavier". A form that starts empty makes a lifter retype their whole
+workout with chalky hands, and a logging tool people avoid produces no data —
+which does not degrade the features downstream of it, it empties them.
+
+But prefill carries movements, sets and reps and deliberately **not** weight or
+RPE. Those two are the answer being asked for. Pre-filling them invites a tired
+person to accept last week's numbers without reading, which would quietly feed
+the progression logic sets nobody actually performed. The shape of the session
+is a memory aid; the load is the question.
+
+**The bug this avoided.** The API marks `sets`/`reps`/`weight`/`rpe` as
+`.optional()`, not `.nullish()` — so an unanswered field must be *omitted*, not
+sent as `null`. A null is a validation failure, and a lifter who left RPE blank
+would have got "Invalid session data" for filling the form in normally. The
+payload builder assigns those fields only when present, and a test asserts no
+`null` reaches the API at all.
+
+Two related traps, both tested: a weight of **zero** is a real answer
+(bodyweight work, empty bar) and must survive a truthiness check that would drop
+it; and the date defaults to the **lifter's local** day, so an 8pm session in
+California is not filed as tomorrow.
+
+Logic lives in `web/src/lib/sessionDraft.js` as pure functions, the same pattern
+as the consent gate, the password policy and the age gate — the interesting
+behaviour is all edge cases, and edge cases are miserable to verify by clicking.
+
+Tests 207 → **223**.
+
+---
+
 ## Phase 2 — Real coaching features — **IN PROGRESS**
 - Recovery & lifestyle factors — **done** (D.11)
-- Session logging UI — next
+- Session logging UI — **done** (D.15)
 - Automatic program progression — after logging
 - Progress charts — after progression
 - Exercise library with verified third-party videos — after charts

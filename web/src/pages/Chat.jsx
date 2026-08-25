@@ -69,6 +69,9 @@ export function Chat() {
         <h1 className="brand small">{t('common.appName')}</h1>
         <nav className="row gap">
           <LanguageSwitcher />
+          <Link className="link" to="/log">
+            {t('chat.logSession')}
+          </Link>
           <Link className="link" to="/intake">
             {t('chat.editProfile')}
           </Link>
