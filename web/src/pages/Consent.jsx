@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ConsentPanel } from '../components/ConsentPanel.jsx';
 import { useI18n } from '../i18n/index.jsx';
+import { useConsent } from '../context/ConsentContext.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 
 /**
@@ -14,6 +15,7 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 export function Consent() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { refresh } = useConsent();
   const [state, setState] = useState(null);
 
   const canContinue =
@@ -42,7 +44,14 @@ export function Consent() {
           type="button"
           className="primary"
           disabled={!canContinue}
-          onClick={() => navigate('/intake')}
+          onClick={async () => {
+            // Refresh the shared state before navigating. The gate on /intake
+            // reads the context, not this component, and would bounce the
+            // person straight back here if it were still holding the answer
+            // from before they consented.
+            await refresh();
+            navigate('/intake');
+          }}
         >
           {t('consent.continue')}
         </button>
