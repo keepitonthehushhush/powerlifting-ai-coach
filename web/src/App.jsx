@@ -1,4 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { missingConfig } from './lib/config.js';
+import { ConfigError } from './components/ConfigError.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { I18nProvider } from './i18n/index.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
@@ -10,6 +12,12 @@ import { Consent } from './pages/Consent.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 
 export function App() {
+  // Checked before any provider mounts. Nothing below this point can start
+  // without configuration, so failing here produces a readable screen instead
+  // of an empty body.
+  const missing = missingConfig();
+  if (missing.length > 0) return <ConfigError missing={missing} />;
+
   return (
     <I18nProvider>
       <AuthProvider>

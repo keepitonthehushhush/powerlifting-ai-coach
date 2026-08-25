@@ -1003,6 +1003,73 @@ the waiver, a defined retention period, and review of everything above.
 
 ---
 
+## Phase 1.7 — Deployed, and the first production bug — **DONE**
+
+Live at `https://powerlifting-ai-coach.vercel.app`. Vercel project linked to
+the GitHub repo, so every push to `main` deploys.
+
+### D.1 Verified live, not assumed
+
+| Check | Result |
+|---|---|
+| `GET /api/health` | `{"status":"ok"}` — Express running as a Vercel function |
+| `GET /` | Serves; title `Coach - AI Powerlifting Programming` |
+| `GET /api/profile` unauthenticated | **401** |
+
+The 401 is the one worth noting: `requireAuth` is mounted on the whole `/api`
+surface, and that is now demonstrably enforced in production rather than only
+in tests. Any route added later inherits it.
+
+### D.2 The first production bug: a black page — **FIXED**
+
+The deployment was `READY`, the API answered, and the site rendered as a solid
+black rectangle. No error, no message, nothing in the UI.
+
+**Diagnosis, by comparing build artefacts:**
+
+| Asset | Local build | Deployed build |
+|---|---|---|
+| CSS | `index-CwHQQWcU.css` | `index-CwHQQWcU.css` — **identical** |
+| JS | `index-DwwkVGHU.js` | `index-Ezc6vIUQ.js` — **different** |
+
+Same source, same CSS hash, different JS hash. Vite inlines `VITE_*` variables
+into the bundle at build time, so identical source plus identical environment
+must produce an identical hash. The CSS matching is the control that makes it
+conclusive — CSS carries no environment values, so it was unchanged.
+
+The `VITE_` variables were not set when Vercel built. Vite inlined `undefined`,
+`supabase.js` threw at module load, React never mounted, and the body stayed
+empty — black, because that is the CSS background colour.
+
+**The configuration mistake was the operator's. The blank page was the code's.**
+
+`supabase.js` threw at module scope. That throw happened *before* React
+mounted, so there was no component tree, no error boundary, and nowhere to
+render a message. The application had no way to tell anyone what was wrong.
+
+Failing loudly at the boundary is right, and `server/src/config.js` does
+exactly that — a server has nowhere to put a message and should refuse to
+start. A browser is different: it has a screen, and the person looking at it
+does not have a console open.
+
+**Fix.** `web/src/lib/config.js` reads the variables without throwing and
+reports which are absent. `App.jsx` checks before mounting any provider and
+renders `ConfigError` instead — naming the missing variables and stating that
+a **rebuild** is required, since `VITE_` values are compiled in and changing
+them does nothing to a build that already happened.
+
+`ConfigError` has **zero imports**, enforced by a test. It renders precisely
+when the application cannot start, so depending on the i18n provider or the
+API client would risk failing for the same reason it exists to report.
+
+Tests 100 → **105**.
+
+**Worth keeping:** diagnosing this required comparing asset hashes across two
+builds, because the app emitted nothing. That is the actual cost of a
+module-scope throw in a browser — not the crash, but the silence.
+
+---
+
 ## Phase 2 — Real coaching features — **NOT STARTED**
 ## Phase 3 — Monetization — **NOT STARTED** (awaiting explicit go-ahead)
 ## Phase 4 — Portfolio polish — **IN PROGRESS** (README, ARCHITECTURE, SECURITY, CI written early)

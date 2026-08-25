@@ -13,13 +13,12 @@ import { createClient } from '@supabase/supabase-js';
  * publishable key grants nothing on its own - every table is behind RLS and
  * every policy requires an authenticated JWT.
  */
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { config } from './config.js';
 
-if (!url || !key) {
-  throw new Error(
-    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Copy .env.example to .env.'
-  );
-}
-
-export const supabase = createClient(url, key);
+// Deliberately no throw here. A missing variable is surfaced by App.jsx as a
+// readable screen; throwing at module load prevented React from mounting at
+// all and produced a blank page with no explanation. See lib/config.js.
+export const supabase = createClient(
+  config.supabaseUrl ?? 'https://placeholder.invalid',
+  config.supabasePublishableKey ?? 'placeholder'
+);

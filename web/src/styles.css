@@ -208,3 +208,16 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .prose ul { margin: 0.5rem 0; padding-left: 1.2rem; }
 .prose li { margin: 0.3rem 0; }
 .prose p { margin: 0.6rem 0; }
+
+/* --- configuration error screen --------------------------------------------- */
+.config-missing {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+  font-size: 0.88rem;
+}
+.config-missing code {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}

@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { config } from './config.js';
 
 /**
  * Thin fetch wrapper that attaches the current Supabase access token to every
@@ -9,7 +10,7 @@ import { supabase } from './supabase.js';
  * server re-verifies the token on every request regardless - the client is
  * never the authority on whether a session is valid.
  */
-const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const BASE = config.apiBaseUrl;
 
 export class ApiError extends Error {
   constructor(status, body) {
