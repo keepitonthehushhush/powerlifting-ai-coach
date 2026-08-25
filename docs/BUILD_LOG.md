@@ -1093,12 +1093,15 @@ Error: Environment variables with a public framework prefix (VITE) cannot use
 secret visibility on Production or Preview.
 ```
 
-**Vercel's "Sensitive" means runtime-only** — the value is deliberately
-withheld from the build so it cannot be compiled into an artefact. Correct for
-`ANTHROPIC_API_KEY`. Fatal for anything Vite must inline. And the four
-variables marked `Hidden` above were invisible to the build too, which is why a
-cache-free rebuild produced a *byte-identical* hash: nothing about the build
-inputs had actually changed.
+**Vercel refuses a public framework prefix combined with sensitive
+visibility**, so `VITE_SUPABASE_URL` was never created. A rejected create leaves
+nothing behind, and nothing else reports the absence. Vite inlined `undefined`,
+and a cache-free rebuild produced a *byte-identical* hash because the build
+inputs genuinely had not changed — the missing variable stayed missing.
+
+> **Corrected later.** This entry originally claimed sensitive variables are
+> withheld from the build, and that this was the mechanism. That was wrong, and
+> the four `Hidden` variables above were fine. See D.14.
 
 **Three things made this hard to see, and each got a fix.**
 
@@ -1198,10 +1201,10 @@ that was wrong about nothing.
 ---
 
 **Also worth recording, because it is mine to own:** the guidance that
-`ANTHROPIC_API_KEY` should be sensitive was right, and was given without the
-sentence that mattered — *sensitive variables are withheld from the build.*
-Advice that is correct about one variable and silent about the rule underneath
-it invites exactly the over-application that happened here.
+`ANTHROPIC_API_KEY` should be sensitive was right, and was given without saying
+what sensitive actually controls, which invited the over-application that
+happened here. The explanation offered at the time for *why* it mattered was
+itself wrong; see D.14.
 
 ---
 
@@ -1715,6 +1718,68 @@ a decision about health data, not a convenience, and it is not one to make
 silently. The remount was the actual bug; it is fixed at the cause.
 
 Tests 186 → **189**. Migrations 0012 → **0014**.
+
+---
+
+### D.14 A correction: what "Sensitive" on Vercel actually controls — **CORRECTED**
+
+D.3 and D.4 diagnosed the blank page correctly and explained it wrongly. The
+fixes were right; the stated mechanism was not, and it was repeated across
+`DEPLOYMENT.md`, `set-vercel-env.sh` and `verify-deployment.mjs`.
+
+**The claim made at the time:** Vercel's "Sensitive" visibility means
+runtime-only, so sensitive variables are withheld from the build, so the `VITE_`
+values compiled as `undefined`.
+
+**What Vercel's documentation actually says**, on the `vercel env` reference
+page:
+
+> Sensitive values are still available to builds run within the Vercel build
+> container and at runtime.
+
+Sensitive controls whether a value can be **read back** — by a person in the
+dashboard, or by `vercel env ls`. It does not control whether the build
+receives it.
+
+**So what really happened?** Something narrower and, in hindsight, more
+interesting. Vercel refuses a public framework prefix combined with sensitive
+visibility on Production and Preview. Every attempt to create
+`VITE_SUPABASE_URL` was therefore *rejected*, and the variable did not exist at
+all — which is exactly what `env ls` showed: five names where there should have
+been six. That absence alone accounts for the blank page and for the
+byte-identical rebuild hash. The four server variables marked `Hidden` were
+never a problem.
+
+And that refusal is a better rule than the one invented to replace it. A
+`VITE_` value is compiled into JavaScript every visitor downloads, so marking it
+unreadable claims a protection it cannot have. The platform declines rather than
+letting a setting imply security it does not provide.
+
+**What survives unchanged from D.4:** `vercel env add` really does default to
+sensitive for production and preview — the CLI reference states it plainly and
+gives `--no-sensitive` as the opt-out. That fix was correct for the right
+reason. (It also documents a team-level *Enforce Sensitive Environment
+Variables* policy under which `--no-sensitive` is ignored entirely, which is
+worth knowing before assuming the flag took effect.)
+
+**How the wrong version survived so long.** It explained every observation. The
+variables were sensitive; the build had no configuration; making them
+non-sensitive fixed it. Each of those is true, and the causal story connecting
+them was invented rather than checked — and once it fit, nothing in the
+evidence pushed back, because a confounded fix works exactly as well as a
+correct one. `VITE_SUPABASE_URL` being absent was doing all the work, and it
+was sitting in the output the whole time.
+
+The tell was available and ignored: the platform's error message said
+*"cannot use secret visibility"* — a statement about what is permitted, not
+about what the build can see. Reading a rejection as confirmation of a theory
+about build inputs was the actual mistake.
+
+**Found by disagreement.** This surfaced while testing a skill built from this
+session: the same task, run without the skill, went and read Vercel's docs
+instead of inheriting my conclusion, and contradicted it. Worth noting for
+what it says about verification — the check that caught this was one that had
+no stake in the existing answer.
 
 ---
 

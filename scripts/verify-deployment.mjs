@@ -5,9 +5,11 @@
  * WHY THIS EXISTS. `npm run verify:bundle` scans web/dist and passed on every
  * run while production served a black page. Both statements were true at once:
  * the build on this machine was correct, and the build Vercel produced was
- * not, because Vercel withholds variables marked "Sensitive" from the build
- * step. Vite therefore inlined `undefined` for VITE_SUPABASE_URL, the Supabase
- * client threw before React mounted, and the page rendered as an empty body.
+ * not, because VITE_SUPABASE_URL had never been created: Vercel refuses a
+ * public framework prefix combined with sensitive visibility, and every
+ * attempt to add it was rejected. Vite therefore inlined `undefined`, the
+ * Supabase client threw before React mounted, and the page rendered as an
+ * empty body.
  *
  * The lesson is narrow and worth keeping: a local artefact is not evidence
  * about a remote one. This script asks the only question that matters after a
@@ -109,9 +111,11 @@ if (missing.length) {
   failed = true;
   console.error(`\nFAIL - required public configuration was not compiled in: ${missing.join(', ')}`);
   console.error(
-    'The build ran without these set. On Vercel the usual cause is a variable marked\n' +
-      '"Sensitive": sensitive variables are runtime-only and are withheld from the build.\n' +
-      'See docs/DEPLOYMENT.md. Setting the variable is not enough - you must rebuild.'
+    'The build ran without these set. On Vercel the usual cause is that the variable was\n' +
+      'never created: a public framework prefix (VITE_) combined with sensitive visibility\n' +
+      'is rejected on Production and Preview, and a rejected create is easy to miss.\n' +
+      'See docs/DEPLOYMENT.md. Setting the variable is also not enough on its own -\n' +
+      'build-time values are read once, so an existing deployment must be rebuilt.'
   );
 } else {
   console.log('PASS - required public configuration is present in the served JavaScript.');

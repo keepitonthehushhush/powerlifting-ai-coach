@@ -23,36 +23,51 @@ and it is not obvious from the dashboard.
 | `SUPABASE_URL` | runtime | non-sensitive |
 | `SUPABASE_PUBLISHABLE_KEY` | runtime | non-sensitive |
 | `ANTHROPIC_MODEL` | runtime | non-sensitive |
-| `ANTHROPIC_API_KEY` | runtime | **sensitive** |
+| `ANTHROPIC_API_KEY` | runtime | **sensitive** (it is a real secret) |
 
-**Vercel's "Sensitive" visibility means runtime-only.** A sensitive variable is
-deliberately withheld from the build step so it cannot be baked into an
-artefact. That is the correct setting for `ANTHROPIC_API_KEY` — the server
-reads it per request, and no build has any business seeing it.
+**Sensitive does not mean the build cannot see it.** Vercel's documentation is
+explicit: *"Sensitive values are still available to builds run within the
+Vercel build container and at runtime."* Sensitive controls whether a value can
+be read back — by a person in the dashboard, or by `vercel env ls` — not
+whether the build receives it.
 
-It is the *wrong* setting for anything prefixed `VITE_`. Vite resolves
-`import.meta.env.VITE_*` at compile time, so a sensitive `VITE_` variable is
-inlined as `undefined`. Vercel rejects the combination outright on Production
-and Preview:
+What Vercel *does* refuse is the combination of a public framework prefix and
+sensitive visibility, on Production and Preview:
 
 ```
 Error: Environment variables with a public framework prefix (VITE) cannot use
 secret visibility on Production or Preview.
 ```
 
-**And recent Vercel CLI versions create every variable as sensitive unless
-told otherwise.** `--no-sensitive` reads like a redundant restatement of a
-default; it is the opt-out. Without it, `vercel env add VITE_SUPABASE_URL
-production` is rejected outright, and the four server variables are created in
-a state the build cannot read:
+That refusal is a coherence guard rather than a build-visibility rule. A
+`VITE_` variable is compiled into JavaScript every visitor downloads, so asking
+for it to be unreadable is asking for secrecy on something about to be
+published. Vercel declines rather than letting the setting imply a protection
+it cannot provide.
+
+**And recent Vercel CLI versions create every variable as sensitive unless told
+otherwise.** `--no-sensitive` reads like a redundant restatement of a default;
+it is the opt-out. Without it, `vercel env add VITE_SUPABASE_URL production` is
+rejected outright — and a rejected create means the variable does not exist:
 
 ```bash
 vercel env add VITE_SUPABASE_URL production --no-sensitive   # required
 vercel env add ANTHROPIC_API_KEY production --sensitive      # the default, stated anyway
 ```
 
-A secure default that silently breaks the build is still a secure default. It
-just has to be written down, which is what `scripts/set-vercel-env.sh` is for.
+The server-side variables can be sensitive or not; the build reads them either
+way. Non-sensitive is chosen here only for the ones that are not secrets, so
+their values stay readable for debugging. `ANTHROPIC_API_KEY` stays sensitive
+because it is one.
+
+A default that quietly changes what gets created is worth writing down, which
+is what `scripts/set-vercel-env.sh` is for.
+
+> **Correction.** An earlier version of this document claimed sensitive
+> variables are withheld from the build, and that this was why the deployed
+> bundle had no configuration in it. That was wrong — see `BUILD_LOG.md` D.14.
+> The real cause was narrower: `VITE_SUPABASE_URL` had never been created,
+> because every attempt was rejected by the rule above.
 
 Three failure modes follow from all this, and this project hit each one:
 

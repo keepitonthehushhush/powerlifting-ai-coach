@@ -12,19 +12,25 @@
 #
 # THE RULE THIS ENCODES:
 #
-#   Sensitive     = runtime only. Vercel withholds it from the BUILD.
-#   Non-sensitive = available to the build and at runtime. Still encrypted at
-#                   rest; "non-sensitive" is about who can read it back, not
-#                   about it being public.
+#   Sensitive     = the value cannot be read back afterwards, by a person in
+#                   the dashboard or by `vercel env ls`. Vercel's docs are
+#                   explicit that sensitive values ARE still available to the
+#                   build container and at runtime.
+#   Non-sensitive = readable back. Still encrypted at rest; the distinction is
+#                   about who can retrieve the value, not about who receives
+#                   it at build time.
 #
-#   So: anything the browser bundle needs (VITE_*) MUST NOT be sensitive - it
-#   is compiled into public JavaScript anyway, and marking it sensitive only
-#   means the compiler cannot see it. Vercel actually refuses this combination
-#   on Production and Preview, and the refusal is easy to miss in a long CLI
-#   session, which is how VITE_SUPABASE_URL came to not exist at all.
+#   So: anything the browser bundle needs (VITE_*) MUST NOT be sensitive - not
+#   because the compiler could not see it, but because Vercel REFUSES the
+#   combination on Production and Preview. A VITE_ value is compiled into
+#   public JavaScript, so marking it unreadable claims a protection it cannot
+#   have. The refusal is easy to miss in a long CLI session, and a rejected
+#   create means the variable simply does not exist - which is how
+#   VITE_SUPABASE_URL came to be missing entirely.
 #
-#   ANTHROPIC_API_KEY is sensitive, correctly: the server reads it at runtime
-#   and no build step ever needs it.
+#   ANTHROPIC_API_KEY is sensitive because it is a genuine secret and nothing
+#   needs to read it back. The other server variables are not secrets, so they
+#   are left readable, which makes them debuggable.
 #
 # THE FLAG THAT IS NOT OPTIONAL. Recent Vercel CLI versions make `env add`
 # SENSITIVE BY DEFAULT. `--no-sensitive` is not a redundant restatement of the
