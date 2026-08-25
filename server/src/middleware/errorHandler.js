@@ -1,55 +1,101 @@
 import { logger } from '../lib/logger.js';
 import { captureError } from '../lib/monitoring.js';
-import { config } from '../config.js';
+import { HttpError } from '../lib/httpError.js';
 
-// HttpError lives in lib/httpError.js so that throwing one does not drag the
-// error handler - and therefore config, and therefore the whole environment -
-// into every module that needs it. Re-exported here for callers that expect it
-// at the old path.
-export { HttpError } from '../lib/httpError.js';
+// Imported above, then re-exported. `export { X } from './y.js'` alone forwards
+// the binding WITHOUT introducing it into this module's scope - so `HttpError`
+// was undefined inside errorHandler, and the handler threw a ReferenceError on
+// every error it was asked to report. See docs/BUILD_LOG.md D.6.
+export { HttpError };
 
 export function notFound(req, res) {
   res.status(404).json({ error: 'not_found', message: `No route for ${req.method} ${req.path}` });
 }
 
 /**
+ * The status this error is asking to be reported as.
+ *
+ * Deliberately duck-typed rather than `err instanceof HttpError`. Two reasons,
+ * and the second is why this matters in production:
+ *
+ *   1. Under a bundler or a serverless runtime a module can be instantiated
+ *      more than once. Two HttpError classes then exist, `instanceof` is false
+ *      for one of them, and a considered 400 is reported to the user as a 500.
+ *   2. An `instanceof` against an undefined binding throws. That is exactly
+ *      what happened here, inside the one function whose job is to make sure
+ *      nothing else throws unhandled.
+ *
+ * Reading a numeric property cannot fail either way.
+ */
+function statusOf(err) {
+  const status = err?.status ?? err?.statusCode;
+  return Number.isInteger(status) && status >= 400 && status <= 599 ? status : 500;
+}
+
+/**
  * Terminal error handler.
  *
- * Three rules:
- *   1. The stack trace never reaches the client. In production it never
+ * Four rules:
+ *   1. The original error is logged FIRST, before anything that could itself
+ *      fail. When this handler threw, it threw on the line above the logging
+ *      call, so the error that actually broke the request was never recorded
+ *      anywhere - the logs showed only the handler's own failure. An error
+ *      reporter that can lose the error is worse than none, because it looks
+ *      like it is working.
+ *   2. The stack trace never reaches the client. In production it never
  *      reaches the response body at all; internals are for logs.
- *   2. Everything logged goes through the redacting logger. An error object
+ *   3. Everything logged goes through the redacting logger. An error object
  *      from a failed profile write can easily carry the row that failed - and
  *      that row contains health_restrictions.
- *   3. Only genuine server faults reach the error tracker. A 400 or a 429 is
+ *   4. Only genuine server faults reach the error tracker. A 400 or a 429 is
  *      the system working correctly; forwarding those trains everyone to
  *      ignore the alerts that matter.
+ *
+ * NODE_ENV is read directly rather than through config.js on purpose. This is
+ * the last line of defence in the request pipeline, and the last thing that
+ * should stop working because configuration failed to load.
  */
 // eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity.
 export function errorHandler(err, req, res, _next) {
-  const status = err instanceof HttpError ? err.status : 500;
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  logger.error('request.failed', {
-    method: req.method,
-    path: req.path,
-    status,
-    userId: req.user?.id,
-    error: { name: err.name, message: err.message },
-    ...(config.isProduction ? {} : { stack: err.stack }),
-  });
+  try {
+    const status = statusOf(err);
 
-  if (status >= 500) {
-    // captureError redacts again on its way out. The context here is
-    // deliberately thin - ids and route, never request bodies.
-    captureError(err, { method: req.method, path: req.path, userId: req.user?.id });
+    logger.error('request.failed', {
+      method: req?.method,
+      path: req?.path,
+      status,
+      userId: req?.user?.id,
+      error: { name: err?.name, message: err?.message },
+      ...(isProduction ? {} : { stack: err?.stack }),
+    });
+
+    if (status >= 500) {
+      // captureError redacts again on its way out. The context here is
+      // deliberately thin - ids and route, never request bodies.
+      captureError(err, { method: req?.method, path: req?.path, userId: req?.user?.id });
+    }
+
+    res.status(status).json({
+      error: status === 500 ? 'internal_error' : 'request_failed',
+      message: status === 500 ? 'Something went wrong on our end.' : err?.message,
+      ...(err?.details ? { details: err.details } : {}),
+    });
+  } catch (handlerFault) {
+    // Never delegate to Express's default handler. It would send an HTML error
+    // page from a JSON API and, more importantly, this fault would go
+    // unrecorded - which is precisely how the original bug stayed invisible.
+    try {
+      logger.error('errorHandler.failed', {
+        error: { name: handlerFault?.name, message: handlerFault?.message },
+        original: { name: err?.name, message: err?.message },
+      });
+    } catch {
+      // Logging itself is broken. There is nothing left to try.
+    }
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'internal_error', message: 'Something went wrong on our end.' });
+    }
   }
-
-  res.status(status).json({
-    error: status === 500 ? 'internal_error' : 'request_failed',
-    message:
-      status === 500
-        ? 'Something went wrong on our end.'
-        : err.message,
-    ...(err.details ? { details: err.details } : {}),
-  });
 }

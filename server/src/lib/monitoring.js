@@ -1,5 +1,10 @@
 import { redact } from './logger.js';
-import { config } from '../config.js';
+
+// NODE_ENV is read directly rather than through config.js, and that import is
+// deliberately absent. Monitoring and the error handler that calls it are the
+// machinery for finding out WHY something failed - a configuration failure
+// included. Making them depend on configuration loading successfully means
+// they go dark in exactly the case they exist for.
 
 /**
  * Error monitoring, with health data stripped before anything leaves the
@@ -35,7 +40,7 @@ export async function initMonitoring() {
 
     Sentry.init({
       dsn,
-      environment: config.nodeEnv,
+      environment: process.env.NODE_ENV ?? 'development',
       release: process.env.VERCEL_GIT_COMMIT_SHA || undefined,
 
       // Performance sampling off by default: traces attach request data, which
