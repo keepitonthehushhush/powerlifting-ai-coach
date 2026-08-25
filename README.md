@@ -223,10 +223,10 @@ configure secrets.
 │   └── test/                 Unit tests
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0004, applied in order
+│   ├── migrations/           0001–0010, applied in order
 │   └── tests/                RLS isolation test
-├── scripts/                  Bundle secret scanner
-└── docs/                     Architecture, security, build log
+├── scripts/                  Secret scanners, safety eval, deploy tooling
+└── docs/                     Architecture, security, deployment, legal, build log
 ```
 
 ---
@@ -239,6 +239,11 @@ configure secrets.
   reasoning behind each significant decision
 - [`docs/SECURITY.md`](docs/SECURITY.md) — key handling, RLS model, health-data
   treatment
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — environment variables and the
+  build-versus-runtime distinction that governs them, plus how a deployment is
+  verified against what the public actually downloads
+- [`docs/LEGAL_CONSIDERATIONS.md`](docs/LEGAL_CONSIDERATIONS.md) — health-data
+  law, the wellness/medicine line, and what still needs an attorney
 
 ## Licence
 

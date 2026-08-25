@@ -1068,6 +1068,66 @@ Tests 100 → **105**.
 builds, because the app emitted nothing. That is the actual cost of a
 module-scope throw in a browser — not the crash, but the silence.
 
+### D.3 Why the variables were not set: Vercel's "Sensitive" visibility — **FIXED**
+
+D.2 established *that* the `VITE_` variables were absent from the build and
+fixed the silence. It did not establish *why* they were absent, and the
+guess — "they were never added" — was wrong in a way that mattered: they had
+been added, twice, and the platform had refused them.
+
+`vercel env ls production` told the real story:
+
+```
+VITE_SUPABASE_PUBLISHABLE_KEY   eyJ2IjoidjIi…   Non-sensitive   Development, Preview, Production
+ANTHROPIC_API_KEY               Hidden          Sensitive       Production
+ANTHROPIC_MODEL                 Hidden          Sensitive       Production
+SUPABASE_URL                    Hidden          Sensitive       Production
+SUPABASE_PUBLISHABLE_KEY        Hidden          Sensitive       Production
+```
+
+Five names where there should be six. `VITE_SUPABASE_URL` did not exist,
+because every attempt to create it had been rejected:
+
+```
+Error: Environment variables with a public framework prefix (VITE) cannot use
+secret visibility on Production or Preview.
+```
+
+**Vercel's "Sensitive" means runtime-only** — the value is deliberately
+withheld from the build so it cannot be compiled into an artefact. Correct for
+`ANTHROPIC_API_KEY`. Fatal for anything Vite must inline. And the four
+variables marked `Hidden` above were invisible to the build too, which is why a
+cache-free rebuild produced a *byte-identical* hash: nothing about the build
+inputs had actually changed.
+
+**Three things made this hard to see, and each got a fix.**
+
+| Problem | Fix |
+|---|---|
+| A rejected `env add` scrolls past in a long session, and nothing else reports the absence | `scripts/set-vercel-env.sh` — one reviewable, re-runnable definition of the whole environment, visibility included |
+| `env ls` prints `Hidden` for sensitive variables, so a correct secret and a build-invisible one look identical | `docs/DEPLOYMENT.md` §1 — the table says which variable needs which visibility, and why |
+| `npm run verify:bundle` passed throughout, because the local build was genuinely fine | `scripts/verify-deployment.mjs` — checks the artefact the public downloads |
+
+The last one is the general lesson, and it is the same one that produced the
+RLS test suite and the asset-hash comparison in D.2: **a local artefact is not
+evidence about a remote one.** Every prior verification step in this project
+asked a question about this machine.
+
+The new scanner makes two assertions that pull in opposite directions on
+purpose. Negative: no server-side secret in any served asset. Positive: the
+public configuration that is supposed to be compiled in actually is. Only the
+second one catches this bug — a build with no environment at all passes a
+secret scan trivially, which is exactly the state that shipped the blank page.
+A checker that only looks for leaks would have certified the broken deploy.
+
+**Also worth recording, because it is mine to own:** the guidance that
+`ANTHROPIC_API_KEY` should be sensitive was right, and was given without the
+sentence that mattered — *sensitive variables are withheld from the build.*
+Advice that is correct about one variable and silent about the rule underneath
+it invites exactly the over-application that happened here.
+
+---
+
 ---
 
 ## Phase 2 — Real coaching features — **NOT STARTED**
