@@ -50,6 +50,18 @@ export const es = {
   },
 
   intake: {
+    recoveryLegend: 'Recuperación y hábitos (opcional)',
+    recoveryNote: 'Todos estos campos son opcionales y puedes dejarlos en blanco. Entrenar es solo la mitad de ganar fuerza: esto le dice al entrenador con qué capacidad de recuperación está programando realmente. Nada de esto se juzga, y no cambia si recibes entrenamiento.',
+    sleepHours: 'Horas de sueño en una noche normal',
+    alcohol: 'Bebidas alcohólicas en una semana normal',
+    alcoholHint: 'Una bebida estándar equivale aproximadamente a una cerveza de 350 ml, una copa de vino de 150 ml o un trago de 45 ml.',
+    nicotine: 'Consumo de nicotina',
+    nicotineNone: 'Ninguno',
+    nicotineOccasional: 'Ocasionalmente',
+    nicotineDaily: 'A diario',
+    preferNotToSay: 'Prefiero no decirlo',
+    nutrition: 'Algo sobre cómo comes',
+    nutritionPlaceholder: 'Bajando de peso para una categoría, vegetariano, sin desayuno, lo que sea relevante.',
     title: 'Tu perfil de entrenamiento',
     subtitle:
       'Coach usa estos datos para escribir tu programa. Las aproximaciones sirven — se ajusta según lo que registres.',

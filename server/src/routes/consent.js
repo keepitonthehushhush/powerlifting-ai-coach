@@ -89,9 +89,21 @@ consentRouter.post('/', async (req, res, next) => {
     // kind of gap that makes a consent mechanism decorative.
     let healthDataCleared = false;
     if (consentType === 'health_data_collection' && !granted) {
+      // Every field the database counts as health data, cleared together.
+      // This list and private.health_fingerprint (migration 0012) describe the
+      // same set: if one grows and the other does not, withdrawal silently
+      // stops being complete. supabase/tests/rls_isolation_test.sql asserts
+      // they agree.
       const { error: clearError } = await req.supabase
         .from('user_profile')
-        .update({ health_restrictions: '', cleared_to_train: false })
+        .update({
+          health_restrictions: '',
+          cleared_to_train: false,
+          sleep_hours_typical: null,
+          alcohol_units_per_week: null,
+          nicotine_use: null,
+          nutrition_notes: null,
+        })
         .eq('user_id', req.user.id);
 
       if (clearError) {

@@ -16,6 +16,10 @@ const EMPTY = {
   equipment_available: '',
   days_per_week: '',
   health_restrictions: '',
+  sleep_hours_typical: '',
+  alcohol_units_per_week: '',
+  nicotine_use: '',
+  nutrition_notes: '',
   cleared_to_train: false,
 };
 
@@ -36,6 +40,13 @@ function toPayload(form) {
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
     health_restrictions: form.health_restrictions ?? '',
     cleared_to_train: Boolean(form.cleared_to_train),
+    // Empty means "not answered" and must stay null. Coercing a blank field to
+    // 0 would tell the coach this athlete never sleeps and never drinks - a
+    // confident wrong answer, which is worse than an honest gap.
+    sleep_hours_typical: num(form.sleep_hours_typical),
+    alcohol_units_per_week: num(form.alcohol_units_per_week),
+    nicotine_use: form.nicotine_use || null,
+    nutrition_notes: form.nutrition_notes || null,
   };
 }
 
@@ -215,6 +226,55 @@ export function Intake() {
           {reportedRestriction && !form.cleared_to_train && (
             <p className="warning">{t('intake.clearanceWarning')}</p>
           )}
+        </fieldset>
+
+        <fieldset className="sensitive">
+          <legend>{t('intake.recoveryLegend')}</legend>
+          <p className="muted small">{t('intake.recoveryNote')}</p>
+
+          <label>
+            {t('intake.sleepHours')}
+            <input
+              type="number"
+              min="0"
+              max="24"
+              step="0.5"
+              value={form.sleep_hours_typical}
+              onChange={(e) => update('sleep_hours_typical', e.target.value)}
+            />
+          </label>
+
+          <label>
+            {t('intake.alcohol')}
+            <input
+              type="number"
+              min="0"
+              max="200"
+              value={form.alcohol_units_per_week}
+              onChange={(e) => update('alcohol_units_per_week', e.target.value)}
+            />
+            <span className="muted small">{t('intake.alcoholHint')}</span>
+          </label>
+
+          <label>
+            {t('intake.nicotine')}
+            <select value={form.nicotine_use} onChange={(e) => update('nicotine_use', e.target.value)}>
+              <option value="">{t('intake.preferNotToSay')}</option>
+              <option value="none">{t('intake.nicotineNone')}</option>
+              <option value="occasional">{t('intake.nicotineOccasional')}</option>
+              <option value="daily">{t('intake.nicotineDaily')}</option>
+            </select>
+          </label>
+
+          <label>
+            {t('intake.nutrition')}
+            <textarea
+              rows={2}
+              value={form.nutrition_notes}
+              onChange={(e) => update('nutrition_notes', e.target.value)}
+              placeholder={t('intake.nutritionPlaceholder')}
+            />
+          </label>
         </fieldset>
 
         {error && <p className="error">{error}</p>}

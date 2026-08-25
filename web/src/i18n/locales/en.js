@@ -46,6 +46,18 @@ export const en = {
   },
 
   intake: {
+    recoveryLegend: 'Recovery and lifestyle (optional)',
+    recoveryNote: 'Every field here is optional and you can leave any of them blank. Training is only half of getting stronger — these tell the coach what recovery capacity it is actually programming for. Nothing here is judged, and none of it changes whether you get coached.',
+    sleepHours: 'Typical hours of sleep a night',
+    alcohol: 'Alcoholic drinks in a typical week',
+    alcoholHint: 'A standard drink is roughly a 12oz beer, a 5oz glass of wine, or a 1.5oz shot.',
+    nicotine: 'Nicotine use',
+    nicotineNone: 'None',
+    nicotineOccasional: 'Occasionally',
+    nicotineDaily: 'Daily',
+    preferNotToSay: 'Prefer not to say',
+    nutrition: 'Anything about how you eat',
+    nutritionPlaceholder: 'Cutting for a weight class, vegetarian, skip breakfast, whatever is relevant.',
     title: 'Your training profile',
     subtitle:
       'Coach uses this to write your program. Approximations are fine — it adjusts based on what you actually log.',

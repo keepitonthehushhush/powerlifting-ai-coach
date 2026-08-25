@@ -91,6 +91,125 @@ begin
   end;
 end $$;
 
+-- --- ownership is supplied by the database, not by the caller -----------------
+--
+-- Added after POST /api/chat failed for every user on its first real request:
+-- the route inserted a conversation without naming an owner, exactly as ADR-2
+-- says application code should, and conversations.user_id was NOT NULL with no
+-- default. See migration 0011.
+--
+-- Three assertions, because the fix has to be safe as well as effective: the
+-- omission must work, it must attribute the row to the right person, and it
+-- must not have weakened the check that stops forgery.
+do $$
+declare inserted_owner uuid;
+begin
+  insert into public.conversations (title) values ('no owner named')
+    returning user_id into inserted_owner;
+  assert inserted_owner = 'aaaaaaaa-0000-4000-8000-000000000001',
+         'an insert that names no owner must be attributed to the caller';
+
+  insert into public.progress_logs (lift, weight, reps) values ('bench', 185, 5)
+    returning user_id into inserted_owner;
+  assert inserted_owner = 'aaaaaaaa-0000-4000-8000-000000000001',
+         'the default must apply to every user-owned table, not just conversations';
+
+  -- The default is a convenience. WITH CHECK is the control, and it still is.
+  begin
+    insert into public.conversations (user_id, title)
+      values ('bbbbbbbb-0000-4000-8000-000000000002','forged');
+    raise exception 'the default weakened the INSERT policy - A forged a row owned by B';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- Structural check, so a table added later cannot quietly reintroduce the bug.
+do $$
+declare missing text;
+begin
+  select string_agg(c.table_name, ', ')
+    into missing
+    from information_schema.columns c
+   where c.table_schema = 'public'
+     and c.column_name  = 'user_id'
+     and coalesce(c.column_default, '') <> 'auth.uid()';
+  assert missing is null,
+         format('user-owned tables without a user_id default: %s', missing);
+end $$;
+
+-- Undo this section's rows so the counts below still mean what they say.
+delete from public.conversations where title = 'no owner named';
+delete from public.progress_logs where lift = 'bench';
+
+-- --- consent gates lifestyle data, not only the original health column -------
+--
+-- Migration 0012 added sleep, alcohol, nicotine and nutrition notes. All four
+-- are consumer health data under MHMDA, so all four must sit behind the same
+-- gate. Adding a health column and forgetting to list it in the fingerprint
+-- would collect health data with no consent check at all, and nothing else in
+-- the system would notice.
+--
+-- UUIDs are written out rather than using :A because psql does not interpolate
+-- variables inside a dollar-quoted body.
+do $$
+begin
+  -- A has recorded no consent at this point in the test.
+  begin
+    update public.user_profile set alcohol_units_per_week = 20
+      where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+    raise exception 'alcohol was stored with no health_data_collection consent';
+  exception when check_violation then null;
+  end;
+
+  begin
+    update public.user_profile set sleep_hours_typical = 5
+      where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+    raise exception 'sleep was stored with no health_data_collection consent';
+  exception when check_violation then null;
+  end;
+
+  begin
+    update public.user_profile set nicotine_use = 'daily'
+      where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+    raise exception 'nicotine use was stored with no health_data_collection consent';
+  exception when check_violation then null;
+  end;
+
+  begin
+    update public.user_profile set nutrition_notes = 'cutting hard'
+      where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+    raise exception 'nutrition notes were stored with no health_data_collection consent';
+  exception when check_violation then null;
+  end;
+
+  -- A gate that blocks unrelated updates is a bug, not extra safety.
+  update public.user_profile set bodyweight = 185
+    where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+  assert (select bodyweight from public.user_profile) = 185,
+         'a non-health field must stay writable without health consent';
+end $$;
+
+-- With consent on file, the same writes succeed.
+insert into public.consent_records (consent_type, granted, policy_version)
+  values ('health_data_collection', true, 'chd-2026-08-24');
+
+do $$
+begin
+  update public.user_profile
+     set alcohol_units_per_week = 20, sleep_hours_typical = 6, nicotine_use = 'none'
+   where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+  assert (select alcohol_units_per_week from public.user_profile) = 20,
+         'consented lifestyle data must actually be stored';
+end $$;
+
+-- Put A back as B's section expects to find them.
+do $$
+begin
+  update public.user_profile
+     set alcohol_units_per_week = null, sleep_hours_typical = null, nicotine_use = null
+   where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+end $$;
+
 -- --- become athlete B: confirm nothing A did touched them ---------------------
 select set_config('request.jwt.claims',
   json_build_object('sub', :B, 'role', 'authenticated')::text, true);
@@ -118,6 +237,33 @@ begin
 end $$;
 
 reset role;
+
+-- --- structural: every documented health column is actually gated -------------
+--
+-- Run as the migration role, because reading a function definition out of the
+-- `private` schema needs privileges the `authenticated` role deliberately does
+-- not have.
+--
+-- The column comments are the schema's own statement about what counts as
+-- health data. This asserts the trigger's fingerprint agrees with them, so a
+-- column added later cannot be documented as health data and silently left
+-- ungated.
+do $$
+declare ungated text;
+begin
+  select string_agg(c.column_name, ', ')
+    into ungated
+    from information_schema.columns c
+   where c.table_schema = 'public'
+     and c.table_name = 'user_profile'
+     and col_description('public.user_profile'::regclass, c.ordinal_position) like 'Health data.%'
+     and position(c.column_name in pg_get_functiondef(
+           'private.health_fingerprint(public.user_profile)'::regprocedure)) = 0;
+
+  assert ungated is null,
+         format('columns documented as health data but not gated by the consent trigger: %s', ungated);
+end $$;
+
 rollback;
 
 \echo 'PASS - RLS isolation test: all assertions held.'

@@ -25,6 +25,19 @@ const ProfileUpdate = z
     cleared_to_train: z.boolean().optional(),
     equipment_available: z.string().max(2000).nullish(),
     days_per_week: z.number().int().min(1).max(7).nullish(),
+
+    // Recovery inputs. All optional, all consumer health data under MHMDA, all
+    // gated by the trigger from migration 0012 - a write here without an
+    // active health_data_collection consent is refused by Postgres.
+    //
+    // The ranges are generous by design. A validator that rejects an honest
+    // answer for being unflattering teaches people to lie to their coach, and
+    // a coach working from numbers the athlete edited to look better is worse
+    // than one working from nothing.
+    sleep_hours_typical: z.number().min(0).max(24).nullish(),
+    alcohol_units_per_week: z.number().int().min(0).max(200).nullish(),
+    nicotine_use: z.enum(['none', 'occasional', 'daily']).nullish(),
+    nutrition_notes: z.string().max(4000).nullish(),
   })
   .strict()
   .refine((v) => !(v.competition_date && v.goal && v.goal !== 'meet_prep'), {

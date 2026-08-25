@@ -69,6 +69,11 @@ async function loadOrCreateConversation(supabase, conversationId) {
   if (findError) throw new HttpError(502, 'Could not load the conversation.');
   if (existing) return existing;
 
+  // No user_id here, deliberately, and it is the same premise as the reads
+  // above: ownership is the database's to decide. conversations.user_id
+  // defaults to auth.uid() (migration 0011) and the INSERT policy's WITH CHECK
+  // enforces it. This route cannot create a row belonging to anyone else even
+  // if it tried to.
   const { data: created, error: createError } = await supabase
     .from('conversations')
     .insert({ title: 'Coaching' })
