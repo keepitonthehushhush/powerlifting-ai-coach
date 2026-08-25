@@ -40,7 +40,21 @@ Error: Environment variables with a public framework prefix (VITE) cannot use
 secret visibility on Production or Preview.
 ```
 
-Two failure modes follow from this, and this project hit both:
+**And recent Vercel CLI versions create every variable as sensitive unless
+told otherwise.** `--no-sensitive` reads like a redundant restatement of a
+default; it is the opt-out. Without it, `vercel env add VITE_SUPABASE_URL
+production` is rejected outright, and the four server variables are created in
+a state the build cannot read:
+
+```bash
+vercel env add VITE_SUPABASE_URL production --no-sensitive   # required
+vercel env add ANTHROPIC_API_KEY production --sensitive      # the default, stated anyway
+```
+
+A secure default that silently breaks the build is still a secure default. It
+just has to be written down, which is what `scripts/set-vercel-env.sh` is for.
+
+Three failure modes follow from all this, and this project hit each one:
 
 1. **The rejected variable never gets created.** In a long CLI or dashboard
    session that error scrolls past, and `VITE_SUPABASE_URL` simply did not
@@ -48,6 +62,10 @@ Two failure modes follow from this, and this project hit both:
 2. **A listing cannot tell you.** `vercel env ls` prints `Hidden` for every
    sensitive variable, so a correctly-set secret and a build-invisible one look
    identical.
+3. **A failure part-way through is worse than no change.** Setting a variable
+   means removing it first — `env add` on an existing name fails rather than
+   replacing — so an aborted run leaves the environment *emptier* than it
+   found it. The script traps this and says so.
 
 Non-sensitive does **not** mean public-in-transit — values are still encrypted
 at rest. It controls whether the value can be read back and whether the build

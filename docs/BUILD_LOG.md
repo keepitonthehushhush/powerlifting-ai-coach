@@ -1120,6 +1120,44 @@ second one catches this bug — a build with no environment at all passes a
 secret scan trivially, which is exactly the state that shipped the blank page.
 A checker that only looks for leaks would have certified the broken deploy.
 
+### D.4 The same trap, one level down: the CLI defaults to sensitive — **FIXED**
+
+D.3's script was correct about intent and wrong about mechanics. Its first
+`vercel env add` was rejected with the identical error that had caused the
+original problem — and because each environment is cleared before it is
+repopulated, the abort left production with **no variables at all**, which is
+strictly worse than the state it started in.
+
+The cause: **Vercel CLI ≥ 59 creates every environment variable as sensitive
+unless told otherwise.** `--no-sensitive` is not a redundant restatement of a
+default. It is the opt-out.
+
+That is a defensible platform decision — secrets are the common case, and a
+default that leaks is worse than one that breaks. But it means the correct
+command for a public build-time variable contains a flag that reads like it
+does nothing, and the failure it prevents is invisible: a build that ran
+without its environment produces a valid artefact, a green deployment, and a
+blank page.
+
+Two changes, neither of them the obvious one:
+
+- `--no-sensitive` on all five build-time variables, with the reason written at
+  the top of the script rather than beside the flag. Someone deleting a flag
+  they think is redundant will not read a trailing comment.
+- An `ERR` trap that states the environment is now **incomplete**, not
+  unchanged. `env add` fails on an existing name rather than replacing it, so
+  every write is a remove-then-add, so every abort is destructive. A script
+  that mutates in place owes the reader that distinction.
+
+**The check earned its keep.** `npm run verify:deployment` failed with exactly
+the two variable names, against a deployment that was `READY` and served a
+200. Nothing else in the pipeline disagreed with that deployment — tests
+passed, the local build passed, the secret scan passed, Vercel reported
+success. One check asked what the public downloads, and it was the only one
+that was wrong about nothing.
+
+---
+
 **Also worth recording, because it is mine to own:** the guidance that
 `ANTHROPIC_API_KEY` should be sensitive was right, and was given without the
 sentence that mattered — *sensitive variables are withheld from the build.*
