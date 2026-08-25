@@ -176,6 +176,7 @@ npm run check                    tests, dependency guard, build, local secret sc
 bash scripts/set-vercel-env.sh   only when the environment changed
 npx vercel@latest redeploy <url>
 npm run verify:deployment -- <url>
+npm run test:db                  RLS + consent gate, against a real database
 ```
 
 Then, by hand: sign up as a new user, accept consent, complete intake, send one

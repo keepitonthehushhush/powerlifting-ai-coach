@@ -123,6 +123,29 @@ begin
   end;
 end $$;
 
+-- The consent trigger must fire on EVERY column, not a named list.
+--
+-- Migration 0008 declared it `before insert or update OF health_restrictions`.
+-- 0012 added four more health columns and taught the trigger FUNCTION about
+-- them, but left that column list alone - so updating sleep, alcohol, nicotine
+-- or nutrition stored health data without the consent check ever running.
+-- INSERT was unaffected (a column list does not apply to it), which is exactly
+-- why it stayed hidden: the app upserts, and for an existing row that is an
+-- UPDATE. Fixed in 0014; asserted here so it cannot come back.
+do $$
+declare scoped_to text;
+begin
+  select string_agg(a.attname, ', ' order by a.attnum)
+    into scoped_to
+    from pg_trigger t
+    join pg_attribute a on a.attrelid = t.tgrelid and a.attnum = any (t.tgattr::int2[])
+   where t.tgrelid = 'public.user_profile'::regclass
+     and t.tgname = 'user_profile_require_health_consent';
+
+  assert scoped_to is null,
+         format('the consent trigger only fires for: %s - every other health column is ungated', scoped_to);
+end $$;
+
 -- Structural check, so a table added later cannot quietly reintroduce the bug.
 do $$
 declare missing text;

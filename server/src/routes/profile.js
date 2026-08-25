@@ -78,6 +78,21 @@ profileRouter.put('/', async (req, res, next) => {
       .single();
 
     if (error) {
+      // Logged at the point of failure, because the terminal handler only sees
+      // the HttpError this throws - and "Could not save your profile" is the
+      // same sentence for every cause. Two migrations shipped broken behind
+      // this line: 42501 (permission denied for schema private) and 23514
+      // (consent) are indistinguishable from the outside and need opposite
+      // fixes. The code is the diagnosis.
+      //
+      // The code and hint only; never error.message or error.details, which
+      // can quote the offending row - and that row holds health data.
+      logger.error('profile.save_failed', {
+        userId: req.user.id,
+        code: error.code,
+        hint: error.hint,
+      });
+
       // 23514 is check_violation, which the consent trigger raises when health
       // data is written without active collection consent (migration 0008).
       // The database is the enforcement point; this only turns its refusal
