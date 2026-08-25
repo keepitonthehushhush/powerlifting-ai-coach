@@ -14,15 +14,11 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import 'dotenv/config';
+// Shared with scripts/verify-deployment.mjs, which asks the same question of
+// the deployed artefact. One list, so the two cannot drift apart.
+import { findSecrets } from './lib/secretPatterns.mjs';
 
 const BUNDLE_DIR = new URL('../web/dist/', import.meta.url).pathname;
-
-const PATTERNS = [
-  { name: 'Anthropic API key',        re: /sk-ant-[A-Za-z0-9_\-]{16,}/g },
-  { name: 'Supabase service role JWT', re: /"?role"?\s*:\s*"service_role"/g },
-  { name: 'Supabase secret key',      re: /sb_secret_[A-Za-z0-9_\-]{8,}/g },
-  { name: 'Generic private key block', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g },
-];
 
 // The literal value from the environment, if present - catches a key that does
 // not match the shape patterns above.
@@ -53,9 +49,8 @@ for (const file of files) {
   if (!/\.(js|mjs|cjs|css|html|json|map)$/.test(file)) continue;
   const contents = readFileSync(file, 'utf8');
 
-  for (const { name, re } of PATTERNS) {
-    if (re.test(contents)) findings.push({ file: relative(BUNDLE_DIR, file), what: name });
-    re.lastIndex = 0;
+  for (const what of findSecrets(contents)) {
+    findings.push({ file: relative(BUNDLE_DIR, file), what });
   }
   for (const { name, value } of literalSecrets) {
     if (contents.includes(value)) findings.push({ file: relative(BUNDLE_DIR, file), what: `literal ${name}` });
