@@ -221,3 +221,21 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   border-radius: 4px;
   padding: 0.1rem 0.35rem;
 }
+
+/* Password requirement checklist.
+   State is conveyed three ways - glyph, colour, and text hidden from sight but
+   not from assistive technology - because any one of them alone excludes
+   somebody. */
+.checklist { list-style: none; padding: 0; margin: 0.4rem 0; }
+.checklist li { display: flex; gap: 0.4rem; align-items: baseline; line-height: 1.6; }
+.checklist .met { color: var(--ok, #3f9e5a); }
+.checklist .unmet { color: var(--muted); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}

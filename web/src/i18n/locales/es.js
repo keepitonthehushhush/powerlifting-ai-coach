@@ -35,6 +35,18 @@ export const es = {
     toSignIn: '¿Ya tienes cuenta? Inicia sesión',
     toSignUp: '¿Eres nuevo? Crea una cuenta',
     confirmEmail: 'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
+    password: {
+      met: 'Cumplido',
+      notMet: 'Sin cumplir',
+      requirements: 'Tu contraseña necesita:',
+      length: 'Al menos 12 caracteres',
+      lowercase: 'Una letra minúscula',
+      uppercase: 'Una letra mayúscula',
+      digit: 'Un número',
+      symbol: 'Un símbolo, como ! @ # $ %',
+      weak: 'Esta contraseña todavía no cumple los requisitos indicados abajo.',
+      managerHint: 'Un gestor de contraseñas puede generarla y recordarla por ti.',
+    },
   },
 
   intake: {

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
+import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 
 export function Login() {
   const { session, signIn, signUp } = useAuth();
@@ -13,10 +14,27 @@ export function Login() {
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  const isSignUp = mode === 'signup';
+  const policy = useMemo(() => checkPassword(password), [password]);
+
   if (session) return <Navigate to="/coach" replace />;
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    // Checked here as well as by disabling the button: a submit can still
+    // arrive by keyboard, and this branch is the one that decides.
+    //
+    // Only on sign-up. Applying the current rules at sign-in would lock out
+    // every account created before they existed - the password is already set,
+    // and refusing to send it does not make it stronger. Supabase reports a
+    // weak existing password on sign-in as its own error, which is where a
+    // prompt to change it belongs.
+    if (isSignUp && !policy.ok) {
+      setStatus({ kind: 'error', text: t('auth.password.weak') });
+      return;
+    }
+
     setBusy(true);
     setStatus(null);
 
@@ -61,13 +79,36 @@ export function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              minLength={isSignUp ? MIN_LENGTH : undefined}
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+              aria-describedby={isSignUp ? 'password-requirements' : undefined}
             />
           </label>
 
-          <button type="submit" className="primary" disabled={busy}>
-            {busy ? t('common.working') : mode === 'signup' ? t('auth.createAccount') : t('auth.signIn')}
+          {isSignUp && (
+            <div id="password-requirements" className="fineprint">
+              <p>{t('auth.password.requirements')}</p>
+              <ul className="checklist">
+                {policy.results.map(({ id, satisfied }) => (
+                  <li key={id} className={satisfied ? 'met' : 'unmet'}>
+                    {/* The tick is decorative - colour and shape alone do not
+                        reach a screen reader, so the state is repeated as text
+                        that is hidden visually but present in the accessibility
+                        tree. */}
+                    <span aria-hidden="true">{satisfied ? '\u2713' : '\u2022'}</span>{' '}
+                    <span className="visually-hidden">
+                      {t(satisfied ? 'auth.password.met' : 'auth.password.notMet')}:{' '}
+                    </span>
+                    {t(`auth.password.${id}`)}
+                  </li>
+                ))}
+              </ul>
+              <p>{t('auth.password.managerHint')}</p>
+            </div>
+          )}
+
+          <button type="submit" className="primary" disabled={busy || (isSignUp && !policy.ok)}>
+            {busy ? t('common.working') : isSignUp ? t('auth.createAccount') : t('auth.signIn')}
           </button>
         </form>
 
@@ -77,11 +118,11 @@ export function Login() {
           type="button"
           className="link"
           onClick={() => {
-            setMode(mode === 'signup' ? 'signin' : 'signup');
+            setMode(isSignUp ? 'signin' : 'signup');
             setStatus(null);
           }}
         >
-          {mode === 'signup' ? t('auth.toSignIn') : t('auth.toSignUp')}
+          {isSignUp ? t('auth.toSignIn') : t('auth.toSignUp')}
         </button>
 
         <p className="fineprint">{t('medical.disclaimer')}</p>

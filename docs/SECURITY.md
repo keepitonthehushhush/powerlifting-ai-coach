@@ -119,6 +119,53 @@ later is authenticated by default.
 
 ---
 
+## 2b. Account credentials
+
+Passwords are hashed by Supabase Auth with bcrypt and a per-password salt. This
+application never sees, stores, or transmits a password: sign-up and sign-in go
+from the browser to Supabase directly, and the API server is not in that path.
+
+### Where the rule is enforced, and where it is only shown
+
+| Layer | What it does | Is it a control? |
+|---|---|---|
+| Supabase Auth project settings | Rejects a weak password on every request | **Yes** |
+| `web/src/lib/passwordPolicy.js` | Shows the requirements as the person types | No |
+
+This distinction is the whole of it. Sign-up is a direct call to Supabase using
+the publishable key, which is public by design and printed in the browser
+bundle. Anyone can call `/auth/v1/signup` without ever loading the form, so a
+check that lives only in React is a courtesy, not a defence. It is worth having
+for the same reason a good error message is worth having — it just must not be
+mistaken for the thing doing the work.
+
+The client rules mirror the server settings exactly, including the accepted
+symbol set: a form that accepts a character the server rejects hands somebody a
+password they believe is valid and cannot use. `server/test/passwordPolicy.test.js`
+pins that correspondence.
+
+### Required settings (Authentication → Providers → Email)
+
+| Setting | Value | Why |
+|---|---|---|
+| Minimum password length | **12** | Length buys more resistance than character variety. Supabase's guidance is that under 8 is not worth having; 12 is the smallest value that still resists offline cracking of a bcrypt hash for any meaningful time. |
+| Required characters | **Lowercase, uppercase, digits, symbols** | Not because variety is powerful on its own, but because without it a 12-character minimum becomes twelve lowercase letters. |
+| Prevent use of leaked passwords | **On, when the plan allows it** | Checks against HaveIBeenPwned. A credential-stuffing list beats any composition rule: `Password1!` satisfies every requirement above and appears in every breach corpus. Pro plan and above. |
+
+Existing accounts are unaffected by a change to these settings — a password
+already set continues to work. Supabase reports it as a `WeakPasswordError` at
+sign-in, which is the right moment to ask for a change and the wrong moment to
+refuse entry.
+
+### Not done yet
+
+- **MFA.** Supabase Auth supports TOTP. For an application holding injury
+  history it is the obvious next control, and it is a bigger change than a
+  settings toggle — enrolment UI, a challenge step at sign-in, and recovery.
+- **Leaked-password protection**, which requires a paid plan.
+
+---
+
 ## 3. Health data
 
 `user_profile.health_restrictions` holds user-reported injuries and medical

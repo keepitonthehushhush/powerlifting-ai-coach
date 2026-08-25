@@ -31,6 +31,18 @@ export const en = {
     toSignIn: 'Already have an account? Sign in',
     toSignUp: 'New here? Create an account',
     confirmEmail: 'Check your email to confirm your account, then sign in.',
+    password: {
+      met: 'Met',
+      notMet: 'Not met',
+      requirements: 'Your password needs:',
+      length: 'At least 12 characters',
+      lowercase: 'A lowercase letter',
+      uppercase: 'An uppercase letter',
+      digit: 'A number',
+      symbol: 'A symbol, such as ! @ # $ %',
+      weak: 'This password does not meet the requirements below yet.',
+      managerHint: 'A password manager can generate and remember one for you.',
+    },
   },
 
   intake: {
