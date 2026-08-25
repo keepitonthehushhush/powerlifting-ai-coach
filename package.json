@@ -17,6 +17,7 @@
     "build": "npm run build -w web",
     "test": "node --test \"server/test/*.test.js\"",
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",
+    "verify:deployment": "node scripts/verify-deployment.mjs",
     "safety:eval": "node scripts/safety-eval.mjs",
     "verify:deps": "node scripts/verify-frontend-deps.mjs",
     "verify": "npm run verify:deps && npm run verify:bundle",
