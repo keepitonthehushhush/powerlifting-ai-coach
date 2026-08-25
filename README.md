@@ -117,10 +117,10 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 | Concern | How it is handled |
 |---|---|
 | Anthropic API key | Server-side only. Never a `VITE_` variable, so it is not in the browser build. `config.js` refuses to boot if a secret carries a browser-visible prefix, and `npm run verify:bundle` greps the actual compiled output before deploy. |
-| Cross-user access | RLS on all six tables, 21 per-command policies, every one scoped `to authenticated`. Verified by `supabase/tests/rls_isolation_test.sql` against 11 distinct attacks. |
-| Health data | Injuries and medical conditions are sensitive. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralised in `server/src/lib/logger.js` so it cannot be skipped by forgetting. |
+| Cross-user access | RLS on all seven tables, 21 per-command policies, every one scoped `to authenticated`. Verified by `supabase/tests/rls_isolation_test.sql` against 20 distinct attacks. |
+| Health data | Injuries, medical conditions and lifestyle factors are sensitive. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralised in `server/src/lib/logger.js` so it cannot be skipped by forgetting. Storing any of it requires an active MHMDA consent, enforced by a database trigger rather than by application code. |
 | Account deletion | `ON DELETE CASCADE` from `auth.users` throughout. Deleting an account purges every associated row — verified, not assumed. |
-| Prompt injection | User-controlled free text is fenced in `<user_data>` and labelled as data rather than instruction. |
+| The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organising question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
 | Unauthenticated access | The `anon` role holds no table grants and matches no policy — refused before RLS is even consulted. |
 | Copyright | No video is hosted, embedded or mirrored. `exercise_library.video_url` links out to the rights holder. |
 
@@ -223,7 +223,7 @@ configure secrets.
 │   └── test/                 Unit tests
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0010, applied in order
+│   ├── migrations/           0001–0012, applied in order
 │   └── tests/                RLS isolation test
 ├── scripts/                  Secret scanners, safety eval, deploy tooling
 └── docs/                     Architecture, security, deployment, legal, build log
