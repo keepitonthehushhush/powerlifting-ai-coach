@@ -10,10 +10,16 @@ next block based on real reported performance rather than a static template.
 > therapist, and the system will not write them a program until they confirm it.
 > That gate is enforced in code, not left to the model's judgement.
 
-**Status:** Phase 1 complete. Database, backend, frontend and safety gates
-built; RLS isolation tested against the live database. Not yet deployed — see
-[`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) for exactly what is verified and what
-is outstanding.
+**Status:** Deployed and running at
+[powerlifting-ai-coach.vercel.app](https://powerlifting-ai-coach.vercel.app).
+Phase 1 (signup → consent → intake → coaching conversation) is complete and
+exercised by real use; Phase 2 (session logging UI, automatic progression,
+progress charts, exercise library) is in progress.
+
+[`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) is the honest version: what was built,
+what broke, how each fault was diagnosed, and what is still outstanding. It
+includes the bugs that reached production and why the tests in place at the
+time could not have caught them.
 
 ---
 
@@ -117,7 +123,7 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 | Concern | How it is handled |
 |---|---|
 | Anthropic API key | Server-side only. Never a `VITE_` variable, so it is not in the browser build. `config.js` refuses to boot if a secret carries a browser-visible prefix, and `npm run verify:bundle` greps the actual compiled output before deploy. |
-| Cross-user access | RLS on all seven tables, 21 per-command policies, every one scoped `to authenticated`. Verified by `supabase/tests/rls_isolation_test.sql` against 20 distinct attacks. |
+| Cross-user access | RLS on all seven tables, 21 per-command policies, every one scoped `to authenticated`. Verified by `supabase/tests/rls_isolation_test.sql` against 22 distinct attacks — run it with `npm run test:db`. |
 | Health data | Injuries, medical conditions and lifestyle factors are sensitive. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralised in `server/src/lib/logger.js` so it cannot be skipped by forgetting. Storing any of it requires an active MHMDA consent, enforced by a database trigger rather than by application code. |
 | Account deletion | `ON DELETE CASCADE` from `auth.users` throughout. Deleting an account purges every associated row — verified, not assumed. |
 | The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organising question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
@@ -223,7 +229,7 @@ configure secrets.
 │   └── test/                 Unit tests
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0012, applied in order
+│   ├── migrations/           0001–0014, applied in order
 │   └── tests/                RLS isolation test
 ├── scripts/                  Secret scanners, safety eval, deploy tooling
 └── docs/                     Architecture, security, deployment, legal, build log

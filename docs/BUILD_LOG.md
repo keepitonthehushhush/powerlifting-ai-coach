@@ -1585,6 +1585,139 @@ a disclosed dependence, and disordered-eating signals).
 
 Tests 128 → **186**. Migrations 0011 → **0012**.
 
+### D.12 Two bugs in one migration, and the test that would have caught both — **FIXED**
+
+Intake failed with "Could not save your profile." The server log said only
+that, because `profile.js` returned the Postgres code to the client but never
+logged it. Reproducing the exact write as the `authenticated` role gave the
+real answer immediately:
+
+```
+42501: permission denied for schema private
+```
+
+**Bug one: a SECURITY INVOKER trigger reaching into a schema its caller cannot
+see.** 0012 moved the fingerprint computation into
+`private.health_fingerprint()`. The trigger function is SECURITY INVOKER, so
+its body runs as `authenticated` — and `authenticated` has no USAGE on
+`private`, deliberately, because 0004 put those functions there precisely so
+signed-in users cannot reach them. Every write carrying health data failed.
+
+Migration **0013** makes the trigger SECURITY DEFINER. The alternative —
+granting `authenticated` USAGE on `private` — would hand every signed-in user
+the internals 0004 hid, to fix a problem entirely internal to the trigger. The
+escalation is narrow and justified: `search_path` is already pinned to `''`,
+the function is not exposed through PostgREST, it takes no caller arguments,
+and it does not widen what it can see, because `has_active_consent()` filters
+on `auth.uid()` explicitly rather than relying on RLS.
+
+**Bug two, found only because the first fix let me test the gate properly, and
+much worse.** With 0013 applied, a health write succeeded — so I checked the
+inverse, that a write *without* consent still fails. It did for
+`health_restrictions`. It did **not** for alcohol, sleep, nicotine or nutrition:
+
+```
+alcohol=NOT_BLOCKED; sleep=NOT_BLOCKED; nicotine=NOT_BLOCKED; nutrition=NOT_BLOCKED;
+```
+
+`pg_trigger.tgattr` said why:
+
+```
+tgname                              fires_only_when_these_change
+user_profile_require_health_consent health_restrictions
+```
+
+0008 created the trigger as `before insert or update **OF health_restrictions**`.
+0012 added four health columns and taught the trigger *function* about them —
+and never touched the *trigger*. A trigger scoped to one column does not fire
+when only the others change.
+
+**So for the life of migration 0012, four consumer-health-data columns could be
+written with no consent check at all.** INSERT was still covered, since a
+column list does not apply to it — which is exactly why it stayed invisible:
+the application upserts, and for an existing profile row that is an UPDATE.
+Every path a real user takes went through the hole.
+
+Migration **0014** drops the column list. The trigger now fires on every insert
+and update and the function decides; it already returns immediately when the
+fingerprint is unchanged, so an unrelated update costs one string comparison.
+The column list was an optimisation whose correctness depended on remembering
+to extend it — the exact remembering this project just got wrong.
+
+**The two bugs are not equally bad, and the difference is the lesson.** 0013's
+was loud: nothing saved, everyone noticed within minutes. 0014's was silent,
+and silence is the failure mode that matters for a control whose entire job is
+to be there when nobody is looking. The loud one is what made me look hard
+enough to find the quiet one.
+
+**Why nothing caught either.** The unit tests read the migration's *text* and
+assert `health_fingerprint` lists every health column. It does — that assertion
+was true and useless twice over. A file can be correct and unrunnable (0013),
+and a function can be correct while the trigger calling it is scoped to one
+column (0014). Neither fact is visible in any file; both live in the running
+database.
+
+`supabase/tests/rls_isolation_test.sql` performs exactly these writes and
+asserts exactly these outcomes. **It has never been run against a database.**
+It needs a `psql` connection and was not wired into anything. Two bugs, one
+migration, one reason.
+
+Fixed properly rather than noted:
+
+- `npm run test:db` runs it against `$DATABASE_URL`.
+- A new assertion fails if the consent trigger has *any* column list, so 0014
+  cannot regress.
+- `profile.js` now logs the Postgres code and hint at the point of failure —
+  code and hint only, never `message` or `details`, which can quote the
+  offending row, and that row holds health data. `42501` and `23514` are
+  indistinguishable from outside and need opposite fixes.
+
+### D.13 The consent gate was deleting people's intake — **FIXED**
+
+Reported from actual use: switching away from Chrome and back cleared every
+field in the intake form.
+
+Not a browser quirk. Supabase refreshes its access token when a tab regains
+focus and fires `onAuthStateChange`. `AuthProvider` stored the new session
+object; that changed the context's identity; `ConsentProvider`'s effect was
+keyed on the session object, so it refetched; and `ProtectedRoute` rendered its
+loading state while the fetch was in flight — **which unmounted the page
+below**. React discards the state of an unmounted component, so every field
+went back to empty.
+
+I introduced this in D.9. The gate was correct about consent and careless about
+everything underneath it.
+
+Three fixes, at three levels, because any one alone would leave the class of
+bug alive:
+
+1. **`AuthProvider` compares user identity**, not object identity. A refreshed
+   token is the same person. Nothing downstream needs the new token —
+   `api.js` reads the current one from the Supabase client on every request —
+   so what consumers care about is *who* is signed in.
+2. **`ConsentProvider` keys its effect on `user.id`**, so a refresh cannot
+   trigger a refetch even if one slips through.
+3. **`ProtectedRoute` only blocks on the first load.** A revalidation reports
+   `refreshing` and the current page stays mounted. The safety property is
+   unchanged: a revalidation only runs for someone already past the gate, and
+   if it returns withheld consent the next render redirects them.
+
+**Worth stating plainly, because it is a product decision and not only a bug
+fix:** losing a form to a routine tab switch is the kind of thing that ends a
+signup. Someone part-way through describing an injury does not retype it. They
+close the tab. No amount of correctness elsewhere survives that, and it took a
+person using the thing to find it — the automated checks all passed.
+
+Deliberately *not* done: persisting the draft to `localStorage`. It would
+survive a real page reload too, and it would also mean injury text sitting
+unencrypted on disk, outliving sign-out, on a possibly shared computer. That is
+a decision about health data, not a convenience, and it is not one to make
+silently. The remount was the actual bug; it is fixed at the cause.
+
+Tests 186 → **189**. Migrations 0012 → **0014**.
+
+---
+
 ---
 
 ## Phase 2 — Real coaching features — **IN PROGRESS**
