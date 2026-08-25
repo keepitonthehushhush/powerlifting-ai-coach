@@ -1205,6 +1205,124 @@ it invites exactly the over-application that happened here.
 
 ---
 
+### D.6 The error handler threw on every error it was asked to report — **FIXED**
+
+First real user session. Chat returned `500` on every message. Vercel's runtime
+logs:
+
+```
+POST /api/chat 500
+ReferenceError: HttpError is not defined
+    at errorHandler (/var/task/server/src/middleware/errorHandler.js:30:33)
+```
+
+Line 30 was `const status = err instanceof HttpError ? err.status : 500;`. The
+module obtained `HttpError` like this:
+
+```js
+export { HttpError } from '../lib/httpError.js';
+```
+
+**`export … from` re-exports a binding without introducing it into the current
+module's scope.** It is a forwarding declaration, not an import. `HttpError` was
+therefore never defined inside the file that used it, and the reference threw.
+
+This was introduced by the very refactor that fixed the earlier module-load
+failure — `HttpError` was moved to `lib/httpError.js` and re-exported from its
+old path so existing callers kept working. The re-export did its job for every
+importer. It just did not do it for the file it was written in.
+
+**The damage was much wider than one broken route.** The throw happened *above*
+the logging call, so:
+
+- the original error — whatever actually broke `/api/chat` — was never logged
+  anywhere, by anything;
+- Express fell back to its default handler, which returned a generic 500;
+- every 400 the API meant to return arrived as a 500 as well.
+
+The error reporter was silently eating every error in the application, and
+looked healthy while doing it. `GET /api/health` answered, `GET /api/profile`
+returned a correct 401, the deployment was green. Nothing failed except the
+thing whose job was to tell us what failed.
+
+**Four changes:**
+
+1. **Import, then re-export.** One line, and the actual bug.
+2. **Duck-type the status instead of `instanceof`.** `err.status`, validated as
+   a plausible HTTP status. `instanceof` fails whenever a module is
+   instantiated twice — routine under a bundler or a serverless runtime — and
+   silently turns a considered 400 into a 500. Reading a number cannot fail
+   either way.
+3. **Log the original error first**, before anything that might itself throw,
+   and wrap the whole handler so a fault inside it is still recorded and still
+   answers with JSON. An error reporter that can lose the error is worse than
+   none, because its silence reads as "no errors".
+4. **Read `NODE_ENV` directly**, dropping `config.js` from both the error
+   handler and `lib/monitoring.js`. These are the machinery for finding out why
+   something failed — a configuration failure included. Making them depend on
+   configuration loading means they go dark in precisely the case they exist
+   for. (`monitoring.js` used `config.nodeEnv` for one string.)
+
+**Why nothing caught it.** There were no tests for `errorHandler.js`, on the
+reasoning that it is plumbing. Plumbing on every error path is the last thing
+that should be untested: a fault there does not break one feature, it removes
+the ability to diagnose all of them. **Ten tests added**, the first of which is
+simply "does not throw when handed an `HttpError`" — the whole bug.
+
+Note what the eleven RLS attack tests, the bundle scanner, the dependency
+guard, the deployment verifier and 105 unit tests had in common: not one of
+them ever caused the application to produce an error and looked at what came
+back.
+
+### D.7 Password requirements — **DONE**
+
+An account was created with a trivially weak password. Supabase Auth's default
+minimum is six characters with no composition requirement; the sign-up form
+asked for eight via `minLength` and nothing more.
+
+**Where the fix belongs is the interesting part.** Sign-up goes from the
+browser to Supabase Auth directly — this application's server is not in that
+path at all. Anyone can `POST /auth/v1/signup` with the publishable key, which
+is public by design and sits in the browser bundle, without ever loading the
+form. **A rule enforced in React is not enforced.**
+
+So the control is the Supabase project's Auth settings, where GoTrue applies it
+to every request regardless of origin: minimum length 12, all four character
+classes required, leaked-password protection where the plan allows it.
+`web/src/lib/passwordPolicy.js` *mirrors* those settings so the requirements
+appear as a live checklist while typing rather than as a rejection afterwards.
+The file says in its first paragraph that it is not the enforcement point, and
+a test asserts that sentence is still there.
+
+Details worth keeping:
+
+- **The symbol set is copied from Supabase's accepted characters**, and a test
+  pins both directions. A form that accepts `é` where the server does not hands
+  somebody a password they believe is valid and cannot use.
+- **The rules apply on sign-up only.** Enforcing current rules at sign-in would
+  lock out every account created before they existed; the password is already
+  set, and refusing to transmit it does not make it stronger. Supabase reports
+  a weak existing password at sign-in as its own error, which is where a prompt
+  to change it belongs.
+- **State is carried three ways** — glyph, colour, and text hidden visually but
+  present in the accessibility tree. Colour alone excludes people, and a tick
+  glyph is invisible to a screen reader.
+- **Rule ids are i18n keys**, and a test asserts every id has a non-empty label
+  in every locale. Adding a rule without translating it fails the suite instead
+  of rendering a blank line.
+
+Twelve rather than eight, because length buys more than variety does. The
+classes are there mainly so that a twelve-character minimum does not become
+twelve lowercase letters.
+
+**Still open:** MFA (Supabase supports TOTP; it needs enrolment UI, a challenge
+at sign-in, and recovery) and leaked-password protection, which requires a paid
+plan. Both recorded in `docs/SECURITY.md` §2b.
+
+Tests 105 → **128**.
+
+---
+
 ---
 
 ## Phase 2 — Real coaching features — **NOT STARTED**
