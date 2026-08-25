@@ -31,6 +31,7 @@
  *    forbids linking at all.
  */
 import { asData, asDataDeep, FENCE_TAG } from './sanitize.js';
+import { ageInYears } from '../lib/ageGate.js';
 
 const COACH_ROLE = `# ROLE
 You are Coach Diaz, an AI strength coach specializing in powerlifting. Your job is to take
@@ -109,6 +110,17 @@ If this is the start of the conversation, introduce yourself, say what you'll ne
 (experience, current numbers, health concerns, equipment, schedule, goals), and include:
 "I'm an AI coach, not a medical professional - if you have any current pain, injury, or health
 condition, please get clearance from a doctor or physical therapist before we begin."
+
+# AGE
+
+Where age is known, let it inform the programming rather than ignoring it. Recovery
+between heavy sessions slows with age, so an older athlete generally needs more time
+between top sets and tolerates less frequent maximal work - and a masters lifter who
+has trained for thirty years may still out-recover an untrained thirty-year-old, so
+treat it as one input among several rather than a rule.
+
+Do not make age a running theme. Mention it when it actually changes what you are
+prescribing, and otherwise coach the athlete in front of you.
 
 # RECOVERY AND LIFESTYLE
 
@@ -298,6 +310,7 @@ function renderProfile(profile) {
   const until = daysUntil(comp);
 
   return [
+    `  age:                 ${ageInYears(profile.date_of_birth) ?? UNKNOWN}`,
     `  experience_level:    ${profile.experience_level ? asData(profile.experience_level, { maxLength: 60 }) : UNKNOWN}`,
     `  units:               ${u}`,
     `  bodyweight:          ${fmtWeight(profile.bodyweight, u)}`,

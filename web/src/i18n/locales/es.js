@@ -50,6 +50,8 @@ export const es = {
   },
 
   intake: {
+    dateOfBirth: 'Fecha de nacimiento',
+    dateOfBirthHint: 'Se usa para adaptar tu programación a tu edad. Coach Diaz todavía no puede guardar información de lesiones ni de hábitos de menores de 18 años, porque ese consentimiento debe darlo un padre, madre o tutor.',
     recoveryLegend: 'Recuperación y hábitos (opcional)',
     recoveryNote: 'Todos estos campos son opcionales y puedes dejarlos en blanco. Entrenar es solo la mitad de ganar fuerza: esto le dice al entrenador con qué capacidad de recuperación está programando realmente. Nada de esto se juzga, y no cambia si recibes entrenamiento.',
     sleepHours: 'Horas de sueño en una noche normal',

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
+import { evaluateAgeGate, MINIMUM_AGE } from '../lib/ageGate.js';
 
 export const profileRouter = Router();
 
@@ -38,6 +39,10 @@ const ProfileUpdate = z
     alcohol_units_per_week: z.number().int().min(0).max(200).nullish(),
     nicotine_use: z.enum(['none', 'occasional', 'daily']).nullish(),
     nutrition_notes: z.string().max(4000).nullish(),
+
+    // Personal data, not health data - see migration 0015 for why that
+    // distinction decides which gate it sits behind.
+    date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
   })
   .strict()
   .refine((v) => !(v.competition_date && v.goal && v.goal !== 'meet_prep'), {
@@ -63,6 +68,55 @@ profileRouter.put('/', async (req, res, next) => {
     const parsed = ProfileUpdate.safeParse(req.body);
     if (!parsed.success) {
       throw new HttpError(400, 'Invalid profile data.', parsed.error.flatten().fieldErrors);
+    }
+
+    // Health data may not be collected from a minor, because no consent path
+    // aimed at a parent exists yet. Checked here rather than only in the form
+    // because the form is not the control - anyone can POST to this route.
+    //
+    // Scoped to writes that actually carry health data: a person under 18 is
+    // not barred from having an account or a bodyweight, they are barred from
+    // us storing health information about them. Keeping the check narrow is
+    // what makes it accurate rather than merely strict.
+    const HEALTH_FIELDS = [
+      'health_restrictions',
+      'sleep_hours_typical',
+      'alcohol_units_per_week',
+      'nicotine_use',
+      'nutrition_notes',
+    ];
+    const carriesHealthData = HEALTH_FIELDS.some((field) => {
+      const value = parsed.data[field];
+      return value !== undefined && value !== null && String(value).trim() !== '';
+    });
+
+    if (carriesHealthData) {
+      // The date may arrive in this request or already be on file. Only read
+      // the stored row when the request did not supply one.
+      let dateOfBirth = parsed.data.date_of_birth;
+      if (!dateOfBirth) {
+        const { data: stored } = await req.supabase
+          .from('user_profile')
+          .select('date_of_birth')
+          .maybeSingle();
+        dateOfBirth = stored?.date_of_birth ?? null;
+      }
+
+      const gate = evaluateAgeGate(dateOfBirth);
+      if (!gate.allowed) {
+        // Never log the date or the computed age - it is personal data, and
+        // the reason code is what makes this diagnosable.
+        logger.info('profile.age_gate_blocked', { userId: req.user.id, reason: gate.reason });
+
+        const message =
+          gate.reason === 'too_young'
+            ? `Coach Diaz cannot store injury or lifestyle information for anyone under ${MINIMUM_AGE} yet, because consent for that has to come from a parent or guardian and we have not built that properly. You can still use the rest of the app.`
+            : gate.reason === 'implausible'
+              ? 'That date of birth does not look right — please check it.'
+              : 'Please add your date of birth before entering health or lifestyle information.';
+
+        throw new HttpError(403, message, { code: `age_gate_${gate.reason}` });
+      }
     }
 
     const patch = { ...parsed.data, intake_completed_at: new Date().toISOString() };

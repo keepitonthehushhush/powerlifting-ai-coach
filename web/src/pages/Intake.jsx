@@ -15,6 +15,7 @@ const EMPTY = {
   competition_date: '',
   equipment_available: '',
   days_per_week: '',
+  date_of_birth: '',
   health_restrictions: '',
   sleep_hours_typical: '',
   alcohol_units_per_week: '',
@@ -40,6 +41,7 @@ function toPayload(form) {
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
     health_restrictions: form.health_restrictions ?? '',
     cleared_to_train: Boolean(form.cleared_to_train),
+    date_of_birth: form.date_of_birth || null,
     // Empty means "not answered" and must stay null. Coercing a blank field to
     // 0 would tell the coach this athlete never sleeps and never drinks - a
     // confident wrong answer, which is worse than an honest gap.
@@ -125,6 +127,17 @@ export function Intake() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label>
+          {t('intake.dateOfBirth')}
+          <input
+            type="date"
+            value={form.date_of_birth}
+            onChange={(e) => update('date_of_birth', e.target.value)}
+            required
+          />
+          <span className="muted small">{t('intake.dateOfBirthHint')}</span>
         </label>
 
         <label>

@@ -46,6 +46,8 @@ export const en = {
   },
 
   intake: {
+    dateOfBirth: 'Date of birth',
+    dateOfBirthHint: 'Used to age-appropriate your programming. Coach Diaz cannot store injury or lifestyle information for under-18s yet, because consent for that has to come from a parent or guardian.',
     recoveryLegend: 'Recovery and lifestyle (optional)',
     recoveryNote: 'Every field here is optional and you can leave any of them blank. Training is only half of getting stronger — these tell the coach what recovery capacity it is actually programming for. Nothing here is judged, and none of it changes whether you get coached.',
     sleepHours: 'Typical hours of sleep a night',
