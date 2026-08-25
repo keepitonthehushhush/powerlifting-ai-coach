@@ -82,6 +82,24 @@ describe('errorHandler', () => {
     assert.deepEqual(res.body.details, { message: ['Required'] });
   });
 
+  test('logs the validation details, not just the generic message', () => {
+    // "Invalid request." is the same sentence whichever field was rejected.
+    // Without the details in the log, a 400 can only be diagnosed by guessing
+    // at the client - which is how this got missed twice.
+    const lines = [];
+    // logger.error writes to console.error, not console.log.
+    const original = console.error;
+    console.error = (line) => lines.push(line);
+    try {
+      errorHandler(new HttpError(400, 'Invalid request.', { message: ['String must contain at least 1 character(s)'] }), req, fakeRes(), () => {});
+    } finally {
+      console.error = original;
+    }
+    const logged = lines.join('\n');
+    assert.match(logged, /details/, 'validation details must reach the log');
+    assert.match(logged, /at least 1 character/);
+  });
+
   test('trusts a status only when it is a plausible HTTP status', () => {
     for (const status of [0, 200, 999, '400', null, undefined, NaN]) {
       const res = fakeRes();

@@ -68,6 +68,18 @@ export function errorHandler(err, req, res, _next) {
       status,
       userId: req?.user?.id,
       error: { name: err?.name, message: err?.message },
+
+      // Validation details, which the client already receives and the logs
+      // did not. "Invalid request." is the same sentence whichever field was
+      // rejected, so without this a 400 is undiagnosable from the server side
+      // - and diagnosing one meant guessing at the client, twice.
+      //
+      // Safe to log: zod's flatten() yields field NAMES and rule messages
+      // ("String must contain at most 4000 character(s)"), never the value
+      // that failed. The redacting logger strips anything sensitive that a
+      // future error type puts here anyway.
+      ...(err?.details ? { details: err.details } : {}),
+
       ...(isProduction ? {} : { stack: err?.stack }),
     });
 
