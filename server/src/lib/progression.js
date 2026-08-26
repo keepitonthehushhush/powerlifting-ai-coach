@@ -159,11 +159,26 @@ export function smallestLoadableIncrement(smallestPlatePair, units = 'lb') {
   return plate * 2;
 }
 
-/** Rounds down to something the athlete can actually load. */
-export function roundToLoadable(weight, smallestIncrement) {
+/** The empty barbell. A loaded weight is always the bar plus plates. */
+export const BAR = { lb: 45, kg: 20 };
+
+/**
+ * Rounds down to something the athlete can actually build on a barbell.
+ *
+ * The subtlety that a first version got wrong: it is the PLATE portion that
+ * must be a multiple of the smallest increment, not the total. With only 5 lb
+ * plates, 200 lb looks like a round number and is not loadable - it is 155 lb
+ * of plates on a 45 lb bar, and 155 is not a multiple of 10. Rounding the
+ * total produced weights that could not be built, on the deload path in
+ * particular, which is exactly when the athlete is least in the mood for it.
+ */
+export function roundToLoadable(weight, smallestIncrement, units = 'lb') {
   if (!Number.isFinite(weight)) return null;
   if (!Number.isFinite(smallestIncrement) || smallestIncrement <= 0) return weight;
-  return Math.floor(weight / smallestIncrement) * smallestIncrement;
+  const bar = BAR[units] ?? BAR.lb;
+  if (weight <= bar) return bar;
+  const plates = Math.floor((weight - bar) / smallestIncrement) * smallestIncrement;
+  return bar + plates;
 }
 
 /**
@@ -284,7 +299,7 @@ export function nextPrescription({ lift, history = [], units = 'lb', smallestPla
         resets,
       };
     }
-    const target = roundToLoadable(lastWeight * (1 - DELOAD_FRACTION), step);
+    const target = roundToLoadable(lastWeight * (1 - DELOAD_FRACTION), step, units);
     return {
       lift: canonical,
       action: 'deload',
@@ -328,7 +343,7 @@ export function nextPrescription({ lift, history = [], units = 'lb', smallestPla
     };
   }
 
-  const target = roundToLoadable(lastWeight + increment, step);
+  const target = roundToLoadable(lastWeight + increment, step, units);
   return {
     lift: canonical,
     action: 'increase',

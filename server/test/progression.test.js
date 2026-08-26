@@ -107,6 +107,19 @@ describe('roundToLoadable', () => {
     assert.equal(roundToLoadable(187.5, 5), 185);
     assert.equal(roundToLoadable(190, 5), 190);
   });
+
+  test('it is the PLATES that must divide, not the total', () => {
+    // 200 lb looks round and is not loadable with 5 lb plates: it is 155 lb of
+    // plates on a 45 lb bar. An earlier version rounded the total and produced
+    // weights nobody could build.
+    const result = roundToLoadable(202.5, 10);
+    assert.equal((result - 45) % 10, 0, `${result} is not loadable with 5lb plates`);
+    assert.ok(result <= 202.5);
+  });
+
+  test('never returns less than the empty bar', () => {
+    assert.equal(roundToLoadable(30, 5), 45);
+  });
 });
 
 describe('summariseLift', () => {
@@ -236,7 +249,8 @@ describe('nextPrescription', () => {
     ];
     const result = nextPrescription({ lift: 'bench', history, smallestPlatePair: 5 });
     assert.equal(result.increment, 10);
-    assert.equal(result.weight % 10, 0);
+    // bar + plates, not a round total - see the roundToLoadable tests above.
+    assert.equal((result.weight - 45) % 10, 0);
   });
 
   test('says so, rather than guessing, when there is no history', () => {
