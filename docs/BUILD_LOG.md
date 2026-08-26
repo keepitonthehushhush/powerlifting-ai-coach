@@ -2383,6 +2383,76 @@ Tests 375 → **387**.
 
 ---
 
+### D.26 A 401 that was never Anthropic, and a key I exposed — **FIXED**
+
+Two things went wrong here and the second was mine.
+
+**I printed the API key into the conversation.** While checking whether the
+key was well-formed, I piped `cat -A` output through a `sed` redaction. The
+pattern did not match the real text, and **`sed` passes non-matching lines
+through unchanged** — so the redaction failed open and printed the whole key. A
+redaction that fails open is worse than none, because you believe it worked.
+
+Worse, the command *before* it had already answered every real question —
+loaded, length 108, prefix `sk-ant-`, no quotes, no whitespace, no carriage
+return — computed in Node without ever showing the value. The information was
+already in hand; the secret was printed anyway.
+
+Scope, checked rather than assumed: `.env` is gitignored, never tracked, never
+committed, and `sk-ant` appears nowhere in git history or in `web/dist`. The
+transcript was the only exposure. The key was rotated regardless — one that has
+appeared in a log is burned whatever the scope.
+
+The lesson is in the skill now, as a table: for every question you actually
+have about a credential there is something to print that is not the credential.
+Is it loaded → a boolean. Truncated → a length. The right kind → a slice taken
+in code. The same as the deployed one → a hash of each.
+
+**And the 401 was never Anthropic.** Both the old key and the new one came back
+`HTTP 401 Unauthorized` from the local sandbox, which I read as a revoked key
+and told Eduardo so. Wrong. Sending a **deliberately fake key** produced
+byte-identical output — and Anthropic distinguishes a bad key with a JSON body
+(`{"type":"error","error":{"type":"authentication_error",...}}` plus a
+`request_id`). A bare `Unauthorized` is not that. General egress from the
+sandbox was dead too: example.com, api.github.com and the npm registry all
+returned HTTP 000.
+
+The 401 was the sandbox's egress proxy refusing a host that is not on its
+allowlist. The same request from the cloud container returns Anthropic's real
+JSON error. **The key was never presented to Anthropic at any point.**
+
+The discriminator worth keeping: when an auth failure might be infrastructure
+rather than credentials, send a deliberately invalid credential. If the
+response is identical, the thing rejecting you is not the thing you are trying
+to authenticate to.
+
+**Getting there also turned up two genuine traps**, both now in the skill.
+Node's `fetch` ignores `HTTPS_PROXY` — curl honours it, undici does not — so
+the first symptom was `EAI_AGAIN` while curl worked from the same shell; fixed
+with `NODE_USE_ENV_PROXY=1`. Then a TLS-intercepting proxy produced
+`SELF_SIGNED_CERT_IN_CHAIN`, because its CA is in the system store and not in
+Node's bundled one; fixed with `NODE_EXTRA_CA_CERTS`. **Not** with
+`NODE_TLS_REJECT_UNAUTHORIZED=0`, which would have sent the API key over a
+connection with verification switched off.
+
+**The durable fix.** `scripts/safety-eval.mjs` was written to gate prompt
+changes — "exits non-zero if any scenario fails, so it can gate a prompt change
+in CI" — and was then wired to nothing, so it ran only when somebody
+remembered. In that window four significant changes went into the system
+prompt, every one verified against files rather than against model behaviour.
+`.github/workflows/safety-eval.yml` now runs the 14 scenarios on any change to
+the prompt, the progression engine or the warm-up engine, weekly on a schedule
+because the model changes even when the prompt does not, and on demand. The key
+is a repository secret, never echoed; the job skips rather than fails when it
+is absent, so a fork does not report a phantom failure; and the transcript is
+kept for thirty days whether it passed or not, because a failure is exactly
+when somebody needs to read the replies.
+
+Still outstanding: the evaluation has not actually been run against the live
+model yet. It is now wired to run itself.
+
+---
+
 ## Phase 2 — Real coaching features — **COMPLETE**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)

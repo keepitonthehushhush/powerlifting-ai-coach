@@ -1,0 +1,110 @@
+# Adversarial safety evaluation against the live Anthropic API.
+#
+# ── WHY THIS IS A SEPARATE WORKFLOW ────────────────────────────────────────
+#
+# ci.yml deliberately runs with an empty environment: the assertion there is
+# that nothing under test needs a credential in order to be constructed, and
+# injecting a key would hide exactly the coupling that check exists to catch.
+# This job is the opposite kind of test - it needs a real key, costs real
+# money, and takes minutes rather than milliseconds - so it lives on its own
+# and runs on its own trigger.
+#
+# ── WHY IT EXISTS AT ALL ───────────────────────────────────────────────────
+#
+# scripts/safety-eval.mjs was written to gate prompt changes and then never
+# wired to anything, so it ran only when somebody remembered. In that window
+# four significant changes went into the system prompt - computed progression,
+# the warm-up directives, the stretching evidence, the seeded video library -
+# and every one of them shipped verified against FILES rather than against the
+# model's behaviour. A check nobody runs is a file, not a test.
+#
+# ── WHY IT COULD NOT BE RUN BY HAND ────────────────────────────────────────
+#
+# Two attempts to run it from a local sandbox failed, and the second failure
+# was misdiagnosed as a revoked API key. The sandbox routes egress through a
+# proxy that answers disallowed hosts with a bare `Unauthorized` and HTTP 401 -
+# indistinguishable from a real rejection until you send a deliberately fake
+# key and get byte-identical output back. A GitHub runner has ordinary
+# internet, so this is also the environment where the result means something.
+#
+# ── ON THE KEY ─────────────────────────────────────────────────────────────
+#
+# ANTHROPIC_API_KEY is a repository secret. It is never printed, never echoed
+# into the log, and the job is skipped rather than failed when it is absent, so
+# a fork without the secret does not report a false failure.
+
+name: Safety evaluation
+
+on:
+  # The prompt is the thing under test, so changing it is the trigger.
+  push:
+    branches: [main]
+    paths:
+      - 'server/src/prompts/**'
+      - 'server/src/lib/progression.js'
+      - 'server/src/lib/warmup.js'
+      - 'scripts/safety-eval.mjs'
+      - 'scripts/lib/**'
+      - '.github/workflows/safety-eval.yml'
+  pull_request:
+    paths:
+      - 'server/src/prompts/**'
+      - 'server/src/lib/progression.js'
+      - 'server/src/lib/warmup.js'
+      - 'scripts/safety-eval.mjs'
+      - 'scripts/lib/**'
+  # A weekly run, because the model behind the prompt changes even when the
+  # prompt does not. Monday morning, so a regression is found at the start of a
+  # week rather than discovered by an athlete at the weekend.
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  safety:
+    name: Adversarial scenarios against the live model
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the key is present
+        id: key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # Emits a boolean, never the value. A fork or a clone without the
+        # secret skips the job rather than failing it.
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANTHROPIC_API_KEY is not set for this repository; skipping the safety evaluation."
+          fi
+
+      - name: Run the adversarial scenarios
+        if: steps.key.outputs.present == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # The script exits non-zero if any scenario fails, which is what makes
+        # this a gate rather than a report.
+        run: npm run safety:eval | tee safety-eval-results.txt
+
+      # Kept whether the run passed or failed: a failure is precisely when
+      # somebody needs to read the replies, and the harness prints every one in
+      # full for that reason.
+      - name: Keep the transcript
+        if: always() && steps.key.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-eval-transcript
+          path: safety-eval-results.txt
+          retention-days: 30
