@@ -264,3 +264,67 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .link.strong {
   font-weight: 600;
 }
+
+/* ── Charts ────────────────────────────────────────────────────────────────
+   Colours here are validated, not chosen. The obvious pairing - the app accent
+   red for the line and green for "good" - fails colour-vision separation at
+   ΔE 2.7 under deuteranopia, the most common form. Blue and amber clear it at
+   ΔE 32 (dark) and 27 (light) while staying inside the lightness band for each
+   surface, so dark mode gets its own steps rather than an automatic flip. */
+:root {
+  --chart-line: #3987e5;
+  --chart-missed: #b8801a;
+  --chart-grid: #2a2e38;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --chart-line: #2a78d6;
+    --chart-missed: #b07800;
+    --chart-grid: #e4e6ea;
+  }
+}
+
+.chart-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+.chart { margin: 0; }
+.chart-title { font-weight: 600; margin-bottom: 0.25rem; }
+.chart-svg { width: 100%; height: auto; display: block; }
+
+.chart-line {
+  fill: none;
+  stroke: var(--chart-line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* A 2px ring in the surface colour so overlapping markers stay countable. */
+.chart-dot {
+  fill: var(--chart-line);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+/* Missed sets differ by SHAPE as well as colour - hollow, not filled - because
+   colour alone is never allowed to carry the one distinction that changes what
+   the chart means. */
+.chart-dot-missed {
+  fill: var(--surface);
+  stroke: var(--chart-missed);
+  stroke-width: 2.5;
+}
+.chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-axis-label { fill: var(--muted); font-size: 10px; }
+.chart-readout { min-height: 1.4em; margin: 0.25rem 0 0; font-size: 0.85rem; }
+.chart-key { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; margin: 0.25rem 0 0; }
+.key-mark { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.key-completed { background: var(--chart-line); }
+.key-missed { background: var(--surface); border: 2px solid var(--chart-missed); }
+.key-mark + .key-mark { margin-left: 0.75rem; }
+
+.table-scroll { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.data-table th, .data-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+.data-table th { color: var(--muted); font-weight: 600; }

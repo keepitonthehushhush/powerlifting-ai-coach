@@ -126,6 +126,7 @@ export const en = {
   },
 
   chat: {
+    progress: 'Progress',
     exerciseLibrary: 'Exercise library',
     characterCount: '{count} of {limit} characters',
     logSession: 'Log session',
@@ -202,6 +203,39 @@ export const en = {
     empty: 'No exercises have been added yet.',
     filmYourself:
       'Film yourself from the side at hip height. Almost every fault above is obvious on video and invisible from inside the lift.',
+  },
+
+  progress: {
+    title: 'Progress',
+    subtitle:
+      'Your heaviest set of each lift, session by session. Missed sets are shown too — a chart that hides them shows an unbroken climb through a stall.',
+    backToCoach: 'Back to Coach',
+    empty: 'Nothing logged yet, so there is nothing to chart.',
+    logFirst: 'Log your first session →',
+    hoverHint: 'Hover a point for the details.',
+    chartLabel: '{lift}: heaviest set across {count} sessions',
+    forReps: 'for {reps}',
+    missed: 'reps not completed',
+    keyCompleted: 'Completed',
+    keyMissed: 'Missed',
+    trendUp: 'Up {change}{units} since your first logged session.',
+    trendDown: 'Down {change}{units} since your first logged session. A reset is part of the plan, not a failure.',
+    trendFlat: 'Same weight as your first logged session.',
+    trendSingle: 'One session logged. The trend appears once there are two.',
+    showTable: 'Show the numbers as a table',
+    hideTable: 'Hide the table',
+    tableCaption: 'The same data as the charts above, as text.',
+    colDate: 'Date',
+    colLift: 'Lift',
+    colWeight: 'Weight',
+    colReps: 'Reps',
+    colResult: 'Result',
+    lift: {
+      squat: 'Squat',
+      bench: 'Bench press',
+      deadlift: 'Deadlift',
+      press: 'Overhead press',
+    },
   },
 
 };

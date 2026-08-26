@@ -130,6 +130,7 @@ export const es = {
   },
 
   chat: {
+    progress: 'Progreso',
     exerciseLibrary: 'Biblioteca de ejercicios',
     characterCount: '{count} de {limit} caracteres',
     logSession: 'Registrar sesión',
@@ -206,6 +207,39 @@ export const es = {
     empty: 'Todavía no se han añadido ejercicios.',
     filmYourself:
       'Grábate desde el lateral a la altura de la cadera. Casi todos los errores de arriba son evidentes en vídeo e invisibles desde dentro del levantamiento.',
+  },
+
+  progress: {
+    title: 'Progreso',
+    subtitle:
+      'Tu serie más pesada de cada levantamiento, sesión a sesión. También se muestran las series fallidas — un gráfico que las oculta muestra una subida continua a través de un estancamiento.',
+    backToCoach: 'Volver al Coach',
+    empty: 'Todavía no hay nada registrado, así que no hay nada que graficar.',
+    logFirst: 'Registra tu primera sesión →',
+    hoverHint: 'Pasa el cursor por un punto para ver los detalles.',
+    chartLabel: '{lift}: serie más pesada en {count} sesiones',
+    forReps: 'por {reps}',
+    missed: 'repeticiones no completadas',
+    keyCompleted: 'Completada',
+    keyMissed: 'Fallida',
+    trendUp: 'Has subido {change}{units} desde tu primera sesión registrada.',
+    trendDown: 'Has bajado {change}{units} desde tu primera sesión registrada. Un reinicio es parte del plan, no un fracaso.',
+    trendFlat: 'El mismo peso que en tu primera sesión registrada.',
+    trendSingle: 'Una sesión registrada. La tendencia aparece cuando haya dos.',
+    showTable: 'Ver los números como tabla',
+    hideTable: 'Ocultar la tabla',
+    tableCaption: 'Los mismos datos de los gráficos anteriores, en texto.',
+    colDate: 'Fecha',
+    colLift: 'Levantamiento',
+    colWeight: 'Peso',
+    colReps: 'Repeticiones',
+    colResult: 'Resultado',
+    lift: {
+      squat: 'Sentadilla',
+      bench: 'Press de banca',
+      deadlift: 'Peso muerto',
+      press: 'Press militar',
+    },
   },
 
 };

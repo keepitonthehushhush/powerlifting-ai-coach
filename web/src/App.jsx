@@ -12,6 +12,7 @@ import { LogSession } from './pages/LogSession.jsx';
 import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { Library } from './pages/Library.jsx';
+import { Progress } from './pages/Progress.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
 import { AiProcessing } from './pages/AiProcessing.jsx';
@@ -71,6 +72,14 @@ export function App() {
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />
               {/* The old path, kept so links already in the wild still land. */}
               <Route path="/privacy/health-data" element={<Navigate to="/policies/health-data" replace />} />
+              <Route
+                path="/progress"
+                element={
+                  <ProtectedRoute>
+                    <Progress />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/library"
                 element={
