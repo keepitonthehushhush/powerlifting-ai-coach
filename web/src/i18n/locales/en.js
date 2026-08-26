@@ -66,7 +66,6 @@ export const en = {
     notesPlaceholder: 'Felt heavy, left knee cranky on the last set, cut it short…',
     submit: 'Save session',
     needExercise: 'Add at least one movement before saving.',
-    backToCoach: 'Back to coach',
     recentTitle: 'Recent sessions',
   },
   intake: {
@@ -195,7 +194,6 @@ export const en = {
     title: 'Exercise library',
     subtitle:
       'How each lift is performed, what to look for when it goes wrong, and where to watch it done properly.',
-    backToCoach: 'Back to Coach',
     cues: 'Cues',
     faults: 'Common faults',
     watchDemo: 'Watch the demonstration (leaves Coach Diaz — use Back to return) →',
@@ -210,7 +208,6 @@ export const en = {
     title: 'Progress',
     subtitle:
       'Your heaviest set of each lift, session by session. Missed sets are shown too — a chart that hides them shows an unbroken climb through a stall.',
-    backToCoach: 'Back to Coach',
     empty: 'Nothing logged yet, so there is nothing to chart.',
     logFirst: 'Log your first session →',
     hoverHint: 'Hover a point for the details.',

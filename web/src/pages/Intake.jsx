@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
-import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
+import { StickyHeader } from '../components/StickyHeader.jsx';
+import { SiteNav } from '../components/SiteNav.jsx';
 
 const EMPTY = {
   experience_level: '',
@@ -109,13 +110,23 @@ export function Intake() {
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div className="row">
-          <h1>{t('intake.title')}</h1>
-          <LanguageSwitcher />
-        </div>
-        <p className="muted">{t('intake.subtitle')}</p>
-      </header>
+      {/* The same pinned header every other signed-in page has. Before this,
+          this page had a lone "back to coach" link and no navigation, so
+          reaching the library or progress from here meant going through the
+          conversation first - which is what "it takes the end user to another
+          page instead of keeping them on the same window" describes. The
+          routing was always client-side; what changed was that the chrome
+          left with it. */}
+      {/* The language selector came out of this header: SiteNav already
+          carries one, and two of them on the same screen is a bug report
+          waiting to happen. */}
+      <StickyHeader>
+        <header className="page-header">
+          <SiteNav />
+          <h1 className="page-title">{t('intake.title')}</h1>
+          <p className="muted header-detail">{t('intake.subtitle')}</p>
+        </header>
+      </StickyHeader>
 
       <form onSubmit={handleSubmit} className="card stack">
         <label>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { ConsentPanel } from '../components/ConsentPanel.jsx';
+import { StickyHeader } from '../components/StickyHeader.jsx';
+import { SiteNav } from '../components/SiteNav.jsx';
 
 /**
  * Data subject rights, exposed as an actual screen rather than a policy page.
@@ -55,12 +56,19 @@ export function Account() {
 
   return (
     <div className="page">
-      <header className="page-header row">
-        <h1>{t('account.title')}</h1>
-        <Link className="link" to="/coach">
-          {t('common.appName')}
-        </Link>
-      </header>
+      {/* The same pinned header every other signed-in page has. Before this,
+          this page had a lone "back to coach" link and no navigation, so
+          reaching the library or progress from here meant going through the
+          conversation first - which is what "it takes the end user to another
+          page instead of keeping them on the same window" describes. The
+          routing was always client-side; what changed was that the chrome
+          left with it. */}
+      <StickyHeader>
+        <header className="page-header">
+          <SiteNav />
+          <h1 className="page-title">{t('account.title')}</h1>
+        </header>
+      </StickyHeader>
 
       <section className="card stack">
         <h2 className="h3">{t('consent.title')}</h2>

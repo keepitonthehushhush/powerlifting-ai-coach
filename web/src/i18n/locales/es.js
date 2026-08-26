@@ -70,7 +70,6 @@ export const es = {
     notesPlaceholder: 'Se sintió pesado, la rodilla izquierda molestó en la última serie, lo corté…',
     submit: 'Guardar sesión',
     needExercise: 'Añade al menos un movimiento antes de guardar.',
-    backToCoach: 'Volver al entrenador',
     recentTitle: 'Sesiones recientes',
   },
   intake: {
@@ -199,7 +198,6 @@ export const es = {
     title: 'Biblioteca de ejercicios',
     subtitle:
       'Cómo se ejecuta cada levantamiento, qué buscar cuando sale mal, y dónde verlo hecho correctamente.',
-    backToCoach: 'Volver al Coach',
     cues: 'Claves técnicas',
     faults: 'Errores comunes',
     watchDemo: 'Ver la demostración (sales de Coach Diaz — usa Atrás para volver) →',
@@ -214,7 +212,6 @@ export const es = {
     title: 'Progreso',
     subtitle:
       'Tu serie más pesada de cada levantamiento, sesión a sesión. También se muestran las series fallidas — un gráfico que las oculta muestra una subida continua a través de un estancamiento.',
-    backToCoach: 'Volver al Coach',
     empty: 'Todavía no hay nada registrado, así que no hay nada que graficar.',
     logFirst: 'Registra tu primera sesión →',
     hoverHint: 'Pasa el cursor por un punto para ver los detalles.',

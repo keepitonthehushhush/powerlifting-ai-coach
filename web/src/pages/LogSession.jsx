@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { StickyHeader } from '../components/StickyHeader.jsx';
+import { SiteNav } from '../components/SiteNav.jsx';
 import { emptyExercise, prefillFrom, toSessionPayload, today } from '../lib/sessionDraft.js';
 
 /**
@@ -88,15 +90,20 @@ export function LogSession() {
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div className="row">
-          <h1>{t('log.title')}</h1>
-          <Link className="link" to="/coach">
-            {t('log.backToCoach')}
-          </Link>
-        </div>
-        <p className="muted">{t('log.subtitle')}</p>
-      </header>
+      {/* The same pinned header every other signed-in page has. Before this,
+          this page had a lone "back to coach" link and no navigation, so
+          reaching the library or progress from here meant going through the
+          conversation first - which is what "it takes the end user to another
+          page instead of keeping them on the same window" describes. The
+          routing was always client-side; what changed was that the chrome
+          left with it. */}
+      <StickyHeader>
+        <header className="page-header">
+          <SiteNav />
+          <h1 className="page-title">{t('log.title')}</h1>
+          <p className="muted header-detail">{t('log.subtitle')}</p>
+        </header>
+      </StickyHeader>
 
       <form onSubmit={handleSubmit} className="card stack">
         <label>
