@@ -2140,6 +2140,81 @@ Tests 305 → **334**.
 
 ---
 
+### D.22 The new tab with no back button, and a palette that was measured — **DONE**
+
+Three reports from actually using the deployed site.
+
+**"When I open a video I cannot get back."** Not a broken site. The links
+carried `target="_blank"`, and a brand-new tab has **no history**, so the
+browser's back button is disabled in it. Coach Diaz was still open in the tab
+behind, which the athlete cannot see — least of all on a phone, where the new
+tab covers the screen. Same-tab navigation makes Back mean what it says, and
+the link now says it leaves the app before it is clicked.
+
+*The embed question, and a correction.* The rule in the original brief — never
+embed or mirror — was written for **copyright**, and on copyright grounds an
+embed would have been permitted: YouTube's official iframe is the display
+mechanism the rights holder consents to, and a creator can switch embedding off
+if they object. Embedding is not mirroring. The rule survives for a **better**
+reason than the one it was written for: an embed is third-party code on our
+origin, telling a third party that this person watched a squat tutorial, inside
+an application that also knows about their shoulder. That is a poor trade for
+saving one tap in an app with an MHMDA-aware consent regime.
+
+**"On a long page I have to scroll all the way back up."** A header that
+condenses on the way down and returns on the way up, plus a back-to-top button
+past one screen height. It never disappears entirely — navigation you cannot
+see is navigation you cannot use — and it does not move at all until you are
+past its own height, so short pages behave like ordinary pages. Two
+accessibility rules a naive version breaks, both handled: every transition is
+disabled under `prefers-reduced-motion`, because a bar animating on each scroll
+gesture is exactly the movement that provokes vestibular symptoms; and the
+header restores itself on focus, so a keyboard user tabbing into the navigation
+never lands on a control scrolled half out of view. Scroll handling is batched
+into one animation frame rather than run on every event.
+
+**A palette, and the claim in it that was wrong.** Deep indigo night, hot
+magenta, cyan-teal.
+
+*On trademark:* a colour, or a pairing of colours, can be protected only by
+acquiring secondary meaning within a product category — John Deere's green and
+yellow, for farm equipment — and that protection does not reach across
+industries. Nobody owns teal-and-magenta for strength software. What **is**
+protected is the name of the television series that made the palette famous, so
+it appears nowhere in the product: not in a class, not in a comment, not in the
+UI. A test asserts its absence, because that is the kind of thing that gets
+typed into a CSS comment by accident.
+
+*On memorability versus readability:* colour does measurably affect cognition.
+Mehta & Zhu (Science, 2009) found red improved performance on detail-oriented
+tasks — memory retrieval and proofreading — by up to 31% against blue, while
+blue roughly doubled creative output. A coach whose job is recalling cues and
+numbers wants the warm end, which is why the primary action colour is magenta
+and not the cyan. But that effect is small next to simply being able to read
+the screen.
+
+*So the colours were computed.* `server/test/palette.test.js` calculates every
+contrast ratio from the stylesheet rather than trusting a comment — and that is
+how the one defect here was caught. A comment I had just written asserted a
+link colour reached 4.98:1. The function said **3.48:1**, below the 4.5
+required for body text. `--link` is now a separate token from `--secondary`,
+and the distinction is worth keeping: text must clear 4.5:1 while a chart mark
+or a border only needs 3:1. The same colour can be fine as one and unusable as
+the other.
+
+Two test defects found alongside. The library test asserted `target="_blank"` —
+it encoded the behaviour being removed — and once rewritten, matched the
+*comment explaining the removal*, the same trap the stretching assertion hit.
+Comments are now stripped before matching. And the palette test's own helper
+split the stylesheet at the first light media query, which put the chart tokens
+— defined further down, next to the charts — outside every scope it looked in.
+It now brace-matches each media block and takes the last declaration, as the
+cascade does.
+
+Tests 334 → **351**.
+
+---
+
 ## Phase 2 — Real coaching features — **COMPLETE**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
