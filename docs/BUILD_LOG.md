@@ -2034,11 +2034,54 @@ Tests 266 → **294**.
 
 ---
 
+### D.20 The exercise library was empty, and the coach knew it — **DONE**
+
+`exercise_library` has existed since migration 0001 and held zero rows the
+whole time. The consequence was not a blank page somewhere; it was a behaviour.
+`systemPrompt.js` says that when the library is empty the coach must not link,
+name or describe **any** demonstration video — a deliberate guard against
+hallucinated URLs — so every athlete who asked how to squat was told video
+references were "coming soon" and given verbal cues instead. Form guidance is
+one of the five things the README promises. It had been quietly degraded since
+launch, for beginners specifically.
+
+Four lifts seeded, each with cues, common faults, and one outbound link.
+
+**Every URL was fetched and confirmed before it was written down.** This is the
+one place in the project where the temptation to recall from memory is
+strongest and the failure is silent: a plausible-looking demo link that 404s
+looks exactly like a real one in a diff. The prompt already forbids the model
+from inventing them; the same rule applies to whoever fills the table.
+
+**Links go to the rights holder's own site, not a YouTube ID.** Starting
+Strength publishes these on startingstrength.com. Linking their page means the
+destination is unambiguously theirs and stays under their control — if they
+reorganise or withdraw something, the link degrades to their own site rather
+than to a dead ID, or worse, to a reupload on a channel that is not theirs.
+Nothing is hosted, embedded or mirrored: no iframe, no player, no thumbnail
+pulled from anyone's CDN. Tests assert the absence of each of those, and that
+every seeded URL is on the publisher's domain.
+
+**Faults sit beside cues on purpose.** A beginner cannot self-diagnose from
+cues alone. "Knees out" says what to do; "knees drifting inward under load"
+says what to look for in the video they filmed of themselves, which is the only
+feedback loop available to someone training without a coach in the room. The
+page ends by telling them to film from the side at hip height.
+
+**Known weakness, recorded rather than hidden:** all four links are one
+publisher. If that site goes away the library empties and the coach silently
+reverts to "coming soon". A second rights holder per lift removes the single
+point of failure and should happen before anyone pays for this.
+
+Tests 294 → **305**.
+
+---
+
 ## Phase 2 — Real coaching features — **IN PROGRESS**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
 - Automatic program progression — **done** (D.17)
 - Progress charts — after progression
-- Exercise library with verified third-party videos — after charts
+- Exercise library with verified third-party videos — **done** (D.20)
 ## Phase 3 — Monetization — **NOT STARTED** (awaiting explicit go-ahead)
 ## Phase 4 — Portfolio polish — **IN PROGRESS** (README, ARCHITECTURE, SECURITY, CI written early)

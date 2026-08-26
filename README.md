@@ -229,7 +229,7 @@ configure secrets.
 │   └── test/                 Unit tests
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0017, applied in order
+│   ├── migrations/           0001–0018, applied in order
 │   └── tests/                RLS isolation test
 ├── scripts/                  Secret scanners, safety eval, deploy tooling
 └── docs/                     Architecture, security, deployment, legal, build log
