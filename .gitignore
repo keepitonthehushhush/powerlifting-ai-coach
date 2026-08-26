@@ -38,3 +38,5 @@ coverage/
 # deterministic. Findings that matter are written up in docs/BUILD_LOG.md
 # instead, where they can be read without re-running anything.
 safety-eval-results.txt
+.vercel
+.env*
