@@ -1959,6 +1959,81 @@ Tests 231 → **266**.
 
 ---
 
+### D.18 A required consent with nothing behind it — **FIXED**
+
+Eduardo reported that signup does not show new users a terms and agreement to
+read before they check the box. It was worse than that. `terms_of_service` and
+`ai_processing` are both **required** consents, and neither had a document
+anywhere in the application — no page, no route, nothing. Only the health data
+policy had one. Every user who signed up checked a box and was written into the
+consent ledger as having agreed to `tos-2026-08-24`: a version string for a
+document that did not exist.
+
+The ledger was designed carefully — append-only, versioned, monotonically
+ordered after 0010 — precisely so it could answer "what did this person agree
+to". It could not, because the answer was nothing.
+
+Both documents are now written, describing what the application actually does,
+checked against the source, and both carry the pending-legal-review banner.
+They were written by an engineer and not a lawyer, and saying so on the page is
+the difference between an honest placeholder and a false assurance.
+
+The UI half was real too. The consent page had one link, to one of the three
+policies, sitting *below* the checkboxes. A link placed after the control
+people are reaching for is a link most of them never see. Each consent item now
+carries its own link, named for its own document, above its own checkbox.
+
+**Ten structural assertions hold it in place**: every consent type has a
+document, every document is routed, every route resolves to a page that exists,
+each page states the same version the ledger records, none requires signing in
+to read, and the link renders before the checkbox rather than after. The
+version assertion is the one worth keeping: showing a document headed with a
+different version from the one being recorded is worse than showing nothing,
+because it looks correct.
+
+### D.19 Warm-ups, and the advice that turned out to be backwards — **DONE**
+
+The ask was stretching before training to prevent injury. Both halves are
+wrong, so what got built is the thing that works.
+
+Static stretching before lifting *reduces force*. In a network meta-analysis of
+warm-up methods for lower-limb explosive strength it ranked last of everything
+tested (SUCRA 15.6%) with a significant negative effect on sprint time, against
+dynamic stretching first (91.1%); roughly −1.6% on countermovement jump versus
++1.8%. And stretching is not what prevents injury — the protective effect in
+the literature comes from structured neuromuscular warm-ups, through motor
+control and eccentric strength, not through lengthening tissue.
+
+So the session is: easy cardio, dynamic mobility through range, then computed
+ramp sets in the lift itself, stopping short of the working weight. Static
+stretching moves to after training, where it improves range of motion just as
+well (SMD 0.40 static vs 0.48 dynamic, no significant difference) at no cost on
+the bar. It is absent from the pre-session plan **by construction rather than
+by instruction**: nothing generates it, so there is no rule for the model to
+forget.
+
+**The rounding bug the warm-up tests exposed in the progression engine.** A
+warm-up test asserted every ramp weight was loadable and failed. The cause was
+in `roundToLoadable`, shared with progression: it rounded the *total* to a
+multiple of the smallest increment, when it is the *plate* portion that has to
+divide. 200 lb looks like a round number and cannot be built with 5 lb plates —
+it is 155 lb of plates on a 45 lb bar. The deload path had been producing
+unloadable weights, which is exactly when an athlete is least in the mood for
+it. Worse, a progression test was *asserting the bug* (`weight % 10 === 0`). A
+test can encode a defect as confidently as code can.
+
+**A test that could not tell a prohibition from a claim.** The assertion that
+the prompt does not claim stretching prevents injury failed — on the prompt's
+own line "Do not tell the athlete that stretching prevents injury". Rewritten
+against `assertsWithoutNegation`, the helper this codebase already had for the
+safety eval, which judges each sentence alone. Plus the inverse assertion,
+because without it the test passes equally well on a prompt that never mentions
+stretching at all.
+
+Tests 266 → **294**.
+
+---
+
 ## Phase 2 — Real coaching features — **IN PROGRESS**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
