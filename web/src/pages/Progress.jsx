@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { LiftChart } from '../components/LiftChart.jsx';
 import { topSetPerDay, trend } from '../lib/chartData.js';
 
@@ -57,6 +58,7 @@ export function Progress() {
 
   return (
     <div className="page">
+      <StickyHeader>
       <header className="page-header">
         <div className="row">
           <h1>{t('progress.title')}</h1>
@@ -64,8 +66,9 @@ export function Progress() {
             {t('progress.backToCoach')}
           </Link>
         </div>
-        <p className="muted">{t('progress.subtitle')}</p>
+        <p className="muted header-detail">{t('progress.subtitle')}</p>
       </header>
+      </StickyHeader>
 
       {error && <p className="error">{error}</p>}
       {!logs && !error && <p className="muted">{t('common.loading')}</p>}
@@ -135,6 +138,7 @@ export function Progress() {
           )}
         </>
       )}
+      <BackToTop label={t('common.backToTop')} />
     </div>
   );
 }

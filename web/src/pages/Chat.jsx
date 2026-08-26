@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { StickyHeader } from '../components/StickyHeader.jsx';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
@@ -69,6 +70,7 @@ export function Chat() {
 
   return (
     <div className="page chat-page">
+      <StickyHeader>
       <header className="page-header row">
         <h1 className="brand small">{t('common.appName')}</h1>
         <nav className="row gap">
@@ -93,6 +95,7 @@ export function Chat() {
           </button>
         </nav>
       </header>
+      </StickyHeader>
 
       <div className="transcript" role="log" aria-live="polite">
         {loading && <p className="muted">{t('common.loading')}</p>}

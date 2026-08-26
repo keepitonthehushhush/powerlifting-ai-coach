@@ -8,6 +8,7 @@
  */
 export const en = {
   common: {
+    backToTop: 'Back to top',
     appName: 'Coach Diaz',
     loading: 'Loading…',
     saving: 'Saving…',
@@ -197,8 +198,8 @@ export const en = {
     backToCoach: 'Back to Coach',
     cues: 'Cues',
     faults: 'Common faults',
-    watchDemo: 'Watch the demonstration →',
-    videoCredit: 'Opens {source} in a new tab. We link to the people who made it; we do not host or copy video.',
+    watchDemo: 'Watch the demonstration (leaves Coach Diaz — use Back to return) →',
+    videoCredit: 'Opens {source}. We link to the people who made it; we do not host, copy or embed their video.',
     thirdParty: 'the original source',
     empty: 'No exercises have been added yet.',
     filmYourself:

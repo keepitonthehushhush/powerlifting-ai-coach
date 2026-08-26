@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 
 /**
  * The exercise library: cues, common faults, and a link to a demonstration.
@@ -13,9 +14,22 @@ import { useI18n } from '../i18n/index.jsx';
  * rights holder's own page, opened in a new tab, and the source is named on
  * screen so the athlete knows whose instruction they are about to watch.
  *
- * That is a product constraint, not a technical one: this application does not
- * host, mirror or reproduce video it does not own. An embed would put someone
- * else's content inside our page, which is the thing being avoided.
+ * That is a product constraint, not a technical one. The copyright argument
+ * would in fact permit an embed - YouTube's official iframe is the display
+ * mechanism the rights holder consents to, and a creator can switch embedding
+ * off if they object - so the reason we do not is PRIVACY, not copyright. An
+ * embed is third-party code on our origin, setting cookies and reporting to a
+ * third party that this person watched a squat tutorial, inside an app that
+ * also knows about their shoulder. That is a poor trade for saving one tap.
+ *
+ * ── WHY THESE LINKS DO NOT OPEN A NEW TAB ─────────────────────────────────
+ *
+ * They used to. target="_blank" opens a tab with NO HISTORY, so the browser's
+ * back button is disabled in it - and the app is still open in the tab behind,
+ * which the athlete cannot see, especially on a phone. Reported as "it does not
+ * let me come back". Same-tab navigation makes Back mean what it says. The link
+ * says where it goes and warns that it leaves the app, so the athlete chooses
+ * knowingly instead of being surprised.
  *
  * ── WHY FAULTS SIT NEXT TO CUES ───────────────────────────────────────────
  *
@@ -38,6 +52,7 @@ export function Library() {
 
   return (
     <div className="page">
+      <StickyHeader>
       <header className="page-header">
         <div className="row">
           <h1>{t('library.title')}</h1>
@@ -45,8 +60,9 @@ export function Library() {
             {t('library.backToCoach')}
           </Link>
         </div>
-        <p className="muted">{t('library.subtitle')}</p>
+        <p className="muted header-detail">{t('library.subtitle')}</p>
       </header>
+      </StickyHeader>
 
       {error && <p className="error">{error}</p>}
       {!exercises && !error && <p className="muted">{t('common.loading')}</p>}
@@ -81,14 +97,9 @@ export function Library() {
 
           {exercise.video_url && (
             <p className="stack-tight">
-              {/* An ordinary outbound link. noopener/noreferrer because the new
-                  tab should get no handle back to this window. */}
-              <a
-                className="link strong"
-                href={exercise.video_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              {/* Same tab, so Back returns here. noreferrer still applies: the
+                  destination has no business knowing which page sent them. */}
+              <a className="link strong leaves-app" href={exercise.video_url} rel="noreferrer">
                 {t('library.watchDemo')}
               </a>
               <br />
@@ -101,6 +112,7 @@ export function Library() {
       ))}
 
       <p className="muted small">{t('library.filmYourself')}</p>
+      <BackToTop label={t('common.backToTop')} />
     </div>
   );
 }

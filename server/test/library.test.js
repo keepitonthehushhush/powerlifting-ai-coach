@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
-const page = read('../../web/src/pages/Library.jsx');
+const pageRaw = read('../../web/src/pages/Library.jsx');
+/**
+ * Comments stripped before matching. A file that EXPLAINS why it no longer uses
+ * target="_blank" contains the string target="_blank", and a regex cannot tell
+ * an explanation from a usage - the same trap that made the stretching test
+ * flag the prompt's own prohibition.
+ */
+const page = pageRaw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const app = read('../../web/src/App.jsx');
 const chat = read('../../web/src/pages/Chat.jsx');
 const seed = read('../../supabase/migrations/0018_seed_exercise_library.sql');
@@ -47,9 +54,28 @@ describe('no video is hosted, embedded or mirrored', () => {
     assert.match(page, /video_source/);
   });
 
-  test('outbound links open safely', () => {
-    assert.match(page, /target="_blank"/);
-    assert.match(page, /rel="noopener noreferrer"/);
+  test('outbound links leave the back button working', () => {
+    // These used to open with target="_blank". A new tab has NO history, so the
+    // back button is disabled in it, and the app sits in the tab behind where
+    // the athlete cannot see it - reported as "it does not let me come back".
+    // Same-tab navigation makes Back mean what it says.
+    assert.doesNotMatch(page, /target="_blank"/, 'a new tab has no back button');
+    assert.match(page, /rel="noreferrer"/, 'the destination has no business knowing who sent them');
+  });
+
+  test('the link says that it leaves the app before it is clicked', () => {
+    // Same-tab navigation is only an improvement if the athlete is not
+    // surprised by it.
+    const en = read('../../web/src/i18n/locales/en.js');
+    assert.match(en, /watchDemo:[^\n]*leaves Coach Diaz/i);
+  });
+
+  test('and still does not embed, for privacy rather than copyright', () => {
+    // The copyright argument would permit an official iframe. The reason not to
+    // is that it puts a third-party tracker on a health-data app.
+    assert.doesNotMatch(page, /<iframe/);
+    const en = read('../../web/src/i18n/locales/en.js');
+    assert.match(en, /videoCredit:[^\n]*do not host, copy or embed/i);
   });
 });
 

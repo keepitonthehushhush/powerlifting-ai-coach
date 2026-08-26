@@ -12,6 +12,7 @@
  */
 export const es = {
   common: {
+    backToTop: 'Volver arriba',
     appName: 'Coach Diaz',
     loading: 'Cargando…',
     saving: 'Guardando…',
@@ -201,8 +202,8 @@ export const es = {
     backToCoach: 'Volver al Coach',
     cues: 'Claves técnicas',
     faults: 'Errores comunes',
-    watchDemo: 'Ver la demostración →',
-    videoCredit: 'Abre {source} en una pestaña nueva. Enlazamos a quienes lo crearon; no alojamos ni copiamos vídeo.',
+    watchDemo: 'Ver la demostración (sales de Coach Diaz — usa Atrás para volver) →',
+    videoCredit: 'Abre {source}. Enlazamos a quienes lo crearon; no alojamos, copiamos ni incrustamos su vídeo.',
     thirdParty: 'la fuente original',
     empty: 'Todavía no se han añadido ejercicios.',
     filmYourself:
