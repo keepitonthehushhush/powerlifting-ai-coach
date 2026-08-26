@@ -551,14 +551,34 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   .wordmark-text { display: none; }
 }
 
+/* The shell exists only to be animated. A one-row grid whose track goes
+   1fr -> 0fr collapses to exactly the content's height and back, with no
+   magic max-height to guess wrong; the child clips itself on the way. */
+.nav-row {
+  display: grid;
+  grid-template-rows: 1fr;
+  /* minmax(0, 1fr) rather than the default auto track, so the shell can
+     never report its content's max-content width to the flex line above it.
+     The row it wraps is horizontally scrollable precisely because it is
+     allowed to be narrower than its contents, and an auto track would quietly
+     take that away as destinations are added. */
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  transition: grid-template-rows 190ms ease;
+}
 .nav-places {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   min-width: 0;
+  /* A grid item's automatic minimum size is its content, so without this the
+     0fr track has no effect at all and the row refuses to collapse. */
+  min-height: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  transition: opacity 150ms ease;
 }
 .nav-places::-webkit-scrollbar { display: none; }
 
@@ -604,6 +624,13 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 @media (prefers-reduced-motion: reduce) {
   .nav-item { transition: none; }
+  /* The collapsing row is movement too. Somebody who asked their operating
+     system for less of it gets the row appearing and disappearing outright,
+     which is the honest alternative - not a slower version of the same
+     motion. */
+  .nav-row,
+  .nav-places,
+  .sticky-header.condensed .nav-places { transition: none; }
 }
 
 /* The coach page keeps its jump control HERE, in the pinned header, rather
@@ -661,19 +688,40 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .site-nav { flex-wrap: wrap; row-gap: 0.15rem; }
 
 @media (max-width: 700px) {
-  .nav-places {
+  .nav-row {
     order: 3;
     flex-basis: 100%;
-    gap: 0.1rem;
     padding-top: 0.1rem;
   }
+  .nav-places { gap: 0.1rem; }
   .nav-item { padding: 0.45rem 0.55rem; }
   .nav-account { gap: 0.15rem; }
   .nav-item.quiet { font-size: 0.8rem; }
-  /* The condensed header hides the second row rather than shrinking it into
-     something unhittable: scrolling down means "I am reading", and the bar
-     comes straight back on the way up. */
-  .sticky-header.condensed .nav-places { display: none; }
+
+  /* The condensed header gives the second row back rather than shrinking it
+     into something unhittable: scrolling down means "I am reading", and the
+     bar comes straight back on the way up.
+
+     This was `display: none`, which is why the tabs appeared to pop in and
+     out rather than move. `display` has no interpolable values, so there is
+     no animation to run - the row is simply there or not there on the frame
+     the class changes. The grid track and the fade are both animatable, so
+     the row now travels the distance instead of teleporting.
+
+     `visibility` rather than `pointer-events` alone: a collapsed row that is
+     still in the tab order lets a keyboard user focus a link inside a
+     zero-height clipped box. It is delayed by the full duration on the way
+     out so it does not blink away before the movement finishes, and restored
+     instantly on the way in. Focusing anything in the header expands it
+     anyway - see StickyHeader's onFocusCapture - so nothing is unreachable. */
+  .sticky-header.condensed .nav-row {
+    grid-template-rows: 0fr;
+  }
+  .sticky-header.condensed .nav-places {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 150ms ease, visibility 0s linear 190ms;
+  }
 }
 
 /* A flex item's default min-width is auto - "at least as wide as my content" -
@@ -689,7 +737,8 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
    bug. Hiding overflow would have masked the real thing next time, and it
    interferes with sticky positioning. */
 .site-nav { width: 100%; min-width: 0; }
-.nav-places { flex: 1 1 auto; min-width: 0; }
+.nav-row { flex: 1 1 auto; min-width: 0; }
+.nav-places { min-width: 0; }
 .nav-account { min-width: 0; }
 
 /* ── Easter eggs ───────────────────────────────────────────────────────────

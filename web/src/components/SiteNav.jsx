@@ -79,22 +79,31 @@ export function SiteNav({ children }) {
         <Wordmark name={t('common.appName')} />
       </NavLink>
 
-      {/* Scrolls sideways rather than wrapping on a narrow screen: a nav bar
-          that grows to three lines pushes the content off a phone entirely. */}
-      <nav className="nav-places" aria-label={t('nav.primary')}>
-        {PLACES.map(({ to, key, quiet }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              [ 'nav-item', quiet ? 'quiet' : '', isActive ? 'active' : '' ].filter(Boolean).join(' ')
-            }
-            aria-current={location.pathname === to ? 'page' : undefined}
-          >
-            {t(key)}
-          </NavLink>
-        ))}
-      </nav>
+      {/* Two elements, not one, and the outer one is the reason.
+          `.nav-row` is a one-row grid whose track animates between 1fr and
+          0fr. That is the only way to transition an element to its own
+          content height without inventing a max-height larger than the
+          content - a magic number that is wrong on every screen but the one
+          it was measured on, and that spends part of the duration doing
+          nothing visible. The inner element keeps the sideways scroll: a nav
+          bar that grows to three lines pushes the content off a phone
+          entirely. */}
+      <div className="nav-row">
+        <nav className="nav-places" aria-label={t('nav.primary')}>
+          {PLACES.map(({ to, key, quiet }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                [ 'nav-item', quiet ? 'quiet' : '', isActive ? 'active' : '' ].filter(Boolean).join(' ')
+              }
+              aria-current={location.pathname === to ? 'page' : undefined}
+            >
+              {t(key)}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
 
       {/* Only genuine system controls remain on this side. */}
       <div className="nav-account">
