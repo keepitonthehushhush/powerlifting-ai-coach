@@ -31,6 +31,7 @@
  *    forbids linking at all.
  */
 import { asData, asDataDeep, FENCE_TAG } from './sanitize.js';
+import { prescribeAll } from '../lib/progression.js';
 import { ageInYears } from '../lib/ageGate.js';
 
 const COACH_ROLE = `# ROLE
@@ -394,6 +395,66 @@ function renderBests(logs, units) {
     .join('\n');
 }
 
+/**
+ * The computed next loads, as a directive rather than as data.
+ *
+ * This deliberately sits OUTSIDE the athlete-data fence. Everything inside that
+ * fence is untrusted text a user typed; this is output from our own code, and
+ * the model is meant to obey it the way it obeys the clearance gate. Nothing
+ * here needs escaping: the lift names come from a fixed set of four and the
+ * weights are numbers.
+ *
+ * The wording matters. "Do not recalculate" is there because a model handed
+ * both a history and an answer will sometimes show its work and arrive
+ * somewhere else, and the whole point of computing this in code is that the
+ * number is not up for negotiation.
+ */
+function renderPrescriptions(prescriptions, units) {
+  const entries = Object.entries(prescriptions ?? {});
+  if (entries.length === 0) return null;
+
+  const lines = [];
+  const exhausted = [];
+
+  for (const [lift, p] of entries) {
+    if (p.action === 'start') continue;
+    if (p.action === 'exhausted') {
+      exhausted.push(lift);
+      lines.push(`    ${lift}: LINEAR PROGRESSION EXHAUSTED - ${p.reason}`);
+      continue;
+    }
+    if (p.weight === null) continue;
+    const verb =
+      p.action === 'increase'
+        ? `${p.weight}${units} (up ${p.increment} from ${p.weight - p.increment})`
+        : p.action === 'deload'
+          ? `RESET to ${p.weight}${units}`
+          : `hold at ${p.weight}${units}`;
+    lines.push(`    ${lift}: ${verb} - ${p.reason}`);
+  }
+
+  if (lines.length === 0) return null;
+
+  return `- NEXT LOADS ARE COMPUTED, NOT NEGOTIATED. The figures below were calculated from this
+  athlete's own logged sessions. Use them exactly as given. Do not recalculate them, do not
+  blend them with your own estimate, and do not raise them because the athlete asks you to.
+
+${lines.join('\n')}
+
+  Explain the reasoning in your own words - the athlete should understand why the number is
+  what it is, not merely be told it. If they want to go heavier than a hold or a reset allows,
+  the honest answer is that the number came from what they themselves logged, and that the
+  fastest route to a bigger jump is a session where every rep is completed with something
+  left in reserve.${
+    exhausted.length
+      ? `\n\n  On ${exhausted.join(' and ')}, linear progression is finished. Do not prescribe another reset.
+  Tell the athlete plainly that adding weight every session has taken them as far as it goes -
+  which is a milestone, not a failure - and that the next block needs to be structured
+  differently, with the load varying across the week instead of climbing every session.`
+      : ''
+  }`;
+}
+
 function renderLibrary(library) {
   if (!library?.length) {
     return `  The exercise library is currently EMPTY.
@@ -420,6 +481,15 @@ export function buildSystemPrompt({
   const units = profile?.units ?? 'lb';
   const missing = missingIntakeFields(profile);
   const clearanceRequired = needsMedicalClearance(profile);
+
+  // recentLogs arrives newest-first, which is what the display renderers want.
+  // Progression reads a lift's history forwards, so it gets its own copy in the
+  // other order rather than everything being reordered to suit one caller.
+  const prescriptions = prescribeAll({
+    logs: [...recentLogs].reverse(),
+    units,
+    smallestPlatePair: profile?.smallest_plate_pair ?? null,
+  });
 
   const directives = [];
 
@@ -476,6 +546,12 @@ export function buildSystemPrompt({
   the most recent session actually went.`
     );
   }
+
+  // Last, so it reads as the concrete instruction after all the framing - and
+  // deliberately after the clearance gate, which forbids programming outright.
+  // A computed load must never be the thing that talks past that gate.
+  const prescriptionDirective = clearanceRequired ? null : renderPrescriptions(prescriptions, units);
+  if (prescriptionDirective) directives.push(prescriptionDirective);
 
   return `${COACH_ROLE}
 
