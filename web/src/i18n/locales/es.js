@@ -112,6 +112,10 @@ export const es = {
     },
     competitionDate: 'Fecha de competición',
     daysPerWeek: 'Días por semana que puedes entrenar',
+    smallestPlate: 'Disco más pequeño que tienes (opcional)',
+    smallestPlatePlaceholder: '1.25',
+    smallestPlateHelp:
+      'Un disco, no un par. El peso va en los dos extremos, así que esto determina el salto más pequeño que puedes hacer. Déjalo en blanco si no estás seguro.',
     equipment: 'Equipamiento disponible',
     equipmentPlaceholder: 'Gimnasio completo; barra, rack, banco, discos hasta 180 kg…',
     healthLegend: 'Lesiones, dolor o condiciones médicas',

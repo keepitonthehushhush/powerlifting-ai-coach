@@ -108,6 +108,10 @@ export const en = {
     },
     competitionDate: 'Competition date',
     daysPerWeek: 'Days per week you can train',
+    smallestPlate: 'Smallest plate you have (optional)',
+    smallestPlatePlaceholder: '2.5',
+    smallestPlateHelp:
+      'One plate, not a pair. Weight goes on both ends, so this sets the smallest jump you can make. Leave blank if you are not sure.',
     equipment: 'Equipment you have access to',
     equipmentPlaceholder: 'Full commercial gym; barbell, rack, bench, plates to 405…',
     healthLegend: 'Injuries, pain, or medical conditions',

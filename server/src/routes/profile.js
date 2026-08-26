@@ -26,6 +26,9 @@ const ProfileUpdate = z
     cleared_to_train: z.boolean().optional(),
     equipment_available: z.string().max(2000).nullish(),
     days_per_week: z.number().int().min(1).max(7).nullish(),
+    // Equipment, not health data. The smallest single plate the athlete can
+    // reach; the smallest jump they can make is twice it. See migration 0017.
+    smallest_plate_pair: z.number().positive().max(25).nullish(),
 
     // Recovery inputs. All optional, all consumer health data under MHMDA, all
     // gated by the trigger from migration 0012 - a write here without an

@@ -15,6 +15,7 @@ const EMPTY = {
   competition_date: '',
   equipment_available: '',
   days_per_week: '',
+  smallest_plate_pair: '',
   date_of_birth: '',
   health_restrictions: '',
   sleep_hours_typical: '',
@@ -39,6 +40,10 @@ function toPayload(form) {
       form.goal === 'meet_prep' && form.competition_date ? form.competition_date : null,
     equipment_available: form.equipment_available || null,
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
+    // Blank means "I don't know what my gym has", which the engine handles by
+    // assuming the standard 2.5 lb / 1.25 kg plate. Coercing it to a number
+    // here would invent equipment the athlete never claimed to own.
+    smallest_plate_pair: num(form.smallest_plate_pair),
     health_restrictions: form.health_restrictions ?? '',
     cleared_to_train: Boolean(form.cleared_to_train),
     date_of_birth: form.date_of_birth || null,
@@ -204,6 +209,20 @@ export function Intake() {
             onChange={(e) => update('days_per_week', e.target.value)}
             required
           />
+        </label>
+
+        <label>
+          {t('intake.smallestPlate')}
+          <input
+            type="number"
+            min="0.25"
+            max="25"
+            step="0.25"
+            value={form.smallest_plate_pair}
+            onChange={(e) => update('smallest_plate_pair', e.target.value)}
+            placeholder={t('intake.smallestPlatePlaceholder')}
+          />
+          <span className="muted small">{t('intake.smallestPlateHelp')}</span>
         </label>
 
         <label>
