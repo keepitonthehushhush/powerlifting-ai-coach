@@ -143,7 +143,10 @@ describe('the page is wired up', () => {
   const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
   test('logging is reachable from the coach', () => {
-    assert.match(read('../../web/src/pages/Chat.jsx'), /to="\/log"/);
+    // Via the shared navigation now, rather than a link hand-placed on the
+    // coach page. Same guarantee, different file.
+    assert.match(read('../../web/src/components/SiteNav.jsx'), /to: '\/log'/);
+    assert.match(read('../../web/src/pages/Chat.jsx'), /<SiteNav/);
   });
 
   test('the route sits behind the consent gate like the rest', () => {

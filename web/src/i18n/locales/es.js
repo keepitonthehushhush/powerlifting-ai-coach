@@ -243,4 +243,15 @@ export const es = {
     },
   },
 
+  nav: {
+    primary: 'Navegación principal',
+    coach: 'Coach',
+    log: 'Registrar sesión',
+    progress: 'Progreso',
+    library: 'Biblioteca',
+    profile: 'Perfil',
+    data: 'Tus datos',
+    jumpToTop: 'Arriba',
+  },
+
 };

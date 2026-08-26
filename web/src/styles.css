@@ -456,3 +456,176 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
     transition: none;
   }
 }
+
+/* ── Navigation ────────────────────────────────────────────────────────────
+   Restraint is the whole design. No underlines, no borders, no pill buttons -
+   weight and ink carry the hierarchy, and exactly one accent does exactly one
+   job (marking where you are). Everything else recedes until you reach for it.
+
+   The two groups are ordered by frequency of use, not by when they were
+   written: places you go every session on the left, in the order of the
+   training loop, and the things you touch rarely pushed to the far side in
+   quieter ink. */
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.wordmark-link { text-decoration: none; flex: 0 0 auto; }
+.wordmark { display: inline-flex; align-items: center; gap: 0.55rem; }
+.logo-mark { display: block; flex: 0 0 auto; }
+.wordmark-text {
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  white-space: nowrap;
+}
+/* The name steps aside before the destinations do: on a small screen the badge
+   still identifies the product, and the nav is what people came for. */
+@media (max-width: 560px) {
+  .wordmark-text { display: none; }
+}
+
+.nav-places {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.nav-places::-webkit-scrollbar { display: none; }
+
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.nav-item {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+.nav-item:hover { color: var(--text); background: var(--surface-2); }
+.nav-item:focus-visible { outline: 2px solid var(--secondary); outline-offset: 1px; }
+.nav-item.quiet { font-size: 0.85rem; }
+
+.nav-item.active { color: var(--text); font-weight: 600; }
+/* A 2px bar rather than a filled pill: it marks the page without competing
+   with the one primary action on the screen. */
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.05rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item { transition: none; }
+}
+
+/* The coach page keeps its jump control HERE, in the pinned header, rather
+   than floating above the composer. A floating button at the bottom right of
+   a chat sits exactly where the send button is and exactly where a thumb
+   rests, so it would be pressed by accident by the people least able to
+   afford the interruption - someone mid-sentence between sets. */
+.nav-jump {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nav-jump:hover { color: var(--text); border-color: var(--muted); }
+.nav-jump:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
+
+.page-title { margin: 0.6rem 0 0.15rem; font-size: 1.45rem; letter-spacing: -0.02em; }
+
+/* The language control has to belong to the same bar as everything else. A
+   default select renders as a heavy bevelled box, which is the one piece of
+   chrome in an otherwise borderless nav and reads as a mistake. */
+.site-nav .lang select {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+}
+.site-nav .lang select:hover { color: var(--text); background: var(--surface-2); }
+.site-nav .lang select:focus-visible { outline: 2px solid var(--secondary); outline-offset: 1px; }
+
+/* The destinations scroll sideways when they do not fit. Without a fade the
+   last item is simply sliced in half, which looks like a rendering fault
+   rather than an invitation to scroll. */
+.nav-places {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+}
+
+/* On a phone the two groups stop competing for one row and become two.
+   Squeezing both onto a single line crushed the destinations to three
+   characters and pushed Sign out off the edge - checked at 430px rather than
+   assumed, because this application is used standing up in a gym far more
+   often than at a desk.
+
+   Order matters: identity and the rarely-used controls sit on the top line,
+   and the destinations get a full-width line of their own underneath, where
+   they are big enough to hit with a thumb. */
+.site-nav { flex-wrap: wrap; row-gap: 0.15rem; }
+
+@media (max-width: 700px) {
+  .nav-places {
+    order: 3;
+    flex-basis: 100%;
+    gap: 0.1rem;
+    padding-top: 0.1rem;
+  }
+  .nav-item { padding: 0.45rem 0.55rem; }
+  .nav-account { gap: 0.15rem; }
+  .nav-item.quiet { font-size: 0.8rem; }
+  /* The condensed header hides the second row rather than shrinking it into
+     something unhittable: scrolling down means "I am reading", and the bar
+     comes straight back on the way up. */
+  .sticky-header.condensed .nav-places { display: none; }
+}
+
+/* A flex item's default min-width is auto - "at least as wide as my content" -
+   so a row of nowrap items will happily push past its container and the
+   overflow-x:auto above never gets a chance to scroll. These three lines are
+   what make the sideways scroll actually work. Measured at a 390px column:
+   the destinations row reports scrollWidth 499 against clientWidth 358, so it
+   is genuinely scrolling rather than being cut off.
+
+   An `overflow-x: hidden` on body was here briefly and has been removed. It
+   was added to fix clipping that turned out not to exist - headless
+   screenshots were cropping a 485px layout at 430px and I read the crop as a
+   bug. Hiding overflow would have masked the real thing next time, and it
+   interferes with sticky positioning. */
+.site-nav { width: 100%; min-width: 0; }
+.nav-places { flex: 1 1 auto; min-width: 0; }
+.nav-account { min-width: 0; }

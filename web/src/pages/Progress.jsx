@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
+import { SiteNav } from '../components/SiteNav.jsx';
 import { LiftChart } from '../components/LiftChart.jsx';
 import { topSetPerDay, trend } from '../lib/chartData.js';
 
@@ -60,12 +61,8 @@ export function Progress() {
     <div className="page">
       <StickyHeader>
       <header className="page-header">
-        <div className="row">
-          <h1>{t('progress.title')}</h1>
-          <Link className="link" to="/coach">
-            {t('progress.backToCoach')}
-          </Link>
-        </div>
+        <SiteNav />
+        <h1 className="page-title">{t('progress.title')}</h1>
         <p className="muted header-detail">{t('progress.subtitle')}</p>
       </header>
       </StickyHeader>

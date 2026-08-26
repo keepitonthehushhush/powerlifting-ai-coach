@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
+import { SiteNav } from '../components/SiteNav.jsx';
 
 /**
  * The exercise library: cues, common faults, and a link to a demonstration.
@@ -54,12 +54,8 @@ export function Library() {
     <div className="page">
       <StickyHeader>
       <header className="page-header">
-        <div className="row">
-          <h1>{t('library.title')}</h1>
-          <Link className="link" to="/coach">
-            {t('library.backToCoach')}
-          </Link>
-        </div>
+        <SiteNav />
+        <h1 className="page-title">{t('library.title')}</h1>
         <p className="muted header-detail">{t('library.subtitle')}</p>
       </header>
       </StickyHeader>

@@ -117,3 +117,52 @@ export function BackToTop({ label }) {
     </button>
   );
 }
+
+/**
+ * The same idea as BackToTop, rendered inline wherever it is placed.
+ *
+ * The coach page gets this one instead of the floating variant, and the reason
+ * is where a thumb rests. The conversation has a sticky composer along the
+ * bottom edge; a floating button at the bottom right would sit on top of the
+ * send button, which is both the most-used control on the page and exactly
+ * where someone typing between sets is already touching. Being interrupted by
+ * a control you did not mean to press is worse than scrolling.
+ *
+ * In the pinned header it is always reachable, never under a thumb, and it
+ * appears only once there is somewhere to go back to.
+ */
+export function JumpToTop({ label }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+    function evaluate() {
+      setVisible(window.scrollY > window.innerHeight * 0.75);
+      ticking = false;
+    }
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(evaluate);
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <button
+      type="button"
+      className="nav-jump"
+      onClick={() => {
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+      }}
+    >
+      ↑ {label}
+    </button>
+  );
+}

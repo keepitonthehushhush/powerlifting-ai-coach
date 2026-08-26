@@ -239,4 +239,15 @@ export const en = {
     },
   },
 
+  nav: {
+    primary: 'Main navigation',
+    coach: 'Coach',
+    log: 'Log session',
+    progress: 'Progress',
+    library: 'Library',
+    profile: 'Profile',
+    data: 'Your data',
+    jumpToTop: 'Top',
+  },
+
 };

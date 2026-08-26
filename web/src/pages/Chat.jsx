@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { StickyHeader } from '../components/StickyHeader.jsx';
+import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
+import { SiteNav } from '../components/SiteNav.jsx';
 import { api } from '../lib/api.js';
-import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
-import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 
 export function Chat() {
-  const { signOut } = useAuth();
   const { t } = useI18n();
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
@@ -72,28 +70,9 @@ export function Chat() {
     <div className="page chat-page">
       <StickyHeader>
       <header className="page-header row">
-        <h1 className="brand small">{t('common.appName')}</h1>
-        <nav className="row gap">
-          <LanguageSwitcher />
-          <Link className="link" to="/log">
-            {t('chat.logSession')}
-          </Link>
-          <Link className="link" to="/progress">
-            {t('chat.progress')}
-          </Link>
-          <Link className="link" to="/library">
-            {t('chat.exerciseLibrary')}
-          </Link>
-          <Link className="link" to="/intake">
-            {t('chat.editProfile')}
-          </Link>
-          <Link className="link" to="/account">
-            {t('account.title')}
-          </Link>
-          <button type="button" className="link" onClick={signOut}>
-            {t('common.signOut')}
-          </button>
-        </nav>
+        <SiteNav>
+          <JumpToTop label={t('nav.jumpToTop')} />
+        </SiteNav>
       </header>
       </StickyHeader>
 

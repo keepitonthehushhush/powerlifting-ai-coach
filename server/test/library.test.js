@@ -13,6 +13,7 @@ const pageRaw = read('../../web/src/pages/Library.jsx');
 const page = pageRaw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const app = read('../../web/src/App.jsx');
 const chat = read('../../web/src/pages/Chat.jsx');
+const siteNav = read('../../web/src/components/SiteNav.jsx');
 const seed = read('../../supabase/migrations/0018_seed_exercise_library.sql');
 const prompt = read('../src/prompts/systemPrompt.js');
 
@@ -86,9 +87,13 @@ describe('the library is reachable', () => {
     assert.match(app.slice(at, at + 200), /ProtectedRoute/);
   });
 
-  test('the coach page links to it', () => {
-    // A page nobody can find is the same as no page.
-    assert.match(chat, /to="\/library"/);
+  test('it is in the navigation every signed-in page carries', () => {
+    // A page nobody can find is the same as no page. This used to assert on
+    // Chat.jsx directly; the links now live in the shared nav, so the check
+    // moved with them rather than being deleted - the property is unchanged,
+    // only where it is satisfied.
+    assert.match(siteNav, /to: '\/library'/);
+    assert.match(chat, /<SiteNav/, 'the coach page must render the shared nav');
   });
 });
 
