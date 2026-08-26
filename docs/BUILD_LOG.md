@@ -2077,11 +2077,74 @@ Tests 294 → **305**.
 
 ---
 
-## Phase 2 — Real coaching features — **IN PROGRESS**
+### D.21 Progress charts, and what the validator refused — **DONE**
+
+Four charts, one per lift, drawn as inline SVG from pure functions.
+
+**No charting library.** Recharts, Chart.js and the rest each cost well over
+100 KB on a bundle already at 460 KB, and a seventh entry on a frontend
+dependency list `scripts/verify-frontend-deps.mjs` exists to keep short. What
+they buy is layout and interaction for chart types this app does not need. The
+better reason is testability: every calculation is a pure function over arrays
+of numbers, so an empty series, a single point, a flat series and a miss at the
+top of the range are asserted in the suite rather than checked by squinting at
+a screenshot. Same argument as `progression.js`, applied to pixels.
+
+**Small multiples, not four lines on one axis.** A deadlift at 405 and a press
+at 95 do not share a y-scale usefully — together, the press is a flat line
+along the bottom. The alternative, a second y-axis, is the single most
+misleading thing a chart can do: where the two lines cross is an artefact of
+where you put the axes, not a fact about the training.
+
+**The colours were computed, not chosen.** The obvious pairing — the app's
+accent red for the line, green for a good set — fails colour-vision separation
+at ΔE 2.7 under deuteranopia, the most common form. That is the classic
+red/green trap and it is invisible to anyone with normal colour vision, which
+is why it gets shipped. Blue and amber clear it at ΔE 32 on the dark surface
+and 27 on the light, each stepped into that surface's own lightness band, so
+dark mode carries its own values rather than an automatic flip. A missed set
+also differs by **shape** — hollow ring, not filled dot — with a written key,
+because colour alone must never carry the one distinction that changes what the
+chart means.
+
+**Three defects found while building it.**
+
+*The endpoint feeding the charts was blind to the thing the charts are for.*
+`GET /sessions/progress` predated migration 0016 and selected five columns,
+none of them `completed`. A chart drawn from that shows an unbroken climb
+straight through a stall — precisely the moment an athlete most needs to see
+what happened. This is the second time a query has silently lagged a column it
+should have picked up, after the fan-out in D.17.
+
+*`Number(null)` is `0`, not `NaN`.* A logged row with no weight passed the
+`Number.isFinite` check and plotted as a set at zero: a real-looking dot on the
+floor of the chart, indistinguishable from a very light day.
+
+*UTC date drift, again.* `new Date('2026-07-06')` parses as UTC midnight and
+renders as July 5th for every athlete west of Greenwich. The same trap already
+cost a day in the logging form's date default. `shortDate` forces local parsing
+and is tested from two timezones on opposite sides of the line.
+
+**Rendered and looked at, not assumed.** The container cannot run Vite, so the
+geometry functions were used to emit a standalone SVG of both themes and
+screenshot it with headless Chromium. That is what surfaced the last defect:
+26 px of bottom padding was reserved for an x-axis and nothing was drawing one,
+so the static charts had no time reference at all. Only the ends are labelled —
+a date under every point is unreadable at 340 px wide.
+
+The table view is not a fallback for when the charts fail. It is the same
+numbers as text, for screen readers and for the lifter who wants to know what
+they actually did on the 14th.
+
+Tests 305 → **334**.
+
+---
+
+## Phase 2 — Real coaching features — **COMPLETE**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
 - Automatic program progression — **done** (D.17)
-- Progress charts — after progression
+- Progress charts — **done** (D.21)
 - Exercise library with verified third-party videos — **done** (D.20)
 ## Phase 3 — Monetization — **NOT STARTED** (awaiting explicit go-ahead)
 ## Phase 4 — Portfolio polish — **IN PROGRESS** (README, ARCHITECTURE, SECURITY, CI written early)
