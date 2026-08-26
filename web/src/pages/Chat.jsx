@@ -76,6 +76,9 @@ export function Chat() {
           <Link className="link" to="/log">
             {t('chat.logSession')}
           </Link>
+          <Link className="link" to="/library">
+            {t('chat.exerciseLibrary')}
+          </Link>
           <Link className="link" to="/intake">
             {t('chat.editProfile')}
           </Link>

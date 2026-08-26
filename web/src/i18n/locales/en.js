@@ -126,6 +126,7 @@ export const en = {
   },
 
   chat: {
+    exerciseLibrary: 'Exercise library',
     characterCount: '{count} of {limit} characters',
     logSession: 'Log session',
     editProfile: 'Edit profile',
@@ -188,4 +189,19 @@ export const en = {
     deleteConfirmPrompt: 'Type DELETE MY ACCOUNT to confirm.',
     deleted: 'Your account and all associated data have been permanently deleted.',
   },
+  library: {
+    title: 'Exercise library',
+    subtitle:
+      'How each lift is performed, what to look for when it goes wrong, and where to watch it done properly.',
+    backToCoach: 'Back to Coach',
+    cues: 'Cues',
+    faults: 'Common faults',
+    watchDemo: 'Watch the demonstration →',
+    videoCredit: 'Opens {source} in a new tab. We link to the people who made it; we do not host or copy video.',
+    thirdParty: 'the original source',
+    empty: 'No exercises have been added yet.',
+    filmYourself:
+      'Film yourself from the side at hip height. Almost every fault above is obvious on video and invisible from inside the lift.',
+  },
+
 };

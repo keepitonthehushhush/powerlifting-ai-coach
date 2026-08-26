@@ -130,6 +130,7 @@ export const es = {
   },
 
   chat: {
+    exerciseLibrary: 'Biblioteca de ejercicios',
     characterCount: '{count} de {limit} caracteres',
     logSession: 'Registrar sesión',
     editProfile: 'Editar perfil',
@@ -192,4 +193,19 @@ export const es = {
     deleteConfirmPrompt: 'Escribe DELETE MY ACCOUNT para confirmar.',
     deleted: 'Tu cuenta y todos los datos asociados se han eliminado permanentemente.',
   },
+  library: {
+    title: 'Biblioteca de ejercicios',
+    subtitle:
+      'Cómo se ejecuta cada levantamiento, qué buscar cuando sale mal, y dónde verlo hecho correctamente.',
+    backToCoach: 'Volver al Coach',
+    cues: 'Claves técnicas',
+    faults: 'Errores comunes',
+    watchDemo: 'Ver la demostración →',
+    videoCredit: 'Abre {source} en una pestaña nueva. Enlazamos a quienes lo crearon; no alojamos ni copiamos vídeo.',
+    thirdParty: 'la fuente original',
+    empty: 'Todavía no se han añadido ejercicios.',
+    filmYourself:
+      'Grábate desde el lateral a la altura de la cadera. Casi todos los errores de arriba son evidentes en vídeo e invisibles desde dentro del levantamiento.',
+  },
+
 };
