@@ -2284,6 +2284,61 @@ Tests 351 → **369**.
 
 ---
 
+### D.24 The ground, and a boundary nobody could see — **DONE**
+
+**The background.** Reported as reading beige and muddy, and the cause turned
+out to be temperature rather than taste: every accent in the scheme is cool —
+magenta, teal, indigo — and the light background was a warm cream. Warm ground
+under cool ink fights itself; that dissonance is what registers as muddy. The
+base is now a cool near-white and the dark base drops a little deeper so cards
+lift off it.
+
+Over both sits a very soft two-wash field: teal from the top left, magenta from
+the bottom right, meeting neutral in the middle. A field rather than a picture —
+no edges, no shapes, nothing that moves, nothing for the eye to catch on.
+
+**Measured, not admired.** A gradient has no single colour, so the only honest
+check is text contrast at the *extreme* of each wash, where the background is
+furthest from base. Worst case anywhere in the scheme: secondary text over the
+magenta wash in light mode at 5.74:1, against 4.5:1 required.
+
+**Two implementation details that are the whole difference between this looking
+designed and looking broken.** It is painted on a fixed pseudo-element rather
+than with `background-attachment: fixed`, which iOS Safari does not honour and
+which repaints on every scroll frame elsewhere; the base colour moves to `html`
+so that layer has something to sit above. And each wash fades to an alpha-zero
+version of **its own hue**, never to the `transparent` keyword — `transparent`
+is transparent *black*, so a gradient running to it interpolates through grey
+and leaves a dirty band with a hard edge. That band duly appeared in the bottom
+right corner the first time it was rendered, which is the argument for
+rendering things and looking at them.
+
+**And an older defect the check uncovered.** Inputs, selects and textareas
+carried `--border` — the same token as a card outline. They are not the same
+kind of thing. A card groups content and its outline is decoration; the
+boundary of a text field is what tells somebody where they may type, which is
+why WCAG 1.4.11 asks for 3:1 against the adjacent background. Both modes had
+been failing it since the first stylesheet: **1.15:1 in light and 1.20:1 in
+dark**, which is a form field you locate by guessing. Now 3.28:1 and 3.94:1,
+each measured against its own mode's field fill, with a test asserting the two
+tokens stay distinct — because merging them back into one is exactly how they
+came to be one.
+
+**A structural fix in the test suite.** Three separate tests have now failed
+for the same reason: they asserted a construct was ABSENT from a file and
+matched the comment explaining *why* it was absent — the stretching
+prohibition, the `target="_blank"` removal, and now `background-attachment:
+fixed`. A regex cannot tell an explanation from a usage, and this codebase
+comments heavily on purpose, so the collision is structural rather than bad
+luck. Three occurrences of one bug means the missing thing is an abstraction:
+`server/test/helpers/source.js` now strips comments, with a note on the
+asymmetry — assertions *about* the prose, like the pending-review banner on a
+policy page, must still read the raw file.
+
+Tests 369 → **375**.
+
+---
+
 ## Phase 2 — Real coaching features — **COMPLETE**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
