@@ -23,6 +23,33 @@ import { useEffect, useRef, useState } from 'react';
  *   2. It restores itself whenever anything inside it takes focus, so a
  *      keyboard user tabbing into the navigation never lands on a control that
  *      is scrolled half out of view.
+ *
+ * ── THE FEEDBACK LOOP, AND WHY THE GUARDS BELOW EXIST ──────────────────────
+ *
+ * This header sits in normal flow, so condensing it makes the DOCUMENT
+ * SHORTER. The browser reacts to that by moving the scroll position - it
+ * clamps at the bottom of the page, and it re-anchors elsewhere - and that
+ * movement arrives here as an ordinary scroll event, in the opposite
+ * direction, that the reader never made. Acting on it expands the header,
+ * which makes the document taller again, which moves the scroll position
+ * back, which condenses it. Forever.
+ *
+ * That is not a theory. Driven at 390x760 against this exact source, the
+ * bottom of a long conversation produced 96 state flips in a couple of
+ * seconds, the document height oscillated between 4853 and 4896 pixels, and
+ * the test driver gave up trying to click the message box after thirty
+ * seconds because the element "is not stable". That is the reported
+ * "jittering movement" at the bottom of the coach page.
+ *
+ * Two guards, and they fix different halves of it:
+ *
+ *   A. IGNORE SCROLLS WE CAUSED. A change in document height means the
+ *      previous frame's state change moved the page, not the reader. Re-sync
+ *      and do nothing. This breaks the loop.
+ *   B. HOLD STILL AT EITHER END. Within the header's own height of the top or
+ *      the bottom there is no reading room to reclaim, and shrinking the
+ *      document at the bottom yanks the view. The header already refused to
+ *      move near the top; it now refuses near the bottom for the same reason.
  */
 export function StickyHeader({ children }) {
   const [condensed, setCondensed] = useState(false);
@@ -35,14 +62,39 @@ export function StickyHeader({ children }) {
     const THRESHOLD = 8;
     let ticking = false;
 
+    // Where the page actually is when we start. Starting from zero is wrong
+    // whenever the browser restores a scroll position on reload: the first
+    // event would carry a delta of several thousand pixels.
+    lastY.current = window.scrollY;
+    let lastDocHeight = document.documentElement.scrollHeight;
+
     function evaluate() {
       const y = window.scrollY;
       const height = ref.current?.offsetHeight ?? 0;
-      const delta = y - lastY.current;
+      const docHeight = document.documentElement.scrollHeight;
 
-      if (y <= height) {
+      // GUARD A. The document changed height, so this scroll is the browser
+      // reacting to our own last state change (or to a new message arriving),
+      // not the reader moving. Re-synchronise and take no action; acting here
+      // is the loop described above.
+      if (docHeight !== lastDocHeight) {
+        lastDocHeight = docHeight;
+        lastY.current = y;
+        ticking = false;
+        return;
+      }
+
+      const delta = y - lastY.current;
+      // GUARD B. Within the header's own height of either end, hold still.
+      // At the top there is nothing to get out of the way of; at the bottom
+      // there is nothing left to read, and condensing there shortens the
+      // document out from under the scroll position.
+      const nearTop = y <= height;
+      const nearBottom = y + window.innerHeight >= docHeight - height;
+
+      if (nearTop) {
         setCondensed(false);
-      } else if (Math.abs(delta) > THRESHOLD) {
+      } else if (!nearBottom && Math.abs(delta) > THRESHOLD) {
         setCondensed(delta > 0);
       }
       lastY.current = y;
