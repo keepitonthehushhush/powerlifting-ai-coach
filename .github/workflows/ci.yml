@@ -11,11 +11,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to the majors that declare `using: node24`. Node 20 is removed
+      # from GitHub runners entirely on 23 September 2026, so this is a
+      # deadline rather than a warning - after that date a node20 action does
+      # not run at all.
+      #
+      # Checked rather than assumed, and it mattered: checkout and setup-node
+      # reach node24 at v5, but upload-artifact@v5 still declares node20 and
+      # only v6 moves. Bumping all three to v5 would have looked complete and
+      # left one of them broken.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       # `npm ci` requires a committed package-lock.json and installs exactly
