@@ -2339,6 +2339,50 @@ Tests 369 → **375**.
 
 ---
 
+### D.25 Two easter eggs, and the four rules that keep them jokes — **DONE**
+
+The Konami sequence opens a bonus round where Coach Diaz insists he does not
+quit on people, with a link to the song about that kind of commitment. Tapping
+the mark five times quickly opens a versus splash: you against the bar, which
+has no strategy and will weigh the same tomorrow.
+
+**An easter egg that fires by accident is not a joke, it is a bug with a sense
+of humour.** Four rules, each with a test.
+
+*Never while typing.* The sequence is mostly arrow keys, and the coach page is
+a textarea people write paragraphs in — arrows are how you edit a sentence.
+Without a guard on the event target, the egg ambushes somebody mid-message,
+which is exactly the interruption the jump-to-top button was moved out of the
+way to avoid. The tap counter has the same problem in a different shape, so it
+needs five taps inside one second and resets its window rather than
+accumulating stray clicks over a session.
+
+*Nothing navigates itself.* The outbound link is a button the athlete presses,
+labelled with where it goes. It opens a new tab **on purpose**, which is the
+opposite of the decision taken for the exercise library in D.22 — and the
+difference is who asked. A demonstration video is content the athlete went
+looking for and expects to return from, so it stays in the tab and keeps the
+back button meaningful. This is a detour they chose from inside a joke; losing
+their place would be the actual annoyance.
+
+*Reduced motion is honoured.* Somebody who asked their operating system to stop
+animating things has opted out of movement, not out of jokes. The panel still
+appears; it simply does not bounce. It is a real dialog besides — Escape closes
+it, the backdrop closes it, and focus lands on the dismiss button.
+
+*Not one word of the song.* The link points at the rights holder's official
+upload, verified rather than recalled, and no lyric is reproduced anywhere in
+the application. Music publishers are the most aggressive rights holders there
+are and a joke is not worth a letter; a test asserts the absence across the
+component, both locale catalogues and the stylesheet. The arcade copy is
+written rather than borrowed — no specific game's catchphrases appear, and a
+test checks that too. The genre's conventions are fair game; a particular
+game's lines are that game's.
+
+Tests 375 → **387**.
+
+---
+
 ## Phase 2 — Real coaching features — **COMPLETE**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
