@@ -12,6 +12,8 @@ import { LogSession } from './pages/LogSession.jsx';
 import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
+import { Terms } from './pages/Terms.jsx';
+import { AiProcessing } from './pages/AiProcessing.jsx';
 
 export function App() {
   // Checked before any provider mounts. Nothing below this point can start
@@ -59,9 +61,15 @@ export function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* The policy is reachable without signing in: people are entitled
-                  to read what they would be agreeing to before they agree. */}
-              <Route path="/privacy/health-data" element={<HealthDataPolicy />} />
+              {/* Policies are reachable without signing in: people are entitled
+                  to read what they would be agreeing to before they agree.
+                  Every consent type has one, and web/src/lib/policyDocuments.js
+                  is the mapping a test holds the router to. */}
+              <Route path="/policies/terms" element={<Terms />} />
+              <Route path="/policies/ai-processing" element={<AiProcessing />} />
+              <Route path="/policies/health-data" element={<HealthDataPolicy />} />
+              {/* The old path, kept so links already in the wild still land. */}
+              <Route path="/privacy/health-data" element={<Navigate to="/policies/health-data" replace />} />
               <Route
                 path="/account"
                 element={
