@@ -118,8 +118,12 @@ sessionsRouter.get('/progress', async (req, res, next) => {
   try {
     let query = req.supabase
       .from('progress_logs')
-      .select('date, lift, weight, reps, rpe')
+      // `completed` matters here more than anywhere: a chart drawn without it
+      // shows an unbroken climb through a stall. Added when the column was
+      // (migration 0016); this select predated it.
+      .select('date, lift, weight, reps, rpe, completed')
       .order('date', { ascending: true })
+      .order('created_at', { ascending: true })
       .limit(1000);
 
     if (req.query.lift) query = query.eq('lift', String(req.query.lift));

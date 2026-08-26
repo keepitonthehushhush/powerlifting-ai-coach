@@ -46,6 +46,7 @@ export const api = {
   sendMessage: (message, conversationId) =>
     request('/chat', { method: 'POST', body: JSON.stringify({ message, conversationId }) }),
   getSessions: () => request('/sessions'),
+  getProgress: () => request('/sessions/progress'),
   logSession: (session) => request('/sessions', { method: 'POST', body: JSON.stringify(session) }),
   getLibrary: () => request('/library'),
 
