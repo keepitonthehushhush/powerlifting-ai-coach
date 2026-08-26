@@ -691,3 +691,58 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .site-nav { width: 100%; min-width: 0; }
 .nav-places { flex: 1 1 auto; min-width: 0; }
 .nav-account { min-width: 0; }
+
+/* ── Easter eggs ───────────────────────────────────────────────────────────
+   Arcade splash geometry: heavy border, hard shadow, the mark up top. It
+   should feel like the interface briefly forgot itself, then go away.
+
+   The entrance animation is a single scale-and-settle, and it is off entirely
+   under prefers-reduced-motion. Somebody who asked their operating system to
+   stop animating things has opted out of movement, not out of jokes - the
+   panel still appears, it simply does not bounce. */
+.egg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.egg-panel {
+  position: relative;
+  max-width: 30rem;
+  text-align: center;
+  padding: 1.75rem 1.5rem 1.4rem;
+  background: var(--surface);
+  border: 3px solid var(--secondary);
+  border-radius: 14px;
+  box-shadow: 8px 8px 0 var(--accent);
+  animation: egg-in 220ms cubic-bezier(0.2, 1.2, 0.3, 1);
+}
+
+.egg-mark { display: flex; justify-content: center; margin-bottom: 0.6rem; }
+
+.egg-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+}
+.egg-title { margin: 0.2rem 0 0.6rem; font-size: 1.5rem; letter-spacing: -0.02em; }
+.egg-body { margin: 0 0 1.1rem; color: var(--muted); }
+
+.egg-actions { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.egg-cta { display: inline-block; text-decoration: none; }
+
+@keyframes egg-in {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egg-panel { animation: none; }
+}

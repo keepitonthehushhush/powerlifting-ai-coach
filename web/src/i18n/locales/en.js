@@ -250,4 +250,17 @@ export const en = {
     jumpToTop: 'Top',
   },
 
+  egg: {
+    trackKicker: 'BONUS ROUND',
+    trackTitle: 'Coach Diaz does not quit on people',
+    trackBody:
+      'Not mid-block, not mid-set, not when the bar is heavy and you are not sure. There is a song about that sort of commitment. He would like you to hear it before your last set.',
+    trackCta: 'Play the motivation track ↗',
+    versusKicker: 'ROUND 1',
+    versusTitle: 'You vs the bar',
+    versusBody:
+      'The bar has no strategy. It cannot get tired, it cannot get faster, and it will weigh exactly the same tomorrow. That is the whole reason it is beatable. Go and load it.',
+    dismiss: 'Back to training',
+  },
+
 };

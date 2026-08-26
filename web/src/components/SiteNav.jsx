@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { LanguageSwitcher } from './LanguageSwitcher.jsx';
 import { Wordmark } from './Logo.jsx';
+import { useMarkTaps } from './EasterEggs.jsx';
 
 /**
  * One navigation bar, used by every signed-in page.
@@ -62,10 +63,19 @@ export function SiteNav({ children }) {
   const { t } = useI18n();
   const { signOut } = useAuth();
   const location = useLocation();
+  const countTap = useMarkTaps();
 
   return (
     <div className="site-nav">
-      <NavLink to="/coach" className="wordmark-link" aria-label={t('common.appName')}>
+      {/* The mark is still an ordinary link home. Tapping it repeatedly is the
+          only thing that does anything unusual, and five taps inside a second
+          cannot happen by accident. */}
+      <NavLink
+        to="/coach"
+        className="wordmark-link"
+        aria-label={t('common.appName')}
+        onClick={() => countTap()}
+      >
         <Wordmark name={t('common.appName')} />
       </NavLink>
 

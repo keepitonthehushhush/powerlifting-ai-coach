@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { ConsentProvider } from './context/ConsentContext.jsx';
 import { I18nProvider } from './i18n/index.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
+import { EasterEggs } from './components/EasterEggs.jsx';
 import { Login } from './pages/Login.jsx';
 import { Intake } from './pages/Intake.jsx';
 import { Chat } from './pages/Chat.jsx';
@@ -29,6 +30,9 @@ export function App() {
       <AuthProvider>
         <ConsentProvider>
           <BrowserRouter>
+            {/* Mounted once, above the router: the eggs belong to the product
+                rather than to any one page. */}
+            <EasterEggs />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route

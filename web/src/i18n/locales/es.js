@@ -254,4 +254,17 @@ export const es = {
     jumpToTop: 'Arriba',
   },
 
+  egg: {
+    trackKicker: 'RONDA EXTRA',
+    trackTitle: 'Coach Diaz no abandona a nadie',
+    trackBody:
+      'Ni a mitad de bloque, ni a mitad de serie, ni cuando la barra pesa y no lo tienes claro. Hay una canción sobre ese tipo de compromiso. Le gustaría que la escucharas antes de tu última serie.',
+    trackCta: 'Reproducir la canción ↗',
+    versusKicker: 'RONDA 1',
+    versusTitle: 'Tú contra la barra',
+    versusBody:
+      'La barra no tiene estrategia. No se cansa, no se vuelve más rápida, y mañana pesará exactamente lo mismo. Por eso mismo se le puede ganar. Ve a cargarla.',
+    dismiss: 'Volver al entrenamiento',
+  },
+
 };
