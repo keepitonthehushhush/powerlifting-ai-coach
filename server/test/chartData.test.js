@@ -225,8 +225,22 @@ describe('the decisions this chart is built on', () => {
   });
 
   test('dark mode gets its own validated steps, not an automatic flip', () => {
-    assert.match(css, /--chart-line:\s*#3987e5/);
-    assert.match(css, /prefers-color-scheme:\s*light[^}]*\}[\s\S]*?--chart-line:\s*#2a78d6/);
+    // Anchored to the chart section. Searching the whole file finds the brand
+    // palette's light block first and then runs forward to the DARK chart
+    // value - which is how an earlier version of this test compared a colour
+    // with itself and reported success.
+    const chartSection = css.slice(css.indexOf('--chart-line'));
+    const values = [...chartSection.matchAll(/--chart-line:\s*(#[0-9a-f]{6})/gi)].map((m) => m[1]);
+    assert.equal(values.length, 2, 'expected exactly one chart line colour per mode');
+    assert.notEqual(values[0], values[1], 'dark mode must be re-stepped, not reused');
+  });
+
+  test('the chart colours are not the brand colours', () => {
+    // Brand colour has no colour-vision-separation requirement; chart colour
+    // does. Magenta and cyan look striking together and fail it.
+    const accent = css.match(/--accent:\s*(#[0-9a-f]{6})/i)?.[1];
+    const chartLine = css.match(/--chart-line:\s*(#[0-9a-f]{6})/i)?.[1];
+    assert.notEqual(accent, chartLine, 'the chart must not inherit the brand accent');
   });
 
   test('the numbers are reachable as text, not only as pixels', () => {

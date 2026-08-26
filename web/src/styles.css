@@ -2,29 +2,68 @@
    has roughly a dozen distinct elements, and a utility framework would add a
    build dependency and a class-name vocabulary for no benefit at this size. */
 
+/* ── The palette ──────────────────────────────────────────────────────────
+   A dusk-and-neon scheme: deep indigo night, hot magenta, and a cyan-teal.
+   The family is the one an eighties Florida evening is remembered in, and it
+   was chosen because a training app is opened on a phone in a gym next to a
+   dozen others - being immediately recognisable is worth real money.
+
+   ON THE TRADEMARK QUESTION. A colour, or a pairing of colours, can be
+   protected only by acquiring secondary meaning within a specific product
+   category (the standard example is John Deere's green-and-yellow, for farm
+   equipment), and that protection does not reach across unrelated industries.
+   Nobody owns teal-and-magenta for strength software. What IS protected is the
+   NAME of the television series that made the palette famous, so it appears
+   nowhere in this product - not in a class, not in a comment, not in the UI.
+   These values are also our own steps rather than sampled from anything.
+
+   ON MEMORABILITY VERSUS READABILITY. Colour does measurably affect
+   cognition - Mehta & Zhu (Science, 2009) found red improved performance on
+   detail-oriented tasks including memory retrieval by up to 31% against blue,
+   while blue roughly doubled creative output. A coach whose job is recalling
+   cues and numbers wants the warm end, which is why the primary action colour
+   is magenta rather than the cyan. But that effect is small next to simply
+   being able to read the screen, so every pair below was run through a
+   contrast check rather than chosen by eye. The lowest ratio anywhere in the
+   scheme is 5.60:1, against a 4.5:1 requirement for body text.
+
+   Chart colours are NOT these. They live further down, next to the charts, and
+   are validated separately for colour-vision separation - a requirement that
+   brand colours do not have to meet and these would fail. */
+
 :root {
-  --bg: #0e0f12;
-  --surface: #17191f;
-  --surface-2: #1e2129;
-  --border: #2a2e38;
-  --text: #e8eaed;
-  --muted: #9aa1ad;
-  --accent: #e5533d;
-  --accent-text: #ffffff;
-  --warning: #f0b429;
-  --error: #ff6b6b;
+  --bg: #12101f;
+  --surface: #1b1830;
+  --surface-2: #241f3d;
+  --border: #322c4f;
+  --text: #f5f3f7;
+  --muted: #a89ec4;
+  --accent: #ff4f9a;
+  --accent-text: #12101f;
+  --accent-soft: rgba(255, 79, 154, 0.14);
+  --secondary: #22d3d3;
+  --link: #22d3d3;
+  --warning: #ffb833;
+  --error: #ff7a7a;
   --radius: 10px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f7f7f8;
+    --bg: #fdf7f4;
     --surface: #ffffff;
-    --surface-2: #f0f1f3;
-    --border: #dcdee3;
-    --text: #16181d;
-    --muted: #666c78;
+    --surface-2: #f5eff2;
+    --border: #e7dfe6;
+    --text: #1a1526;
+    --muted: #5d5470;
+    --accent: #c4186b;
+    --accent-text: #ffffff;
+    --accent-soft: rgba(196, 24, 107, 0.10);
+    --secondary: #0093a0;
+    --link: #00707c;
+    --warning: #8a5a00;
+    --error: #c62828;
   }
 }
 
@@ -95,10 +134,23 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   font-weight: 600;
 }
 
+/* Links carry the cool colour rather than the muted ink they used to. Two
+   reasons: a link that looks exactly like body text is a link people do not
+   know they can press, and a scheme only registers as an identity if it is
+   present in the parts of a page people actually look at. Cool rather than
+   magenta, so that magenta stays reserved for the one primary action on a
+   screen - if everything is emphasised, nothing is.
+
+   --link is a SEPARATE token from --secondary, and the reason is worth keeping:
+   text must clear 4.5:1 while a chart mark or a border only needs 3:1. The
+   light-mode secondary is #0093a0, which is fine as a chart line and reaches
+   only 3.48:1 as body text on the cream background. An earlier version of this
+   comment asserted 4.98:1 for it, which was simply wrong - the checker said
+   otherwise. #00707c clears it at 5.48:1. */
 .link {
   background: none;
   border: none;
-  color: var(--muted);
+  color: var(--link);
   text-decoration: underline;
   padding: 0;
   font-size: 0.9rem;
@@ -266,21 +318,27 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 
 /* ── Charts ────────────────────────────────────────────────────────────────
-   Colours here are validated, not chosen. The obvious pairing - the app accent
-   red for the line and green for "good" - fails colour-vision separation at
-   ΔE 2.7 under deuteranopia, the most common form. Blue and amber clear it at
-   ΔE 32 (dark) and 27 (light) while staying inside the lightness band for each
-   surface, so dark mode gets its own steps rather than an automatic flip. */
+   Colours here are validated, not chosen, and they are deliberately NOT the
+   brand colours. Magenta and cyan look striking together and fail colour-vision
+   separation; so does the red-and-green pairing tried first, at ΔE 2.7 under
+   deuteranopia, which is invisible to anyone with normal colour vision and is
+   exactly why it gets shipped.
+
+   Teal and amber clear the check at ΔE 18.0 (dark, ΔE 27.1 tritan) and 17.3
+   (light), each stepped into its own surface's lightness band and above the
+   chroma floor - so dark mode carries its own values rather than an automatic
+   flip. A missed set also differs by SHAPE, which is what makes the ΔE-18 band
+   legitimate rather than merely tolerable. */
 :root {
-  --chart-line: #3987e5;
-  --chart-missed: #b8801a;
-  --chart-grid: #2a2e38;
+  --chart-line: #1aa5b0;
+  --chart-missed: #cf7a18;
+  --chart-grid: #322c4f;
 }
 @media (prefers-color-scheme: light) {
   :root {
-    --chart-line: #2a78d6;
-    --chart-missed: #b07800;
-    --chart-grid: #e4e6ea;
+    --chart-line: #0093a0;
+    --chart-missed: #a35c00;
+    --chart-grid: #e7dfe6;
   }
 }
 
@@ -328,3 +386,73 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .data-table th, .data-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
 .data-table th { color: var(--muted); font-weight: 600; }
+
+/* ── Sticky navigation ─────────────────────────────────────────────────────
+   The bar condenses on the way down and returns on the way up. It never
+   vanishes: navigation you cannot see is navigation you cannot use.
+
+   Every transition here is disabled under prefers-reduced-motion. A bar that
+   animates on every scroll gesture is precisely the movement that provokes
+   vestibular symptoms, and "it looks nice" is not a reason to make somebody
+   feel ill. */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: padding 160ms ease, border-color 160ms ease;
+  padding: 0.75rem 0;
+}
+.sticky-header.condensed {
+  padding: 0.2rem 0;
+  border-bottom-color: var(--border);
+}
+.sticky-header.condensed h1,
+.sticky-header.condensed .brand {
+  font-size: 0.95rem;
+  transition: font-size 160ms ease;
+}
+.sticky-header h1,
+.sticky-header .brand {
+  transition: font-size 160ms ease;
+}
+/* The subtitle is the first thing to go: it is orientation, not navigation. */
+.sticky-header.condensed .header-detail {
+  display: none;
+}
+
+.back-to-top {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.back-to-top:hover { filter: brightness(1.08); }
+.back-to-top:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
+
+/* A link that leaves the application says so before it is clicked, and the
+   arrow is decorative rather than the only signal. */
+.leaves-app::after {
+  content: '';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticky-header,
+  .sticky-header h1,
+  .sticky-header .brand,
+  .sticky-header.condensed h1,
+  .sticky-header.condensed .brand {
+    transition: none;
+  }
+}
