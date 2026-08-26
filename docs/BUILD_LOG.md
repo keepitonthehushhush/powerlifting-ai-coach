@@ -2215,6 +2215,75 @@ Tests 334 → **351**.
 
 ---
 
+### D.23 A mark, a navigation bar, and a bug that was not there — **DONE**
+
+**The mark.** A slanted hexagonal badge — arcade cabinet marquee geometry —
+with a loaded barbell across it and a magenta keyline offset inside a cyan
+outline. That offset is the misregistration of cheaply printed arcade artwork,
+which is where the energy of the era actually lives. Drawn from scratch:
+nothing traced from or derived from any existing game, character or logotype.
+An art movement is not ownable; a specific asset is.
+
+Two defects in the first draft, both found by rendering it rather than
+admiring it. It was set in Impact with a skew — and Impact was not installed on
+the machine that rendered it, so the browser substituted a generic sans and the
+result looked nothing like the design. **A logo that depends on a font being
+present on the reader's device is not a logo, it is a suggestion.** The badge is
+now geometry. And at 24px the five barbell elements merged into a blob, so
+there is a `compact` variant below 32px — bar, two sleeves, heavier outline.
+Checked at 48, 32, 24 and 16.
+
+The wordmark beside it is deliberately ordinary type. Heavy arcade lettering
+cannot stay legible in a 28px bar, and a loud logotype would fight the
+restrained navigation it sits inside. Badge carries the character; the name
+stays quiet.
+
+**The navigation.** Only the coach page had any; the others had an ad-hoc
+"back to coach" link, so moving between logging, progress and the library meant
+routing through the conversation. The links it did have were a flat row of
+equally-weighted underlined text in the order they were added, with account
+actions mixed among destinations.
+
+Now one bar on every signed-in page, ordered by the training loop — coach, log,
+progress, library — then profile and data in quieter ink, and only genuine
+system controls on the far side. Frequency of use is the only ordering
+principle that survives contact with a real user. The restraint is the design:
+no underlines, no borders, no pills; weight and ink carry the hierarchy, and
+**one accent does one job** — a 2px bar under the current page. A test asserts
+the accent appears in the active rule and *not* the hover rule, because an
+accent that also paints hovers stops meaning "you are here".
+
+**The jump control, and where a thumb lives.** The coach page gets it in the
+pinned header rather than floating. The conversation has a sticky composer
+along the bottom edge, so a floating button at the bottom right would sit on
+the send button — the most-used control on the page, and exactly where a thumb
+already rests while typing between sets. Being interrupted by a control you
+did not mean to press is worse than scrolling. The long scrolling pages keep
+the floating variant, where nothing collides.
+
+**And a correction.** Twice I diagnosed the mobile nav as clipped — "Sign out"
+running off a 430px screen, cards overflowing — and the second time I shipped a
+CSS fix for it (`overflow-x: hidden` on body). It was not real. Headless
+`--window-size` is respected by screenshots but **ignored by `--dump-dom`**,
+which always reported 485px: the screenshots were cropping a 485px layout at
+430 and I read the crop as a defect. Measured against a real 390px column, the
+last control ends at 374 inside 390 and nothing overflows anywhere. The
+`overflow-x: hidden` has been removed — it would have masked genuine overflow
+later and it interferes with sticky positioning — and the comment that claimed
+it fixed something now says what actually happened.
+
+The `min-width: 0` rules stay, because the destinations row genuinely does
+scroll: scrollWidth 499 against clientWidth 358 at that column, which is the
+intended behaviour and those rules are what permit it.
+
+Two tests moved rather than being deleted: they asserted that `Chat.jsx`
+contained links to `/log` and `/library`, which now live in the shared nav. The
+property is unchanged; only the file satisfying it moved.
+
+Tests 351 → **369**.
+
+---
+
 ## Phase 2 — Real coaching features — **COMPLETE**
 - Recovery & lifestyle factors — **done** (D.11)
 - Session logging UI — **done** (D.15)
