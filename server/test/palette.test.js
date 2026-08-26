@@ -1,8 +1,14 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readSource } from './helpers/source.js';
 
-const css = readFileSync(new URL('../../web/src/styles.css', import.meta.url), 'utf8');
+/**
+ * Comments stripped: this file makes several ABSENCE assertions, and a regex
+ * cannot tell a usage from the note explaining why something is not used. See
+ * helpers/source.js - three tests have been caught by that already.
+ */
+const css = readSource(new URL('../../web/src/styles.css', import.meta.url));
 
 /**
  * Colour choices are computable, so they get computed.
@@ -130,6 +136,28 @@ describe('the palette is readable, measured rather than asserted', () => {
       }
     });
 
+    test(`${mode}: a form control's boundary clears the 3:1 WCAG 1.4.11 asks for`, () => {
+      // The boundary of a text field is what tells somebody where they may
+      // type, so it is a meaningful UI boundary rather than decoration. Both
+      // modes failed this from the first stylesheet - 1.15:1 and 1.20:1 - and
+      // it was found while checking something else. A card outline is exempt:
+      // it groups content, and the content inside it carries its own contrast.
+      const field = token('field-border', mode) ?? token('field-border', 'dark');
+      const fill = token('surface-2', mode) ?? token('surface-2', 'dark');
+      assert.ok(field, `${mode} defines a --field-border`);
+      const r = contrast(field, fill);
+      assert.ok(r >= AA_LARGE, `field boundary on its own fill is ${r.toFixed(2)}:1, needs ${AA_LARGE}`);
+    });
+
+    test(`${mode}: the decorative border is NOT reused for controls`, () => {
+      // The regression this prevents is someone tidying the two tokens back
+      // into one, which is how they came to be one in the first place.
+      assert.notEqual(
+        token('field-border', mode) ?? token('field-border', 'dark'),
+        token('border', mode) ?? token('border', 'dark'),
+      );
+    });
+
     test(`${mode}: chart marks clear the 3:1 a non-text mark needs`, () => {
       for (const name of ['chart-line', 'chart-missed']) {
         const colour = token(name, mode) ?? token(name, 'dark');
@@ -138,6 +166,26 @@ describe('the palette is readable, measured rather than asserted', () => {
       }
     });
   }
+
+  test('the background washes are quiet enough to read over', () => {
+    // A gradient has no single colour, so the honest check is the extreme of
+    // each wash. Keeping the alpha low is what keeps that true; a test on the
+    // alpha is a proxy for a contrast measurement that cannot be taken from a
+    // stylesheet alone. Measured at those extremes when written: worst case
+    // 5.74:1 for secondary text, against 4.5:1.
+    const washes = [...css.matchAll(/--wash-(?:cool|warm):\s*rgba\([^)]*?,\s*([0-9.]+)\)/g)];
+    assert.equal(washes.length, 4, 'expected a cool and a warm wash in each mode');
+    for (const [, alpha] of washes) {
+      assert.ok(Number(alpha) <= 0.1, `a wash at alpha ${alpha} is too strong to guarantee contrast`);
+    }
+  });
+
+  test('the wash sits on a fixed layer, not on a scrolling background', () => {
+    // background-attachment: fixed is ignored by iOS Safari and repaints on
+    // every scroll frame elsewhere.
+    assert.match(css, /body::before \{[^}]*position: fixed/s);
+    assert.doesNotMatch(css, /background-attachment:\s*fixed/);
+  });
 
   test('light mode re-steps its own values rather than inheriting the dark ones', () => {
     for (const name of ['bg', 'surface', 'text', 'muted', 'accent', 'link', 'chart-line']) {

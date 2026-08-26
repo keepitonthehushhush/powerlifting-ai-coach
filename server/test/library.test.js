@@ -1,16 +1,11 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readSource } from './helpers/source.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
-const pageRaw = read('../../web/src/pages/Library.jsx');
-/**
- * Comments stripped before matching. A file that EXPLAINS why it no longer uses
- * target="_blank" contains the string target="_blank", and a regex cannot tell
- * an explanation from a usage - the same trap that made the stretching test
- * flag the prompt's own prohibition.
- */
-const page = pageRaw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+// Comments stripped - see helpers/source.js for why this keeps mattering.
+const page = readSource(new URL('../../web/src/pages/Library.jsx', import.meta.url));
 const app = read('../../web/src/App.jsx');
 const chat = read('../../web/src/pages/Chat.jsx');
 const siteNav = read('../../web/src/components/SiteNav.jsx');
