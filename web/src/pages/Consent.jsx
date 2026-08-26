@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ConsentPanel } from '../components/ConsentPanel.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { useConsent } from '../context/ConsentContext.jsx';
@@ -33,12 +33,6 @@ export function Consent() {
 
       <div className="card stack">
         <ConsentPanel onChange={setState} />
-
-        <div className="row gap">
-          <Link className="link" to="/privacy/health-data">
-            {t('consent.readPolicy')}
-          </Link>
-        </div>
 
         <button
           type="button"

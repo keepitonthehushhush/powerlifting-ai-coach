@@ -255,3 +255,12 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .exercise-row .grow { flex: 1 1 12rem; }
 .exercise-row .narrow { flex: 0 1 5rem; }
 .exercise-row .checkbox { flex: 0 0 auto; }
+
+/* The policy link sits above the checkbox it belongs to and has to look like
+   something you are meant to read first, not a footnote. */
+.policy-link {
+  margin: 0 0 0.5rem;
+}
+.link.strong {
+  font-weight: 600;
+}

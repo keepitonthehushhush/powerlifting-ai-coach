@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { Link } from 'react-router-dom';
+import { policyPathFor } from '../lib/policyDocuments.js';
 
 /**
  * Granular consent, one decision at a time.
@@ -63,8 +65,23 @@ export function ConsentPanel({ onChange, showRequiredOnly = false }) {
         const state = consents.consents[type];
         const required = consents.required.includes(type);
 
+        const policyPath = policyPathFor(type);
+
         return (
           <div key={type} className="consent-item">
+            {/* The document comes BEFORE the checkbox, not in a row of links
+                underneath it. Consent that is agreed to before the thing being
+                agreed to has been made available is not informed consent, and
+                a link placed after the control people are reaching for is a
+                link most of them will never see. */}
+            {policyPath && (
+              <p className="policy-link">
+                <Link className="link strong" to={policyPath}>
+                  {t('consent.readBeforeAgreeing', { document: t(`consent.${type}.document`) })}
+                </Link>
+              </p>
+            )}
+
             <label className="checkbox">
               <input
                 type="checkbox"
