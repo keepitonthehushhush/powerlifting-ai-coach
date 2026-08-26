@@ -40,7 +40,7 @@ sessionsRouter.get('/', async (req, res, next) => {
 /**
  * POST /api/sessions
  *
- * Writes the session, then fans the completed sets out into progress_logs.
+ * Writes the session, then fans every logged set out into progress_logs.
  *
  * The duplication is deliberate. workout_sessions.exercises is the faithful
  * record of the training day as a document; progress_logs is a flat, indexed
@@ -76,7 +76,7 @@ sessionsRouter.post('/', async (req, res, next) => {
     if (sessionError) throw new HttpError(502, 'Could not save the session.', { code: sessionError.code });
 
     const logRows = exercises
-      .filter((e) => e.completed !== false && e.weight != null && e.reps != null)
+      .filter((e) => e.weight != null && e.reps != null)
       .map((e) => ({
         user_id: req.user.id,
         session_id: session.id,
@@ -85,6 +85,8 @@ sessionsRouter.post('/', async (req, res, next) => {
         weight: e.weight,
         reps: e.reps,
         rpe: e.rpe ?? null,
+        // A miss is the input to the deload rule, not noise. See migration 0016.
+        completed: e.completed !== false,
       }));
 
     if (logRows.length) {

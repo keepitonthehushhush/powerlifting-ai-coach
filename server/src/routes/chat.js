@@ -25,7 +25,8 @@ async function loadCoachingContext(supabase) {
   const [profile, sessions, logs, program, library] = await Promise.all([
     supabase.from('user_profile').select('*').maybeSingle(),
     supabase.from('workout_sessions').select('date, exercises, notes').order('date', { ascending: false }).limit(5),
-    supabase.from('progress_logs').select('lift, weight, reps, rpe, date').order('date', { ascending: false }).limit(60),
+    supabase.from('progress_logs').select('lift, weight, reps, rpe, date, completed')
+      .order('date', { ascending: false }).order('created_at', { ascending: false }).limit(60),
     supabase.from('workout_programs').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('exercise_library').select('slug, name, video_url, video_source').not('video_url', 'is', null),
   ]);
