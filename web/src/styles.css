@@ -32,10 +32,16 @@
    brand colours do not have to meet and these would fail. */
 
 :root {
-  --bg: #12101f;
+  --bg: #0f0d1a;
+  --wash-cool: rgba(34, 211, 211, 0.07);
+  --wash-cool-end: rgba(34, 211, 211, 0);
+  --wash-warm: rgba(255, 79, 154, 0.06);
+  --wash-warm-end: rgba(255, 79, 154, 0);
   --surface: #1b1830;
   --surface-2: #241f3d;
-  --border: #322c4f;
+  --border: #2c2745;
+  /* Interactive controls get their own, stronger boundary. See below. */
+  --field-border: #7d78bb;
   --text: #f5f3f7;
   --muted: #a89ec4;
   --accent: #ff4f9a;
@@ -51,10 +57,15 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #fdf7f4;
+    --bg: #f3f3f8;
+    --wash-cool: rgba(0, 147, 160, 0.09);
+    --wash-cool-end: rgba(0, 147, 160, 0);
+    --wash-warm: rgba(196, 24, 107, 0.07);
+    --wash-warm-end: rgba(196, 24, 107, 0);
     --surface: #ffffff;
-    --surface-2: #f5eff2;
-    --border: #e7dfe6;
+    --surface-2: #eeeef4;
+    --border: #dfdfe9;
+    --field-border: #84809a;
     --text: #1a1526;
     --muted: #5d5470;
     --accent: #c4186b;
@@ -69,12 +80,52 @@
 
 * { box-sizing: border-box; }
 
+/* ── The ground ────────────────────────────────────────────────────────────
+   The light background used to be a warm cream. It read as muddy, and the
+   reason is temperature: every accent in this scheme is cool - magenta, teal,
+   indigo - and warm ground under cool ink fights itself. The base is now a
+   cool near-white, which lets the accents sit rather than clash.
+
+   Over it, two very soft radial washes: teal from the top-left, magenta from
+   the bottom-right, meeting in a neutral middle. It is a dusk field rather
+   than a picture - no edges, no shapes, nothing for the eye to catch on and
+   nothing that moves.
+
+   IT IS MEASURED, NOT ADMIRED. A gradient has no single colour, so the only
+   honest check is text contrast at the EXTREME of each wash, where the
+   background is furthest from base. Worst case anywhere: secondary text over
+   the magenta wash in light mode at 5.74:1, against a 4.5:1 requirement.
+   Cards are opaque, so anything inside one is unaffected either way.
+
+   Painted on a FIXED pseudo-element rather than with background-attachment:
+   fixed, which iOS Safari does not honour and which repaints on every scroll
+   frame elsewhere. The base colour lives on html so that this layer, at
+   z-index -1, has something to sit above - a body with its own background
+   would paint straight over it. */
+html { background: var(--bg); }
+
 body {
   margin: 0;
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font-family: var(--font);
   line-height: 1.55;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Fading to an alpha-zero version of the SAME hue, never to the `transparent`
+     keyword. `transparent` is transparent BLACK, so a gradient running to it
+     interpolates through grey and leaves a visible dirty band with a hard edge
+     - which is exactly what appeared in the bottom right corner the first time
+     this was rendered. */
+  background:
+    radial-gradient(58rem 42rem at 10% -12%, var(--wash-cool), var(--wash-cool-end) 62%),
+    radial-gradient(50rem 38rem at 102% 110%, var(--wash-warm), var(--wash-warm-end) 64%);
 }
 
 h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
@@ -107,11 +158,22 @@ h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
 label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem; font-weight: 500; }
 label.checkbox { flex-direction: row; align-items: flex-start; gap: 0.5rem; font-weight: 400; }
 
+/* ── Form controls ─────────────────────────────────────────────────────────
+   These carry --field-border, not --border, and the distinction is an
+   accessibility requirement rather than a preference. A card outline groups
+   content and is decorative; the boundary of a text field is what tells
+   somebody where they may type, and WCAG 1.4.11 asks for 3:1 against the
+   adjacent background for exactly that reason.
+
+   Both modes were failing it badly and had been since the first stylesheet:
+   1.15:1 in light and 1.20:1 in dark, which is a field you locate by guessing.
+   Now 3.28:1 and 3.94:1, measured against each mode's own field fill. This
+   predates the background change and was found while checking it. */
 input, select, textarea {
   font: inherit;
   color: var(--text);
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   width: 100%;
