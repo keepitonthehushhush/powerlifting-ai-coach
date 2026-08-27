@@ -15,6 +15,7 @@ export const es = {
     backToTop: 'Volver arriba',
     appName: 'Coach Diaz',
     forYourClinician: 'Información para tu médico o fisioterapeuta',
+    faq: 'Preguntas frecuentes',
     loading: 'Cargando…',
     saving: 'Guardando…',
     working: 'Procesando…',
@@ -384,6 +385,7 @@ export const es = {
     library: 'Biblioteca',
     profile: 'Perfil',
     data: 'Tus datos',
+    faq: 'Preguntas frecuentes',
     jumpToTop: 'Arriba',
   },
 

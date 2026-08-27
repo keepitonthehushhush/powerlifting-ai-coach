@@ -19,6 +19,7 @@ import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { ForYourClinician } from './pages/ForYourClinician.jsx';
+import { Faq } from './pages/Faq.jsx';
 import { AiProcessing } from './pages/AiProcessing.jsx';
 
 export function App() {
@@ -92,6 +93,12 @@ export function App() {
                   account to read is useless to a physiotherapist holding a
                   phone in a treatment room. */}
               <Route path="/about" element={<ForYourClinician />} />
+
+              {/* Public for the same reason: the person with the most
+                  questions is the one who has not signed up yet, and making
+                  them create an account to find out what happens to their
+                  data is exactly backwards. */}
+              <Route path="/faq" element={<Faq />} />
 
               <Route path="/policies/terms" element={<Terms />} />
               <Route path="/policies/ai-processing" element={<AiProcessing />} />

@@ -286,8 +286,13 @@ export function Login() {
           {t('medical.disclaimer')}{' '}
           {/* Next to the medical disclaimer rather than in the navigation:
               the moment somebody wonders whether this is safe is the moment
-              the page answering that question should be one click away. */}
+              the page answering that question should be one click away. The
+              FAQ sits with it for the same reason: the person deciding whether
+              to type their injuries into a stranger's website is standing on
+              this screen, not inside the app. */}
           <Link to="/about">{t('common.forYourClinician')}</Link>
+          {' · '}
+          <Link to="/faq">{t('common.faq')}</Link>
         </p>
       </div>
     </div>

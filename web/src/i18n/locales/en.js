@@ -11,6 +11,7 @@ export const en = {
     backToTop: 'Back to top',
     appName: 'Coach Diaz',
     forYourClinician: 'Information for your doctor or physiotherapist',
+    faq: 'Questions people ask',
     loading: 'Loading…',
     saving: 'Saving…',
     working: 'Working…',
@@ -382,6 +383,7 @@ export const en = {
     library: 'Library',
     profile: 'Profile',
     data: 'Your data',
+    faq: 'FAQ',
     jumpToTop: 'Top',
   },
 

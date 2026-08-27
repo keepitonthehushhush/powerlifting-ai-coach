@@ -58,6 +58,7 @@ const PLACES = [
   { to: '/library', key: 'nav.library' },
   { to: '/intake', key: 'nav.profile', quiet: true },
   { to: '/account', key: 'nav.data', quiet: true },
+  { to: '/faq', key: 'nav.faq', quiet: true },
 ];
 
 export function SiteNav({ children }) {
