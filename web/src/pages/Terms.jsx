@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { CONTACT_EMAIL, contactIsUsable } from '../lib/contact.js';
 
 /**
  * Terms of Service.
@@ -130,10 +131,27 @@ export function Terms() {
         </p>
         <p>
           If you are a parent or guardian and you believe an account belongs to someone under 18,
-          tell us and we will delete it and the data with it. Anyone with access to the account can
-          also delete it immediately from the Account page, which removes everything and is not
-          recoverable. We act on what we are told: we do not knowingly provide this service to
-          minors, and being informed is what makes it knowing.
+          tell us and we will delete it and the data with it.{' '}
+          {contactIsUsable() ? (
+            <>
+              Write to{' '}
+              <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
+                {CONTACT_EMAIL}
+              </a>
+              . Tell us the email address the account was opened with; you do not need to prove
+              anything to us, and we would rather delete an account in error than leave a
+              child&rsquo;s data in place while we deliberate.
+            </>
+          ) : (
+            <>
+              A monitored address for this is being set up and will be named here once mail to it
+              is confirmed arriving &mdash; we would rather print nothing than print an address
+              that bounces.
+            </>
+          )}{' '}
+          Anyone with access to the account can also delete it immediately from the Account page,
+          which removes everything and is not recoverable. We act on what we are told: we do not
+          knowingly provide this service to minors, and being informed is what makes it knowing.
         </p>
 
         <h2 className="h3">Your account</h2>

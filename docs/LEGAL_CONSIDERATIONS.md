@@ -192,13 +192,17 @@ does not knowingly collect from minors, that a date was asked for and acted
 on, and that a report is honoured when one arrives. A takedown route that is
 used is worth more than any wording that is not.
 
-**The gap that remains** is that there is no monitored contact address. The
-terms commit to deleting an account when we are told it belongs to someone
-under 18, and today the only route is the Account page, which requires access
-to the account. Before the link is shared beyond people who can reach the
-owner directly, a monitored address needs to exist and be named in the terms.
-That is a prerequisite, not a nicety: a commitment nobody can invoke is not a
-commitment.
+**The gap that remains** is narrower than it was. The address exists in the
+code and in the runbook; what has not happened is mail actually arriving at
+it. That distinction is deliberately load-bearing: `CONTACT_LIVE` records an
+arrival, not an intention, and the documents refuse to print the address until
+it flips. A commitment nobody can invoke is not a commitment, and an address
+that bounces is worse than none because it looks like one.
+
+A personal address was the faster option and was refused: an address in a
+public legal document is scraped within days, and once people have consented to
+a document naming it, changing it means a version bump and re-consenting
+everyone. A forwarder costs five minutes and can be repointed forever.
 
 **Verification was considered and rejected.** The only method that actually
 verifies age is collecting government identity documents, which would be a far
@@ -254,10 +258,15 @@ it was answering with silence. Fixed in migration 0021.
    but is itself a decision with legal consequences.
 6. ~~A decision on under-18s.~~ **Done 2026-08-27**: coaching is refused below
    18 on the server, and the terms carry the representation, the
-   non-verification statement and the takedown commitment. What remains is a
-   **monitored contact address** so the takedown commitment can actually be
-   invoked — see above. Blocking for sharing the link beyond people who can
-   reach the owner directly.
+   non-verification statement and the takedown commitment. The **contact
+   address** is chosen and wired — `privacy@coachdiaz.app`, forwarded rather
+   than a personal inbox, so it can be repointed later without a version bump
+   and a re-consent. It is not yet live: `CONTACT_LIVE` in
+   `web/src/lib/contact.js` stays `false` until a test email has actually
+   arrived, and while it is false every document prints the Account-page route
+   instead and says an address is being set up. A test asserts they cannot
+   print an address that does not work. **Flipping that flag is the last item
+   blocking a wider share.**
 7. **Attorney review of all three documents.** Nothing below the draft banner
    should be relied on until this happens.
 
