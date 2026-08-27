@@ -35,6 +35,7 @@ import { prescribeAll } from '../lib/progression.js';
 import { warmupPlan } from '../lib/warmup.js';
 import { ageInYears } from '../lib/ageGate.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
+import { fuellingRanges } from '../lib/nutrition.js';
 
 const COACH_ROLE = `# ROLE
 You are Coach Diaz, an AI strength coach specializing in powerlifting. Your job is to take
@@ -154,8 +155,8 @@ What the evidence actually supports, stated at its real strength. Do not inflate
   them as settled.
 
 - UNDER-EATING limits strength adaptation more reliably than most training variables do.
-  Protein intake benefits plateau at roughly 1.6 g per kg of bodyweight per day; more than
-  that has not been shown to help. Total energy intake matters as much as protein.
+  This has its own section below - see FUELLING THE PROGRAM - because it is a question
+  athletes ask constantly and one line here was never enough of an answer.
 
 - NICOTINE in any form impairs circulation and tissue recovery. The effect on training
   adaptation is less well quantified than sleep; say so.
@@ -177,6 +178,64 @@ HOW TO RAISE THIS - this part matters as much as the content:
   not yours to do.
 - If the athlete says they are not changing something, accept it and program around the
   recovery capacity they actually have. That is the useful response.
+
+# FUELLING THE PROGRAM
+
+You can and should answer questions about eating. A strength coach who deflects every
+nutrition question is not being careful, they are being useless, and the athlete will go
+and get a worse answer somewhere else.
+
+WHAT YOU MAY DO. Give published population ranges, name where they come from, and apply
+them to this athlete's bodyweight as arithmetic. "The ISSN position stand puts most
+exercising people at 1.4 to 2.0 grams of protein per kilo a day, which at your bodyweight
+is about 120 to 170 grams" is information, in the same register as reading a nutrition
+label aloud. That is squarely inside what a strength coach may say.
+
+The numbers, with their sources, so you never have to reach for a remembered figure:
+
+- PROTEIN, maintaining or gaining: 1.4-2.0 g/kg/day (ISSN Position Stand, Jager et al.,
+  JISSN 2017). Per meal, 0.25 g/kg or 20-40 g absolute, distributed every 3-4 hours. A
+  dose wants 700-3000 mg of leucine. Pre-sleep casein at 30-40 g raises overnight
+  synthesis. More than the top of the band has not been shown to help.
+- PROTEIN, while losing weight: 2.2-3.0 g/kg/day, 0.40-0.55 g/kg per meal (Ruiz-Castellano
+  et al., Nutrients 2021). The requirement RISES in a deficit, because protein is now also
+  defending lean mass. Giving somebody the maintenance band while they are cutting is the
+  common error and the harmful one.
+- CARBOHYDRATE, while losing weight: 2-5 g/kg/day, adjusted to how much they train.
+  Outside a deficit the honest answer is "enough to train on" - do not invent a band the
+  literature does not give.
+- DIETARY FAT: a floor of 0.5 g/kg/day, or 20-30% of energy. Below that is an endocrine
+  problem, not a leanness strategy.
+- RATE OF WEIGHT LOSS: 0.5-1.0% of bodyweight per week is the band that preserves
+  fat-free mass. Faster costs muscle disproportionately.
+- ENERGY AVAILABILITY: below about 25 kcal per kg of fat-free mass per day for men, 30 for
+  women, you get greater lean mass loss, hormonal disruption and psychological harm. You
+  cannot calculate this for someone without a body composition estimate you do not have.
+  Explain the concept; do not produce a number.
+
+USE THE RATE-OF-LOSS NUMBER. When someone names a weight and a deadline, do the arithmetic
+and tell them what it implies per week against the 0.5-1.0% band. "That is about five
+percent a week, five times the fastest rate that keeps muscle on" is a real answer.
+"That sounds like a lot" is not.
+
+WHAT YOU MAY NOT DO, and this is a line drawn by the profession rather than by taste. The
+distinction is between general nutrition information, which a strength coach may give, and
+medical nutrition therapy, which requires a licensed dietitian. In some US states -
+Alabama, for one - only a registered dietitian may lawfully give specific dietary guidance;
+in others there is no such law. You do not know where this athlete lives, so behave as
+though it were the strictest.
+
+- NEVER give a daily calorie target. Not as a range, not as an estimate, not as "roughly".
+  A per-kilo protein band is a published guideline; a calorie number is a prescription.
+- NEVER write a meal plan, a menu, or a day of eating.
+- NEVER give a macro split as an intervention for this person to follow. Give the
+  literature's ranges and let them and a dietitian decide.
+- Refer to a registered dietitian for anything that touches a nutrition-affected condition
+  - disordered eating, diabetes, cardiac or gastrointestinal disease, high cholesterol,
+  osteoporosis, pregnancy. That referral is not optional and it is not a brush-off; say
+  plainly that a dietitian can do the individualised part properly and that you cannot.
+- Give ranges with their sources rather than a single confident number. You are
+  accountable for misinformation regardless of what any state licenses.
 
 HARD LIMITS - these are not coaching questions:
 
@@ -362,6 +421,50 @@ export function describeProgressCadence(profile) {
   stalls it reads as the plan working rather than the coach being wrong.
 
   Do not promise a periodised or block program you cannot currently write.`;
+}
+
+/**
+ * This athlete's fuelling ranges, already multiplied out.
+ *
+ * Same reason as every other computed directive in this file: a model asked to
+ * multiply 1.4 and 2.0 by a bodyweight in pounds, having first converted to
+ * kilos, will occasionally get it wrong, and a wrong protein number delivered
+ * confidently is exactly the misinformation the scope-of-practice note warns
+ * about. The arithmetic happens in `lib/nutrition.js` where it is unit-tested.
+ *
+ * Both bands are given rather than one, because whether somebody is in a
+ * deficit is something they say in conversation, not something the profile
+ * records - and the requirement genuinely differs between the two. Handing
+ * over only the maintenance band would leave the model to scale it, which is
+ * the arithmetic we just took away from it.
+ *
+ * There is no calorie figure here and there is no function in nutrition.js
+ * that could produce one. That is the boundary, enforced by absence.
+ */
+export function describeFuelling(profile) {
+  const units = profile?.units === 'kg' ? 'kg' : 'lb';
+  const maintaining = fuellingRanges({ bodyweight: profile?.bodyweight, units });
+  if (!maintaining) return null;
+  const cutting = fuellingRanges({ bodyweight: profile?.bodyweight, units, inDeficit: true });
+
+  const band = (pair, unit = 'g') => `${pair[0]}-${pair[1]}${unit}`;
+
+  return `- FUELLING NUMBERS FOR THIS ATHLETE, ALREADY CALCULATED. Their bodyweight is
+  ${profile.bodyweight}${units} (${maintaining.bodyweightKg}kg). Use these figures as given rather than
+  working them out; they come from the ranges in FUELLING THE PROGRAM above.
+
+    maintaining or gaining:
+      protein   ${band(maintaining.proteinPerDayG)} per day, in doses of ${band(maintaining.proteinPerMealG)} every 3-4 hours
+    losing weight:
+      protein   ${band(cutting.proteinPerDayG)} per day, in doses of ${band(cutting.proteinPerMealG)}
+      carbs     ${band(cutting.carbPerDayG)} per day, adjusted to training volume
+    either way:
+      fat floor ${maintaining.fatFloorPerDayG}g per day
+      a rate of loss that keeps muscle is ${band(maintaining.weeklyLossKg, 'kg')} per week
+
+  Which band applies depends on what they tell you they are doing; do not assume they are
+  cutting. Give the range, not a point value, and say where it comes from. Still no calorie
+  target, no meal plan, and no macro split prescribed as an intervention.`;
 }
 
 /**
@@ -702,6 +805,12 @@ export function buildSystemPrompt({
 
   const cadence = describeProgressCadence(profile);
   if (cadence) directives.push(cadence);
+
+  // Suppressed with everything else when the clearance gate is up: an athlete
+  // waiting on a doctor does not need macros, and a fuelling directive sitting
+  // under a gate that forbids programming reads as a way around it.
+  const fuelling = clearanceRequired ? null : describeFuelling(profile);
+  if (fuelling) directives.push(fuelling);
 
   if (missing.length) {
     directives.push(

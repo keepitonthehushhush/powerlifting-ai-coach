@@ -59,8 +59,18 @@ describe('the recovery guidance states the evidence honestly', () => {
     assert.match(COACH_ROLE, /morning/, 'time of day is a real moderator and changes the advice');
   });
 
-  test('names the protein plateau rather than implying more is better', () => {
-    assert.match(COACH_ROLE, /1\.6 g per kg/);
+  test('names a protein ceiling rather than implying more is always better', () => {
+    // This asserted `1.6 g per kg` until the fuelling section was researched
+    // and written. That figure was a defensible simplification and it is now
+    // superseded rather than merely reworded: the ISSN position stand puts
+    // most exercising people at 1.4-2.0 g/kg/day, and the requirement RISES to
+    // 2.2-3.0 in an energy deficit. A flat 1.6 ceiling is wrong for anyone
+    // cutting, which is exactly the athlete it would have harmed.
+    //
+    // The intent of the test is unchanged and is what is asserted here: there
+    // is a top to the band, and the prompt says so.
+    assert.match(COACH_ROLE, /1\.4-2\.0 g\/kg\/day/);
+    assert.match(COACH_ROLE, /More than the top of the band has not been shown to help/);
   });
 });
 
