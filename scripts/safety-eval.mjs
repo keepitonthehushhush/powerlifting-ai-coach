@@ -70,6 +70,26 @@ const MODEL = process.argv.includes('--model')
   ? process.argv[process.argv.indexOf('--model') + 1]
   : process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 
+/**
+ * --only <substring>   run just the scenarios whose name matches
+ * --repeat <n>         run the selection n times and report per-scenario tallies
+ *
+ * Both exist because of one finding. The clearance-gate scenario passed on one
+ * run and failed on two others with the product code unchanged, and a suite
+ * that reports a single boolean cannot tell you that. A green run is a sample,
+ * not a proof.
+ *
+ * With --repeat, the summary reports "4/5" per scenario instead of PASS/FAIL,
+ * which is the honest shape of the measurement. --only keeps that affordable:
+ * iterating on one safety scenario should not cost fourteen scenarios of API
+ * calls each time.
+ */
+const argOf = (flag, fallback) =>
+  process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : fallback;
+
+const ONLY = argOf('--only', null);
+const REPEAT = Math.max(1, Number.parseInt(argOf('--repeat', '1'), 10) || 1);
+
 const judge = createJudge({ apiKey: API_KEY });
 
 // --- the model under test --------------------------------------------------
@@ -586,7 +606,21 @@ console.log(`  model under test : ${MODEL}`);
 console.log(`  judge model      : ${process.env.SAFETY_EVAL_JUDGE_MODEL || 'claude-haiku-4-5-20251001'}`);
 console.log('='.repeat(74) + '\n');
 
-for (const scenario of scenarios) {
+const selected = ONLY
+  ? scenarios.filter((s) => s.name.toLowerCase().includes(ONLY.toLowerCase()))
+  : scenarios;
+
+if (selected.length === 0) {
+  console.error(`No scenario name contains ${JSON.stringify(ONLY)}. Nothing to run.`);
+  process.exit(2);
+}
+if (ONLY) console.log(`  filtered to      : ${selected.length} of ${scenarios.length} scenarios`);
+if (REPEAT > 1) console.log(`  repetitions      : ${REPEAT}`);
+
+const plan = [];
+for (let round = 0; round < REPEAT; round += 1) plan.push(...selected);
+
+for (const scenario of plan) {
   process.stdout.write(`▶ ${scenario.name}\n`);
 
   try {
@@ -647,15 +681,53 @@ for (const scenario of scenarios) {
 console.log('='.repeat(74));
 const passedCount = results.filter((r) => r.passed).length;
 
+// Grouped by name, because with --repeat the same scenario appears more than
+// once and "PASS" for one of three runs would be a lie of omission. A
+// scenario that passes four times out of five is a different fact from one
+// that passes every time, and this is where that difference has to survive.
+const byName = new Map();
 for (const result of results) {
-  console.log(`${result.passed ? 'PASS' : 'FAIL'}  ${result.name}`);
-  if (!result.passed && result.checks) {
-    for (const c of result.checks.filter((c) => !c.ok)) console.log(`        failed: ${c.label}`);
-  }
-  if (result.error) console.log(`        error: ${result.error}`);
+  if (!byName.has(result.name)) byName.set(result.name, []);
+  byName.get(result.name).push(result);
 }
 
-console.log(`\n${passedCount}/${results.length} scenarios passed.\n`);
+for (const [name, runs] of byName) {
+  const passes = runs.filter((r) => r.passed).length;
+  const verdict =
+    runs.length === 1 ? (passes === 1 ? 'PASS' : 'FAIL') : `${passes}/${runs.length}`.padEnd(4);
+  console.log(`${verdict}  ${name}`);
+
+  // Every distinct reason it failed, across all runs, counted. A reason that
+  // shows up once in five is exactly the kind of intermittent finding a
+  // single run hides.
+  const reasons = new Map();
+  for (const run of runs) {
+    for (const c of run.checks?.filter((c) => !c.ok) ?? []) {
+      reasons.set(c.label, (reasons.get(c.label) ?? 0) + 1);
+    }
+    if (run.error) reasons.set(`error: ${run.error}`, (reasons.get(`error: ${run.error}`) ?? 0) + 1);
+  }
+  for (const [reason, count] of reasons) {
+    console.log(`        failed: ${reason}${runs.length > 1 ? ` (${count} of ${runs.length})` : ''}`);
+  }
+}
+
+console.log(`\n${passedCount}/${results.length} scenario runs passed.\n`);
+if (REPEAT > 1) {
+  const flaky = [...byName].filter(([, runs]) => {
+    const p = runs.filter((r) => r.passed).length;
+    return p > 0 && p < runs.length;
+  });
+  if (flaky.length) {
+    console.log('INTERMITTENT - these did not agree with themselves across runs:');
+    for (const [name] of flaky) console.log(`  ${name}`);
+    console.log(
+      '\nAn intermittent safety scenario is a finding, not noise. It usually means the\n' +
+        'instruction and the assertion disagree about what correct behaviour is, and the\n' +
+        'model is picking a side at random.\n'
+    );
+  }
+}
 console.log(
   'Assertions marked [exact] are regex checks over literal patterns. Those marked\n' +
     '[judge] are graded by a second model that must quote verbatim evidence for any\n' +
