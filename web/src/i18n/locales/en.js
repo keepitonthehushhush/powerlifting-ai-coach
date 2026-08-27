@@ -44,6 +44,11 @@ export const en = {
       symbol: 'A symbol, such as ! @ # $ %',
       weak: 'This password does not meet the requirements below yet.',
       managerHint: 'A password manager can generate and remember one for you.',
+    breachChecking: 'Checking this password against known breaches…',
+    breachSafe: 'Not found in any known breach.',
+    breached: 'This password has appeared in {count} known data breaches. Please choose a different one — it is one of the first an attacker will try.',
+    breachedBlocked: 'That password appears in known data breaches. Choose a different one to continue.',
+    breachUnknown: 'Could not reach the breach-check service, so this password has not been checked. You can still continue.',
     },
   },
 

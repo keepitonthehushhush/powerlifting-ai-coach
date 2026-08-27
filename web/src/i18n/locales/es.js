@@ -48,6 +48,11 @@ export const es = {
       symbol: 'Un símbolo, como ! @ # $ %',
       weak: 'Esta contraseña todavía no cumple los requisitos indicados abajo.',
       managerHint: 'Un gestor de contraseñas puede generarla y recordarla por ti.',
+    breachChecking: 'Comprobando esta contraseña frente a filtraciones conocidas…',
+    breachSafe: 'No aparece en ninguna filtración conocida.',
+    breached: 'Esta contraseña ha aparecido en {count} filtraciones de datos conocidas. Elige otra: es de las primeras que probará un atacante.',
+    breachedBlocked: 'Esa contraseña aparece en filtraciones de datos conocidas. Elige otra para continuar.',
+    breachUnknown: 'No se pudo contactar con el servicio de comprobación, así que esta contraseña no se ha verificado. Puedes continuar igualmente.',
     },
   },
 

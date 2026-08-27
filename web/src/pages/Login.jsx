@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
+import { checkPwned } from '../lib/pwnedPassword.js';
 
 export function Login() {
   const { session, signIn, signUp, lastSignOut } = useAuth();
@@ -13,6 +14,8 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
+  // 'idle' | 'checking' | 'safe' | 'breached' | 'unknown'
+  const [breach, setBreach] = useState({ status: 'idle', count: 0 });
 
   const isSignUp = mode === 'signup';
   const policy = useMemo(() => checkPassword(password), [password]);
@@ -22,6 +25,20 @@ export function Login() {
   const [endedSession] = useState(() => lastSignOut?.() ?? null);
 
   if (session) return <Navigate to="/coach" replace />;
+
+  /**
+   * Checked when the field is left, not on every keystroke.
+   *
+   * Per-keystroke would send a request for every prefix of a password as it is
+   * typed, which is both rude to a free service and a genuinely worse privacy
+   * story than one request for the finished value - a sequence of prefixes
+   * leaks more than any single one of them does.
+   */
+  async function checkBreached() {
+    if (!isSignUp || password.length === 0) return;
+    setBreach({ status: 'checking', count: 0 });
+    setBreach(await checkPwned(password));
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -37,6 +54,23 @@ export function Login() {
     if (isSignUp && !policy.ok) {
       setStatus({ kind: 'error', text: t('auth.password.weak') });
       return;
+    }
+
+    // The rules above defend against guessing. This defends against the attack
+    // that actually works - an attacker replaying a password from somebody
+    // else's breach - and it is checked here as well as on blur because a
+    // keyboard submit can arrive before the field is ever blurred.
+    if (isSignUp) {
+      const result = breach.status === 'safe' || breach.status === 'breached'
+        ? breach
+        : await checkPwned(password);
+      setBreach(result);
+      if (result.status === 'breached') {
+        setStatus({ kind: 'error', text: t('auth.password.breachedBlocked') });
+        return;
+      }
+      // 'unknown' deliberately falls through. A third party being unreachable
+      // is not a reason somebody cannot make an account.
     }
 
     setBusy(true);
@@ -98,7 +132,12 @@ export function Login() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                // Any edit invalidates the previous verdict.
+                if (breach.status !== 'idle') setBreach({ status: 'idle', count: 0 });
+              }}
+              onBlur={checkBreached}
               required
               minLength={isSignUp ? MIN_LENGTH : undefined}
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
@@ -125,10 +164,27 @@ export function Login() {
                 ))}
               </ul>
               <p>{t('auth.password.managerHint')}</p>
+
+              {/* aria-live, because this arrives asynchronously after focus has
+                  already moved on. Without it a screen reader user is told
+                  nothing at all. */}
+              <p className={breach.status === 'breached' ? 'error' : 'muted'} aria-live="polite">
+                {breach.status === 'checking' && t('auth.password.breachChecking')}
+                {breach.status === 'safe' && t('auth.password.breachSafe')}
+                {breach.status === 'breached' &&
+                  t('auth.password.breached', { count: breach.count.toLocaleString() })}
+                {/* Said out loud rather than passed over in silence: "we could
+                    not check" is not the same claim as "this is fine". */}
+                {breach.status === 'unknown' && t('auth.password.breachUnknown')}
+              </p>
             </div>
           )}
 
-          <button type="submit" className="primary" disabled={busy || (isSignUp && !policy.ok)}>
+          <button
+            type="submit"
+            className="primary"
+            disabled={busy || (isSignUp && (!policy.ok || breach.status === 'breached'))}
+          >
             {busy ? t('common.working') : isSignUp ? t('auth.createAccount') : t('auth.signIn')}
           </button>
         </form>
