@@ -189,37 +189,49 @@ chatRouter.post('/', async (req, res, next) => {
       historyReplayed: window.length,
     });
 
-    // Recorded AFTER the reply is saved and deliberately not awaited into the
-    // response path. This is a metrics row: an athlete must never lose a
-    // coaching reply they already received because a bookkeeping insert
-    // failed. A failure here is logged and dropped, which is the honest
-    // trade - a gap in cost data is a worse report, not a worse product.
+    // ── AWAITED, AND THAT IS A CORRECTION ────────────────────────────────
+    //
+    // These two writes used to be fired and not awaited, on the reasoning that
+    // an athlete must never lose a coaching reply they already received
+    // because a bookkeeping insert failed. The reasoning is right; the
+    // mechanism was wrong for this runtime.
+    //
+    // A serverless function is frozen the moment its response is sent. A
+    // promise still in flight does not get to finish - it dies mid-socket,
+    // which is why production logs showed `usage.record_failed` with
+    // "TypeError: fetch failed" rather than any database error. The metrics
+    // row was not failing to insert; it was never being attempted.
+    //
+    // Worse, the same pattern held the PROGRAM save, which is not bookkeeping.
+    // A program that silently does not persist is a coaching reply describing
+    // a week of training that the athlete cannot open tomorrow.
+    //
+    // So both are awaited, and both are wrapped so that a failure is logged
+    // and swallowed. The property that mattered - a failed write never costs
+    // somebody their reply - is kept by the try/catch, not by the absence of
+    // an await. The cost is a few milliseconds before the response.
     if (storable) {
-      // One active program at a time. Superseding rather than deleting: the
-      // old block is what the athlete was training on last week, and a
-      // progress view that cannot see it cannot explain anything.
-      req.supabase
-        .from('workout_programs')
-        .update({ is_active: false })
-        .eq('is_active', true)
-        .then(() =>
-          req.supabase.from('workout_programs').insert({
-            user_id: req.user.id,
-            week_number: storable.week,
-            phase: storable.phase,
-            program_data: storable,
-            is_active: true,
-          })
-        )
-        .then(({ error } = {}) => {
-          if (error) logger.warn('program.save_failed', { userId: req.user.id, message: error.message });
-          else logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+      try {
+        // One active program at a time. Superseding rather than deleting: the
+        // old block is what the athlete was training on last week, and a
+        // progress view that cannot see it cannot explain anything.
+        await req.supabase.from('workout_programs').update({ is_active: false }).eq('is_active', true);
+        const { error } = await req.supabase.from('workout_programs').insert({
+          user_id: req.user.id,
+          week_number: storable.week,
+          phase: storable.phase,
+          program_data: storable,
+          is_active: true,
         });
+        if (error) logger.warn('program.save_failed', { userId: req.user.id, message: error.message });
+        else logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+      } catch (err) {
+        logger.warn('program.save_failed', { userId: req.user.id, message: err.message });
+      }
     }
 
-    req.supabase
-      .from('usage_events')
-      .insert({
+    try {
+      const { error } = await req.supabase.from('usage_events').insert({
         user_id: req.user.id,
         conversation_id: conversation.id,
         model: reply.model,
@@ -228,10 +240,11 @@ chatRouter.post('/', async (req, res, next) => {
         cache_read_tokens: reply.usage?.cache_read_input_tokens ?? 0,
         cache_write_tokens: reply.usage?.cache_creation_input_tokens ?? 0,
         cost_microdollars: costMicrodollars,
-      })
-      .then(({ error }) => {
-        if (error) logger.warn('usage.record_failed', { userId: req.user.id, message: error.message });
       });
+      if (error) logger.warn('usage.record_failed', { userId: req.user.id, message: error.message });
+    } catch (err) {
+      logger.warn('usage.record_failed', { userId: req.user.id, message: err.message });
+    }
 
     res.json({
       conversationId: conversation.id,

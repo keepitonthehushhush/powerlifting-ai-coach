@@ -188,10 +188,25 @@ describe('a gated athlete cannot end up with a stored program', () => {
 });
 
 describe('saving a program never costs somebody their reply', () => {
-  test('the write is fire-and-forget, like the usage row', () => {
+  test('THE WRITE IS AWAITED, AND THE PROMISE IS KEPT BY THE TRY/CATCH', () => {
+    // This assertion used to say the opposite: that the write must NOT be
+    // awaited. The intent was right - a failed save must never cost somebody
+    // the coaching reply they already received - and the mechanism was wrong
+    // for a serverless runtime, which freezes the function the instant the
+    // response is sent. An un-awaited promise does not finish; it dies
+    // mid-socket. Production logs showed "TypeError: fetch failed", which is
+    // not a database refusing a row, it is a row never being offered.
+    //
+    // So the await is now required and the swallow is what carries the
+    // property. A program silently not persisting is worse than a slow reply:
+    // it is a message describing a week of training the athlete cannot open
+    // tomorrow.
     const block = chatRoute.slice(chatRoute.indexOf('if (storable)'));
-    assert.doesNotMatch(block.slice(0, 700), /await req\.supabase/);
+    assert.match(block.slice(0, 900), /await req\.supabase/);
     assert.match(block, /program\.save_failed/);
+    // The swallow, without which the await would turn a bookkeeping failure
+    // into a 500 on a reply that was already generated and paid for.
+    assert.match(block.slice(0, 1400), /catch \(err\) \{/);
   });
 
   test('the athlete is shown the stripped reply, not the raw one', () => {
