@@ -188,6 +188,56 @@ describe('the FAQ', () => {
   });
 });
 
+describe('WE ASK FOR LESS THAN PEOPLE WILL VOLUNTEER', () => {
+  const contact = readRaw(new URL('../../web/src/lib/contact.js', import.meta.url));
+  const terms = readRaw(new URL('../../web/src/pages/Terms.jsx', import.meta.url));
+
+  test('the mailto opens with a template, not an empty box', () => {
+    // The strongest lever available, and it is design rather than law: the
+    // message opens already written, so most people send it as-is. It shapes
+    // the message before it exists, which no footer can do.
+    assert.match(contact, /export function removalMailto/);
+    assert.match(contact, /encodeURIComponent\(subject\)/);
+    assert.match(contact, /encodeURIComponent\(body\)/);
+    assert.match(terms, /href=\{removalMailto\(\)\}/);
+  });
+
+  test('the template asks for two fields and says what to leave out', () => {
+    assert.match(contact, phrase('Account email address:'));
+    assert.match(contact, phrase('Please do not include medical details'));
+    assert.match(contact, phrase('The email'));
+  });
+
+  test('NO CONFIDENTIALITY DISCLAIMER, AND THE REASON IS WRITTEN DOWN', () => {
+    // A disclaimer tries to bind the recipient by appending text. Contract
+    // formation needs both parties to agree and nobody agrees to a footer -
+    // and it addresses the wrong risk anyway. The danger is not that they
+    // misuse it, it is that we are holding it.
+    assert.match(contact, phrase('the obvious answer is worthless'));
+    assert.match(contact, phrase('nobody agrees to a footer'));
+    assert.match(runbook, phrase('does not fix this and is not used here'));
+  });
+
+  test('a web form was considered and rejected, with the tradeoff recorded', () => {
+    // It would minimise harder - you cannot type what has no field - but it
+    // lands in a table somebody must remember to open, which is the exact
+    // failure this contact route was built to fix.
+    assert.match(contact, phrase('A web form would minimise harder'));
+    assert.match(contact, phrase('a commitment nobody can invoke'));
+  });
+
+  test('both documents promise deletion after acting, not filing', () => {
+    assert.match(terms, phrase('act on your request and then delete the message'));
+    assert.match(terms, phrase('we will not file it, forward it, or keep'));
+    assert.match(faq, phrase('gets deleted once we have dealt with your request'));
+  });
+
+  test('the runbook says how, including the copies people forget', () => {
+    assert.match(runbook, phrase('including from Trash and any Sent copy'));
+    assert.match(runbook, phrase('Every copy is another place it has to be deleted from'));
+  });
+});
+
 describe('the contact route is treated as something that breaks', () => {
   test('the address is live now, and both places agree', () => {
     assert.equal(CONTACT_LIVE, true);

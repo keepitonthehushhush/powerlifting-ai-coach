@@ -97,6 +97,40 @@ minor. That commitment is only real if the address works.
   ask for proof. Deleting an account in error is recoverable by signing up
   again; leaving a child's health data in place while deliberating is not.
 
+### When health information arrives that nobody asked for
+
+It will. A parent explaining why an account should go will explain, and the
+explanation is the child's medical history in an inbox that has none of the
+protections the app has — no row-level security, no consent record, no
+retention rule. We did not collect it and we still have it.
+
+**A confidentiality disclaimer does not fix this and is not used here.** It
+tries to bind the recipient by appending text to a message; contract formation
+needs both parties to agree and nobody agrees to a footer. It also addresses
+the wrong risk — the danger is not that the recipient misuses it, it is that we
+are holding it.
+
+What the law actually points at, across the state privacy statutes, is
+minimisation: collect what is reasonably necessary and dispose of it within a
+reasonable time once it is not. So:
+
+1. **Ask for less.** The Terms and the FAQ both say plainly that an account
+   email address is all that is needed, and both ask people not to send medical
+   details. The mailto link opens a message already written with those two
+   fields and that request in it — most people send it as-is, which shapes the
+   message before it exists in a way no footer can.
+2. **Act on the request.** Confirm the account email, delete the account
+   through the normal path, reply.
+3. **Then delete the message, including from Trash and any Sent copy that
+   quotes it.** Do not file it, do not forward it, do not keep it because it
+   might be useful later. The promise in the Terms is explicit about this, so
+   it is a commitment rather than a preference.
+4. **Do not paste it anywhere.** Not into a ticket, not into a chat, not into a
+   note. Every copy is another place it has to be deleted from.
+
+If somebody sends a lot of it, or something distressing, that is still the
+process. Reply to the person, be kind about it, and delete.
+
 ### The route is carried by DNS, so check it on a schedule
 
 `npm run check:contact` verifies the domain still advertises somewhere to

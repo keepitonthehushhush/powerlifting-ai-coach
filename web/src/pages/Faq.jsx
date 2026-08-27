@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CONTACT_EMAIL, contactIsUsable } from '../lib/contact.js';
+import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js';
 
 /**
  * The questions people actually ask, answered the way you would answer them
@@ -164,7 +164,7 @@ export function Faq() {
           {contactIsUsable() ? (
             <>
               Write to{' '}
-              <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
+              <a className="link" href={removalMailto('Question', '')}>
                 {CONTACT_EMAIL}
               </a>
               . It is a real inbox and a person reads it.
@@ -174,6 +174,13 @@ export function Faq() {
           )}{' '}
           If you are a parent or guardian who needs an account removed, that is the fastest route
           and you do not need to prove anything to us.
+        </p>
+        <p>
+          One request, and it is for your benefit rather than ours:{' '}
+          <strong>do not put medical details in an email to us.</strong> Ordinary email is not a
+          private channel, and an inbox does not have the protections the app itself does. We do
+          not need any of it — an account email address is enough to act on — and anything you do
+          send gets deleted once we have dealt with your request rather than filed away.
         </p>
       </div>
 

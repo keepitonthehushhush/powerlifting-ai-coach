@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CONTACT_EMAIL, contactIsUsable } from '../lib/contact.js';
+import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js';
 
 /**
  * Terms of Service.
@@ -135,12 +135,12 @@ export function Terms() {
           {contactIsUsable() ? (
             <>
               Write to{' '}
-              <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
+              <a className="link" href={removalMailto()}>
                 {CONTACT_EMAIL}
               </a>
-              . Tell us the email address the account was opened with; you do not need to prove
-              anything to us, and we would rather delete an account in error than leave a
-              child&rsquo;s data in place while we deliberate.
+              . <strong>All we need is the email address the account was opened with.</strong>{' '}
+              You do not need to prove anything to us, and we would rather delete an account in
+              error than leave a child&rsquo;s data in place while we deliberate.
             </>
           ) : (
             <>
@@ -152,6 +152,13 @@ export function Terms() {
           Anyone with access to the account can also delete it immediately from the Account page,
           which removes everything and is not recoverable. We act on what we are told: we do not
           knowingly provide this service to minors, and being informed is what makes it knowing.
+        </p>
+        <p>
+          <strong>Please do not send us medical details, diagnoses, or anything about anybody&rsquo;s
+          health when you write in.</strong> We do not need any of it to remove an account, and we
+          would rather not hold information nobody asked us to keep. If you send it anyway we will
+          act on your request and then delete the message; we will not file it, forward it, or keep
+          it on the off chance it is useful later.
         </p>
 
         <h2 className="h3">Your account</h2>
