@@ -24,6 +24,7 @@ export const en = {
   },
 
   auth: {
+    sessionEnded: 'You were signed out and we are not sure why — please sign in again. If this keeps happening, the code in brackets tells us what went wrong.',
     tagline: 'Structured powerlifting programming that adapts to what you actually lift.',
     email: 'Email',
     password: 'Password',

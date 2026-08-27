@@ -6,7 +6,7 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 
 export function Login() {
-  const { session, signIn, signUp } = useAuth();
+  const { session, signIn, signUp, lastSignOut } = useAuth();
   const { t } = useI18n();
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
@@ -16,6 +16,10 @@ export function Login() {
 
   const isSignUp = mode === 'signup';
   const policy = useMemo(() => checkPassword(password), [password]);
+
+  // Read once, on mount. Reading it on every render would make the notice
+  // vanish the moment anything else on this page changed.
+  const [endedSession] = useState(() => lastSignOut?.() ?? null);
 
   if (session) return <Navigate to="/coach" replace />;
 
@@ -60,6 +64,23 @@ export function Login() {
           <LanguageSwitcher />
         </div>
         <p className="muted">{t('auth.tagline')}</p>
+
+        {/* Being returned to this page without asking to be is confusing, and
+            until now it was also silent - the app simply rendered the sign-in
+            form and nobody, including us, could say why.
+
+            This is a diagnostic first and a courtesy second. It tells the
+            person that something ended rather than that they imagined it, and
+            it tells us WHICH of three indistinguishable faults happened: a
+            sign-out, a token refresh that failed, or something else. No fix is
+            being guessed at on the strength of a hypothesis; this is the
+            instrument that decides which fix is the right one. */}
+        {endedSession && (
+          <p className="warning">
+            {t('auth.sessionEnded')}{' '}
+            <span className="muted small">({endedSession.reason})</span>
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="stack">
           <label>

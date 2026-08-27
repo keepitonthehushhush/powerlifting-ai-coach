@@ -28,6 +28,7 @@ export const es = {
   },
 
   auth: {
+    sessionEnded: 'Se cerró tu sesión y no sabemos con certeza por qué; vuelve a iniciar sesión. Si sigue pasando, el código entre paréntesis nos dice qué falló.',
     tagline: 'Programación estructurada de powerlifting que se adapta a lo que realmente levantas.',
     email: 'Correo electrónico',
     password: 'Contraseña',
