@@ -74,7 +74,15 @@ time could not have caught them.
    Never a calorie target, a meal plan, or a macro split prescribed as an
    intervention: that line is the one the profession draws between general
    nutrition information and medical nutrition therapy.
-8. **Something to hand your doctor.** [`/about`](https://coachdiaz.app/about)
+8. **Your actual gym.** Naming a commercial chain — Planet Fitness, Anytime,
+   Gold's, LA Fitness, Crunch, Snap, a YMCA, a university gym — pre-fills the
+   equipment answer so it can be corrected rather than written from scratch.
+   These are starting points, never an equipment database: no chain publishes
+   what an individual club holds. The one that changes programming is Planet
+   Fitness, which has no Olympic barbell and no squat rack, and the coach is
+   told to say so rather than quietly prescribing a squat to somebody with
+   nowhere to rack a bar.
+9. **Something to hand your doctor.** [`/about`](https://coachdiaz.app/about)
    explains to a clinician what this is, what it refuses to do, and how they
    can set restrictions through their patient. Public, printable, and held to
    the system prompt by tests so it cannot quietly stop being true.
@@ -317,7 +325,7 @@ configure secrets.
 │   └── test/                 Unit tests (584, no credentials required)
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0021, applied in order
+│   ├── migrations/           0001–0023, applied in order
 │   └── tests/                RLS isolation test
 ├── scripts/                  Secret scanners, safety eval, deploy tooling
 └── docs/                     Architecture, security, deployment, legal, build log

@@ -165,6 +165,69 @@ accurate at the column level while being misleading at the level of what is
 actually known about the person is the pattern these statutes were written
 for.
 
+### What the age gate does and does not buy
+
+Written by an engineer, not a lawyer, and this is the section most in need of
+review.
+
+**What changed.** Until 2026-08-27 the terms said the service was for adults
+and nothing refused an account: the gate blocked storing health data below 18
+and let coaching through. The documents and the code disagreed, and the code
+was what people were using. Now:
+
+| Control | Where it lives |
+|---|---|
+| Coaching refused below 18, and when no date of birth is on file | `routes/chat.js`, server-side, fails closed |
+| Health and lifestyle data refused below 18 | `routes/profile.js`, unchanged, fails closed |
+| Explicit representation of age by the user | Terms, `tos-2026-08-27b` |
+| Statement that we do not and cannot verify it | Terms |
+| False date of birth is a breach | Terms |
+| Deletion on being told an account belongs to a minor | Terms; the mechanism is the existing cascade purge |
+
+**What this does not do is make anyone not liable, and the terms do not claim
+it does.** No disclaimer achieves that. What these controls do is make the
+position defensible on the thing that is actually tested: COPPA and the state
+analogues turn on **actual knowledge**, so what matters is that the product
+does not knowingly collect from minors, that a date was asked for and acted
+on, and that a report is honoured when one arrives. A takedown route that is
+used is worth more than any wording that is not.
+
+**The gap that remains** is that there is no monitored contact address. The
+terms commit to deleting an account when we are told it belongs to someone
+under 18, and today the only route is the Account page, which requires access
+to the account. Before the link is shared beyond people who can reach the
+owner directly, a monitored address needs to exist and be named in the terms.
+That is a prerequisite, not a nicety: a commitment nobody can invoke is not a
+commitment.
+
+**Verification was considered and rejected.** The only method that actually
+verifies age is collecting government identity documents, which would be a far
+larger collection of personal information than anything else this product
+holds, from every user, to catch the small number who lie. That trade is worse
+for everyone. Recorded here so the decision is visible rather than assumed.
+
+### Gym chains and the decision not to store a location
+
+The intake form now offers commercial gym chains as checkboxes, which pre-fill
+the equipment answer. Two choices worth recording:
+
+**The chain names are used nominatively** — to describe where a person trains —
+and the suggested equipment text is explicitly presented to the user as a
+starting point they correct, not as a statement about any company's premises.
+No claim is made about any specific location, the text is editable, and what is
+stored and sent to the model is the user's own final answer. This matters
+because asserting "this chain's gyms contain X" as fact would be a factual
+claim about a third party's business that varies by franchise and by year.
+
+**A precise location is deliberately not collected.** The feature request asked
+for a specific gym location. What is stored instead is a free-text label the
+user types for their own reference. There is no address field, no geocoding, no
+map and no geolocation API anywhere in the product, and a test asserts as much.
+The reasoning: no chain publishes per-branch equipment lists, so an address
+would buy no programming accuracy, while precise geolocation stored beside
+injury data is a named sensitive category under MHMDA and materially worse in a
+breach. Collecting it would have been cost with no benefit.
+
 ### A production bug the audit surfaced
 
 Checking the export against the schema turned up that `usage_events` had RLS
@@ -189,11 +252,12 @@ it was answering with silence. Fixed in migration 0021.
    deletes it.
 5. **Deciding whether to geo-gate.** Serving only some states reduces exposure
    but is itself a decision with legal consequences.
-6. **A decision on under-18s.** The terms say the service is for adults; the
-   code lets a 15-year-old open an account and receive programming, refusing
-   only to store their injuries. Those are not the same policy, and the
-   documents now describe the gap honestly rather than papering over it. It
-   needs closing in one direction or the other — see §6.
+6. ~~A decision on under-18s.~~ **Done 2026-08-27**: coaching is refused below
+   18 on the server, and the terms carry the representation, the
+   non-verification statement and the takedown commitment. What remains is a
+   **monitored contact address** so the takedown commitment can actually be
+   invoked — see above. Blocking for sharing the link beyond people who can
+   reach the owner directly.
 7. **Attorney review of all three documents.** Nothing below the draft banner
    should be relied on until this happens.
 
@@ -310,11 +374,15 @@ will make it feel better" is treatment.
 5. Insurance: is professional/general liability coverage appropriate, and at
    what stage?
 6. What retention period is defensible, and what triggers deletion?
-7. Minors: under-18 users bring COPPA and state-law obligations. Age-gate, or
-   accept and comply? Specifically: **today the account is not refused, only
-   the storage of health data is.** Is "we serve them but hold no health data
-   about them" a defensible position, or must the account itself be blocked?
-   The answer changes both the terms and the sign-up flow.
+7. ~~Minors: age-gate, or accept and comply?~~ **Decided 2026-08-27: gate.**
+   Coaching now requires a date of birth showing 18 or over, checked on the
+   server in `routes/chat.js` via `adultGateDecision`, not in the browser. The
+   terms carry an explicit representation of age, state that we cannot verify
+   it, make a false date a breach, and commit to deleting an account on being
+   told it belongs to a minor. See "What the age gate does and does not buy"
+   below. The remaining question for counsel is narrower: **is a self-reported
+   date of birth with a stated non-verification and a takedown route the right
+   standard for a fitness product holding health data, or is more required?**
 8. Nutrition: the coach gives general nutrition information — protein and
    carbohydrate ranges by bodyweight, rate-of-loss guidance — and never a
    calorie target, which is enforced in code (`lib/nutrition.js` returns no
