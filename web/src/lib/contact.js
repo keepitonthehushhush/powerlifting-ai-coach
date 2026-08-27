@@ -42,7 +42,7 @@ export const CONTACT_EMAIL = 'privacy@coachdiaz.app';
  * it is verified - after an actual email lands in an actual inbox. The whole
  * point of this flag is that it records a fact rather than an intention.
  */
-export const CONTACT_LIVE = false;
+export const CONTACT_LIVE = true;
 
 /** True when the documents may print the address as a working route. */
 export function contactIsUsable() {

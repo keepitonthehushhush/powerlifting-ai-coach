@@ -185,7 +185,7 @@
   // the two disagree is cheaper than a pipeline that could itself break.
   // CONTACT_LIVE there and CONTACT_READY here must move together.
   var CONTACT = 'privacy@coachdiaz.app';
-  var CONTACT_READY = false;
+  var CONTACT_READY = true;
   var contact = document.getElementById('contact');
   if (CONTACT_READY && CONTACT.indexOf('@') > 0) {
     contact.href = 'mailto:' + CONTACT;
