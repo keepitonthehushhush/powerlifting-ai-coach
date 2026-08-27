@@ -33,9 +33,15 @@ export const en = {
     createAccount: 'Create account',
     toSignIn: 'Already have an account? Sign in',
     toSignUp: 'New here? Create an account',
+    /* The pair above bundle a question and an action into one string, which is
+       what made three choices read as one line. These split them. */
+    forgotPrompt: 'Forgotten your password?',
+    newHerePrompt: 'New here?',
+    haveAccountPrompt: 'Already have an account?',
     confirmEmail: 'Check your email to confirm your account, then sign in.',
     reset: {
       forgot: 'Forgot your password?',
+      forgotAction: 'Email me a reset link',
       requestTitle: 'Reset your password',
       requestIntro: 'Enter the email address on your account and we will send you a link to set a new password.',
       send: 'Send the reset link',

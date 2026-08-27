@@ -230,33 +230,57 @@ export function Login() {
 
         {status && <p className={status.kind === 'error' ? 'error' : 'muted'}>{status.text}</p>}
 
-        {/* Offered on the sign-in form rather than only after a failed
-            attempt. Somebody who knows they have forgotten should not have to
-            get it wrong first to be told there is a way out - and making them
-            guess is how people end up reusing a password they can remember. */}
-        {!isReset && (
-          <button
-            type="button"
-            className="link"
-            onClick={() => {
-              setMode('reset');
-              setStatus(null);
-            }}
-          >
-            {t('auth.reset.forgot')}
-          </button>
-        )}
+        {/* ── THE OTHER TWO THINGS YOU MIGHT BE HERE TO DO ──────────────────
+            These were two bare <button className="link"> siblings in a card
+            that is a plain block, so - buttons being inline-block - they
+            rendered on ONE LINE, running together into something that read as
+            a single sentence: "Forgot your password? New here? Create an
+            account". Three separate choices presented as one run of text.
 
-        <button
-          type="button"
-          className="link"
-          onClick={() => {
-            setMode(isReset ? 'signin' : isSignUp ? 'signin' : 'signup');
-            setStatus(null);
-          }}
-        >
-          {isReset ? t('auth.reset.backToSignIn') : isSignUp ? t('auth.toSignIn') : t('auth.toSignUp')}
-        </button>
+            Each is now its own row, under a rule that separates them from the
+            form, and each is a question followed by the answer rather than a
+            fragment. The prompt says what situation you are in; the link says
+            what pressing it does. */}
+        <div className="auth-alternatives">
+          {/* Offered on the sign-in form rather than only after a failed
+              attempt. Somebody who knows they have forgotten should not have
+              to get it wrong first to be told there is a way out - and making
+              them guess is how people end up reusing a password they can
+              remember. */}
+          {!isReset && (
+            <div className="auth-alternative">
+              <span className="muted small">{t('auth.forgotPrompt')}</span>
+              <button
+                type="button"
+                className="link strong"
+                onClick={() => {
+                  setMode('reset');
+                  setStatus(null);
+                }}
+              >
+                {t('auth.reset.forgotAction')}
+              </button>
+            </div>
+          )}
+
+          <div className="auth-alternative">
+            {!isReset && (
+              <span className="muted small">
+                {isSignUp ? t('auth.haveAccountPrompt') : t('auth.newHerePrompt')}
+              </span>
+            )}
+            <button
+              type="button"
+              className="link strong"
+              onClick={() => {
+                setMode(isReset ? 'signin' : isSignUp ? 'signin' : 'signup');
+                setStatus(null);
+              }}
+            >
+              {isReset ? t('auth.reset.backToSignIn') : isSignUp ? t('auth.signIn') : t('auth.createAccount')}
+            </button>
+          </div>
+        </div>
 
         <p className="fineprint">
           {t('medical.disclaimer')}{' '}

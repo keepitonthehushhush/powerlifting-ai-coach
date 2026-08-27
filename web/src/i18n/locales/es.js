@@ -37,9 +37,13 @@ export const es = {
     createAccount: 'Crear cuenta',
     toSignIn: '¿Ya tienes cuenta? Inicia sesión',
     toSignUp: '¿Eres nuevo? Crea una cuenta',
+    forgotPrompt: '¿Has olvidado tu contraseña?',
+    newHerePrompt: '¿Eres nuevo aquí?',
+    haveAccountPrompt: '¿Ya tienes una cuenta?',
     confirmEmail: 'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
     reset: {
       forgot: '¿Olvidaste tu contraseña?',
+      forgotAction: 'Enviarme un enlace para restablecerla',
       requestTitle: 'Restablecer tu contraseña',
       requestIntro: 'Escribe el correo electrónico de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.',
       send: 'Enviar el enlace',
