@@ -914,3 +914,45 @@ form > button.primary {
   .prose a[href^="/"]::after { content: " (coachdiaz.app" attr(href) ")"; font-size: 0.85em; }
   .prose a { text-decoration: underline; color: #000 !important; }
 }
+
+/* ── The program table ─────────────────────────────────────────────────────
+   A table because this IS tabular: four columns, one row per movement, read
+   by scanning down a column in a gym. Divs with ARIA roles would be the same
+   thing with more work and worse screen-reader support.
+
+   The movement is a row header rather than a cell, so a screen reader
+   announces "squat, sets, 3" instead of leaving the reader to remember which
+   row they are in. */
+.program-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.program-table th, .program-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.program-table thead th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.program-table tbody th { font-weight: 600; }
+.program-table td { font-variant-numeric: tabular-nums; }
+.program-table tbody tr:last-child th,
+.program-table tbody tr:last-child td { border-bottom: none; }
+.block { display: block; }
+
+/* Narrow screens: the numbers are what matter, so the movement name is given
+   the room and the three numeric columns are squeezed rather than wrapped. */
+@media (max-width: 480px) {
+  .program-table th, .program-table td { padding: 0.45rem 0.3rem; }
+  .program-table thead th { font-size: 0.7rem; }
+}
+
+@media print {
+  /* Keep the borders here, unlike the cards: a table without rules is a wall
+     of numbers, and this is the page most likely to be printed. */
+  .program-table th, .program-table td { border-bottom: 1px solid #999 !important; }
+  /* A day split across a page break is how somebody misses their last set. */
+  .program-table, section.card { break-inside: avoid-page; page-break-inside: avoid; }
+}

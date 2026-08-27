@@ -48,6 +48,7 @@ export const api = {
   getSessions: () => request('/sessions'),
   getProgress: () => request('/sessions/progress'),
   logSession: (session) => request('/sessions', { method: 'POST', body: JSON.stringify(session) }),
+  getProgram: () => request('/program'),
   getLibrary: () => request('/library'),
 
   // Consent (MHMDA). Granting and withdrawing use the same call, because

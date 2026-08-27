@@ -14,6 +14,7 @@ import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { Library } from './pages/Library.jsx';
 import { Progress } from './pages/Progress.jsx';
+import { Program } from './pages/Program.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
@@ -97,6 +98,14 @@ export function App() {
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />
               {/* The old path, kept so links already in the wild still land. */}
               <Route path="/privacy/health-data" element={<Navigate to="/policies/health-data" replace />} />
+              <Route
+                path="/program"
+                element={
+                  <ProtectedRoute>
+                    <Program />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/progress"
                 element={

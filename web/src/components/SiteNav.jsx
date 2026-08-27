@@ -52,6 +52,7 @@ import { useMarkTaps } from './EasterEggs.jsx';
  */
 const PLACES = [
   { to: '/coach', key: 'nav.coach' },
+  { to: '/program', key: 'nav.program' },
   { to: '/log', key: 'nav.log' },
   { to: '/progress', key: 'nav.progress' },
   { to: '/library', key: 'nav.library' },

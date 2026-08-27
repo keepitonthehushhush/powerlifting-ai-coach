@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
+import { extractProgramBlock } from '../lib/programBlock.js';
+import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
@@ -134,11 +136,37 @@ chatRouter.post('/', async (req, res, next) => {
 
     if (!reply.text) throw new HttpError(502, 'The coach returned an empty response. Please try again.');
 
+    // Split the machine-readable copy of the program off the prose before
+    // anything else touches the text. The athlete never sees the block, and it
+    // is stripped whether or not it parsed - a visible chunk of JSON is a
+    // worse failure than a missing record.
+    const { reply: replyText, program, problem } = extractProgramBlock(reply.text);
+    if (problem) logger.warn('program.block_unusable', { userId: req.user.id, problem });
+
+    /**
+     * THE GATE IS RE-CHECKED HERE, IN CODE.
+     *
+     * The prompt tells the coach not to emit a program while clearance is
+     * pending, and across the adversarial suite it obeys. That is not the same
+     * as it being impossible, and the consequence of getting it wrong is
+     * different in kind from a bad sentence: a stored program is a document
+     * the athlete can open tomorrow and follow, long after the conversation
+     * that produced it has scrolled away.
+     *
+     * So the instruction is the first line of defence and this is the second.
+     * Same reasoning as computing the gate rather than asking the model to
+     * apply it - if it matters, it does not live in the prompt alone.
+     */
+    const storable = program && !needsMedicalClearance(context.profile) ? program : null;
+    if (program && !storable) {
+      logger.warn('program.refused_while_gated', { userId: req.user.id });
+    }
+
     const now = new Date().toISOString();
     const updated = [
       ...history,
       { role: 'user', content: message, at: now },
-      { role: 'assistant', content: reply.text, at: now },
+      { role: 'assistant', content: replyText, at: now },
     ];
 
     const { error: saveError } = await req.supabase
@@ -166,6 +194,29 @@ chatRouter.post('/', async (req, res, next) => {
     // coaching reply they already received because a bookkeeping insert
     // failed. A failure here is logged and dropped, which is the honest
     // trade - a gap in cost data is a worse report, not a worse product.
+    if (storable) {
+      // One active program at a time. Superseding rather than deleting: the
+      // old block is what the athlete was training on last week, and a
+      // progress view that cannot see it cannot explain anything.
+      req.supabase
+        .from('workout_programs')
+        .update({ is_active: false })
+        .eq('is_active', true)
+        .then(() =>
+          req.supabase.from('workout_programs').insert({
+            user_id: req.user.id,
+            week_number: storable.week,
+            phase: storable.phase,
+            program_data: storable,
+            is_active: true,
+          })
+        )
+        .then(({ error } = {}) => {
+          if (error) logger.warn('program.save_failed', { userId: req.user.id, message: error.message });
+          else logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+        });
+    }
+
     req.supabase
       .from('usage_events')
       .insert({
@@ -184,7 +235,7 @@ chatRouter.post('/', async (req, res, next) => {
 
     res.json({
       conversationId: conversation.id,
-      reply: reply.text,
+      reply: replyText,
       messages: updated.slice(-config.chat.historyWindow),
     });
   } catch (err) {
