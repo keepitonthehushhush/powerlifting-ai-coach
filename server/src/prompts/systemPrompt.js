@@ -36,6 +36,7 @@ import { warmupPlan } from '../lib/warmup.js';
 import { ageInYears } from '../lib/ageGate.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
+import { compareToProgram, STATUS } from '../lib/adherence.js';
 
 const COACH_ROLE = `# ROLE
 You are Coach Diaz, an AI strength coach specializing in powerlifting. Your job is to take
@@ -450,6 +451,74 @@ export function describeProgressCadence(profile) {
   stalls it reads as the plan working rather than the coach being wrong.
 
   Do not promise a periodised or block program you cannot currently write.`;
+}
+
+/**
+ * What the athlete was asked to do, against what they logged.
+ *
+ * Computed rather than left to the model for the same reason as everything
+ * else in this file: given a program and a list of sessions, a model asked to
+ * cross-reference them will mostly get it right and will occasionally tell
+ * somebody they skipped a session they actually did. That is not a rounding
+ * error, it is an accusation.
+ *
+ * Note what is NOT here and never will be: a percentage. See lib/adherence.js
+ * for why - briefly, a compliance score is a grade, a bad grade for a bad week
+ * is how you stop somebody logging, and the log is the only real input this
+ * system has.
+ */
+export function describeAdherence({ program, sessions, supersededAt }) {
+  const report = compareToProgram({ program, sessions, supersededAt });
+  if (!report || report.totals.prescribed === 0) return null;
+
+  // Nothing logged at all since the program was written is not a report, it is
+  // a different conversation - and one the coach should have in its own words
+  // rather than from a table of empty rows.
+  if (report.sessionsInWindow === 0) {
+    return `- NOTHING HAS BEEN LOGGED SINCE YOU WROTE THIS PROGRAM. Ask how it is going before
+  assuming anything. They may have trained without logging, they may not have started, or
+  something may have got in the way. All three are ordinary. Do not open with a reminder
+  to log, and do not repeat the program back at them.`;
+  }
+
+  const label = {
+    [STATUS.DONE]: 'as written',
+    [STATUS.CHANGED]: 'CHANGED',
+    [STATUS.MISSED]: 'MISSED',
+    [STATUS.NOT_LOGGED]: 'not logged',
+  };
+
+  const lines = report.days.flatMap((day) =>
+    day.exercises.map(({ prescribed, performed, status }) => {
+      const asked = `${prescribed.sets}x${prescribed.reps}${prescribed.weight != null ? ` @ ${prescribed.weight}` : ''}`;
+      const got = performed
+        ? `${performed.sets}x${performed.reps}${performed.weight != null ? ` @ ${performed.weight}` : ''}`
+        : '-';
+      return `    ${day.name} / ${asData(prescribed.lift, { maxLength: 60 })}: asked ${asked}, logged ${got} [${label[status]}]`;
+    })
+  );
+
+  const t = report.totals;
+  return `- PROGRAM VERSUS LOG, ALREADY CROSS-REFERENCED. ${report.sessionsInWindow} session(s) logged since
+  this program was written. Use these lines as given rather than working them out from the
+  session list yourself.
+
+${lines.join('\n')}
+
+  ${t.done} as written, ${t.changed} changed, ${t.missed} missed, ${t.notLogged} not logged.${
+    report.unprescribed.length
+      ? `\n  Also logged, not in the program: ${report.unprescribed.map((u) => asData(u, { maxLength: 60 })).join(', ')}. This is context, not a transgression - people are allowed to train.`
+      : ''
+  }
+
+  HOW TO USE THIS. CHANGED and MISSED are the interesting ones and they are questions, not
+  verdicts: a weight that came down usually has a reason the athlete knows and you do not.
+  Ask. NOT LOGGED means exactly that - it does not mean skipped, and saying so when
+  somebody trained and forgot to write it down is the fastest way to make them stop writing
+  it down.
+
+  Do not read the list back to them, do not total it up into a score, and do not open with
+  it. It is what you know before the conversation starts, not the conversation.`;
 }
 
 /**
@@ -938,6 +1007,13 @@ function buildSystemParts({
   // under a gate that forbids programming reads as a way around it.
   const fuelling = clearanceRequired ? null : describeFuelling(profile);
   if (fuelling) directives.push(fuelling);
+
+  // Suppressed with the rest while the gate is up: an athlete waiting on a
+  // doctor should not be shown a table of work they did not do.
+  const adherence = clearanceRequired
+    ? null
+    : describeAdherence({ program: activeProgram, sessions: recentSessions });
+  if (adherence) directives.push(adherence);
 
   if (missing.length) {
     directives.push(

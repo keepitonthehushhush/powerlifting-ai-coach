@@ -35,12 +35,25 @@ export function Program() {
   useEffect(() => {
     api
       .getProgram()
-      .then(({ active, history }) => setState({ status: 'ready', active, history }))
+      .then(({ active, history, adherence }) =>
+        setState({ status: 'ready', active, history, adherence })
+      )
       .catch((err) => setState({ status: 'error', message: err.message }));
   }, []);
 
   const active = state.active;
   const data = active?.program_data;
+
+  /**
+   * Status per prescribed exercise, keyed the way the server returned it.
+   *
+   * There is deliberately no percentage anywhere on this page. A compliance
+   * score is a grade, a bad grade for a bad week is how somebody stops
+   * logging, and the log is the only real input the coach has. See
+   * server/src/lib/adherence.js.
+   */
+  const statusFor = (dayIndex, exerciseIndex) =>
+    state.adherence?.days?.[dayIndex]?.exercises?.[exerciseIndex]?.status ?? null;
 
   return (
     <div className="page">
@@ -86,6 +99,7 @@ export function Program() {
                     <th scope="col">{t('program.sets')}</th>
                     <th scope="col">{t('program.reps')}</th>
                     <th scope="col">{t('program.weight')}</th>
+                    <th scope="col">{t('program.logged')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -103,12 +117,33 @@ export function Program() {
                           "work up to a heavy single" both arrive as null, and
                           printing 0lb would be a different instruction. */}
                       <td>{exercise.weight === null ? t('program.noWeight') : exercise.weight}</td>
+                      {/* Words, not a colour. A red cell says "you failed";
+                          "changed" says what happened and leaves the reason to
+                          the athlete, who knows it and we do not. */}
+                      <td className="muted small">
+                        {statusFor(index, i) ? t(`program.status.${statusFor(index, i)}`) : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </section>
           ))}
+
+          {state.adherence && state.adherence.sessionsInWindow > 0 && (
+            <div className="card stack">
+              <p className="muted small">
+                {t('program.loggedSince', { count: state.adherence.sessionsInWindow })}
+              </p>
+              {state.adherence.unprescribed.length > 0 && (
+                <p className="muted small">
+                  {t('program.alsoLogged', {
+                    lifts: state.adherence.unprescribed.join(', '),
+                  })}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="card stack">
             <p className="fineprint">{t('program.supersededNote')}</p>

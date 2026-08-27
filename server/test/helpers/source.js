@@ -88,6 +88,16 @@ export function flatten(text) {
  * Every run of whitespace in the phrase matches any run of whitespace in the
  * text, and everything else is escaped, so the caller writes prose rather than
  * a pattern.
+ *
+ * TWO LIMITS WORTH KNOWING, both found by tripping over them:
+ *
+ * It is case-SENSITIVE unless you pass 'i'. Prompt text is written in prose
+ * and the same sentence appears capitalised in one place and not in another.
+ *
+ * It does not cross a JSDoc line break, because the continuation is ` * ` and
+ * an asterisk is not whitespace. For an assertion about a COMMENT, pick a
+ * phrase that fits on one line - or reach for a different tool, rather than
+ * teaching this one to strip comment syntax it otherwise knows nothing about.
  */
 export function phrase(text, flags = '') {
   const escaped = text
