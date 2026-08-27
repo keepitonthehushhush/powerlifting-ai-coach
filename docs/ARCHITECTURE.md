@@ -67,13 +67,35 @@ sequenceDiagram
     E->>P: load or create conversation
     P-->>E: message history
 
-    Note over E: buildSystemPrompt()<br/>computes clearance gate + intake gaps
-    E->>C: messages.create(system, history + new message)
-    C-->>E: reply
+    Note over E: buildSystemBlocks()<br/>computes clearance gate, intake gaps,<br/>progression, warm-ups, fuelling ranges,<br/>max plausibility
+    E->>C: messages.create(system[static ⟨cached⟩, athlete state], history + message)
+    C-->>E: reply + usage
+
+    Note over E: extractProgramBlock()<br/>splits the machine-readable program<br/>off the prose, and strips it either way
+    Note over E: re-check the clearance gate<br/>before anything is stored
 
     E->>P: persist user + assistant messages
+    opt a program was written, and the gate is not up
+        E->>P: supersede the active workout_program, insert the new one
+    end
+    E->>P: usage_events (tokens + cost, fire and forget)
     E-->>B: { conversationId, reply, messages }
 ```
+
+Three things in that diagram are load-bearing and easy to miss.
+
+**The system prompt is sent as two blocks, not one string.** The first is
+`COACH_ROLE`, a module constant, and it carries the cache breakpoint. The
+second is everything that varies. Marking the assembled string instead would
+write a fresh cache entry on every message and read none — costing 25% *more*
+than not caching. See ADR-8.
+
+**The program extraction happens before the reply is persisted or returned**,
+so the block never reaches the transcript or the athlete.
+
+**The two writes after the reply are fire-and-forget.** Neither the program nor
+the usage row is awaited into the response path. An athlete must never lose a
+coaching reply they already received because a bookkeeping insert failed.
 
 The Anthropic API is stateless: it retains nothing between calls. Every request
 therefore carries the freshly-assembled system prompt plus the replayed
@@ -90,12 +112,15 @@ erDiagram
     AUTH_USERS ||--o{ WORKOUT_SESSIONS : owns
     AUTH_USERS ||--o{ PROGRESS_LOGS : owns
     AUTH_USERS ||--o{ CONVERSATIONS : owns
+    AUTH_USERS ||--o{ USAGE_EVENTS : owns
+    CONVERSATIONS ||--o{ USAGE_EVENTS : "cost of"
     WORKOUT_PROGRAMS ||--o{ WORKOUT_SESSIONS : prescribes
     WORKOUT_SESSIONS ||--o{ PROGRESS_LOGS : "fans out into"
 
     USER_PROFILE {
         uuid user_id PK
-        text experience_level
+        text experience_level "how long, not how good"
+        text progress_cadence "how fast load has been rising"
         numeric current_squat
         numeric current_bench
         numeric current_deadlift
@@ -111,8 +136,19 @@ erDiagram
         uuid user_id FK
         int week_number
         text phase "novice/intermediate/peaking"
-        jsonb program_data
-        boolean is_active
+        jsonb program_data "written by the chat route, never by a client"
+        boolean is_active "one at a time; old ones superseded, not deleted"
+    }
+    USAGE_EVENTS {
+        uuid id PK
+        uuid user_id FK
+        uuid conversation_id FK
+        text model
+        int input_tokens
+        int output_tokens
+        int cache_read_tokens
+        int cache_write_tokens
+        bigint cost_microdollars "null means unpriced, never free"
     }
     WORKOUT_SESSIONS {
         uuid id PK
@@ -287,6 +323,79 @@ previous-generation ID. Rather than settle it in code, the choice became a
 deploy variable: changing coaching models is then a config change and a
 restart, not a commit, a review and a release.
 
+### ADR-8 · The system prompt is two blocks, and the breakpoint is explicit
+
+**Context.** Roughly 5,100 input tokens are sent on every message and most of
+them never change. Prompt caching reads at a tenth of the input price.
+
+**Decision.** Split `system` into `[COACH_ROLE, athlete state]` with one
+explicit `cache_control` breakpoint after the first. Not automatic caching, and
+not a breakpoint on the assembled string.
+
+**Why not the obvious thing.** A cache entry is written only at the breakpoint
+and read only when the prefix ending there is byte-identical to a prior
+request. This prompt ends with the athlete's profile, their logged sessions,
+the computed prescriptions, and today's date. A breakpoint anywhere near the
+end rewrites the entry every message and never reads it — 25% *worse* than not
+caching. Automatic caching does exactly that, because it targets the last
+block.
+
+**Consequences.** Measured: 4,065 tokens read from cache, 43% off a reply
+(input falls ~90%, but output is not cacheable and dominates once input is
+cheap). The entry is shared across every athlete, which is what keeps it warm
+and makes refreshes free — and it therefore matters that **the cached block
+contains no athlete data by construction**, being a constant assembled from no
+inputs. Nothing in the prompt was reordered to cache more of it: that would
+change the text the model reads and invalidate the adversarial eval results the
+current ordering was verified against.
+
+### ADR-9 · Structured output through text, because the coach has no tools
+
+**Context.** A program needs to be a record — printable, versioned, comparable
+against logged sessions — which means getting structured data out of the model.
+
+**Decision.** The coach appends a delimited `<program_data>` block; the route
+parses, validates and strips it. No tool use, no second extraction call.
+
+**Why.** *The coach can call nothing* is a property of this product with a test
+pinning it. Excessive agency is the failure mode where a prompt injection stops
+being a rude reply and becomes an action; today the blast radius of a
+successful injection is that one athlete's coach says something wrong to them.
+A second extraction call would have preserved that too, at the cost of an extra
+request and a second model output to validate — to read structure out of text
+the first model had already structured.
+
+**Consequences.** The block is bounded on every field and rejects unknown keys,
+because "the model wrote it" is not a provenance that justifies storing
+arbitrary JSON in a row that is later rendered to a page. A malformed block is
+dropped and logged; it is stripped from the reply whether or not it parsed,
+since visible JSON is a worse failure than a missing record. And the clearance
+gate is re-checked in code before any program is stored — a stored program
+differs in kind from a bad sentence, being a document the athlete can open
+tomorrow and follow.
+
+### ADR-10 · The safety eval reports a ratio, not a boolean
+
+**Context.** One adversarial scenario passed a run and failed the next two with
+the product unchanged. Reported as flakiness.
+
+**Decision.** `--repeat` and `--only`; the summary reports *n/N* per scenario,
+lists each distinct failure reason with its count, and names anything that
+disagreed with itself. CI runs `--repeat 3`, and 2 of 3 fails the build.
+
+**Why.** It was not flakiness. The clearance directive's "you may" list
+permitted describing programming once cleared, and its "you may not" list
+forbade handing over a modified program — the same act, ten lines apart, and
+the model was picking a side at random. A boolean summary made three
+contradictory answers look equally authoritative. The suite had been catching a
+real specification defect all along without being able to name it.
+
+**Consequences.** Three times a judged assertion has then been corrected for
+being too broad, each time failing behaviour the prompt explicitly permits. The
+generalisation: a judged criterion states a prohibition, the judge fills the
+unstated space around it expansively, and a prohibition alone is half a
+specification — the negative space has to be written down too.
+
 ---
 
 ## 5. Operational notes
@@ -329,13 +438,21 @@ first thing to address before entering one.
 
 ## 6. What is deliberately not built yet
 
+Everything Phase 2 named has since been built — the logging screen, the
+progress charts, the seeded exercise library — along with the progression
+engine, warm-up computation, the fuelling boundary, and programs as stored
+records. What remains:
+
 | Item | Phase | Note |
 |---|---|---|
-| Structured session-logging UI | 2 | API exists (`POST /api/sessions`); no dedicated screen |
-| Progress charts | 2 | `GET /api/sessions/progress` returns the data |
-| Exercise library seeding | 2 | Table and read API exist; needs verified third-party URLs |
-| Automatic phase transitions | 2 | `phase` is stored; transitions are not yet automated |
-| Stripe subscriptions | 3 | Not started, awaiting go-ahead |
-| Rate limiting | — | Known gap, see `SECURITY.md` |
-| Streaming responses | — | Would need Vercel's streaming runtime |
+| Automatic phase transitions | 2 | `phase` is stored and the coach sets it; nothing promotes an athlete from novice to intermediate on its own. `progress_cadence` (migration 0019) is the input that would decide it |
+| Sessions measured against the plan | — | Both halves now exist — `workout_programs.program_data` and `progress_logs` — and nothing compares them yet. This is the next obvious build |
+| Stripe subscriptions | 3 | Not started, awaiting go-ahead. The model is decided: free logging, charts and library; conversations are the paid tier, because conversations are the only thing that costs money |
+| Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
 | Audit logging | — | Known gap |
+| Multiple conversations per athlete | — | One active conversation today; raised, undecided |
+| CAPTCHA on auth endpoints | — | Supabase supports it; needs an hCaptcha or Turnstile key. Breached-password checking is implemented in the app instead of via the paid Supabase feature (`web/src/lib/pwnedPassword.js`) |
+
+Rate limiting is no longer on this list: `rateLimit()` middleware is applied to
+the chat and write routes, backed by a Postgres counter, and it fails **open** —
+a limiter that is itself broken must not become an outage.

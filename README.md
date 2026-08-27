@@ -12,9 +12,22 @@ next block based on real reported performance rather than a static template.
 
 **Status:** Deployed and running at
 [coachdiaz.app](https://coachdiaz.app).
-Phase 1 (signup → consent → intake → coaching conversation) is complete and
-exercised by real use; Phase 2 (session logging UI, automatic progression,
-progress charts, exercise library) is in progress.
+
+Phase 1 (signup → consent → intake → coaching conversation) and **Phase 2**
+(session logging UI, automatic progression, progress charts, exercise library)
+are both complete. Since Phase 2 closed, the work has been about making the
+product defensible rather than larger: computed warm-up ramps, a researched
+nutrition boundary, an accessibility and contrast pass validated by
+measurement, breached-password checking, password recovery, a clinician-facing
+page, per-conversation cost instrumentation, prompt caching, and an adversarial
+safety suite that now runs three times per CI job because one run turned out
+not to be a proof.
+
+Programs are now stored records rather than chat messages — the coach emits a
+machine-readable copy alongside its prose, which is what makes `/program`
+printable and what will let logged sessions be measured against the plan.
+
+Phase 3 (payments) has not been started.
 
 [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) is the honest version: what was built,
 what broke, how each fault was diagnosed, and what is still outstanding. It
@@ -49,8 +62,22 @@ time could not have caught them.
    asks how the last session went before advancing load.
 5. **Form guidance.** Verbal cues, instructions to film from the side or use a
    mirror, advice to have a partner watch injury-risk points, and a link to a
-   third-party demonstration video. No video is hosted or reproduced — links
-   point at the rights holder's own channel.
+   third-party demonstration video. No video is hosted, reproduced *or
+   embedded* — links point at the rights holder's own channel. The copyright
+   argument would permit an official embed; the privacy one does not, on a
+   product holding health data.
+6. **A program you can hold.** The coach's program is stored as a record and
+   rendered at `/program` as a table built to be printed. A phone in a chalky
+   gym is a worse reference than paper.
+7. **Fuelling.** Published population ranges — protein, carbohydrate, fat, rate
+   of weight loss — applied to bodyweight as arithmetic, each with its source.
+   Never a calorie target, a meal plan, or a macro split prescribed as an
+   intervention: that line is the one the profession draws between general
+   nutrition information and medical nutrition therapy.
+8. **Something to hand your doctor.** [`/about`](https://coachdiaz.app/about)
+   explains to a clinician what this is, what it refuses to do, and how they
+   can set restrictions through their patient. Public, printable, and held to
+   the system prompt by tests so it cannot quietly stop being true.
 
 ---
 
@@ -113,6 +140,43 @@ no platform code. `api/index.js` adapts it to Vercel's serverless runtime;
 `server/dev.js` binds it to a port. Moving to a container on Railway or Fly is
 an entrypoint change, not a rewrite — deploying on serverless was a hosting
 decision and is reversible.
+
+### 4. The coach has no tools, so structured output goes through text
+
+Getting a machine-readable program out of the model is textbook tool use, and
+tool use was rejected. *The coach can call nothing* is a property this product
+has, with a test pinning it, and excessive agency is the failure mode where a
+prompt injection stops being a rude reply and becomes an action. Today the
+blast radius of a successful injection is that one athlete's coach says
+something wrong to them.
+
+So the coach appends a delimited block, the route parses and validates it, and
+it is stripped before the athlete sees the reply. The model still only produces
+text; we read some of it more carefully. Every field is bounded, unknown keys
+are refused, and a malformed block is dropped without the athlete ever knowing
+— bookkeeping must never cost somebody the coaching they already received.
+
+### 5. Anything that matters is enforced twice
+
+The clearance gate is computed in code *and* stated in the prompt. When the
+coach emits a program, the route re-checks the gate before storing it, because
+a stored program differs in kind from a bad sentence: it is a document the
+athlete can open tomorrow and follow, long after the message around it has
+scrolled away. There is deliberately no endpoint that accepts a program from
+the browser — the guard that cannot be got wrong is the one that does not need
+to exist.
+
+### 6. The system prompt is two blocks, and only the first is cached
+
+`COACH_ROLE` is a module constant assembled from no inputs; everything after it
+varies per athlete and per request. The cache breakpoint sits between them,
+which is the only placement that produces cache reads rather than a fresh write
+every message. Measured: 4,065 tokens read from cache, 43% off a reply.
+
+The consequence that matters here is that **the cached block contains no
+athlete data by construction**. The entry is shared across every user — that is
+what keeps it warm — which would be an uncomfortable thing to reason about if
+it held anything personal.
 
 ---
 
@@ -192,10 +256,31 @@ test should need a credential in order to be constructed.
 The unit tests deliberately cover the parts of coaching behaviour that are
 deterministic — the clearance gate, intake completeness, prompt fencing, the
 video guard — because those are where a silent regression does real harm.
-Model behaviour itself is tested against the live API; see the build log.
+
+Model behaviour itself is adversarial, non-deterministic, and tested
+separately:
+
+```bash
+npm run safety:eval                                  # all scenarios, once
+npm run safety:eval -- --repeat 3                    # what CI runs
+npm run safety:eval -- --only "Active injury" --repeat 5
+```
+
+**A single green run is a sample, not a proof.** One scenario passed a run and
+failed the next two with the product unchanged, and because the summary was a
+boolean all three answers looked equally authoritative. The cause turned out to
+be the system prompt contradicting itself — its "you may" list permitting
+exactly what its "you may not" list forbade — which the suite had been catching
+all along without being able to name. The summary now reports *n/3* per
+scenario, lists each distinct failure reason with how many runs produced it,
+and names anything that disagreed with itself.
 
 CI (`.github/workflows/ci.yml`) runs the tests, builds the frontend, and fails
 the job if the bundle scan finds a secret.
+`.github/workflows/safety-eval.yml` runs the adversarial suite with
+`--repeat 3` on prompt changes and weekly. A scenario that passes 2 of 3 fails
+the build, deliberately: on these scenarios, *sometimes* is not a passing
+grade.
 
 ---
 
@@ -222,14 +307,16 @@ configure secrets.
 │   ├── src/
 │   │   ├── app.js            Express app — no platform code
 │   │   ├── config.js         Validated config + secret-leak guard
-│   │   ├── lib/              Anthropic client, RLS-scoped Supabase client, redacting logger
+│   │   ├── lib/              Anthropic client, RLS-scoped Supabase client, redacting logger,
+│   │   │                     and the pure engines: progression, warm-up, nutrition ranges,
+│   │   │                     max plausibility, token pricing, program-block parsing
 │   │   ├── middleware/       Auth, error handling
-│   │   ├── prompts/          System prompt assembly
-│   │   └── routes/           chat, profile, sessions, library
-│   └── test/                 Unit tests
+│   │   ├── prompts/          System prompt assembly + sanitising fence
+│   │   └── routes/           chat, profile, sessions, program, library, consent, account
+│   └── test/                 Unit tests (584, no credentials required)
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0018, applied in order
+│   ├── migrations/           0001–0020, applied in order
 │   └── tests/                RLS isolation test
 ├── scripts/                  Secret scanners, safety eval, deploy tooling
 └── docs/                     Architecture, security, deployment, legal, build log
