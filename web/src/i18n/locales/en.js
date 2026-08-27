@@ -191,6 +191,8 @@ export const en = {
     clearedLabel: 'A doctor or physical therapist has cleared me to train with this condition.',
     clearanceWarning:
       'Coach will not write you a program until you have been cleared by a professional. It will still answer questions in the meantime.',
+    missingTitle: 'Not saved yet — some answers are still needed',
+    missingHint: 'Coach needs these to write you a program. Press one to go straight to it.',
     submit: 'Save and talk to Coach',
     loadFailed: 'Could not load your profile.',
   },

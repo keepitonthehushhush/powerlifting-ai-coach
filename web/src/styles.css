@@ -752,9 +752,66 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .centered { text-align: center; }
 .empty { text-align: center; }
 
+/* ── WHAT IS MISSING, WHERE THE PERSON IS LOOKING ─────────────────────────
+   Reported as: pressing Save on an incomplete profile says nothing, and the
+   only way to find out what is wrong is to scroll and hunt for it.
+
+   The form relied on native constraint validation. The browser blocks the
+   submit and points at the FIRST invalid field - somewhere up a long form,
+   possibly under the sticky header, in a bubble that vanishes after a few
+   seconds and never mentions the other four fields. On a phone, a person who
+   has scrolled to the button frequently sees nothing happen at all.
+
+   So the summary renders immediately ABOVE the button. Convention puts an
+   error summary at the top of the form; convention assumes the top of the
+   form is where the person is, and here it is exactly where they are not.
+   Each entry is a button that scrolls its field to the middle of the screen -
+   `block: 'center'` rather than an offset calculation, so the sticky header
+   cannot cover it - and focuses it. */
+.error-summary {
+  border: 1px solid var(--error);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.9rem 1rem;
+}
+.error-summary h2 { font-size: 1rem; margin: 0 0 0.5rem; color: var(--error); }
+/* A plain list, not a grid. As grid items the <li>s stopped being list-items
+   in the layout sense and the markers drifted to the last wrapped line of a
+   two-line entry - and these entries are questions, so they wrap. */
+.error-summary ul { margin: 0; padding-left: 1.2rem; }
+.error-summary li { margin-bottom: 0.35rem; }
+.error-summary li:last-child { margin-bottom: 0; }
+/* block, not inline-block: an inline-block that wraps to two lines leaves the
+   list marker beside the SECOND line, and every entry here is a question long
+   enough to wrap on a phone. Block also makes the whole width tappable. */
+.error-summary li button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--link);
+  text-decoration: underline;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.error-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The field itself says so too, so somebody who scrolled past the summary is
+   not left guessing which of two adjacent inputs was meant. */
+/* Two pixels, not a hue change. A one-pixel border swapped from lavender to
+   salmon is a difference most people do not see at all, and some cannot. */
+[aria-invalid='true'] { border-color: var(--error); border-width: 2px; }
+.field-error { color: var(--error); font-size: 0.85rem; }
+
 /* The submit button of a form sits under a centred title, so it centres too.
    Full width on a phone, where a centred button with dead space either side
-   is a smaller target for no reason. */
+   is a smaller target for no reason.
+
+   `:not(.composer-row *)` is not needed - .composer-row is not a form - but
+   the chat composer is the reason this comment exists: see the note on
+   .composer for how this selector once ate the send button. */
 .stack > button.primary,
 form > button.primary {
   align-self: center;

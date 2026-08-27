@@ -195,6 +195,8 @@ export const es = {
     clearedLabel: 'Un médico o fisioterapeuta me ha dado el alta para entrenar con esta condición.',
     clearanceWarning:
       'El entrenador no te escribirá un programa hasta que un profesional te haya dado el alta. Mientras tanto seguirá respondiendo preguntas.',
+    missingTitle: 'Aún no se ha guardado — faltan algunas respuestas',
+    missingHint: 'El entrenador las necesita para escribirte un programa. Pulsa una para ir directamente a ella.',
     submit: 'Guardar y hablar con el entrenador',
     loadFailed: 'No se pudo cargar tu perfil.',
   },

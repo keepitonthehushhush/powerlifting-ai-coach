@@ -4,6 +4,7 @@ import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
+import { ErrorSummary } from '../components/ErrorSummary.jsx';
 
 const EMPTY = {
   experience_level: '',
@@ -59,6 +60,25 @@ const CADENCE_OPTIONS = [
   'no_history',
 ];
 
+/**
+ * The fields the form will not save without, and what to call each one when
+ * telling somebody it is missing.
+ *
+ * This list is the single source of truth for the error summary, and
+ * web/test/intakeValidation.test.js asserts it matches the controls actually
+ * marked `required` in the JSX below - in both directions. A field marked
+ * required and absent here would be enforced silently, which is the bug this
+ * whole change exists to fix; a field listed here and not marked required
+ * would name something in the summary that nothing is checking.
+ */
+const REQUIRED_FIELDS = [
+  { name: 'date_of_birth', labelKey: 'intake.dateOfBirth' },
+  { name: 'experience_level', labelKey: 'intake.experience' },
+  { name: 'goal', labelKey: 'intake.goal' },
+  { name: 'days_per_week', labelKey: 'intake.daysPerWeek' },
+  { name: 'equipment_available', labelKey: 'intake.equipment' },
+];
+
 const GOAL_OPTIONS = [
   'learn_the_lifts',
   'general_strength',
@@ -109,6 +129,8 @@ export function Intake() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  /** Required fields that were empty or invalid at the last save attempt. */
+  const [missing, setMissing] = useState([]);
 
   useEffect(() => {
     api
@@ -130,12 +152,37 @@ export function Intake() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Clear one field's error as soon as it is filled in.
+   *
+   * Without this the summary keeps naming something the person has just fixed,
+   * which reads as the form being broken rather than as them being stale.
+   */
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setMissing((prev) => (prev.some((m) => m.name === field) && value !== '' && value !== null
+      ? prev.filter((m) => m.name !== field)
+      : prev));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    // The form carries noValidate, so this is the only validation the person
+    // meets - deliberately, because two mechanisms racing means the native
+    // bubble appears over our summary and neither is readable. checkValidity()
+    // is still what decides: it catches an out-of-range days_per_week and an
+    // unparseable date as well as an empty box, and it is the browser's own
+    // opinion of the same `required` and `min`/`max` attributes.
+    const elements = event.currentTarget.elements;
+    const invalid = REQUIRED_FIELDS.filter(({ name }) => {
+      const control = elements.namedItem(name);
+      return control ? !control.checkValidity() : false;
+    }).map(({ name, labelKey }) => ({ name, label: t(labelKey) }));
+
+    setMissing(invalid);
+    if (invalid.length > 0) return;
+
     setBusy(true);
     setError(null);
     try {
@@ -147,6 +194,14 @@ export function Intake() {
       setBusy(false);
     }
   }
+
+  /** id and name so the summary can find the control; aria so it announces. */
+  const required = (name) => ({
+    id: name,
+    name,
+    required: true,
+    ...(missing.some((m) => m.name === name) ? { 'aria-invalid': 'true' } : {}),
+  });
 
   if (loading) return <div className="centered muted">{t('common.loading')}</div>;
 
@@ -172,7 +227,7 @@ export function Intake() {
         </header>
       </StickyHeader>
 
-      <form onSubmit={handleSubmit} className="stack">
+      <form onSubmit={handleSubmit} className="stack" noValidate>
         {/* Four groups, not one column of eighteen inputs.
             The old form was a single stack, so the birth date, the one-rep
             maxes and the plate size all looked like the same kind of question
@@ -190,7 +245,7 @@ export function Intake() {
               type="date"
               value={form.date_of_birth}
               onChange={(e) => update('date_of_birth', e.target.value)}
-              required
+              {...required('date_of_birth')}
             />
             <span className="muted small">{t('intake.dateOfBirthHint')}</span>
           </label>
@@ -252,7 +307,7 @@ export function Intake() {
             <select
               value={form.experience_level}
               onChange={(e) => update('experience_level', e.target.value)}
-              required
+              {...required('experience_level')}
             >
               <option value="">{t('intake.select')}</option>
               {EXPERIENCE_OPTIONS.map((key) => (
@@ -282,7 +337,11 @@ export function Intake() {
 
           <label>
             {t('intake.goal')}
-            <select value={form.goal} onChange={(e) => update('goal', e.target.value)} required>
+            <select
+              value={form.goal}
+              onChange={(e) => update('goal', e.target.value)}
+              {...required('goal')}
+            >
               <option value="">{t('intake.select')}</option>
               {GOAL_OPTIONS.map((key) => (
                 <option key={key} value={key}>
@@ -311,7 +370,7 @@ export function Intake() {
               max="7"
               value={form.days_per_week}
               onChange={(e) => update('days_per_week', e.target.value)}
-              required
+              {...required('days_per_week')}
             />
           </label>
 
@@ -322,7 +381,7 @@ export function Intake() {
               value={form.equipment_available}
               onChange={(e) => update('equipment_available', e.target.value)}
               placeholder={t('intake.equipmentPlaceholder')}
-              required
+              {...required('equipment_available')}
             />
           </label>
 
@@ -417,6 +476,13 @@ export function Intake() {
         </fieldset>
 
         {error && <p className="error">{error}</p>}
+
+        {/* Above the button, not at the top of the form. The person is here. */}
+        <ErrorSummary
+          title={t('intake.missingTitle')}
+          hint={t('intake.missingHint')}
+          items={missing}
+        />
 
         <button type="submit" className="primary" disabled={busy}>
           {busy ? t('common.saving') : t('intake.submit')}
