@@ -18,11 +18,12 @@
     "test": "node --test \"server/test/*.test.js\"",
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
-    "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/rls_isolation_test.sql",
+    "test:db": "command -v psql >/dev/null 2>&1 || { echo 'psql not found. Install it (macOS: brew install libpq && brew link --force libpq) or run npm run check:db for the subset that needs no psql.'; exit 2; }; psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/rls_isolation_test.sql",
     "safety:eval": "node scripts/safety-eval.mjs",
     "verify:deps": "node scripts/verify-frontend-deps.mjs",
     "verify": "npm run verify:deps && npm run verify:bundle",
-    "check": "npm test && npm run verify:deps && npm run build && npm run verify:bundle"
+    "check": "npm test && npm run verify:deps && npm run build && npm run verify:bundle",
+    "check:db": "node scripts/check-db-invariants.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
