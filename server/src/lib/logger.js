@@ -15,12 +15,32 @@
  * SENSITIVE_KEYS is deliberately broader than the current schema, so a field
  * added later with an obvious name is covered before anyone remembers to
  * update this list.
+ *
+ * ── WHAT THIS DOES NOT COVER, DELIBERATELY ────────────────────────────────
+ *
+ * Redaction is keyed on the NAME of the key holding a value. A sensitive
+ * string that arrives as an array element - `{ fields: ['health_restrictions'] }`
+ * from the profile route - is not redacted, because it is a value and not a
+ * key. That case is left alone on purpose: the field names are what makes a
+ * failed save diagnosable, and they say that somebody edited their injury
+ * note without saying what it now reads. The AI processing disclosure states
+ * this explicitly rather than letting the page imply it never happens.
  */
 
 const SENSITIVE_KEYS = [
   'health_restrictions', 'healthrestrictions',
   'injury', 'injuries', 'medical', 'diagnosis',
   'medication', 'medications', 'condition', 'conditions',
+  // Added 2026-08-27, while auditing the AI processing disclosure against the
+  // code. That page promised logs do not record "your recovery information",
+  // and the promise held only because no call site happened to pass a profile
+  // - not because anything stopped one. Washington's My Health My Data Act
+  // treats sleep, alcohol, nicotine and eating as consumer health data, which
+  // is the same category as the injury fields above, so they belong on the
+  // same list. Substring matching means a stray key like `sleepMs` gets
+  // redacted too; over-redacting a retry delay costs nothing.
+  'sleep', 'alcohol', 'nicotine', 'nutrition',
+  'date_of_birth', 'dateofbirth',
   'password', 'access_token', 'refresh_token', 'authorization',
   'apikey', 'api_key',
 ];
