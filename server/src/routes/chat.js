@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
+import { costInMicrodollars } from '../lib/pricing.js';
 import { buildSystemPrompt } from '../prompts/systemPrompt.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
@@ -144,6 +145,8 @@ chatRouter.post('/', async (req, res, next) => {
       .eq('id', conversation.id);
     if (saveError) throw new HttpError(502, 'Reply generated but could not be saved.');
 
+    const costMicrodollars = costInMicrodollars(reply.usage, reply.model);
+
     // Token counts and ids only. The message bodies are not logged: they
     // routinely contain the athlete's injury history.
     logger.info('chat.completed', {
@@ -152,8 +155,30 @@ chatRouter.post('/', async (req, res, next) => {
       model: reply.model,
       inputTokens: reply.usage?.input_tokens,
       outputTokens: reply.usage?.output_tokens,
+      costMicrodollars,
       historyReplayed: window.length,
     });
+
+    // Recorded AFTER the reply is saved and deliberately not awaited into the
+    // response path. This is a metrics row: an athlete must never lose a
+    // coaching reply they already received because a bookkeeping insert
+    // failed. A failure here is logged and dropped, which is the honest
+    // trade - a gap in cost data is a worse report, not a worse product.
+    req.supabase
+      .from('usage_events')
+      .insert({
+        user_id: req.user.id,
+        conversation_id: conversation.id,
+        model: reply.model,
+        input_tokens: reply.usage?.input_tokens ?? 0,
+        output_tokens: reply.usage?.output_tokens ?? 0,
+        cache_read_tokens: reply.usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: reply.usage?.cache_creation_input_tokens ?? 0,
+        cost_microdollars: costMicrodollars,
+      })
+      .then(({ error }) => {
+        if (error) logger.warn('usage.record_failed', { userId: req.user.id, message: error.message });
+      });
 
     res.json({
       conversationId: conversation.id,
