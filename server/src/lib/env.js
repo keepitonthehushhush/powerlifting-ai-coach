@@ -73,6 +73,20 @@ export function buildConfig(env) {
       // scoped `to authenticated`. Authority comes from the end user's JWT,
       // which we attach per request. See lib/supabase.js.
       publishableKey: required(env, 'SUPABASE_PUBLISHABLE_KEY'),
+
+      /**
+       * The service-role key. OPTIONAL, and used in exactly one place.
+       *
+       * See lib/supabaseAdmin.js. In short: a Stripe webhook has no user and
+       * no JWT, and the subscription mirror is deliberately not writable by
+       * any client. Something has to write it and that something cannot be
+       * the caller.
+       *
+       * Optional because everything except the billing webhook works without
+       * it, and because a key this powerful should be absent from every
+       * environment that does not need it rather than present and unused.
+       */
+      secretKey: optional(env, 'SUPABASE_SECRET_KEY', ''),
     },
 
     chat: {

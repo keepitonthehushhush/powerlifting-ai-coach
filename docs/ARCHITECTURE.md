@@ -459,6 +459,40 @@ a written intention that depends on a person remembering to re-read it.
 
 ---
 
+### ADR-12 · One service-role client, for the webhook only
+
+**Context.** ADR-1 says the backend authenticates as the user, never as an
+admin: every query carries the caller's JWT and RLS decides what it can see.
+That is the single most important security property here.
+
+A Stripe webhook has no user. Stripe carries no JWT and never will. The row it
+must write — the subscription mirror — is deliberately not writable by any
+client, because a client that could write it could grant itself a subscription.
+Something has to write it and that something cannot be the caller.
+
+**Decision.** A service-role Supabase client exists in `server/src/lib/supabaseAdmin.js`
+and is imported by exactly one file. A test walks the source tree and asserts
+that: if a second importer appears, the exception has stopped being an
+exception and the decision needs revisiting rather than extending.
+
+**What makes it safe enough.** The webhook is not an open door. It rejects
+anything without a valid Stripe signature — an HMAC over the raw bytes with a
+secret only Stripe and we hold — and refuses an event id it has already seen.
+Reaching the client requires forging that signature, and the blast radius if
+you did is one subscription row: nothing in the webhook path touches health
+data, which stays behind RLS.
+
+The key is also **optional configuration**. Every environment that does not
+process webhooks runs without it, which is the smallest number of places a key
+this powerful can exist.
+
+**Rejected: a SECURITY DEFINER function callable by `anon`.** It would avoid
+the key and would be strictly worse — anybody on the internet could call it,
+and the protection would be a shared secret passed as an argument, which is a
+worse version of the signature we already verify.
+
+---
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
