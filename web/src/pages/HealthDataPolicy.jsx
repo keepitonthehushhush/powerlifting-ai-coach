@@ -22,7 +22,7 @@ export function HealthDataPolicy() {
     <div className="page">
       <header className="page-header">
         <h1>Consumer Health Data Privacy Policy</h1>
-        <p className="muted small">Version chd-2026-08-24</p>
+        <p className="muted small">Version chd-2026-08-27</p>
       </header>
 
       <div className="card draft-banner">
@@ -34,17 +34,52 @@ export function HealthDataPolicy() {
       </div>
 
       <div className="card prose">
+        <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>chd-2026-08-27.</strong> An audit of this document against the database found
+          that four things the app collects were not disclosed here: typical sleep hours, weekly
+          alcohol intake, nicotine use, and free-text notes about eating. All four are optional,
+          all four are stored under this consent, and all four are consumer health data. They are
+          now listed. Because the document you previously agreed to did not describe them, this
+          version supersedes the last one and you will be asked to agree again. Nothing about how
+          the data is handled changed — only what this page admits to collecting.
+        </p>
+        <p className="small">
+          Also added: the data we hold that is not health data (programs, conversations, session
+          logs, and per-message token costs), and a description of the one outbound request in the
+          product that is not to Anthropic.
+        </p>
+
         <h2 className="h3">What we collect</h2>
         <p>
-          To write you a training program, Coach collects: your training experience, current squat,
-          bench and deadlift numbers, bodyweight, preferred units, equipment access, how many days a
-          week you train, and your goal.
+          To write you a training program, Coach collects: your training experience and how quickly
+          your lifts have been progressing, your current squat, bench and deadlift numbers, your
+          bodyweight, preferred units, equipment access, the smallest plate you own, how many days
+          a week you train, your goal, and any competition date. It also collects your date of
+          birth, which is used to age-appropriate your programming and to enforce the minimum age.
         </p>
         <p>
-          <strong>If you choose to provide it</strong>, we also collect injuries, pain, and medical
-          conditions that affect your training, and whether a professional has cleared you to train.
-          Washington law treats this as <em>consumer health data</em>. It is optional. Coach works
-          without it, and will simply be more conservative.
+          <strong>If you choose to provide it</strong>, we also collect:
+        </p>
+        <ul>
+          <li>injuries, pain, and medical conditions that affect your training, and whether a
+            professional has cleared you to train;</li>
+          <li>the hours you typically sleep;</li>
+          <li>how many alcoholic drinks you have in a typical week;</li>
+          <li>whether you use nicotine, and how often;</li>
+          <li>anything you choose to write about how you eat.</li>
+        </ul>
+        <p>
+          Washington law treats all of that as <em>consumer health data</em>. Every item is
+          optional and each can be left blank. Coach works without any of it, and will simply be
+          more conservative and less able to explain a bad week.
+        </p>
+        <p>
+          We also hold what the coaching produces and what it costs us to produce: your
+          conversations with Coach, the training programs written for you, the sessions you log,
+          and a per-message record of how many tokens each reply used and what it cost. That last
+          one exists so we know what running this service costs. It contains no message content and
+          is never used for advertising or profiling.
         </p>
 
         <h2 className="h3">Why we collect it</h2>
@@ -62,7 +97,16 @@ export function HealthDataPolicy() {
         <p>
           <strong>We do not sell your health data. We do not share it with advertisers, data
           brokers, or analytics providers.</strong> No third-party analytics or advertising scripts
-          run on the pages where this information is entered.
+          run on the pages where this information is entered — or on any other page of this site.
+        </p>
+        <p>
+          For completeness, one other outbound request exists anywhere in this product, and it
+          carries nothing about you. When you choose a password we check it against Have I Been
+          Pwned's list of passwords exposed in known breaches. Your password is hashed in your own
+          browser and <strong>only the first five characters of that hash</strong> are sent; the
+          service returns around a thousand candidates and the comparison happens on your device.
+          It never receives your password, the full hash, your email address, or any cookie. No
+          health data is involved.
         </p>
 
         <h2 className="h3">How it is protected</h2>
