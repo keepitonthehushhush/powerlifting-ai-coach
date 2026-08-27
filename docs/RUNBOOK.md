@@ -176,3 +176,31 @@ period already paid for, and cancelling deletes nothing — the data belongs to
 the person either way. This is promised on the FAQ before any payment exists,
 because a subscription somebody is worried about escaping is a subscription
 they will not start.
+
+## Upgrading the Stripe SDK
+
+`server/src/lib/stripe.js` pins `apiVersion` to a dated Stripe API version.
+That pin is not a preference and it is not free-floating: it must match the
+version the installed `stripe` package was built against, because the SDK's
+request and response handling is written for that version. Pinning older than
+the SDK means the library and the wire format disagree, and the symptom is a
+field that is quietly absent rather than an error.
+
+When you run `npm update stripe` or bump the major:
+
+1. Read `node_modules/stripe/esm/apiVersion.js` (or `cjs/apiVersion.js`) in the
+   new version. That file holds the API version the SDK is built for.
+2. Update `apiVersion` in `server/src/lib/stripe.js` to match, in the same
+   commit as the upgrade, and update the "Verified" line above it with today's
+   date and the SDK version you checked.
+3. Read the Stripe changelog for the release train you are moving to
+   (https://docs.stripe.com/changelog). A move between major trains - Basil to
+   Dahlia, say - carries breaking changes; a monthly release within a train
+   does not.
+4. Run `npm test`. `server/test/billing.test.js` compares the pin against the
+   installed SDK's own file and fails if they have drifted apart, so on any
+   machine that has run `npm install` you will be told rather than having to
+   remember.
+
+Current pin: `2026-08-26.dahlia`, verified 2026-08-27 against stripe-node
+v22.6.0.

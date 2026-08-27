@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { readSource, readRaw, phrase } from './helpers/source.js';
 
 const app = readSource(new URL('../src/app.js', import.meta.url));
@@ -10,6 +11,9 @@ const billing = readSource(new URL('../src/routes/billing.js', import.meta.url))
 const billingRaw = readRaw(new URL('../src/routes/billing.js', import.meta.url));
 const adminRaw = readRaw(new URL('../src/lib/supabaseAdmin.js', import.meta.url));
 const stripeLib = readSource(new URL('../src/lib/stripe.js', import.meta.url));
+// The raw file too: the pin's provenance lives in a comment, and a comment is
+// the thing under test when what you are asserting is that it was checked.
+const stripeLibRaw = readRaw(new URL('../src/lib/stripe.js', import.meta.url));
 
 describe('THE TWO ORDERING FACTS THAT BREAK EVERYTHING WHEN WRONG', () => {
   test('the webhook mounts BEFORE express.json', () => {
@@ -196,9 +200,50 @@ describe('billing is optional all the way down', () => {
     assert.match(stripeLib, phrase('Run `npm install stripe`'));
   });
 
-  test('the API version is pinned', () => {
-    // Stripe ships breaking changes behind dated versions. An integration that
-    // follows the newest one breaks on a day nobody deployed anything.
-    assert.match(stripeLib, /apiVersion: '20\d\d-\d\d-\d\d/);
+  test('the API version is pinned, to the exact string and not just a shape', () => {
+    // The previous version of this test matched /20\d\d-\d\d-\d\d/, which
+    // is how a pin a full major release train out of date sat here passing.
+    // A regex that accepts any date cannot tell a current pin from a stale
+    // one, and stale was the actual defect.
+    assert.match(stripeLib, /apiVersion: '2026-08-26\.dahlia'/);
+  });
+
+  test('the pin records where it came from, so the next person can re-check it', () => {
+    assert.match(stripeLibRaw, phrase('Verified 2026-08-27 against stripe-node v22.6.0'));
+  });
+
+  test('THE PACKAGE IS DECLARED, NOT ASSUMED TO BE LYING AROUND', () => {
+    // The code imports stripe dynamically so a deployment without billing
+    // still boots. That graceful degradation is good, and it is also exactly
+    // what would hide a missing dependency: the package was absent from
+    // package.json entirely while the routes referenced it, so CI installed
+    // a tree the billing code could not run in and nothing said so.
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+    assert.ok(pkg.dependencies.stripe, 'stripe is not in package.json dependencies');
+    assert.match(pkg.dependencies.stripe, /^\^22\./, 'the declared major must match the pinned API version');
+  });
+
+  test('AND IF THE PACKAGE IS INSTALLED, ITS OWN API VERSION MUST AGREE WITH THE PIN', () => {
+    // The check where the fact lives. stripe-node carries the API version it
+    // was built against; pinning to anything else means the wire format and
+    // the library disagree, which shows up as a field that is quietly absent
+    // rather than as an error. Skipped rather than failed when the package is
+    // absent, because a machine without billing configured is a valid state -
+    // but on any machine that has run `npm install`, this fires.
+    let sdkVersion = null;
+    for (const rel of ['../../node_modules/stripe/esm/apiVersion.js',
+                       '../../node_modules/stripe/cjs/apiVersion.js']) {
+      try {
+        const found = readFileSync(new URL(rel, import.meta.url), 'utf8')
+          .match(/'(20\d\d-\d\d-\d\d\.[a-z]+)'/);
+        if (found) { sdkVersion = found[1]; break; }
+      } catch { /* not installed, or the build layout moved */ }
+    }
+    if (sdkVersion === null) return; // package absent - nothing to compare against
+    const pinned = stripeLib.match(/apiVersion: '([^']+)'/)[1];
+    assert.equal(
+      pinned, sdkVersion,
+      `lib/stripe.js pins ${pinned} but the installed stripe SDK is built for ${sdkVersion} - update the pin in the same commit as the upgrade`,
+    );
   });
 });
