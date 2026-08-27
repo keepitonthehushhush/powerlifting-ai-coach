@@ -80,7 +80,12 @@ describe('the hard limits are present', () => {
     ['no cessation or withdrawal advice', /cessation, tapering, or withdrawal/],
     ['alcohol withdrawal named as medically dangerous', /withdrawal in particular can be medically dangerous/],
     ['no calorie or restriction plans on ED signals', /do NOT provide calorie targets/],
-    ['no supplement protocols for this individual', /Do NOT prescribe supplement protocols/],
+    // The supplement rule was widened deliberately - specifics are now allowed,
+    // because refusing to say "3 to 5 grams" about creatine is theatre - so what
+    // is pinned here is the half that carries risk. Full coverage is in
+    // nutrition.test.js.
+    ['no dose for anybody on medication or under 18', /Do not give a dose to anybody/],
+    ['supplements are not a route to the drug conversation', /route to the performance-enhancing drug/],
     ['no rapid cuts or fluid manipulation', /never program an aggressive or rapid cut/],
     ['coaching is never withheld as leverage', /NEVER make coaching conditional/],
   ]) {

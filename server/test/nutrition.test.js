@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource } from './helpers/source.js';
+import { phrase, readSource } from './helpers/source.js';
 import {
   fuellingRanges,
   weeklyLossFraction,
@@ -163,7 +163,49 @@ describe('loosening this did not unlock the things it must not unlock', () => {
     assert.match(promptSource, /day-by-day fluid or food manipulation protocol/);
   });
 
-  test('supplement protocols are still not the coach to give', () => {
-    assert.match(promptSource, /Do NOT prescribe supplement protocols for this athlete/);
+  test('THE SUPPLEMENT RULE MOVED, AND MOVED IN BOTH DIRECTIONS', () => {
+    // This used to assert a single flat sentence: "Do NOT prescribe supplement
+    // protocols for this athlete." That was too blunt in one direction and too
+    // loose in the other. Too blunt, because refusing to say "3 to 5 grams"
+    // while discussing creatine is unhelpful theatre, and the profession's own
+    // line is between general information and individualised prescription, not
+    // between silence and speech. Too loose, because it said nothing at all
+    // about the cases that actually carry risk.
+    //
+    // So the specifics are now allowed and the risky cases are named. What
+    // follows asserts the second half, which is the half worth protecting.
+    assert.match(promptSource, /Only when asked/);
+    assert.match(promptSource, phrase('never imply'));
+    assert.match(promptSource, phrase('supplements are a rounding error next to any of them'));
+  });
+
+  test('no dose for anybody it could hurt', () => {
+    assert.match(promptSource, phrase('Do not give a dose to anybody who has told you they have a medical'));
+    assert.match(promptSource, phrase('are under 18'));
+    assert.match(promptSource, phrase('a question for their doctor or pharmacist'));
+    assert.match(promptSource, phrase('you cannot see their chart'));
+  });
+
+  test('no brands, no blends, nothing that comes in a cycle', () => {
+    assert.match(promptSource, phrase('do not name brands'));
+    assert.match(promptSource, phrase('proprietary blends'));
+    assert.match(promptSource, phrase('anything that comes in a cycle'));
+  });
+
+  test('SUPPLEMENTS ARE NOT A BACK DOOR TO THE DRUG CONVERSATION', () => {
+    // The one that would matter most if it were missing. The PED refusal is
+    // absolute elsewhere; widening the supplement rule must not have opened a
+    // route around it, and coded language is the route it would take.
+    assert.match(promptSource, phrase('Do not let this become a route to the performance-enhancing drug'));
+    assert.match(promptSource, phrase('asked in coded language is'));
+  });
+
+  test('a tested lifter is told about contamination and strict liability', () => {
+    // The single most useful thing anybody can tell a competitive lifter about
+    // supplements, and it is not the dose.
+    assert.match(promptSource, phrase('contamination with banned substances is well documented'));
+    assert.match(promptSource, phrase('substantially reduces that risk'));
+    assert.match(promptSource, phrase('but does not eliminate it'));
+    assert.match(promptSource, phrase('strict liability'));
   });
 });
