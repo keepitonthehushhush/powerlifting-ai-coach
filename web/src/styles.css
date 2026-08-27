@@ -218,16 +218,47 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   font-size: 0.9rem;
 }
 
+/* A fieldset is the right element for a group of related questions - it is
+   what a screen reader announces the legend against - but its default box is
+   nothing like a div's. It carries a browser border, its own padding, and a
+   min-width of min-content that refuses to shrink and will push a form wider
+   than the phone holding it. These four lines are what make `fieldset` behave
+   like the card it is being asked to look like. */
+fieldset.card,
 fieldset.sensitive {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem;
   margin: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+}
+fieldset.card { gap: 1rem; }
+
+/* The health and lifestyle groups sit on the same surface as every other
+   section of the form. They used to render straight onto the page background,
+   which was fine while the rest of the form was one flat card - but once the
+   other groups became cards, the one section carrying health data was the only
+   one that visually receded. Found by rendering the form and looking at it.
+
+   What marks this content as sensitive is the legend and the note under it,
+   which say in words that it is only visible to the athlete's own account and
+   never reaches a log. A slightly different border says that to nobody. */
+fieldset.sensitive {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
   gap: 0.7rem;
 }
 legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
+
+/* The heading of a group of questions, rather than a caption on a box. Sized
+   up from the default legend so the four sections of the intake form read as
+   sections at a glance on a phone, where only one is on screen at a time. */
+.section-legend {
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
 
 .muted { color: var(--muted); }
 .small, .fineprint { font-size: 0.82rem; }
@@ -653,6 +684,58 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .nav-jump:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
 
 .page-title { margin: 0.6rem 0 0.15rem; font-size: 1.45rem; letter-spacing: -0.02em; }
+
+/* ── What is centred, and what is deliberately not ─────────────────────────
+   The ask was "centre all the text so it looks better on every device". Half
+   of that is right and half of it would make the app harder to read, so this
+   is the line the stylesheet draws.
+
+   CENTRED: the page column itself, every page title and subtitle, empty
+   states, loading text, the sign-in card, and the submit row. These are short,
+   they are the first thing the eye lands on, and centring them is what makes a
+   screen look composed rather than pinned to the left edge - which is the
+   actual complaint behind the request.
+
+   NOT CENTRED: anything longer than about two lines. Body copy, the policy
+   pages, coaching replies, field hints, the note above the one-rep maxes.
+   Centred paragraphs give every line a different starting x, so at the end of
+   each line the eye has to hunt for where the next one begins instead of
+   sweeping back to a fixed margin. The cost grows with line count and with
+   line length, and it lands hardest on exactly the readers least able to
+   absorb it - dyslexic readers and anyone reading a wall of text on a phone in
+   a gym. A training app whose safety information is tiring to read has made a
+   bad trade for a symmetrical screenshot.
+
+   The multi-device half of the request is real and is handled by the column
+   width and the padding below, not by text alignment. */
+.page-header { text-align: center; }
+.page-header .site-nav { text-align: left; }
+.page-title { text-align: center; }
+.header-detail { text-align: center; max-width: 58ch; margin-inline: auto; }
+
+.centered { text-align: center; }
+.empty { text-align: center; }
+
+/* The submit button of a form sits under a centred title, so it centres too.
+   Full width on a phone, where a centred button with dead space either side
+   is a smaller target for no reason. */
+.stack > button.primary,
+form > button.primary {
+  align-self: center;
+  min-width: min(320px, 100%);
+}
+@media (max-width: 560px) {
+  .stack > button.primary,
+  form > button.primary { min-width: 100%; }
+}
+
+/* The reading column, and the padding around it. `min()` rather than a fixed
+   max-width so the same rule serves a 320px phone and a 27in monitor: the
+   column is whatever the viewport allows up to the point where lines get too
+   long to track, and the gutters shrink on small screens instead of eating a
+   third of the width. */
+.page { max-width: min(760px, 100%); padding-inline: clamp(0.85rem, 4vw, 1.25rem); }
+
 
 /* The language control has to belong to the same bar as everything else. A
    default select renders as a heavy bevelled box, which is the one piece of
