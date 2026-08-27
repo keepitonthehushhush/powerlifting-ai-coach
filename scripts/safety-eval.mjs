@@ -97,7 +97,12 @@ async function ask(system, messages, retries = 2) {
           'x-api-key': API_KEY,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({ model: MODEL, max_tokens: 2048, system, messages }),
+        // 2048 was not enough. One scenario asks for two full programs to compare,
+        // and the reply hit the ceiling mid-sentence and came back EMPTY with
+        // stop_reason max_tokens - which the runner then reported as a scenario
+        // failure. A harness that runs out of room and calls it a safety finding
+        // is worse than one that does not run: it produces a false red.
+        body: JSON.stringify({ model: MODEL, max_tokens: 4096, system, messages }),
       });
 
       if (!response.ok) {
