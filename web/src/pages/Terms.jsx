@@ -13,6 +13,26 @@ import { Link } from 'react-router-dom';
  * DELIBERATELY NOT TRANSLATED, for the same reason as the health data policy:
  * a machine translation of a legal document is a different legal document.
  *
+ * ── tos-2026-08-27: WHAT THE AUDIT FOUND ──────────────────────────────────
+ *
+ * This document said "Accounts are refused where the date of birth given
+ * indicates the person is under 18." No code refuses an account. Sign-up asks
+ * for an email and a password; the date of birth is asked for later, on the
+ * intake form, and it is optional. What the age gate actually blocks is
+ * STORING health or lifestyle information - and it fails closed, so it blocks
+ * that for anybody whose date of birth is unknown too.
+ *
+ * The application's own intake hint has been telling users the true version
+ * the whole time ("Coach Diaz cannot store injury or lifestyle information
+ * for under-18s"), and the 403 it returns says in as many words: "You can
+ * still use the rest of the app." A terms document that contradicts the
+ * product's own error message is worse than a vague one, because it reads as
+ * authoritative.
+ *
+ * Corrected below to describe the rule and the enforcement separately, which
+ * is what they are. Whether under-18s should be refused outright is a product
+ * decision, not a drafting one - see docs/LEGAL_CONSIDERATIONS.md.
+ *
  * Content describes what the application actually does, checked against the
  * source. NOT reviewed by an attorney — see docs/LEGAL_CONSIDERATIONS.md.
  */
@@ -21,7 +41,7 @@ export function Terms() {
     <div className="page">
       <header className="page-header">
         <h1>Terms of Service</h1>
-        <p className="muted small">Version tos-2026-08-24</p>
+        <p className="muted small">Version tos-2026-08-27</p>
       </header>
 
       <div className="card draft-banner">
@@ -33,6 +53,18 @@ export function Terms() {
       </div>
 
       <div className="card prose">
+        <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>tos-2026-08-27.</strong> We checked this document against the code and found a
+          claim that was not true: it said accounts are refused when the date of birth given shows
+          the person is under 18. Nothing refuses an account. What the application actually blocks
+          is the <em>storing of injury and lifestyle information</em> by anyone under 18 — or by
+          anyone who has not given a date of birth at all. The age section below now says that
+          instead. The rule has not changed and neither has the code; the description has. Because
+          the document you previously agreed to described something the product does not do, this
+          version supersedes the last one and you will be asked to agree again.
+        </p>
+
         <h2 className="h3">What this service is</h2>
         <p>
           Coach Diaz is an AI strength coach. You tell it about your training, it writes you a
@@ -68,8 +100,17 @@ export function Terms() {
 
         <h2 className="h3">You must be 18 or older</h2>
         <p>
-          This service is for adults. Accounts are refused where the date of birth given indicates
-          the person is under 18. If you are under 18, do not use this service.
+          This service is for adults. If you are under 18, do not use it. We have not built a way
+          for a parent or guardian to consent on your behalf, and until we have, you are not
+          someone this service is for.
+        </p>
+        <p>
+          What we enforce in code is narrower than that rule, and you should know which is which.
+          Signing up does not ask your age. The date of birth on the intake form is optional. What
+          the application refuses is <strong>storing injury or lifestyle information for anyone
+          under 18</strong> — and because it fails closed, it refuses that for anyone who has not
+          given a date of birth at all. It does not verify the date you give, and a self-reported
+          birth date cannot be verified by anyone.
         </p>
 
         <h2 className="h3">Your account</h2>
@@ -78,9 +119,12 @@ export function Terms() {
           else has access to your account.
         </p>
         <p>
-          You can delete your account at any time from the Account page. Deletion removes your
-          profile, your programs, your logged sessions and your conversations. It is not
-          recoverable.
+          You can delete your account at any time from the Account page. Deletion removes the
+          account itself, and every row attached to it goes with it: your profile — including
+          anything you told us about injuries — your programs, your logged sessions and individual
+          sets, your conversations with Coach, your record of consents, and the usage rows counting
+          what your replies cost. Nothing is kept back for our own records. It is not recoverable,
+          so export first if you want a copy.
         </p>
 
         <h2 className="h3">What you may not do</h2>
