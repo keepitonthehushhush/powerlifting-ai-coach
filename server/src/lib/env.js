@@ -87,5 +87,39 @@ export function buildConfig(env) {
       // be tight enough to catch ordinary use.
       maxMessageLength: Number(optional(env, 'CHAT_MAX_MESSAGE_LENGTH', '12000')),
     },
+
+    /**
+     * Billing, and every field is OPTIONAL on purpose.
+     *
+     * The product works entirely without Stripe configured - logging, charts,
+     * the library, the program record and the policy pages are all free, and
+     * the coaching conversation is the only thing behind the paywall. So a
+     * deployment with no Stripe keys is not a broken deployment, it is the
+     * free product, and it must boot.
+     *
+     * That is not a nicety: it is how this gets developed and tested without
+     * putting live payment credentials into every environment, and it is why
+     * `enabled` is derived rather than declared. A half-configured Stripe -
+     * a secret key with no webhook secret - is the dangerous state, because
+     * the checkout would work and the webhook that grants access would not.
+     * Either all four are present or billing is off.
+     */
+    stripe: (() => {
+      const secretKey = optional(env, 'STRIPE_SECRET_KEY', '');
+      const webhookSecret = optional(env, 'STRIPE_WEBHOOK_SECRET', '');
+      const priceId = optional(env, 'STRIPE_PRICE_ID', '');
+      const portalReturnUrl = optional(env, 'STRIPE_PORTAL_RETURN_URL', '');
+      return {
+        secretKey,
+        webhookSecret,
+        priceId,
+        portalReturnUrl,
+        enabled: Boolean(secretKey && webhookSecret && priceId),
+        // Guards against the mistake that costs real money: pointing a
+        // development deployment at live keys. `sk_live_` is Stripe's own
+        // prefix and is stable.
+        livemode: secretKey.startsWith('sk_live_'),
+      };
+    })(),
   };
 }

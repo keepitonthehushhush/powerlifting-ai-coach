@@ -44,7 +44,7 @@ export const accountRouter = Router();
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, programs, sessions, logs, conversations, consents, usage] = await Promise.all([
+    const [profile, programs, sessions, logs, conversations, consents, usage, subscription] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       req.supabase.from('workout_programs').select('*').order('created_at'),
       req.supabase.from('workout_sessions').select('*').order('date'),
@@ -52,9 +52,13 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       req.supabase.from('conversations').select('*').order('created_at'),
       req.supabase.from('consent_records').select('*').order('seq'),
       req.supabase.from('usage_events').select('*').order('created_at'),
+      // Billing state is the person's own data and belongs in a subject access
+      // request. It is a mirror of what Stripe holds; Stripe's own copy is
+      // requestable from Stripe, and `not_included` says so.
+      req.supabase.from('subscriptions').select('*').maybeSingle(),
     ]);
 
-    for (const result of [profile, programs, sessions, logs, conversations, consents, usage]) {
+    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, subscription]) {
       if (result.error) throw new HttpError(502, 'Could not assemble your data export.');
     }
 
@@ -73,10 +77,12 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         conversations: conversations.data ?? [],
         consent_records: consents.data ?? [],
         usage_events: usage.data ?? [],
+        subscription: subscription.data ?? null,
       },
       not_included: [
         'Authentication records held by Supabase Auth (email, password hash, sign-in timestamps) — request these from the auth provider.',
         'Rate limiting counters, which hold only a request count and a timestamp.',
+        'Payment card details and billing history, which are held by Stripe and never by us. Request them from Stripe directly; we hold only the subscription status shown above.',
       ],
     };
 
