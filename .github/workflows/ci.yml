@@ -57,5 +57,11 @@ jobs:
       - name: Scan built bundle for server-side secrets
         run: npm run verify:bundle
 
+      # A wrong path in a document is not a syntax error, so nothing else will
+      # ever catch it. `server/.env` was referenced for days in a message whose
+      # whole job was telling somebody where to look.
+      - name: Check the documentation describes a repository that exists
+        run: npm run check:docs
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
