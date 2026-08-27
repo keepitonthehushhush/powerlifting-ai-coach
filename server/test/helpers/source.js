@@ -89,21 +89,41 @@ export function flatten(text) {
  * text, and everything else is escaped, so the caller writes prose rather than
  * a pattern.
  *
- * TWO LIMITS WORTH KNOWING, both found by tripping over them:
+ * ONE LIMIT WORTH KNOWING, found by tripping over it:
  *
  * It is case-SENSITIVE unless you pass 'i'. Prompt text is written in prose
  * and the same sentence appears capitalised in one place and not in another.
  *
- * It does not cross a JSDoc line break, because the continuation is ` * ` and
- * an asterisk is not whitespace. For an assertion about a COMMENT, pick a
- * phrase that fits on one line - or reach for a different tool, rather than
- * teaching this one to strip comment syntax it otherwise knows nothing about.
+ * There used to be a second limit - it could not cross a JSDoc line break,
+ * because the continuation is ` * ` and an asterisk is not whitespace - and
+ * this note used to argue for working around it rather than teaching the
+ * helper about comment syntax. That argument lost on the third occurrence,
+ * once SQL `-- ` continuations had cost a run as well. See GAP below. The
+ * rule this file was written under applies to the file itself: three
+ * occurrences of one bug means the missing thing is an abstraction.
  */
 export function phrase(text, flags = '') {
   const escaped = text
     .trim()
     .split(/\s+/)
     .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('\\s+');
+    .join(GAP);
   return new RegExp(escaped, flags);
 }
+
+/**
+ * What may separate two words of a phrase.
+ *
+ * Whitespace, optionally interrupted by a comment marker. The original version
+ * allowed only `\s+`, which meant a phrase wrapped across a JSDoc line - where
+ * the next line starts ` * ` - did not match, and neither did one wrapped
+ * across a SQL comment starting `-- `. That cost a test run on three separate
+ * occasions before it was worth generalising, which is the same rule this
+ * whole helpers file exists under: three occurrences of one bug means the
+ * missing thing is an abstraction.
+ *
+ * Deliberately still anchored on whitespace at both ends, so this cannot match
+ * a `*` that is doing real work - a multiplication, a glob - only one that is
+ * sitting at the start of a continuation line where a comment marker goes.
+ */
+const GAP = '\\s+(?:(?:\\*|--|//)\\s+)?';
