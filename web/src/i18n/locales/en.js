@@ -71,6 +71,11 @@ export const en = {
   intake: {
     dateOfBirth: 'Date of birth',
     dateOfBirthHint: 'Used to age-appropriate your programming. Coach Diaz cannot store injury or lifestyle information for under-18s yet, because consent for that has to come from a parent or guardian.',
+
+    aboutYouLegend: 'About you',
+    liftsLegend: 'Your best lifts',
+    trainingLegend: 'How you train',
+
     recoveryLegend: 'Recovery and lifestyle (optional)',
     recoveryNote: 'Every field here is optional and you can leave any of them blank. Training is only half of getting stronger — these tell the coach what recovery capacity it is actually programming for. Nothing here is judged, and none of it changes whether you get coached.',
     sleepHours: 'Typical hours of sleep a night',
@@ -86,33 +91,54 @@ export const en = {
     title: 'Your training profile',
     subtitle:
       'Coach Diaz uses this to write your program. Approximations are fine — it adjusts based on what you actually log.',
-    experience: 'Training experience',
+
+    experience: 'How long have you been training with a barbell?',
+    experienceHint: 'Consistently, not counting long breaks. If you are not sure, round down.',
     select: 'Select…',
     experienceOptions: {
-      never_trained: 'Never trained with a barbell',
-      some_experience: 'Some experience, not currently consistent',
-      currently_training: 'Currently training consistently',
+      never_lifted: 'I have never used a barbell',
+      learning_lifts: 'I have used one, but I am still learning the movements',
+      under_6_months: 'Less than 6 months',
+      six_to_24_months: '6 months to 2 years',
+      over_2_years: 'More than 2 years',
     },
+
+    cadence: 'Lately, how often have you been able to add weight to the bar?',
+    cadenceHint:
+      'Your honest recollection of the last couple of months. This is the single most useful thing you can tell the coach — it decides whether the programming here still fits you, and there is no wrong answer.',
+    cadenceOptions: {
+      every_session: 'Almost every session',
+      every_week: 'About once a week',
+      every_month_or_slower: 'Once a month or slower',
+      stalled: 'It has not gone up in a while',
+      no_history: 'I have not been training, so there is nothing to go on',
+    },
+
     units: 'Units',
     unitOptions: { lb: 'Pounds (lb)', kg: 'Kilograms (kg)' },
-    bodyweight: 'Bodyweight',
-    squat: 'Squat — heaviest single',
-    bench: 'Bench press — heaviest single',
-    deadlift: 'Deadlift — heaviest single',
+    bodyweight: 'What do you weigh?',
+    squat: 'The most weight you can SQUAT for one rep',
+    bench: 'The most weight you can BENCH PRESS for one rep',
+    deadlift: 'The most weight you can DEADLIFT for one rep',
+    oneRepHint: 'One rep, not a set. Leave blank if you have never found out.',
     liftsNote:
-      'The most weight you have ever lifted for one rep on each — your one-rep max. If you have never tested a true max, put your best estimate or leave it blank; Coach Diaz will work it out from what you log. What matters is not entering a weight you did for several reps: your programming is calculated from these numbers, so a set of five entered as a max makes every prescribed weight too heavy.',
-    goal: 'Goal',
+      'These three numbers are what your first program is calculated from, so the one thing worth getting right is that each is a SINGLE rep. A heavy set of five entered here makes every weight the coach prescribes too heavy. If you have never tested a true one-rep max, an honest estimate or a blank is better than a guess dressed up as a number — Coach Diaz works the real figure out from what you log, usually within a week.',
+
+    goal: 'What are you training for?',
     goalOptions: {
+      learn_the_lifts: 'Learn the lifts properly',
       general_strength: 'Get generally stronger',
-      meet_prep: 'Compete in a powerlifting meet',
+      return_from_layoff: 'Come back after time off',
+      first_meet: 'Compete in my first meet',
+      meet_prep: 'Prepare for a meet — I have competed before',
     },
     competitionDate: 'Competition date',
-    daysPerWeek: 'Days per week you can train',
+    daysPerWeek: 'How many days a week can you train?',
     smallestPlate: 'Smallest plate you have (optional)',
     smallestPlatePlaceholder: '2.5',
     smallestPlateHelp:
       'One plate, not a pair. Weight goes on both ends, so this sets the smallest jump you can make. Leave blank if you are not sure.',
-    equipment: 'Equipment you have access to',
+    equipment: 'What equipment can you get to?',
     equipmentPlaceholder: 'Full commercial gym; barbell, rack, bench, plates to 405…',
     healthLegend: 'Injuries, pain, or medical conditions',
     healthNote:

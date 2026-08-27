@@ -7,20 +7,47 @@ import { evaluateAgeGate, MINIMUM_AGE } from '../lib/ageGate.js';
 export const profileRouter = Router();
 
 /**
- * Validation mirrors the CHECK constraints in migration 0001 rather than
- * replacing them. The database is the authority - it is the layer that cannot
- * be bypassed - but rejecting bad input here produces a useful field-level
- * error message instead of an opaque Postgres constraint violation.
+ * Validation mirrors the CHECK constraints in migrations 0001 and 0019 rather
+ * than replacing them. The database is the authority - it is the layer that
+ * cannot be bypassed - but rejecting bad input here produces a useful
+ * field-level error message instead of an opaque Postgres constraint
+ * violation. A test holds these two lists to each other, because the failure
+ * mode when they drift is a valid answer rejected by one layer and accepted by
+ * the other.
  */
+/** The goals a competition date belongs to. Mirrors the constraint in 0019. */
+const MEET_GOALS = new Set(['meet_prep', 'first_meet']);
+
 const ProfileUpdate = z
   .object({
-    experience_level: z.enum(['never_trained', 'some_experience', 'currently_training']).nullish(),
+    // How long, not how good. See migration 0019 for why self-rating went.
+    // The last three are legacy values kept legal for rows saved before that
+    // migration; the intake form does not offer them.
+    experience_level: z
+      .enum([
+        'never_lifted',
+        'learning_lifts',
+        'under_6_months',
+        'six_to_24_months',
+        'over_2_years',
+        'never_trained',
+        'some_experience',
+        'currently_training',
+      ])
+      .nullish(),
+    // How fast the bar has been going up lately - the observation that decides
+    // whether linear progression is the right model for this athlete at all.
+    progress_cadence: z
+      .enum(['every_session', 'every_week', 'every_month_or_slower', 'stalled', 'no_history'])
+      .nullish(),
     current_squat: z.number().nonnegative().max(2000).nullish(),
     current_bench: z.number().nonnegative().max(2000).nullish(),
     current_deadlift: z.number().nonnegative().max(2000).nullish(),
     bodyweight: z.number().positive().max(1000).nullish(),
     units: z.enum(['lb', 'kg']).optional(),
-    goal: z.enum(['general_strength', 'meet_prep']).nullish(),
+    goal: z
+      .enum(['learn_the_lifts', 'general_strength', 'return_from_layoff', 'first_meet', 'meet_prep'])
+      .nullish(),
     competition_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
     health_restrictions: z.string().max(4000).nullish(),
     cleared_to_train: z.boolean().optional(),
@@ -48,8 +75,8 @@ const ProfileUpdate = z
     date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
   })
   .strict()
-  .refine((v) => !(v.competition_date && v.goal && v.goal !== 'meet_prep'), {
-    message: 'A competition date only applies when the goal is meet prep.',
+  .refine((v) => !(v.competition_date && v.goal && !MEET_GOALS.has(v.goal)), {
+    message: 'A competition date only applies when the goal is a meet.',
     path: ['competition_date'],
   });
 

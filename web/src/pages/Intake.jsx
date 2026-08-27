@@ -7,6 +7,7 @@ import { SiteNav } from '../components/SiteNav.jsx';
 
 const EMPTY = {
   experience_level: '',
+  progress_cadence: '',
   units: 'lb',
   bodyweight: '',
   current_squat: '',
@@ -26,19 +27,62 @@ const EMPTY = {
   cleared_to_train: false,
 };
 
+/** The goals that a competition date belongs to. Mirrors migration 0019. */
+const MEET_GOALS = new Set(['meet_prep', 'first_meet']);
+
+/**
+ * The experience answers the form offers, in order of training age.
+ *
+ * The three the form used to offer - never_trained, some_experience,
+ * currently_training - are deliberately absent. They are still legal in the
+ * database because existing rows hold them, but they were self-assessments,
+ * and this list asks about elapsed time instead. See migration 0019.
+ */
+const EXPERIENCE_OPTIONS = [
+  'never_lifted',
+  'learning_lifts',
+  'under_6_months',
+  'six_to_24_months',
+  'over_2_years',
+];
+
+/**
+ * How fast the bar has actually been moving. This is the novice / intermediate
+ * / advanced question asked as a memory rather than as a label: nobody has to
+ * decide what they are, they just have to remember what happened.
+ */
+const CADENCE_OPTIONS = [
+  'every_session',
+  'every_week',
+  'every_month_or_slower',
+  'stalled',
+  'no_history',
+];
+
+const GOAL_OPTIONS = [
+  'learn_the_lifts',
+  'general_strength',
+  'return_from_layoff',
+  'first_meet',
+  'meet_prep',
+];
+
 /** Empty strings mean "not answered"; the API and the database both want null. */
 function toPayload(form) {
   const num = (v) => (v === '' || v === null ? null : Number(v));
   return {
     experience_level: form.experience_level || null,
+    progress_cadence: form.progress_cadence || null,
     units: form.units,
     bodyweight: num(form.bodyweight),
     current_squat: num(form.current_squat),
     current_bench: num(form.current_bench),
     current_deadlift: num(form.current_deadlift),
     goal: form.goal || null,
-    competition_date:
-      form.goal === 'meet_prep' && form.competition_date ? form.competition_date : null,
+    // Mirrors the CHECK constraint in migration 0019: a date belongs to either
+    // meet goal, and must be dropped rather than sent when the goal changes
+    // away from one - otherwise the row violates the constraint on save.
+    competition_date: MEET_GOALS.has(form.goal) && form.competition_date ? form.competition_date : null,
     equipment_available: form.equipment_available || null,
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
     // Blank means "I don't know what my gym has", which the engine handles by
@@ -128,47 +172,59 @@ export function Intake() {
         </header>
       </StickyHeader>
 
-      <form onSubmit={handleSubmit} className="card stack">
-        <label>
-          {t('intake.experience')}
-          <select
-            value={form.experience_level}
-            onChange={(e) => update('experience_level', e.target.value)}
-            required
-          >
-            <option value="">{t('intake.select')}</option>
-            {['never_trained', 'some_experience', 'currently_training'].map((key) => (
-              <option key={key} value={key}>
-                {t(`intake.experienceOptions.${key}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+      <form onSubmit={handleSubmit} className="stack">
+        {/* Four groups, not one column of eighteen inputs.
+            The old form was a single stack, so the birth date, the one-rep
+            maxes and the plate size all looked like the same kind of question
+            asked with the same weight - and the three numbers the whole
+            program is computed from were four rows of a flat list. Grouping
+            them under legends does two things at once: it tells somebody where
+            they are in the form, and it lets the lifts carry a note that
+            plainly belongs to those three fields and nothing else. */}
+        <fieldset className="card stack">
+          <legend className="section-legend">{t('intake.aboutYouLegend')}</legend>
 
-        <label>
-          {t('intake.dateOfBirth')}
-          <input
-            type="date"
-            value={form.date_of_birth}
-            onChange={(e) => update('date_of_birth', e.target.value)}
-            required
-          />
-          <span className="muted small">{t('intake.dateOfBirthHint')}</span>
-        </label>
+          <label>
+            {t('intake.dateOfBirth')}
+            <input
+              type="date"
+              value={form.date_of_birth}
+              onChange={(e) => update('date_of_birth', e.target.value)}
+              required
+            />
+            <span className="muted small">{t('intake.dateOfBirthHint')}</span>
+          </label>
 
-        <label>
-          {t('intake.units')}
-          <select value={form.units} onChange={(e) => update('units', e.target.value)}>
-            <option value="lb">{t('intake.unitOptions.lb')}</option>
-            <option value="kg">{t('intake.unitOptions.kg')}</option>
-          </select>
-        </label>
+          <label>
+            {t('intake.units')}
+            <select value={form.units} onChange={(e) => update('units', e.target.value)}>
+              <option value="lb">{t('intake.unitOptions.lb')}</option>
+              <option value="kg">{t('intake.unitOptions.kg')}</option>
+            </select>
+          </label>
 
-        <p className="muted small">{t('intake.liftsNote')}</p>
+          <label>
+            {t('intake.bodyweight')} ({form.units})
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={form.bodyweight}
+              onChange={(e) => update('bodyweight', e.target.value)}
+              placeholder="—"
+            />
+          </label>
+        </fieldset>
 
-        <div className="grid-4">
+        <fieldset className="card stack">
+          <legend className="section-legend">{t('intake.liftsLegend')}</legend>
+          <p className="muted small">{t('intake.liftsNote')}</p>
+
+          {/* One per row rather than a four-across grid. Each of these needs a
+              hint under it saying "one rep, not a set", which is the entire
+              point of the rewrite, and there is nowhere to put that in a grid
+              cell 90px wide on a phone. */}
           {[
-            ['bodyweight', 'intake.bodyweight'],
             ['current_squat', 'intake.squat'],
             ['current_bench', 'intake.bench'],
             ['current_deadlift', 'intake.deadlift'],
@@ -183,69 +239,107 @@ export function Intake() {
                 onChange={(e) => update(field, e.target.value)}
                 placeholder="—"
               />
+              <span className="muted small">{t('intake.oneRepHint')}</span>
             </label>
           ))}
-        </div>
+        </fieldset>
 
-        <label>
-          {t('intake.goal')}
-          <select value={form.goal} onChange={(e) => update('goal', e.target.value)} required>
-            <option value="">{t('intake.select')}</option>
-            {['general_strength', 'meet_prep'].map((key) => (
-              <option key={key} value={key}>
-                {t(`intake.goalOptions.${key}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="card stack">
+          <legend className="section-legend">{t('intake.trainingLegend')}</legend>
 
-        {form.goal === 'meet_prep' && (
           <label>
-            {t('intake.competitionDate')}
+            {t('intake.experience')}
+            <select
+              value={form.experience_level}
+              onChange={(e) => update('experience_level', e.target.value)}
+              required
+            >
+              <option value="">{t('intake.select')}</option>
+              {EXPERIENCE_OPTIONS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`intake.experienceOptions.${key}`)}
+                </option>
+              ))}
+            </select>
+            <span className="muted small">{t('intake.experienceHint')}</span>
+          </label>
+
+          <label>
+            {t('intake.cadence')}
+            <select
+              value={form.progress_cadence}
+              onChange={(e) => update('progress_cadence', e.target.value)}
+            >
+              <option value="">{t('intake.select')}</option>
+              {CADENCE_OPTIONS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`intake.cadenceOptions.${key}`)}
+                </option>
+              ))}
+            </select>
+            <span className="muted small">{t('intake.cadenceHint')}</span>
+          </label>
+
+          <label>
+            {t('intake.goal')}
+            <select value={form.goal} onChange={(e) => update('goal', e.target.value)} required>
+              <option value="">{t('intake.select')}</option>
+              {GOAL_OPTIONS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`intake.goalOptions.${key}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {MEET_GOALS.has(form.goal) && (
+            <label>
+              {t('intake.competitionDate')}
+              <input
+                type="date"
+                value={form.competition_date || ''}
+                onChange={(e) => update('competition_date', e.target.value)}
+              />
+            </label>
+          )}
+
+          <label>
+            {t('intake.daysPerWeek')}
             <input
-              type="date"
-              value={form.competition_date || ''}
-              onChange={(e) => update('competition_date', e.target.value)}
+              type="number"
+              min="1"
+              max="7"
+              value={form.days_per_week}
+              onChange={(e) => update('days_per_week', e.target.value)}
+              required
             />
           </label>
-        )}
 
-        <label>
-          {t('intake.daysPerWeek')}
-          <input
-            type="number"
-            min="1"
-            max="7"
-            value={form.days_per_week}
-            onChange={(e) => update('days_per_week', e.target.value)}
-            required
-          />
-        </label>
+          <label>
+            {t('intake.equipment')}
+            <textarea
+              rows={2}
+              value={form.equipment_available}
+              onChange={(e) => update('equipment_available', e.target.value)}
+              placeholder={t('intake.equipmentPlaceholder')}
+              required
+            />
+          </label>
 
-        <label>
-          {t('intake.smallestPlate')}
-          <input
-            type="number"
-            min="0.25"
-            max="25"
-            step="0.25"
-            value={form.smallest_plate_pair}
-            onChange={(e) => update('smallest_plate_pair', e.target.value)}
-            placeholder={t('intake.smallestPlatePlaceholder')}
-          />
-          <span className="muted small">{t('intake.smallestPlateHelp')}</span>
-        </label>
-
-        <label>
-          {t('intake.equipment')}
-          <textarea
-            rows={2}
-            value={form.equipment_available}
-            onChange={(e) => update('equipment_available', e.target.value)}
-            placeholder={t('intake.equipmentPlaceholder')}
-            required
-          />
-        </label>
+          <label>
+            {t('intake.smallestPlate')}
+            <input
+              type="number"
+              min="0.25"
+              max="25"
+              step="0.25"
+              value={form.smallest_plate_pair}
+              onChange={(e) => update('smallest_plate_pair', e.target.value)}
+              placeholder={t('intake.smallestPlatePlaceholder')}
+            />
+            <span className="muted small">{t('intake.smallestPlateHelp')}</span>
+          </label>
+        </fieldset>
 
         <fieldset className="sensitive">
           <legend>{t('intake.healthLegend')}</legend>
