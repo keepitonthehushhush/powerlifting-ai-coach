@@ -36,6 +36,7 @@ import { warmupPlan } from '../lib/warmup.js';
 import { ageInYears } from '../lib/ageGate.js';
 import { barbellAccess, gymNotes } from '../lib/gyms.js';
 import { restBetweenSets } from '../lib/rest.js';
+import { beltWorthMentioning } from '../lib/equipment.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
@@ -355,6 +356,59 @@ but does not eliminate it, and every federation operates strict liability, meani
 in their body is their responsibility regardless of how it got there. Say this whenever a
 supplement comes up with a competitive lifter. It is the single most useful thing you can
 tell them on the subject.
+
+# KIT
+
+Raise it when it is earned, once, and never again unless asked. Nobody comes to
+a coach to be sold things, and a beginner told on day one that they need three
+hundred dollars of leather is a beginner who now believes strength is a
+purchase. The directives for this turn will tell you when a lift has crossed
+the point where a belt is a reasonable buy. Until they do, the answer to "what
+gear do I need" is shoes that do not compress and a bar.
+
+WHAT A BELT ACTUALLY DOES, and be precise about this because the marketing is
+not. It raises intra-abdominal pressure and trunk stiffness when it is used
+with a real brace - measured at around an 83% increase in stiffness resisting
+flexion - and it reduces how hard the spinal erectors have to work at a given
+load. In plain terms: it lets you brace harder, so you can hold position under
+more weight.
+
+WHAT IT DOES NOT DO IS PREVENT INJURY, and you must not say or imply that it
+does. The evidence says a belt is unlikely to reduce the risk of first-time low
+back pain in resistance training, and the evidence on recurrence is unclear.
+Somebody who believes a belt protects them will take a rep they should have put
+down. What reduces risk is the load being right, the technique holding, and
+stopping when it stops holding.
+
+It also does NOT weaken your core. That is a gym myth with nothing behind it,
+and it is worth saying out loud because people avoid belts for that reason.
+
+HOW TO USE ONE: on the heaviest warm-up set and the work sets, not on
+everything. It goes tight enough that a full brace pushes hard into it, not so
+tight it does the bracing for you - and if somebody cannot brace without it,
+that is the thing to fix first, before the belt.
+
+WHAT TO LOOK FOR, described rather than branded: 10 mm thickness is plenty for
+almost everybody and 13 mm is stiff enough to be uncomfortable for many; a belt
+the same width all the way round rather than tapered at the front; a lever or a
+single prong, both fine, levers faster to fit and fixed to one size; and if
+they intend to compete, their federation's approved-equipment list decides,
+not you. Never name a brand or point at a shop.
+
+THE REST OF IT, briefly, and only when relevant:
+- KNEE SLEEVES: warmth and a little rebound out of the hole, and most people
+  like them. Not braces, and not for a knee that hurts - that is the clearance
+  gate's business, not a purchase.
+- WRIST WRAPS: worth it for benching and overhead work once the loads are real.
+- SHOES: the single most underrated item. Something flat and firm for
+  deadlifting, and a raised heel helps many people squat. Running shoes are
+  compressible and are the actual equipment mistake most beginners are making.
+- CHALK, if the gym allows it, before straps. Straps are for pulling volume
+  when grip is the limiter, not a replacement for a grip.
+
+Anybody who cannot spend money right now should be told plainly that none of it
+is necessary, that every one of these is a small percentage, and that the
+programme works without any of it.
 
 # JUMPS, THROWS AND SPRINTS
 
@@ -787,6 +841,26 @@ export function describeAddressing(profile) {
   );
 
   return lines.join('\n');
+}
+
+/**
+ * Whether this athlete's loads have reached the point where a belt is a
+ * sensible purchase, handed over as a threshold rather than a judgement.
+ *
+ * See lib/equipment.js for the numbers and for why they are conservative. The
+ * short version: a model asked to eyeball "is this heavy" will suggest a belt
+ * to a beginner squatting 95 lb, which is useless advice and a nudge to spend
+ * money they did not need to spend.
+ */
+export function describeKit(profile, prescriptions) {
+  const { lifts, ratio } = beltWorthMentioning({ profile, prescriptions });
+  if (lifts.length === 0) return null;
+
+  return `- KIT: this athlete's ${lifts.join(' and ')} ${lifts.length > 1 ? 'have' : 'has'} reached
+  ${ratio}x their bodyweight, which is the point where a belt starts being worth the money.
+  Mention it ONCE, briefly, as an option rather than a requirement - and say what it does and
+  does not do, per the KIT section. Do not raise it again unless they ask. If they cannot spend
+  anything right now, say plainly that the programme works without it.`;
 }
 
 export function describeGymContext(profile) {
@@ -1321,6 +1395,12 @@ function buildSystemParts({
   // telling them to see a doctor.
   const addressing = describeAddressing(profile);
   if (addressing) directives.push(addressing);
+
+  // Suppressed while the clearance gate is up: somebody waiting on a doctor
+  // does not need a shopping suggestion, and "buy a belt" next to "see a
+  // physio" reads as a way to train through it.
+  const belt = clearanceRequired ? null : describeKit(profile, prescriptions);
+  if (belt) directives.push(belt);
 
   // NOT suppressed by the clearance gate. "Your gym has no barbell" is true
   // whether or not somebody is waiting on a doctor, and it is exactly the kind
