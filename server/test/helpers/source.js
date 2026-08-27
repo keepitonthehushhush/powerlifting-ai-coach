@@ -46,3 +46,23 @@ export function stripComments(source) {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 }
+
+/**
+ * Collapse all runs of whitespace to single spaces.
+ *
+ * ── WHY ───────────────────────────────────────────────────────────────────
+ *
+ * The directives in systemPrompt.js are hard-wrapped template literals, so a
+ * phrase the test is looking for is routinely split across a line break and
+ * two levels of indentation: "That is not\n  a failure on their part" does not
+ * match /not a failure/, and "never\n  use the words" does not match /never
+ * use the words/. Both of those wasted a run.
+ *
+ * This is the same class of problem as readSource() above - a regex written
+ * against the meaning of a file, defeated by the file's layout - so it lives
+ * next to it. Use it for any assertion about the PROSE of a prompt. Do not use
+ * it where the layout is the thing under test.
+ */
+export function flatten(text) {
+  return String(text).replace(/\s+/g, ' ').trim();
+}

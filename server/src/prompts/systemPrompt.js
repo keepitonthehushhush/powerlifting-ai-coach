@@ -34,6 +34,7 @@ import { asData, asDataDeep, FENCE_TAG } from './sanitize.js';
 import { prescribeAll } from '../lib/progression.js';
 import { warmupPlan } from '../lib/warmup.js';
 import { ageInYears } from '../lib/ageGate.js';
+import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 
 const COACH_ROLE = `# ROLE
 You are Coach Diaz, an AI strength coach specializing in powerlifting. Your job is to take
@@ -312,6 +313,110 @@ export function describeRecoveryConcerns(profile) {
   changing it, program for the recovery capacity they actually have.`;
 }
 
+/**
+ * What the athlete's reported rate of progress means for the model we run.
+ *
+ * This app's progression engine is a linear one: add weight every session
+ * until you cannot, then reset. That model is only right for someone still
+ * in the phase where a single session is enough to produce a measurable
+ * adaptation. Prescribing it to a lifter who has not added weight in three
+ * months is not merely unhelpful, it is a promise the programme cannot keep -
+ * and they will conclude the coach does not know what it is looking at.
+ *
+ * So the honest thing is to say so. `progress_cadence` is the athlete's own
+ * recollection of how fast the bar has been moving, and it is the closest
+ * thing to a direct reading of where they are in a training career. Note that
+ * this changes what the coach SAYS, not what progression.js COMPUTES: the
+ * computed loads still come from logged performance, because a memory of the
+ * last few months is a far weaker signal than a set that was actually done.
+ */
+export function describeProgressCadence(profile) {
+  const cadence = profile?.progress_cadence;
+  if (!cadence) return null;
+
+  if (cadence === 'every_session' || cadence === 'no_history') {
+    // The model already fits. Nothing needs saying.
+    return null;
+  }
+
+  const situation = {
+    every_week:
+      `weight has been going up about once a week rather than every session. That is the
+  edge of what session-by-session progression can still deliver`,
+    every_month_or_slower:
+      `progress has been coming monthly or slower, which is past the point where adding
+  weight every session works`,
+    stalled: `the bar has not gone up in a while`,
+  }[cadence];
+
+  return `- THIS ATHLETE MAY HAVE OUTGROWN THE MODEL THIS APP RUNS. They report that ${situation}.
+
+  Say so plainly, early, and without hedging. The programming here is linear - add weight
+  each session, reset when you miss - and for them it will likely stall quickly. That is not
+  a failure on their part or a defect they should work around; it is what happens when the
+  remaining adaptation per session gets smaller than the noise in a day's performance.
+
+  Be useful anyway. A short run of linear progression after a stall or a layoff is often
+  genuinely productive, and it establishes real logged numbers to program from. Tell them
+  that is what you are doing and roughly how long you expect it to last, so that when it
+  stalls it reads as the plan working rather than the coach being wrong.
+
+  Do not promise a periodised or block program you cannot currently write.`;
+}
+
+/**
+ * The computed sanity checks on the entered maxes, as a directive.
+ *
+ * Same pattern as the clearance gate and the prescriptions: the judgement is
+ * made in code and handed to the model as a finding, because a model asked to
+ * eyeball whether a number "looks right" will sometimes decide that it does.
+ * See `lib/plausibility.js` for what is checked and why the two directions are
+ * not treated alike.
+ *
+ * The wording of this directive is doing as much work as the checks are. It
+ * has to produce a coach who asks one natural question and moves on, not one
+ * who audits a new client. Three rules carry that: ask once, believe the
+ * answer, and never make coaching conditional on it. The clearance gate is the
+ * only gate in this product, and it is about a doctor, not about arithmetic.
+ */
+export function describeNumberChecks(profile) {
+  const findings = assessProfileNumbers(profile);
+  if (findings.length === 0) return null;
+
+  const severity = worstSeverity(findings);
+  const lines = findings
+    .map((f) => `    * ${f.observation}.\n      ${f.ask}`)
+    .join('\n');
+
+  const overstated = findings.some((f) => f.direction === 'overstated');
+
+  return `- THE ENTERED MAXES DO NOT QUITE ADD UP. These were computed from the athlete's own
+  profile before this conversation started. They are observations, not accusations, and the
+  athlete has almost certainly not done anything wrong - a set of five entered as a single,
+  a stray digit, or two boxes filled in the wrong order account for nearly all of these.
+
+${lines}
+
+  HOW TO RAISE IT: once, in one sentence, as a coach checking a number before using it -
+  the same way you would confirm a weight class or a meet date. Then believe whatever they
+  tell you and move on. Do not list these back as a set of discrepancies, do not return to
+  it in later messages if they have answered, and never use the words lying, dishonest,
+  exaggerating, inflated or unrealistic about their numbers.
+
+  DO NOT WITHHOLD COACHING OVER THIS. Program for them regardless. The only gate in this
+  product is medical clearance.${
+    overstated
+      ? `\n\n  Until they confirm the number, prescribe from the CONSERVATIVE reading of it. A first
+  session that is too light costs a week; one computed from a max they cannot actually lift
+  is how a new athlete gets hurt before they trust you enough to say so.`
+      : ''
+  }
+
+  AND IT EXPIRES. The moment this athlete logs a real session, that log is the truth and the
+  profile number is history. Do not raise any of this again once there is logged work to
+  read.${severity === 'low' ? '\n\n  Everything above is low confidence. If it does not come up naturally, let it go.' : ''}`;
+}
+
 /** Fields that must be present before a full program can responsibly be written. */
 export function missingIntakeFields(profile) {
   if (!profile) return ['everything'];
@@ -347,6 +452,7 @@ function renderProfile(profile) {
   return [
     `  age:                 ${ageInYears(profile.date_of_birth) ?? UNKNOWN}`,
     `  experience_level:    ${profile.experience_level ? asData(profile.experience_level, { maxLength: 60 }) : UNKNOWN}`,
+    `  progress_cadence:    ${profile.progress_cadence ? asData(profile.progress_cadence, { maxLength: 40 }) : UNKNOWN}`,
     `  units:               ${u}`,
     `  bodyweight:          ${fmtWeight(profile.bodyweight, u)}`,
     `  current_squat:       ${fmtWeight(profile.current_squat, u)}`,
@@ -586,6 +692,16 @@ export function buildSystemPrompt({
 
   const recovery = describeRecoveryConcerns(profile);
   if (recovery) directives.push(recovery);
+
+  // Only worth raising while the profile numbers are still the only numbers.
+  // Once anything is logged, progression.js computes from that instead and the
+  // entered max stops mattering - so the check retires itself rather than
+  // nagging an athlete who has been training with us for a month.
+  const numberChecks = recentLogs.length === 0 ? describeNumberChecks(profile) : null;
+  if (numberChecks) directives.push(numberChecks);
+
+  const cadence = describeProgressCadence(profile);
+  if (cadence) directives.push(cadence);
 
   if (missing.length) {
     directives.push(
