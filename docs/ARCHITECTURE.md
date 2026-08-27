@@ -507,12 +507,50 @@ records. What remains:
 | Item | Phase | Note |
 |---|---|---|
 | Automatic phase transitions | 2 | `phase` is stored and the coach sets it; nothing promotes an athlete from novice to intermediate on its own. `progress_cadence` (migration 0019) is the input that would decide it |
-| Sessions measured against the plan | — | Both halves now exist — `workout_programs.program_data` and `progress_logs` — and nothing compares them yet. This is the next obvious build |
+| Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
 | Stripe subscriptions | 3 | Not started, awaiting go-ahead. The model is decided: free logging, charts and library; conversations are the paid tier, because conversations are the only thing that costs money |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
 | Audit logging | — | Known gap |
 | Multiple conversations per athlete | — | One active conversation today; raised, undecided |
 | CAPTCHA on auth endpoints | — | Supabase supports it; needs an hCaptcha or Turnstile key. Breached-password checking is implemented in the app instead of via the paid Supabase feature (`web/src/lib/pwnedPassword.js`) |
+
+### Owning the email, rather than forwarding it
+
+Today `privacy@coachdiaz.app` is a forwarding rule at ImprovMX pointing into a
+personal Gmail. That was the right first move — it costs nothing, it took five
+minutes, and it kept a personal address out of a public legal document. It is
+not the right permanent answer, and two of its limitations are worth knowing
+now rather than discovering later:
+
+**Replies go out from the personal address.** Forwarding is one-directional on
+the free tier. Answering a takedown request means replying from a personal
+Gmail, which hands over the address the forwarder existed to keep private, and
+reads as improvised to somebody who has just written in about their child.
+
+**The mailbox may end up holding consumer health data.** A parent describing why
+they want an account removed, or a user writing in about an injury, puts health
+information into whatever inbox receives it. Everywhere else in this product
+that data sits behind RLS, a consent ledger and a documented retention story. In
+a personal consumer mailbox it sits behind none of those. That is the real
+argument for moving, and it is stronger than the professionalism one.
+
+**When there is revenue**, the options, in the order they are worth considering:
+
+| Option | Cost | Why |
+|---|---|---|
+| Microsoft 365 Business Basic | ~$6/user/mo | Outlook, real mailboxes, the admin controls and retention policies that make a data-handling story writable. The most defensible choice if the mailbox holds health data |
+| Google Workspace | ~$7/user/mo | Equivalent; pick it if the habit is already Gmail, since the migration is trivial |
+| Fastmail | ~$5/mo | Simpler and cheaper than either, genuinely excellent, weaker admin tooling. Fine while this is one person |
+| ImprovMX paid | ~$9/mo | Adds SMTP so replies come from the right address. Solves the smaller problem and not the larger one |
+
+Whichever is chosen, the migration is MX records and nothing else — the address
+in the Terms does not change, so no version bump and no re-consent. That is
+precisely why a forwarding address was chosen over a personal one in the first
+place: the route can be repointed forever without touching a document anybody
+has agreed to.
+
+Until then, `npm run check:contact` verifies the records still resolve, and the
+runbook asks for a real test message monthly.
 
 Rate limiting is no longer on this list: `rateLimit()` middleware is applied to
 the chat and write routes, backed by a Postgres counter, and it fails **open** —

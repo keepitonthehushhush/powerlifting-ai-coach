@@ -210,12 +210,13 @@ larger collection of personal information than anything else this product
 holds, from every user, to catch the small number who lie. That trade is worse
 for everyone. Recorded here so the decision is visible rather than assumed.
 
-### Affiliate revenue on equipment: analysed, not taken
+### Affiliate revenue on equipment: considered and declined
 
-Raised as a second revenue stream: earn a commission on the belts and sleeves
-the coach recommends. It has not been built, and this section is the reasoning
-rather than a refusal — the decision is the owner's and the numbers below are
-most of the argument.
+**Decided 2026-08-27: not doing it.** Raised as a second revenue stream — earn a
+commission on the belts and sleeves the coach recommends — analysed, and
+dropped. The reasoning is kept in full below rather than deleted, because the
+idea is an obvious one that will occur to somebody again, and the numbers are
+most of the argument against it.
 
 **The money is smaller than it sounds.** Sports-equipment affiliate rates run
 around 3%. A belt is $50–150, so roughly $1.50–4.50 a sale. Suppose 1,000 users
@@ -250,7 +251,7 @@ GoodRx and BetterHelp actions, and on the fact that the privacy positioning is
 load-bearing for this product. An affiliate link is an advertisement with a
 different payment model.
 
-**If it is taken anyway**, the shape that survives the above:
+**If it is ever revisited**, the shape that would survive the above:
 
 - a separate, clearly labelled gear page, never inside a coaching reply;
 - the coach may mention that the page exists, once, and never links a specific
@@ -465,11 +466,7 @@ will make it feel better" is treatment.
    doctor or physiotherapist to read. **Does addressing a clinician change the
    product's regulatory posture** — does it read as marketing to a healthcare
    professional, and does that pull it any closer to a device claim?
-11. Affiliate revenue on equipment (see above): **is the separate-gear-page
-   shape defensible for a product holding consumer health data, or does any
-   commission on a recommendation made to somebody whose injuries we hold
-   create a problem that page structure cannot fix?**
-12. Disclosure drift: consents are invalidated by a version bump, and every
+11. Disclosure drift: consents are invalidated by a version bump, and every
    material correction therefore re-prompts every existing user. **Is a
    correction that only makes an existing practice explicit a material change
    requiring re-consent, or does re-prompting on every clarification devalue
