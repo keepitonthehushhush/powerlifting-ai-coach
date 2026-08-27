@@ -29,6 +29,7 @@
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
@@ -74,14 +75,81 @@ const MIGRATION_PATTERN = /migration (\d{4})/gi;
  * cries wolf is worse than no checker.
  */
 const EXPECTED_ABSENT = {
-  '.env': 'gitignored - it holds secrets and must never be committed. .env.example is the committed template.',
-  '.env.local': 'gitignored, Vercel-generated.',
-  'server/.env': 'DOES NOT EXIST, and the runbook says so on purpose. Referencing it was the bug that produced this checker.',
+  '.env': {
+    mode: 'untracked',
+    why: 'holds secrets and must never be committed. .env.example is the committed template.',
+  },
+  '.env.local': {
+    mode: 'untracked',
+    why: 'Vercel-generated, and also secret-bearing.',
+  },
+  'server/.env': {
+    mode: 'absent',
+    why: 'DOES NOT EXIST, and the runbook says so on purpose. Referencing it was the bug that produced this checker.',
+  },
 };
+
+/**
+ * ── WHY THERE ARE TWO MODES ─────────────────────────────────────────────────
+ *
+ * The first version of this map had one, and it was the wrong one. It asserted
+ * that an expected-absent path does not exist ON DISK, and the comment beneath
+ * it claimed that "a .env committed by accident would be caught here". It would
+ * not have been. existsSync tells you about the disk; being committed is a fact
+ * about git.
+ *
+ * The two are not the same thing, and for `.env` they are close to opposite:
+ * the file SHOULD exist on a working machine - that is where the keys live -
+ * and must never be in a commit. So the disk check failed on every developer
+ * machine that was set up correctly, and passed in CI and in any fresh clone,
+ * where no .env exists. A check that fails only where the thing is right, and
+ * passes everywhere the thing is missing, is worse than no check: it is a
+ * check that teaches you to ignore it.
+ *
+ *   - 'untracked' asks git, not the filesystem. The file may exist locally;
+ *     it must not be tracked, and it must be ignored. Asserting the ignore
+ *     rule too means removing the .gitignore line fails HERE, before the file
+ *     is ever staged - which is the only moment the failure is still cheap.
+ *
+ *   - 'absent' means what it says: no such path, anywhere. `server/.env` is
+ *     the only one, and it exists to keep a corrected document corrected.
+ */
 
 const migrations = existsSync(join(root, 'supabase/migrations'))
   ? readdirSync(join(root, 'supabase/migrations'))
   : [];
+
+/**
+ * What git actually tracks, and what it actually ignores.
+ *
+ * Shelling out rather than parsing .gitignore ourselves: git's ignore rules
+ * have precedence, negation and directory semantics, and a hand-rolled parser
+ * that gets one of them wrong would be a check that is confidently incorrect
+ * about a security property. Ask the tool that owns the answer.
+ */
+function gitTrackedFiles() {
+  try {
+    return new Set(
+      execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+        .split('\0')
+        .filter(Boolean),
+    );
+  } catch {
+    return null; // not a git checkout, or git is unavailable
+  }
+}
+
+function isIgnored(path) {
+  try {
+    // check-ignore exits 0 when the path IS ignored, 1 when it is not.
+    execFileSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root, stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const tracked = gitTrackedFiles();
 
 const problems = [];
 
@@ -111,19 +179,41 @@ for (const file of FILES) {
   }
 }
 
-// The counterpart check: an entry in EXPECTED_ABSENT that HAS appeared on disk
-// means the reason is stale and somebody should look at it. A .env committed by
-// accident would be caught here and nowhere else.
-for (const [path, why] of Object.entries(EXPECTED_ABSENT)) {
-  if (existsSync(join(root, path))) {
-    problems.push(`${path} is listed as expected-absent (${why}) but EXISTS on disk`);
+// The counterpart check, in the direction each entry actually cares about.
+for (const [path, { mode, why }] of Object.entries(EXPECTED_ABSENT)) {
+  if (mode === 'absent') {
+    if (existsSync(join(root, path))) {
+      problems.push(`${path} is documented as not existing (${why}) but EXISTS on disk`);
+    }
+    continue;
+  }
+
+  // mode === 'untracked'. This is the "never commit secrets" rule, asserted
+  // rather than trusted, and it is the whole reason this branch exists.
+  if (tracked === null) continue; // not a git checkout - nothing to assert against
+
+  if (tracked.has(path)) {
+    problems.push(
+      `${path} IS TRACKED BY GIT and must not be: it ${why}\n` +
+        `      Remove it from the index with \`git rm --cached ${path}\` and rotate anything it held.`,
+    );
+  } else if (!isIgnored(path)) {
+    problems.push(
+      `${path} is not tracked, but git is no longer ignoring it, so the next ` +
+        `\`git add -A\` would commit it. It ${why}\n` +
+        `      Restore the .gitignore entry.`,
+    );
   }
 }
+
+const untrackedCount = Object.values(EXPECTED_ABSENT).filter((e) => e.mode === 'untracked').length;
+const absentCount = Object.values(EXPECTED_ABSENT).filter((e) => e.mode === 'absent').length;
 
 if (problems.length === 0) {
   console.log(
     `PASS - ${FILES.length} documents check out: every path, script and migration exists, ` +
-      `and the ${Object.keys(EXPECTED_ABSENT).length} deliberate absences are still absent.`
+      `${untrackedCount} secret-bearing file(s) are still untracked and still ignored, ` +
+      `and ${absentCount} documented absence(s) are still absent.`
   );
   process.exit(0);
 }
