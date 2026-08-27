@@ -10,6 +10,7 @@ export const en = {
   common: {
     backToTop: 'Back to top',
     appName: 'Coach Diaz',
+    forYourClinician: 'Information for your doctor or physiotherapist',
     loading: 'Loading…',
     saving: 'Saving…',
     working: 'Working…',

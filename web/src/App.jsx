@@ -17,6 +17,7 @@ import { Progress } from './pages/Progress.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
+import { ForYourClinician } from './pages/ForYourClinician.jsx';
 import { AiProcessing } from './pages/AiProcessing.jsx';
 
 export function App() {
@@ -85,6 +86,11 @@ export function App() {
                   URL before it could be exchanged - and would be circular
                   anyway, since /login is what they cannot get through. */}
               <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* Public, and that is the point: a page you must create an
+                  account to read is useless to a physiotherapist holding a
+                  phone in a treatment room. */}
+              <Route path="/about" element={<ForYourClinician />} />
 
               <Route path="/policies/terms" element={<Terms />} />
               <Route path="/policies/ai-processing" element={<AiProcessing />} />

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
@@ -258,7 +258,13 @@ export function Login() {
           {isReset ? t('auth.reset.backToSignIn') : isSignUp ? t('auth.toSignIn') : t('auth.toSignUp')}
         </button>
 
-        <p className="fineprint">{t('medical.disclaimer')}</p>
+        <p className="fineprint">
+          {t('medical.disclaimer')}{' '}
+          {/* Next to the medical disclaimer rather than in the navigation:
+              the moment somebody wonders whether this is safe is the moment
+              the page answering that question should be one click away. */}
+          <Link to="/about">{t('common.forYourClinician')}</Link>
+        </p>
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ export const es = {
   common: {
     backToTop: 'Volver arriba',
     appName: 'Coach Diaz',
+    forYourClinician: 'Información para tu médico o fisioterapeuta',
     loading: 'Cargando…',
     saving: 'Guardando…',
     working: 'Procesando…',

@@ -878,3 +878,39 @@ form > button.primary {
 @media (prefers-reduced-motion: reduce) {
   .egg-panel { animation: none; }
 }
+
+
+/* ── Printing ──────────────────────────────────────────────────────────────
+   Added for the clinician page, whose realistic use is an athlete bringing a
+   sheet of paper to an appointment. A screen stylesheet printed unchanged
+   gives you a dark background, no link targets, and a page break through the
+   middle of the one section the clinician came for.
+
+   Scoped to nothing in particular on purpose - there is no reason the policy
+   pages should print badly either. */
+@media print {
+  /* Dark theme on paper is unreadable and empties a cartridge. */
+  html, body { background: #fff !important; color: #000 !important; }
+  body::before { display: none !important; }
+
+  /* Navigation, controls and the floating jump button are all noise on paper,
+     and the last one prints as a grey circle over the text. */
+  .site-nav, .sticky-header, .back-to-top, .nav-jump, .lang, button { display: none !important; }
+
+  .page { max-width: none; padding: 0; }
+  .card {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  /* A heading stranded at the foot of a page, or a list split across two, is
+     exactly what makes a printed reference feel unreliable. */
+  h1, h2, h3 { break-after: avoid-page; page-break-after: avoid; }
+  li, p { break-inside: avoid-page; page-break-inside: avoid; }
+
+  /* A printed page cannot be clicked, so a bare "consumer health data policy"
+     is a dead end. Show where it points. */
+  .prose a[href^="/"]::after { content: " (coachdiaz.app" attr(href) ")"; font-size: 0.85em; }
+  .prose a { text-decoration: underline; color: #000 !important; }
+}
