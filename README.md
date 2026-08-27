@@ -188,7 +188,8 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 |---|---|
 | Anthropic API key | Server-side only. Never a `VITE_` variable, so it is not in the browser build. `config.js` refuses to boot if a secret carries a browser-visible prefix, and `npm run verify:bundle` greps the actual compiled output before deploy. |
 | Cross-user access | RLS on all seven tables, 21 per-command policies, every one scoped `to authenticated`. Verified by `supabase/tests/rls_isolation_test.sql` against 22 distinct attacks — run it with `npm run test:db`. |
-| Health data | Injuries, medical conditions and lifestyle factors are sensitive. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralised in `server/src/lib/logger.js` so it cannot be skipped by forgetting. Storing any of it requires an active MHMDA consent, enforced by a database trigger rather than by application code. |
+| Health data | Injuries, medical conditions and lifestyle factors — sleep, alcohol, nicotine, notes on eating — are sensitive, and Washington's MHMDA treats all of them as consumer health data. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralised in `server/src/lib/logger.js` and keyed on field name, so it cannot be skipped by forgetting at a call site. Storing any of it requires an active MHMDA consent, enforced by a database trigger rather than by application code. |
+| Saying so accurately | The three consent documents are held to the code by `server/test/policyDisclosure.test.js`, not by proofreading: a profile column that reaches the model without a mapped disclosure fails the build and the failure names the column. Written after an audit found four places where the code had moved and a paragraph had not — see ADR-11. |
 | Account deletion | `ON DELETE CASCADE` from `auth.users` throughout. Deleting an account purges every associated row — verified, not assumed. |
 | The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organising question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
 | Unauthenticated access | The `anon` role holds no table grants and matches no policy — refused before RLS is even consulted. |
@@ -316,7 +317,7 @@ configure secrets.
 │   └── test/                 Unit tests (584, no credentials required)
 ├── web/                      React + Vite frontend
 ├── supabase/
-│   ├── migrations/           0001–0020, applied in order
+│   ├── migrations/           0001–0021, applied in order
 │   └── tests/                RLS isolation test
 ├── scripts/                  Secret scanners, safety eval, deploy tooling
 └── docs/                     Architecture, security, deployment, legal, build log

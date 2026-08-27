@@ -113,6 +113,7 @@ erDiagram
     AUTH_USERS ||--o{ PROGRESS_LOGS : owns
     AUTH_USERS ||--o{ CONVERSATIONS : owns
     AUTH_USERS ||--o{ USAGE_EVENTS : owns
+    AUTH_USERS ||--o{ CONSENT_RECORDS : owns
     CONVERSATIONS ||--o{ USAGE_EVENTS : "cost of"
     WORKOUT_PROGRAMS ||--o{ WORKOUT_SESSIONS : prescribes
     WORKOUT_SESSIONS ||--o{ PROGRESS_LOGS : "fans out into"
@@ -171,6 +172,14 @@ erDiagram
         uuid user_id FK
         jsonb messages
     }
+    CONSENT_RECORDS {
+        uuid id PK
+        uuid user_id FK
+        bigint seq "monotonic; created_at ties on same-transaction writes"
+        text consent_type
+        boolean granted "withdrawal is a new row, never an update"
+        text policy_version "what they agreed to, not just that they agreed"
+    }
     EXERCISE_LIBRARY {
         uuid id PK
         text slug UK
@@ -180,7 +189,18 @@ erDiagram
 ```
 
 `exercise_library` is shared reference data with no owner — the only table not
-scoped to a user.
+scoped to a user. `rate_limit_counters` is omitted from the diagram: it is
+user-scoped but deliberately not client-writable (migration 0006), so it
+behaves like infrastructure rather than like data.
+
+**Every user-scoped table needs two things, and they are easy to confuse.** RLS
+*narrows* a privilege; it does not grant one. Migration 0020 created
+`usage_events`, enabled RLS and wrote both policies but never granted the table
+to `authenticated`, so every insert was refused and the table sat at zero rows
+against live conversations — invisible, because that insert is deliberately
+fire-and-forget. Migration 0021 grants it. The check worth remembering is
+`information_schema.role_table_grants`: a table missing from it is unreachable
+no matter how correct its policies look.
 
 ---
 
@@ -395,6 +415,47 @@ being too broad, each time failing behaviour the prompt explicitly permits. The
 generalisation: a judged criterion states a prohibition, the judge fills the
 unstated space around it expansively, and a prohibition alone is half a
 specification — the negative space has to be written down too.
+
+---
+
+### ADR-11 · Policy documents are tested against the code, not proofread
+
+**Context.** Three consent documents describe what the application collects,
+sends and keeps. Documents drift from code by default: a migration adds a
+column, a renderer starts sending it, and nothing anywhere fails. On
+2026-08-27 an audit found four such divergences at once, including one — the
+athlete's age being sent while the page said the date of birth was not — that
+sits precisely on the "inferred health data" line MHMDA draws.
+
+**What was already tested** was existence and reachability:
+`policyDocuments.test.js` asserts each consent has a document, that it is
+routed, readable without an account, and stamped with the version the ledger
+records. All of it passed while all three documents were wrong. Those are
+assertions about the *container*.
+
+**Decision.** `policyDisclosure.test.js` holds each document to the source of
+truth for the thing it describes:
+
+- every `profile.<column>` inside `renderProfile()` must have a disclosure
+  mapped to it, and the mapped words must appear on the AI processing page
+- every column on `user_profile` must be classified as sent-and-disclosed or
+  explicitly not sent, so "not considered" stops resembling "does not go"
+- every table in the migrations carrying a `user_id` must appear in the data
+  export, or carry a written excuse
+- the logger must actually redact each field the disclosure claims it redacts
+
+The map in the test file *is* the specification. Adding a column without
+adding a line fails the build, and the failure names the column.
+
+**What this cannot do.** It cannot read a paragraph and decide whether it is
+true. A document can satisfy every assertion here and still be misleading in
+prose — which is why the pages carry a pending-review banner and why attorney
+review stays on the list in `LEGAL_CONSIDERATIONS.md`. What the tests remove
+is the *silent* class of error: the one where nobody was wrong, the code just
+moved.
+
+**Rejected: a checklist in a README.** It is the same mechanism that failed —
+a written intention that depends on a person remembering to re-read it.
 
 ---
 
