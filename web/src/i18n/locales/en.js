@@ -189,6 +189,49 @@ export const en = {
     smallestPlateHelp:
       'One plate, not a pair. Weight goes on both ends, so this sets the smallest jump you can make. Leave blank if you are not sure.',
     equipment: 'What equipment can you get to?',
+    gyms: 'Where do you train?',
+    gymsHint:
+      'Optional. Ticking one fills in the equipment box below with what that chain usually has, so you can correct it instead of writing it from scratch. These are starting points, not facts: no chain publishes what any individual club holds, and they vary a lot between locations.',
+    gymOptions: {
+      planet_fitness: 'Planet Fitness',
+      anytime_fitness: 'Anytime Fitness',
+      golds_gym: "Gold's Gym",
+      la_fitness: 'LA Fitness',
+      crunch: 'Crunch',
+      snap_fitness: 'Snap Fitness',
+      ymca: 'YMCA',
+      university_gym: 'University or college gym',
+      barbell_gym: 'Powerlifting or barbell gym',
+      home_gym: 'Home gym',
+      other: 'Somewhere else',
+    },
+    gymEquipment: {
+      planet_fitness:
+        'Planet Fitness: Smith machine, fixed-weight barbells up to about 60lb, dumbbells up to about 50lb, plate-loaded and selectorised machines, cable stations, benches. No Olympic barbell, no squat or power rack, no platform.',
+      anytime_fitness:
+        'Anytime Fitness: half or full rack, Olympic barbell and plates, Smith machine, flat and adjustable benches, dumbbells, cable and selectorised machines. Deadlift platform only at some locations.',
+      golds_gym:
+        "Gold's Gym: squat racks and usually a deadlift platform, Olympic barbells and plates, extensive dumbbells, benches, machines. Bumper plates are uncommon. Powdered chalk generally not allowed; some locations permit liquid chalk.",
+      la_fitness:
+        'LA Fitness: squat racks and usually a deadlift platform, Olympic barbells and plates, dumbbells up to about 120lb, benches, machines. Chalk generally allowed.',
+      crunch:
+        'Crunch: Olympic barbells and plates, squat racks, benches, a full dumbbell range, machines. Some locations have an Olympic half-rack platform.',
+      snap_fitness:
+        'Snap Fitness: squat rack at most locations, Olympic barbell and plates, bench stations, dumbbells up to about 100lb, machines. Small-format clubs vary a lot; chalk policy is down to the location.',
+      ymca:
+        'YMCA: varies a lot between branches. Many have a rack, an Olympic barbell and benches; some are machines and dumbbells only.',
+      university_gym:
+        'University or college gym: usually several racks and platforms, Olympic barbells and bumper plates, benches, dumbbells, machines.',
+      barbell_gym:
+        'Powerlifting or barbell gym: competition racks and platforms, competition bars, calibrated or bumper plates, competition bench, chalk, specialty bars.',
+    },
+    gymLabel: 'Which one? (optional)',
+    gymLabelPlaceholder: 'e.g. the one on Kietzke Lane',
+    gymLabelHint:
+      'Just a note to yourself, so you know which club you meant. It is stored as you type it — there is no address lookup, no map and no location tracking anywhere in this app.',
+    equipmentHint:
+      'This is the answer your program is built from, so it is worth correcting. Delete anything your gym does not actually have and add anything it does.',
+
     equipmentPlaceholder: 'Full commercial gym; barbell, rack, bench, plates to 405…',
     healthLegend: 'Injuries, pain, or medical conditions',
     healthNote:

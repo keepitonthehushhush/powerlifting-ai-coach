@@ -33,7 +33,7 @@ export function AiProcessing() {
     <div className="page">
       <header className="page-header">
         <h1>How Coach Diaz uses AI</h1>
-        <p className="muted small">Version aip-2026-08-27</p>
+        <p className="muted small">Version aip-2026-08-27b</p>
       </header>
 
       <div className="card draft-banner">
@@ -46,6 +46,14 @@ export function AiProcessing() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>aip-2026-08-27b.</strong> Two new things are sent, and both are listed below:
+          which gym chains you tick on the intake form, and the optional note you can type about
+          which branch you mean. The note is stored exactly as you type it. There is no address
+          lookup, no map and no location tracking anywhere in this product, and the gym names are
+          only used to pre-fill the equipment box so you can correct it — the coach reads your
+          equipment answer, not our idea of what that chain has.
+        </p>
         <p className="small">
           <strong>aip-2026-08-27.</strong> We checked this page line by line against the code that
           actually builds the request, and it was incomplete. The previous version said your date
@@ -79,6 +87,7 @@ export function AiProcessing() {
           <li>Recovery information you chose to give: sleep, alcohol, nicotine, nutrition notes.</li>
           <li>Injuries and medical conditions you chose to give, and whether you are cleared to train.</li>
           <li>Numbers our own code worked out from the above and hands the model as answers: your next prescribed loads, rounded to the smallest plate you told us you own, your warm-up ramp, and your fuelling ranges.</li>
+          <li>Which gym chains you ticked, and the optional branch note you typed. The note goes as written; it is never turned into an address or a location.</li>
           <li>Reference material of ours that says nothing about you: the coaching instructions, and the exercise library with its links to demonstration videos.</li>
         </ul>
 
@@ -86,6 +95,7 @@ export function AiProcessing() {
         <ul>
           <li>Your email address or password.</li>
           <li>Your date of birth itself.</li>
+          <li>Your location. Not an address, not coordinates, not an IP-derived guess. The branch note is whatever you typed and nothing looks it up.</li>
           <li>Any other user&rsquo;s data. The database restricts every query to your own rows, so a request made for you cannot return anyone else&rsquo;s.</li>
           <li>Credentials of any kind. There are none in the context the model receives.</li>
         </ul>

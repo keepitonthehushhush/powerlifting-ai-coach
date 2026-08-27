@@ -152,6 +152,25 @@ h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
 }
 .auth-card { width: min(420px, 100%); }
 
+/* A group of related questions inside a fieldset, without looking like a
+   second card nested in the first. */
+.subfield {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.subfield > legend { padding: 0 0.4rem; }
+/* Two columns where there is room, one where there is not. The gym list is
+   eleven items and a single column of eleven checkboxes is a scroll. */
+.gym-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.1rem 1rem;
+}
+
 /* The two things you might be here to do that are not "sign in".
    They used to be two bare link-buttons, and buttons are inline-block, so in
    a plain block card they landed on one line and read as a single sentence.

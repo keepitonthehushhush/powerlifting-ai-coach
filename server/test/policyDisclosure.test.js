@@ -71,6 +71,8 @@ const SENT_TO_THE_MODEL = {
   goal: 'goal',
   competition_date: 'competition date',
   equipment_available: 'equipment',
+  gym_chains: 'Which gym chains you ticked',
+  gym_label: 'branch note',
   days_per_week: 'days per week',
   sleep_hours_typical: 'sleep',
   alcohol_units_per_week: 'alcohol',
@@ -142,9 +144,9 @@ describe('the AI processing page lists what actually goes to Anthropic', () => {
     const columns = profileColumns();
     // A parser that finds nothing passes every assertion below it. This
     // number was checked against information_schema on the live database on
-    // 2026-08-27: 23 columns, matching exactly. It goes UP when a migration
+    // 2026-08-27: 23 columns, matching exactly, then 25 after migration 0023. It goes UP when a migration
     // adds one, and this assertion is meant to be edited when that happens.
-    assert.ok(columns.size >= 23, `only parsed ${columns.size} columns out of the migrations`);
+    assert.ok(columns.size >= 25, `only parsed ${columns.size} columns out of the migrations`);
     for (const column of columns) {
       assert.ok(
         column in SENT_TO_THE_MODEL || column in NOT_SENT,
@@ -300,9 +302,33 @@ describe('the terms describe the age rule the code actually enforces', () => {
     assert.doesNotMatch(operative, phrase('Accounts are refused'));
   });
 
-  test('the page says what is refused instead', () => {
-    assert.match(termsPage, phrase('storing injury or lifestyle information for anyone', 'i'));
-    assert.match(termsPage, phrase('it fails closed', 'i'));
+  test('the page says what is refused, and by what', () => {
+    assert.match(termsPage, phrase('refuse to store injury or lifestyle information for anyone under 18', 'i'));
+    assert.match(termsPage, phrase('fails closed', 'i'));
+  });
+
+  test('THE TERMS CLAIM A SERVER-SIDE GATE, AND ONE EXISTS', () => {
+    // The previous version of this document described an enforcement that was
+    // not in the code. This asserts the opposite direction: that the promise
+    // on the page is backed by the route.
+    assert.match(termsPage, phrase('that check runs on our server, not in', 'i'));
+    assert.match(chat, /adultGateDecision\(context\.profile\)/);
+    assert.match(chat, /adult_gate_/);
+  });
+
+  test('it does not claim to verify what it cannot verify', () => {
+    // A statement that age is "verified" would be the same class of defect as
+    // the one this file was written for: a document describing a capability
+    // the product does not have.
+    assert.match(termsPage, phrase('What we cannot do is verify any of it', 'i'));
+    assert.doesNotMatch(termsPage, /we verify your age|age is verified/i);
+  });
+
+  test('there is a route back for a parent, and it is acted on', () => {
+    // COPPA and the state statutes turn on ACTUAL KNOWLEDGE. A takedown path
+    // that is honoured is worth more than any wording that is not.
+    assert.match(termsPage, phrase('If you are a parent or guardian', 'i'));
+    assert.match(termsPage, phrase('we do not knowingly provide this service to', 'i'));
   });
 
   test('the terms and the intake hint tell the same story', () => {
@@ -326,8 +352,8 @@ describe('the terms describe the age rule the code actually enforces', () => {
 describe('every policy page dates its own change', () => {
   test('each carries a changelog for the version it is stamped with', () => {
     for (const [page, version] of [
-      [termsPage, 'tos-2026-08-27'],
-      [aiPage, 'aip-2026-08-27'],
+      [termsPage, 'tos-2026-08-27b'],
+      [aiPage, 'aip-2026-08-27b'],
       [healthPage, 'chd-2026-08-27'],
     ]) {
       assert.match(page, phrase('What changed in this version'));

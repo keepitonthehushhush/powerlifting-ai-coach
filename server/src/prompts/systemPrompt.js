@@ -34,6 +34,7 @@ import { asData, asDataDeep, FENCE_TAG } from './sanitize.js';
 import { prescribeAll } from '../lib/progression.js';
 import { warmupPlan } from '../lib/warmup.js';
 import { ageInYears } from '../lib/ageGate.js';
+import { barbellAccess, gymNotes } from '../lib/gyms.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
@@ -539,6 +540,69 @@ ${lines.join('\n')}
  * There is no calorie figure here and there is no function in nutrition.js
  * that could produce one. That is the boundary, enforced by absence.
  */
+/**
+ * What the athlete's gym can and cannot do, computed rather than inferred.
+ *
+ * ── WHY THIS IS A DIRECTIVE AND NOT JUST A LINE IN THE PROFILE ────────────
+ *
+ * Because for one chain it changes everything. Planet Fitness has no Olympic
+ * barbell and no squat rack - a Smith machine stands in - and it is the
+ * largest chain in the country by membership, so it is the single most likely
+ * place for a beginner to be reading this from.
+ *
+ * A powerlifting program assumes a barbell and a rack. Handed only a sentence
+ * in an equipment text box, a model will sometimes notice and sometimes write
+ * "squat 3x5 @ 185" to somebody with nowhere to rack a bar. The same argument
+ * as everywhere else in this file: if the answer can be computed, compute it
+ * and hand it over, rather than hoping it is inferred from prose.
+ *
+ * ── AND IT IS TOLD TO SAY SO OUT LOUD ─────────────────────────────────────
+ *
+ * The wrong response to "your gym has no barbell" is to quietly substitute
+ * machine work and let somebody believe they are training for a powerlifting
+ * meet. The right one is to tell them what their gym cannot do, program the
+ * best version of what it can, and let them decide whether to change gyms.
+ * That is their decision and they can only make it if somebody says it.
+ */
+export function describeGymContext(profile) {
+  const chains = Array.isArray(profile?.gym_chains) ? profile.gym_chains : [];
+  if (chains.length === 0) return null;
+
+  const access = barbellAccess(chains);
+  const notes = gymNotes(chains);
+  const lines = [];
+
+  if (access === 'none') {
+    lines.push(
+      `- THIS ATHLETE HAS NO BARBELL AND NO RACK. Their gym cannot support the squat, bench
+  and deadlift as this product normally prescribes them. Do NOT write a program built on a
+  barbell, and do not quietly substitute machines while still calling it powerlifting
+  training - say plainly, once and without lecturing, what their gym cannot do. Then
+  program the strongest version of what it CAN do: Smith machine and dumbbell work, the
+  fixed barbells they do have, machine accessories. Someone training for a meet needs to
+  know they will eventually need barbell access; someone who wants to get stronger does
+  not, and can make excellent progress where they are. Ask which they are before assuming.`
+    );
+  } else if (access === 'varies') {
+    lines.push(
+      `- RACK ACCESS IS NOT CONFIRMED at this athlete's gym. Ask before programming anything
+  that needs one. Asking is one sentence; assuming wrong is a session spent improvising a
+  heavy squat, which is how people get hurt.`
+    );
+  }
+
+  for (const note of notes) lines.push(`- ${asData(note, { maxLength: 400 })}`);
+
+  lines.push(
+    `- The equipment list in the profile is the athlete's own answer and it is the
+  authority. The gym names are only how it got pre-filled: no chain publishes what any
+  individual club holds, and these vary by franchise and by year. If the list and what you
+  expect of that chain disagree, believe the list, and ask rather than correcting them.`
+  );
+
+  return lines.join('\n');
+}
+
 export function describeFuelling(profile) {
   const units = profile?.units === 'kg' ? 'kg' : 'lb';
   const maintaining = fuellingRanges({ bodyweight: profile?.bodyweight, units });
@@ -662,6 +726,11 @@ function renderProfile(profile) {
     `  goal:                ${profile.goal ? asData(profile.goal) : UNKNOWN}`,
     `  competition_date:    ${fmtDate(comp)}${until != null ? ` (${until} days away)` : ''}`,
     `  equipment_available: ${profile.equipment_available ? asData(profile.equipment_available) : UNKNOWN}`,
+    `  trains_at:           ${
+      Array.isArray(profile.gym_chains) && profile.gym_chains.length > 0
+        ? profile.gym_chains.map((g) => asData(g, { maxLength: 40 })).join(', ')
+        : UNKNOWN
+    }${profile.gym_label ? ` (${asData(profile.gym_label, { maxLength: 120 })})` : ''}`,
     `  days_per_week:       ${profile.days_per_week ?? UNKNOWN}`,
     `  sleep_hours_typical: ${profile.sleep_hours_typical ?? UNKNOWN}`,
     `  alcohol_per_week:    ${
@@ -1005,6 +1074,12 @@ function buildSystemParts({
   // Suppressed with everything else when the clearance gate is up: an athlete
   // waiting on a doctor does not need macros, and a fuelling directive sitting
   // under a gate that forbids programming reads as a way around it.
+  // NOT suppressed by the clearance gate. "Your gym has no barbell" is true
+  // whether or not somebody is waiting on a doctor, and it is exactly the kind
+  // of thing worth knowing during that wait.
+  const gym = describeGymContext(profile);
+  if (gym) directives.push(gym);
+
   const fuelling = clearanceRequired ? null : describeFuelling(profile);
   if (fuelling) directives.push(fuelling);
 

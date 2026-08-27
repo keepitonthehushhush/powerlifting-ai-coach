@@ -191,6 +191,49 @@ export const es = {
     smallestPlateHelp:
       'Un disco, no un par. El peso va en los dos extremos, así que esto marca el salto más pequeño que puedes dar. Déjalo en blanco si no estás seguro.',
     equipment: '¿A qué equipamiento tienes acceso?',
+    gyms: '¿Dónde entrenas?',
+    gymsHint:
+      'Opcional. Marcar una rellena el cuadro de equipamiento con lo que esa cadena suele tener, para que lo corrijas en vez de escribirlo desde cero. Son puntos de partida, no hechos: ninguna cadena publica lo que tiene cada gimnasio y varían mucho entre ubicaciones.',
+    gymOptions: {
+      planet_fitness: 'Planet Fitness',
+      anytime_fitness: 'Anytime Fitness',
+      golds_gym: "Gold's Gym",
+      la_fitness: 'LA Fitness',
+      crunch: 'Crunch',
+      snap_fitness: 'Snap Fitness',
+      ymca: 'YMCA',
+      university_gym: 'Gimnasio universitario',
+      barbell_gym: 'Gimnasio de powerlifting o de barra',
+      home_gym: 'Gimnasio en casa',
+      other: 'En otro sitio',
+    },
+    gymEquipment: {
+      planet_fitness:
+        'Planet Fitness: máquina Smith, barras de peso fijo hasta unas 27 kg, mancuernas hasta unos 23 kg, máquinas de placas y de selector, poleas, bancos. Sin barra olímpica, sin jaula ni rack de sentadilla, sin plataforma.',
+      anytime_fitness:
+        'Anytime Fitness: half rack o rack completo, barra olímpica y discos, máquina Smith, bancos planos y regulables, mancuernas, poleas y máquinas de selector. Plataforma de peso muerto solo en algunas ubicaciones.',
+      golds_gym:
+        "Gold's Gym: racks de sentadilla y normalmente plataforma de peso muerto, barras olímpicas y discos, amplia gama de mancuernas, bancos, máquinas. Los discos de goma son poco comunes. El magnesio en polvo no suele permitirse; algunas ubicaciones permiten magnesio líquido.",
+      la_fitness:
+        'LA Fitness: racks de sentadilla y normalmente plataforma de peso muerto, barras olímpicas y discos, mancuernas hasta unos 54 kg, bancos, máquinas. El magnesio suele permitirse.',
+      crunch:
+        'Crunch: barras olímpicas y discos, racks de sentadilla, bancos, gama completa de mancuernas, máquinas. Algunas ubicaciones tienen plataforma con half rack olímpico.',
+      snap_fitness:
+        'Snap Fitness: rack de sentadilla en la mayoría de ubicaciones, barra olímpica y discos, bancos, mancuernas hasta unos 45 kg, máquinas. Los locales pequeños varían mucho; la política de magnesio depende de la ubicación.',
+      ymca:
+        'YMCA: varía mucho entre sedes. Muchas tienen rack, barra olímpica y bancos; algunas solo máquinas y mancuernas.',
+      university_gym:
+        'Gimnasio universitario: normalmente varios racks y plataformas, barras olímpicas y discos de goma, bancos, mancuernas, máquinas.',
+      barbell_gym:
+        'Gimnasio de powerlifting o de barra: racks y plataformas de competición, barras de competición, discos calibrados o de goma, banco de competición, magnesio, barras especiales.',
+    },
+    gymLabel: '¿Cuál? (opcional)',
+    gymLabelPlaceholder: 'p. ej. el de la calle Kietzke',
+    gymLabelHint:
+      'Solo una nota para ti, para saber a qué gimnasio te referías. Se guarda tal como lo escribes: no hay búsqueda de direcciones, ni mapa, ni seguimiento de ubicación en esta aplicación.',
+    equipmentHint:
+      'De esta respuesta se construye tu programa, así que merece la pena corregirla. Borra lo que tu gimnasio no tenga y añade lo que sí.',
+
     equipmentPlaceholder: 'Gimnasio completo; barra, rack, banco, discos hasta 185 kg…',
     healthLegend: 'Lesiones, dolor o condiciones médicas',
     healthNote:

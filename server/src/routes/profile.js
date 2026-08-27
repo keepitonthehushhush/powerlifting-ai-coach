@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 import { evaluateAgeGate, MINIMUM_AGE } from '../lib/ageGate.js';
+import { GYM_SLUGS } from '../lib/gyms.js';
 
 export const profileRouter = Router();
 
@@ -52,6 +53,21 @@ const ProfileUpdate = z
     health_restrictions: z.string().max(4000).nullish(),
     cleared_to_train: z.boolean().optional(),
     equipment_available: z.string().max(2000).nullish(),
+    // A closed vocabulary, mirroring GYM_SLUGS and the CHECK in migration 0023.
+    // Bounded at the count as well as the values: nobody trains at nine gyms,
+    // and an unbounded array is an unbounded prompt.
+    //
+    // refine() rather than z.enum(GYM_SLUGS): z.enum wants a literal tuple and
+    // GYM_SLUGS is a frozen array derived from the profile map. This validates
+    // the same thing without depending on how zod narrows a spread.
+    gym_chains: z
+      .array(z.string().max(40))
+      .max(4)
+      .refine((values) => values.every((slug) => GYM_SLUGS.includes(slug)), {
+        message: 'unknown gym',
+      })
+      .optional(),
+    gym_label: z.string().max(120).nullish(),
     days_per_week: z.number().int().min(1).max(7).nullish(),
     // Equipment, not health data. The smallest single plate the athlete can
     // reach; the smallest jump they can make is twice it. See migration 0017.

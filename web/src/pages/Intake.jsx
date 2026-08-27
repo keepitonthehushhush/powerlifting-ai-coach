@@ -17,6 +17,8 @@ const EMPTY = {
   goal: '',
   competition_date: '',
   equipment_available: '',
+  gym_chains: [],
+  gym_label: '',
   days_per_week: '',
   smallest_plate_pair: '',
   date_of_birth: '',
@@ -79,6 +81,28 @@ const REQUIRED_FIELDS = [
   { name: 'equipment_available', labelKey: 'intake.equipment' },
 ];
 
+/**
+ * The gyms offered as checkboxes, in the order they appear.
+ *
+ * Mirrors GYM_SLUGS in server/src/lib/gyms.js and the CHECK in migration 0023;
+ * a test asserts the three agree. Planet Fitness is first because it is the
+ * largest chain by membership and the one whose answer changes the program
+ * most - it has no barbell and no rack.
+ */
+const GYM_OPTIONS = [
+  'planet_fitness',
+  'anytime_fitness',
+  'golds_gym',
+  'la_fitness',
+  'crunch',
+  'snap_fitness',
+  'ymca',
+  'university_gym',
+  'barbell_gym',
+  'home_gym',
+  'other',
+];
+
 const GOAL_OPTIONS = [
   'learn_the_lifts',
   'general_strength',
@@ -104,6 +128,8 @@ function toPayload(form) {
     // away from one - otherwise the row violates the constraint on save.
     competition_date: MEET_GOALS.has(form.goal) && form.competition_date ? form.competition_date : null,
     equipment_available: form.equipment_available || null,
+    gym_chains: Array.isArray(form.gym_chains) ? form.gym_chains : [],
+    gym_label: form.gym_label?.trim() || null,
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
     // Blank means "I don't know what my gym has", which the engine handles by
     // assuming the standard 2.5 lb / 1.25 kg plate. Coercing it to a number
@@ -151,6 +177,39 @@ export function Intake() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Ticking a gym pre-fills the equipment box; unticking never empties it.
+   *
+   * The asymmetry is deliberate. Pre-filling is a convenience and the athlete
+   * is expected to edit what lands there - it is their answer, not ours. But
+   * once they have edited it, that text is the most accurate thing in the
+   * form, and silently deleting it because they corrected a checkbox would
+   * throw away the one field the whole program is computed from.
+   *
+   * So: appending only, and only what is not already there.
+   */
+  function toggleGym(slug, checked) {
+    setForm((prev) => {
+      const chains = checked
+        ? [...prev.gym_chains, slug].slice(0, 4)
+        : prev.gym_chains.filter((s) => s !== slug);
+
+      let equipment = prev.equipment_available;
+      // From the catalogue, because it is prose a person reads and has to be
+      // translatable. t() returns the key itself when there is none, which is
+      // what the includes() guard below quietly handles for home_gym and other.
+      const key = `intake.gymEquipment.${slug}`;
+      const text = t(key);
+      const suggestion = checked && text !== key ? text : '';
+      if (suggestion && !equipment.includes(suggestion)) {
+        equipment = equipment.trim() ? `${equipment.trim()}\n\n${suggestion}` : suggestion;
+      }
+
+      return { ...prev, gym_chains: chains, equipment_available: equipment };
+    });
+    setMissing((prev) => prev.filter((m) => m.name !== 'equipment_available'));
+  }
 
   /**
    * Clear one field's error as soon as it is filled in.
@@ -374,15 +433,55 @@ export function Intake() {
             />
           </label>
 
+          {/* ── WHERE DO YOU TRAIN ────────────────────────────────────────
+              Ticking a gym pre-fills the equipment box below. That is all it
+              does. These are NOT equipment lists we hold as fact: no chain
+              publishes what any individual club has, they vary by franchise
+              and by year, and a confidently wrong list sends somebody looking
+              for a platform that is not there. What gets stored and what the
+              coach reads is whatever is left in the box afterwards. */}
+          <fieldset className="subfield">
+            <legend className="muted small">{t('intake.gyms')}</legend>
+            <p className="muted small">{t('intake.gymsHint')}</p>
+            <div className="gym-options">
+              {GYM_OPTIONS.map((slug) => (
+                <label className="checkbox" key={slug}>
+                  <input
+                    type="checkbox"
+                    checked={form.gym_chains.includes(slug)}
+                    onChange={(e) => toggleGym(slug, e.target.checked)}
+                    disabled={!form.gym_chains.includes(slug) && form.gym_chains.length >= 4}
+                  />
+                  <span>{t(`intake.gymOptions.${slug}`)}</span>
+                </label>
+              ))}
+            </div>
+
+            <label>
+              {t('intake.gymLabel')}
+              <input
+                type="text"
+                maxLength={120}
+                value={form.gym_label}
+                onChange={(e) => update('gym_label', e.target.value)}
+                placeholder={t('intake.gymLabelPlaceholder')}
+              />
+              {/* Said plainly, because somebody typing a gym name into a
+                  health app deserves to know what happens to it. */}
+              <span className="muted small">{t('intake.gymLabelHint')}</span>
+            </label>
+          </fieldset>
+
           <label>
             {t('intake.equipment')}
             <textarea
-              rows={2}
+              rows={5}
               value={form.equipment_available}
               onChange={(e) => update('equipment_available', e.target.value)}
               placeholder={t('intake.equipmentPlaceholder')}
               {...required('equipment_available')}
             />
+            <span className="muted small">{t('intake.equipmentHint')}</span>
           </label>
 
           <label>
