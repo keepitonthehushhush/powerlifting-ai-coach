@@ -105,32 +105,42 @@ export function Chat() {
 
       {error && <p className="error">{error}</p>}
 
+      {/* The input and the button are wrapped, and the counter is not in the
+          wrapper. Both halves of that matter - see the .composer note in
+          styles.css. In short: the counter used to be a flex item BETWEEN the
+          box and the button, and the button, as a direct child of this form,
+          was matching a `form > button.primary { min-width: 320px }` rule
+          written for the submit button at the bottom of a centred form. On a
+          phone that left a 24px textarea beside a button wider than the
+          screen. */}
       <form className="composer" onSubmit={send}>
-        <textarea
-          rows={2}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) send(e);
-          }}
-          placeholder={t('chat.placeholder')}
-          disabled={busy}
-          aria-label={t('chat.inputLabel')}
-          {...(maxLength ? { maxLength } : {})}
-        />
+        <div className="composer-row">
+          <textarea
+            rows={2}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) send(e);
+            }}
+            placeholder={t('chat.placeholder')}
+            disabled={busy}
+            aria-label={t('chat.inputLabel')}
+            {...(maxLength ? { maxLength } : {})}
+          />
+          <button type="submit" className="primary" disabled={busy || !draft.trim()}>
+            {t('chat.send')}
+          </button>
+        </div>
         {/* Only once it is nearly relevant. A counter sitting under an empty
             box is clutter; a counter that appears at 80% is a warning. */}
         {maxLength && draft.length > maxLength * 0.8 && (
-          <p className={draft.length >= maxLength ? 'error small' : 'muted small'}>
+          <p className={`counter small ${draft.length >= maxLength ? 'error' : 'muted'}`}>
             {t('chat.characterCount', {
               count: draft.length.toLocaleString(),
               limit: maxLength.toLocaleString(),
             })}
           </p>
         )}
-        <button type="submit" className="primary" disabled={busy || !draft.trim()}>
-          {t('chat.send')}
-        </button>
       </form>
     </div>
   );

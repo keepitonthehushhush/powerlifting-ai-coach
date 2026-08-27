@@ -283,17 +283,53 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .empty { color: var(--muted); text-align: center; padding: 3rem 1rem; }
 
+/* The composer is a COLUMN, and that is the fix rather than a detail.
+   It used to be a flex row holding three things: the textarea, an optional
+   character counter, and the send button. Two bugs came out of that.
+
+   The counter, when it appeared at 80% of the limit, became a third item
+   wedged BETWEEN the input and the button.
+
+   Worse, `.composer` is a <form> and the send button is a direct child of it,
+   so it matched `form > button.primary { min-width: min(320px, 100%) }` - a
+   rule written for the submit button at the bottom of a centred form. In a
+   flex row that min-width is a floor no shrinking can get under, so the button
+   claimed the whole row and the textarea collapsed to 24px on a 390px phone,
+   with the row overflowing the viewport. That is the "chat box is to the left
+   of the send button" report: the box was still there, squeezed to a sliver
+   beside an enormous button.
+
+   Wrapping the controls in .composer-row fixes it structurally - the button is
+   no longer a direct child of the form, so the rule cannot match - and the
+   explicit sizing below fixes it deliberately, so the next person to touch
+   that selector does not silently reintroduce this. */
 .composer {
   position: sticky;
   bottom: 0;
   display: flex;
-  gap: 0.6rem;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.35rem;
   background: var(--bg);
   padding: 0.75rem 0 1rem;
   border-top: 1px solid var(--border);
 }
-.composer textarea { flex: 1; }
+.composer-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+/* flex-basis 0 with an explicit min-width: `flex: 1` alone leaves min-width at
+   auto, which is the textarea's intrinsic minimum and is what let it be
+   crushed. */
+.composer-row textarea { flex: 1 1 0; min-width: 0; }
+.composer-row button.primary {
+  flex: 0 0 auto;
+  min-width: 0;
+  align-self: stretch;
+  padding-inline: 1.25rem;
+}
+/* The counter sits on its own line, right-aligned under the box it counts. */
+.composer .counter { margin: 0; text-align: right; }
 
 /* --- i18n switcher, account screen ---------------------------------------- */
 .lang select {
