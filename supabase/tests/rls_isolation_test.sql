@@ -287,6 +287,42 @@ begin
          format('columns documented as health data but not gated by the consent trigger: %s', ungated);
 end $$;
 
+-- --- structural: the rate limiter is capable of working at all ---------------
+--
+-- consume_rate_limit writes to private.rate_limit_counters, and the
+-- `authenticated` role has no USAGE on that schema - which is the entire
+-- reason the counters live there. So the function MUST run with definer
+-- rights. Without them every call raises 42501, the middleware fails open by
+-- design, and the product looks perfectly healthy while nothing is rate
+-- limited.
+--
+-- That is not hypothetical. It was true in production from 2026-08-26 until
+-- 2026-08-27, when it was found in a log nobody had been reading. This
+-- assertion is the thing that would have caught it the same day, and it is
+-- here rather than in the Node suite because the fact it checks is a property
+-- of the DEPLOYED database, not of any file in this repository.
+do $$
+declare
+  v_secdef boolean;
+  v_owner_ok boolean;
+  v_anon_execute boolean;
+begin
+  select p.prosecdef,
+         has_schema_privilege(pg_get_userbyid(p.proowner), 'private', 'USAGE'),
+         has_function_privilege('anon', p.oid, 'EXECUTE')
+    into v_secdef, v_owner_ok, v_anon_execute
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'consume_rate_limit';
+
+  assert v_secdef,
+         'consume_rate_limit is not SECURITY DEFINER: rate limiting is silently disabled';
+  assert v_owner_ok,
+         'consume_rate_limit runs as an owner with no USAGE on the private schema';
+  assert not v_anon_execute,
+         'anon can execute consume_rate_limit';
+end $$;
+
 rollback;
 
 \echo 'PASS - RLS isolation test: all assertions held.'

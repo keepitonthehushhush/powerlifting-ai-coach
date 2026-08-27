@@ -21,6 +21,22 @@ import { logger } from '../lib/logger.js';
  * failure is logged loudly instead. That tradeoff is right for a coaching app
  * bounding its own API spend; it would be wrong for something guarding a
  * password endpoint, where failing closed is the only safe direction.
+ *
+ * ── WHAT THIS COST ON 2026-08-27, AND WHAT IT DID NOT CHANGE ──────────────
+ *
+ * The deployed consume_rate_limit had lost its SECURITY DEFINER clause, so
+ * every call raised 42501 - permission denied for schema private, which is
+ * exactly where the counters live and where `authenticated` is deliberately
+ * not allowed. This middleware did what it says: logged an error and let the
+ * request through. For over a day, nothing was rate limited at all.
+ *
+ * The decision above is UNCHANGED and still right. What the incident showed is
+ * something else: "logged loudly" is only loud if somebody is listening, and a
+ * fail-open path produces a product that looks completely healthy while a
+ * security control is absent. The answer is not to fail closed - it is that
+ * the control has to be verified where it lives. supabase/tests asserts the
+ * deployed function is SECURITY DEFINER, because that assertion is the one
+ * thing that would have caught this on the day it happened.
  */
 export function rateLimit(bucket) {
   return async function rateLimitMiddleware(req, res, next) {
