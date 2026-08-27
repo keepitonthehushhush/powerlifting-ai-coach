@@ -11,6 +11,8 @@ import { programRouter } from './routes/program.js';
 import { libraryRouter } from './routes/library.js';
 import { accountRouter } from './routes/account.js';
 import { consentRouter } from './routes/consent.js';
+import { billingRouter } from './routes/billing.js';
+import { billingWebhookRouter } from './routes/billingWebhook.js';
 import { initMonitoring } from './lib/monitoring.js';
 import { logger } from './lib/logger.js';
 
@@ -67,6 +69,28 @@ export function createApp() {
     next();
   });
 
+  /**
+   * THE STRIPE WEBHOOK MOUNTS BEFORE THE JSON PARSER, AND BEFORE requireAuth.
+   *
+   * Both are deliberate and both are load-bearing.
+   *
+   * Before express.json() because the signature Stripe sends is an HMAC over
+   * the exact BYTES of the body. A parsed-then-restringified body is not the
+   * same bytes - key order and whitespace both move - so verification fails
+   * with an error that looks exactly like a wrong secret. The route brings its
+   * own express.raw().
+   *
+   * Before requireAuth because Stripe is not logged in and never will be. The
+   * signature is what replaces authentication, and it is stronger than a
+   * session for this purpose: it proves the message came from Stripe, which a
+   * bearer token could not.
+   *
+   * Mounting it here rather than punching an exception into requireAuth keeps
+   * the guard's property intact - everything under /api is authenticated
+   * unless it is visibly, explicitly, above this line.
+   */
+  app.use('/api/billing/webhook', billingWebhookRouter);
+
   app.use(express.json({ limit: '256kb' }));
 
   // In production the frontend is served from the same Vercel origin, so no
@@ -99,6 +123,9 @@ export function createApp() {
   // buckets differ by cost: a model call is expensive, a profile write is not,
   // and a full data export is expensive in a different way.
   app.use('/api/chat', rateLimit('chat'), rateLimit('chat_daily'), chatRouter);
+  // Rate limited on the write bucket: creating checkout sessions is cheap for
+  // us and not free for Stripe, and a loop here is somebody's bad afternoon.
+  app.use('/api/billing', rateLimit('write'), billingRouter);
   app.use('/api/profile', rateLimit('write'), profileRouter);
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/program', programRouter);
