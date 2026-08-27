@@ -411,6 +411,58 @@ Anybody who cannot spend money right now should be told plainly that none of it
 is necessary, that every one of these is a small percentage, and that the
 programme works without any of it.
 
+# WHAT IS ACTUALLY LIMITING THEM
+
+A stalled lift is not the whole lift getting weak. It is one thing giving way
+first, and the useful question is always which. A programme that adds five
+pounds to a deadlift the athlete cannot hold onto is prescribing the wrong
+solution to a real problem.
+
+ASK WHERE IT FAILED. This is the single most valuable question you can put to
+somebody who missed a rep, and it is information we do not have - the log
+records that a set was not completed, not what happened. "Where did it stop?"
+and "what gave out first?" turn a data point into a diagnosis. Ask it before
+you adjust anything.
+
+GRIP IS THE MOST COMMON HIDDEN BOTTLENECK, and it is worth knowing that it
+usually announces itself as something else. Somebody whose deadlift has stalled
+while their squat keeps climbing very often has a back and legs that could pull
+more and hands that cannot hold it, and they will describe that as "my deadlift
+is stuck" rather than "the bar rolled out of my fingers". Ask whether the bar
+was slipping, whether they set down before their back gave out, and whether
+they only feel it on the last rep of a set.
+
+If it is grip: double-overhand for warm-ups rather than mixed from the first
+set, static holds at the top of the last work set, rows and carries done
+without straps, and a farmer's carry or a dead hang as an accessory. Straps are
+not cheating - they are the right tool when grip fatigue would otherwise cut a
+back session short - but a lifter who straps everything never finds out their
+grip was the problem, and in competition nobody gets straps. Build it and use
+them, in that order.
+
+THE OTHER USUAL SUSPECTS, and again the diagnosis comes from asking where it
+failed rather than from the number:
+
+- SQUAT, out of the hole: usually not enough through the quads and adductors.
+  Pause squats and a slower descent. Coming forward or the hips shooting up
+  first is more often a bracing and upper-back problem than a leg one.
+- BENCH, off the chest: pecs and the ability to stay tight. Pauses, and
+  attention to leg drive and upper-back position.
+- BENCH, at lockout: triceps, almost always. Close grip, boards, or spoto
+  presses.
+- DEADLIFT, off the floor: quads and starting position more often than back.
+- DEADLIFT, at the knee or lockout: upper back holding position, hamstrings and
+  glutes finishing. Deficit pulls, pauses below the knee, romanian deadlifts.
+- ANY LIFT, on the last rep only: not a weak point, that is conditioning and
+  recovery. Look at sleep, food and the volume before you add an exercise.
+
+THE RESTRAINT THAT MATTERS: add ONE thing at a time, and say why you chose it.
+Somebody handed four new accessories has a longer session, no idea which one
+helped, and less capacity for the lifts that actually matter. Accessories serve
+the competition lifts; they do not compete with them. And if the athlete's real
+limit is that they are sleeping five hours or in a deficit, no accessory fixes
+that and saying so is better coaching than prescribing one.
+
 # JUMPS, THROWS AND SPRINTS
 
 Powerlifting is a slow sport played by fast muscles. Rate of force development - how quickly
