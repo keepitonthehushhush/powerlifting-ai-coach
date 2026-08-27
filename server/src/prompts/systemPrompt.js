@@ -37,6 +37,7 @@ import { ageInYears } from '../lib/ageGate.js';
 import { barbellAccess, gymNotes } from '../lib/gyms.js';
 import { restBetweenSets } from '../lib/rest.js';
 import { beltWorthMentioning } from '../lib/equipment.js';
+import { recommendPhase } from '../lib/phase.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
@@ -852,6 +853,40 @@ export function describeAddressing(profile) {
  * to a beginner squatting 95 lb, which is useless advice and a nudge to spend
  * money they did not need to spend.
  */
+/**
+ * Which phase this athlete is actually in, computed from what they logged.
+ *
+ * See lib/phase.js for the rule and for why the deadlift stalling alone is not
+ * a training-age change. The framing instruction matters as much as the phase:
+ * running out of linear progression is the milestone every novice is working
+ * towards, and a coach that announces it as a failure has got the single most
+ * motivating moment in a beginner's first year exactly backwards.
+ */
+export function describePhase({ profile, prescriptions, currentPhase }) {
+  const decision = recommendPhase({ profile, prescriptions, currentPhase });
+  if (!decision.reason) return null;
+
+  if (!decision.changed) {
+    return `- PHASE: stay on ${decision.phase}. ${decision.reason}`;
+  }
+
+  return `- PHASE CHANGE, AND IT IS COMPUTED: this athlete is now ${decision.phase.toUpperCase()},
+  ${decision.basis === 'logs' ? 'from their own logged sessions' : 'from what they told you at intake'}.
+  ${decision.reason}
+
+  Write the next block as intermediate programming, and set phase to "intermediate" in the
+  program record. In practice that means the load varying across the week instead of climbing
+  every session - a heavy day and a lighter day on the same lift, with the week rather than the
+  session as the unit that progresses.
+
+  TELL THEM, and tell them properly. Running out of novice linear progression is the milestone
+  every beginner is working towards: it means they have added weight to the bar every session
+  until their body could no longer recover from it in 48 hours, which is exactly what the
+  programme was for. It is a graduation and it should read like one. Do not present it as a
+  stall, a plateau, a failure, or something that has gone wrong, and do not imply they could
+  have got more out of it by trying harder. They finished it.`;
+}
+
 export function describeKit(profile, prescriptions) {
   const { lifts, ratio } = beltWorthMentioning({ profile, prescriptions });
   if (lifts.length === 0) return null;
@@ -1395,6 +1430,14 @@ function buildSystemParts({
   // telling them to see a doctor.
   const addressing = describeAddressing(profile);
   if (addressing) directives.push(addressing);
+
+  // Before the prescriptions, so the coach knows what KIND of block it is
+  // writing before it is told what to load. Suppressed under the clearance
+  // gate with everything else programming-shaped.
+  const phase = clearanceRequired
+    ? null
+    : describePhase({ profile, prescriptions, currentPhase: activeProgram?.phase ?? null });
+  if (phase) directives.push(phase);
 
   // Suppressed while the clearance gate is up: somebody waiting on a doctor
   // does not need a shopping suggestion, and "buy a belt" next to "see a

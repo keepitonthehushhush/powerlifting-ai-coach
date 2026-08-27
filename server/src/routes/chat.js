@@ -5,6 +5,8 @@ import { costInMicrodollars } from '../lib/pricing.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE } from '../lib/ageGate.js';
+import { recommendPhase } from '../lib/phase.js';
+import { prescribeAll } from '../lib/progression.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
@@ -240,6 +242,51 @@ chatRouter.post('/', async (req, res, next) => {
     // somebody their reply - is kept by the try/catch, not by the absence of
     // an await. The cost is a few milliseconds before the response.
     if (storable) {
+      /**
+       * VISIBILITY, NOT ENFORCEMENT.
+       *
+       * The phase directive tells the coach when linear progression is spent.
+       * Unlike the clearance gate, this is NOT re-checked and overridden here,
+       * and the difference is what a wrong answer costs: a gated athlete who
+       * receives a program is a safety failure, while an athlete on the wrong
+       * phase gets a worse programme and stalls. That is bad coaching, not
+       * danger, and there are legitimate reasons to hold somebody on linear
+       * progression another fortnight - a missed week, a bad sleep run, a move.
+       *
+       * Overriding the stored phase would also make the record disagree with
+       * the prose the athlete just read, which is worse than either being
+       * wrong on its own. So it is logged instead: if this fires regularly the
+       * directive is not landing and the prompt needs work, and that is a fact
+       * worth having rather than a silence.
+       */
+      try {
+        const recommended = recommendPhase({
+          profile: context.profile,
+          prescriptions: prescribeAll({
+            // Reversed, exactly as buildSystemBlocks does it. recentLogs
+            // arrives newest-first because that is what the display wants;
+            // the progression engine walks history forwards and counts a
+            // reset as a DROP in working weight, so handing it the reverse
+            // makes every reset look like an increase. This was wrong when
+            // first written and the phase test caught it.
+            logs: [...context.recentLogs].reverse(),
+            units: context.profile?.units ?? 'lb',
+            smallestPlatePair: context.profile?.smallest_plate_pair ?? null,
+          }),
+          currentPhase: context.activeProgram?.phase ?? null,
+        });
+        if (recommended.changed && storable.phase !== recommended.phase) {
+          logger.info('program.phase_disagreed', {
+            userId: req.user.id,
+            stored: storable.phase,
+            recommended: recommended.phase,
+            basis: recommended.basis,
+          });
+        }
+      } catch {
+        // Bookkeeping. It must never be the reason a program fails to save.
+      }
+
       try {
         // One active program at a time. Superseding rather than deleting: the
         // old block is what the athlete was training on last week, and a

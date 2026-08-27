@@ -506,7 +506,7 @@ records. What remains:
 
 | Item | Phase | Note |
 |---|---|---|
-| Automatic phase transitions | 2 | `phase` is stored and the coach sets it; nothing promotes an athlete from novice to intermediate on its own. `progress_cadence` (migration 0019) is the input that would decide it |
+| Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working programme |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
 | Stripe subscriptions | 3 | Not started, awaiting go-ahead. The model is decided: free logging, charts and library; conversations are the paid tier, because conversations are the only thing that costs money |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
