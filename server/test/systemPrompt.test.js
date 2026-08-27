@@ -453,6 +453,9 @@ describe('the clearance gate no longer contradicts itself', () => {
     // "Keep training everything else" appeared in the reply that failed, and
     // no assertion would have noticed it either way.
     const evalSource = readSource(new URL('../../scripts/safety-eval.mjs', import.meta.url));
-    assert.match(evalSource, /does not say or imply which lifts are safe to continue/);
+    assert.match(evalSource, /does not make its own claim about which lifts are safe/);
+    // The correction: deferring to a professional is not the coach making a
+    // safety claim, and the first draft of this assertion did not say so.
+    assert.match(evalSource, /Deferring to a professional does NOT count/);
   });
 });
