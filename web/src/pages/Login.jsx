@@ -7,7 +7,7 @@ import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
 
 export function Login() {
-  const { session, signIn, signUp, lastSignOut } = useAuth();
+  const { session, signIn, signUp, resetPassword, lastSignOut } = useAuth();
   const { t } = useI18n();
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
@@ -18,6 +18,7 @@ export function Login() {
   const [breach, setBreach] = useState({ status: 'idle', count: 0 });
 
   const isSignUp = mode === 'signup';
+  const isReset = mode === 'reset';
   const policy = useMemo(() => checkPassword(password), [password]);
 
   // Read once, on mount. Reading it on every render would make the notice
@@ -40,8 +41,38 @@ export function Login() {
     setBreach(await checkPwned(password));
   }
 
+  /**
+   * Requests the recovery email.
+   *
+   * ── THE MESSAGE IS THE SAME EITHER WAY, ON PURPOSE ─────────────────────
+   *
+   * "If an account exists for that address" rather than "sent" or "no such
+   * account". A reset form that distinguishes the two is an account
+   * enumeration oracle: type addresses in, read which ones come back
+   * differently, and you have a list of who uses this product. On a product
+   * whose users have recorded injuries and drinking habits, membership of the
+   * list is itself the sensitive fact.
+   *
+   * The same reasoning applies to the ERROR path, which is the part that is
+   * easy to get right in the happy case and leak in the unhappy one. Supabase
+   * rate-limits this endpoint, and surfacing its error verbatim would say
+   * different things for a real address than for one that was never
+   * registered. So nothing from the call reaches the screen: the same sentence
+   * is shown whatever happened.
+   */
+  async function handleReset(event) {
+    event.preventDefault();
+    setBusy(true);
+    setStatus(null);
+    await resetPassword(email);
+    setBusy(false);
+    // Deliberately not branching on the result. See above.
+    setStatus({ kind: 'info', text: t('auth.reset.sent') });
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
+    if (isReset) return handleReset(event);
 
     // Checked here as well as by disabling the button: a submit can still
     // arrive by keyboard, and this branch is the one that decides.
@@ -97,7 +128,7 @@ export function Login() {
           <h1 className="brand">{t('common.appName')}</h1>
           <LanguageSwitcher />
         </div>
-        <p className="muted">{t('auth.tagline')}</p>
+        <p className="muted">{isReset ? t('auth.reset.requestIntro') : t('auth.tagline')}</p>
 
         {/* Being returned to this page without asking to be is confusing, and
             until now it was also silent - the app simply rendered the sign-in
@@ -127,6 +158,7 @@ export function Login() {
               autoComplete="email"
             />
           </label>
+          {!isReset && (
           <label>
             {t('auth.password')}
             <input
@@ -144,6 +176,7 @@ export function Login() {
               aria-describedby={isSignUp ? 'password-requirements' : undefined}
             />
           </label>
+          )}
 
           {isSignUp && (
             <div id="password-requirements" className="fineprint">
@@ -185,21 +218,44 @@ export function Login() {
             className="primary"
             disabled={busy || (isSignUp && (!policy.ok || breach.status === 'breached'))}
           >
-            {busy ? t('common.working') : isSignUp ? t('auth.createAccount') : t('auth.signIn')}
+            {busy
+              ? t('common.working')
+              : isReset
+                ? t('auth.reset.send')
+                : isSignUp
+                  ? t('auth.createAccount')
+                  : t('auth.signIn')}
           </button>
         </form>
 
         {status && <p className={status.kind === 'error' ? 'error' : 'muted'}>{status.text}</p>}
 
+        {/* Offered on the sign-in form rather than only after a failed
+            attempt. Somebody who knows they have forgotten should not have to
+            get it wrong first to be told there is a way out - and making them
+            guess is how people end up reusing a password they can remember. */}
+        {!isReset && (
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setMode('reset');
+              setStatus(null);
+            }}
+          >
+            {t('auth.reset.forgot')}
+          </button>
+        )}
+
         <button
           type="button"
           className="link"
           onClick={() => {
-            setMode(isSignUp ? 'signin' : 'signup');
+            setMode(isReset ? 'signin' : isSignUp ? 'signin' : 'signup');
             setStatus(null);
           }}
         >
-          {isSignUp ? t('auth.toSignIn') : t('auth.toSignUp')}
+          {isReset ? t('auth.reset.backToSignIn') : isSignUp ? t('auth.toSignIn') : t('auth.toSignUp')}
         </button>
 
         <p className="fineprint">{t('medical.disclaimer')}</p>

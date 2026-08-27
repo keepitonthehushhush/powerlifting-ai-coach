@@ -91,6 +91,33 @@ export function AuthProvider({ children }) {
       loading,
       signUp: (email, password) => supabase.auth.signUp({ email, password }),
       signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
+      /**
+       * Sends the recovery email.
+       *
+       * The redirect target must be on Supabase's allow-list or the link in
+       * the email refuses to complete, which is the failure people hit and
+       * cannot debug: the mail arrives, the link opens, and nothing happens.
+       * It is built from the live origin rather than hardcoded so that
+       * localhost, a preview deployment and production each ask for
+       * themselves - a hardcoded production URL would send a developer
+       * testing locally to the live site.
+       */
+      resetPassword: (email) =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        }),
+
+      /**
+       * Sets the new password, using the recovery session the link created.
+       *
+       * There is no old-password argument and that is not an oversight: at
+       * this point the caller holds a recovery token that Supabase has already
+       * verified against the address that received the mail. Asking for the
+       * old password would be asking for the thing they came here because
+       * they do not have.
+       */
+      updatePassword: (password) => supabase.auth.updateUser({ password }),
+
       signOut: () => {
         // A sign-out the person asked for is not a fault, and must not show up
         // on the login screen as though something went wrong.

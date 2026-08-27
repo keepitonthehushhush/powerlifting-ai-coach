@@ -138,3 +138,60 @@ describe('why this is here rather than switched on in a dashboard', () => {
     assert.match(readRaw(new URL('../../web/src/lib/pwnedPassword.js', import.meta.url)), /ADVISORY/);
   });
 });
+
+describe('the reset path is held to the same rules as sign-up', () => {
+  const reset = readRaw(new URL('../../web/src/pages/ResetPassword.jsx', import.meta.url));
+  const login = readSource(new URL('../../web/src/pages/Login.jsx', import.meta.url));
+  const app = readSource(new URL('../../web/src/App.jsx', import.meta.url));
+
+  test('a reset cannot set a weak or breached password', () => {
+    // Otherwise the reset flow is a way around the sign-up policy - and the
+    // more attractive way around, because it is the one an attacker reaches
+    // through a mailbox they have already compromised.
+    assert.match(reset, /checkPassword/);
+    assert.match(reset, /checkPwned/);
+    assert.match(reset, /disabled=\{busy \|\| !policy\.ok \|\| breach\.status === 'breached'\}/);
+  });
+
+  test('THE REQUEST FORM CANNOT BE USED TO DISCOVER WHO HAS AN ACCOUNT', () => {
+    // A reset form that says "sent" for real addresses and something else for
+    // the rest is an enumeration oracle. On a product whose users have
+    // recorded injuries and drinking habits, merely being on the list is the
+    // sensitive fact.
+    //
+    // The error path is the half that is easy to leak: Supabase rate-limits
+    // this endpoint, and surfacing its error verbatim would answer differently
+    // for a registered address than for one that was never used. So the result
+    // is deliberately not branched on at all.
+    const handler = login.slice(login.indexOf('async function handleReset'));
+    const body = handler.slice(0, handler.indexOf('async function handleSubmit'));
+    assert.match(body, /await resetPassword\(email\);/);
+    assert.doesNotMatch(body, /if \(error/, 'the reset request branches on the result');
+    assert.doesNotMatch(body, /error\.message/, 'a provider error reaches the screen');
+    assert.match(body, /t\('auth\.reset\.sent'\)/);
+  });
+
+  test('the same sentence is shown whatever happened', () => {
+    const en = readRaw(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
+    assert.match(en, /If an account exists for that address/);
+  });
+
+  test('the reset page is reachable without a session, like the policy pages', () => {
+    // Somebody arriving from the email has no session when the router first
+    // runs. Sending them to /login would discard the token in the URL, and
+    // would be circular - /login is what they cannot get through.
+    const route = app.slice(app.indexOf('path="/reset-password"'));
+    assert.doesNotMatch(route.slice(0, 120), /ProtectedRoute/);
+  });
+
+  test('it never asks for the old password', () => {
+    // They are here because they do not have it.
+    assert.doesNotMatch(reset, /currentPassword|oldPassword|current-password/);
+  });
+
+  test('the way out is offered before somebody has to fail', () => {
+    assert.match(login, /setMode\('reset'\)/);
+    const en = readRaw(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
+    assert.match(en, /forgot: 'Forgot your password\?'/);
+  });
+});

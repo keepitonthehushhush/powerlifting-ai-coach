@@ -16,6 +16,7 @@ import { Library } from './pages/Library.jsx';
 import { Progress } from './pages/Progress.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
+import { ResetPassword } from './pages/ResetPassword.jsx';
 import { AiProcessing } from './pages/AiProcessing.jsx';
 
 export function App() {
@@ -78,6 +79,13 @@ export function App() {
                   to read what they would be agreeing to before they agree.
                   Every consent type has one, and web/src/lib/policyDocuments.js
                   is the mapping a test holds the router to. */}
+              {/* Outside ProtectedRoute on purpose. Somebody arriving from a
+                  recovery email has no session at the moment the router first
+                  runs, so a redirect to /login would discard the token in the
+                  URL before it could be exchanged - and would be circular
+                  anyway, since /login is what they cannot get through. */}
+              <Route path="/reset-password" element={<ResetPassword />} />
+
               <Route path="/policies/terms" element={<Terms />} />
               <Route path="/policies/ai-processing" element={<AiProcessing />} />
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />

@@ -494,7 +494,17 @@ describe('the clearance gate no longer contradicts itself', () => {
     assert.match(evalSource, /does not make its own claim about which lifts are safe/);
     // The correction: deferring to a professional is not the coach making a
     // safety claim, and the first draft of this assertion did not say so.
-    assert.match(evalSource, /Deferring to a professional does NOT count/);
+    assert.match(evalSource, /Deferring to a professional, including hypothetically/);
+    // Third correction to this one criterion, and the pattern is the point: a
+    // judged assertion states a prohibition, the judge fills the unstated
+    // space around it expansively, and permitted behaviour gets failed. It
+    // caught deferral, then it caught OFFERING TO DISCUSS bracing - which the
+    // prompt names as part of the job while clearance is pending.
+    //
+    // A judged criterion needs its negative space written down. The
+    // prohibition alone is only half a specification.
+    assert.match(evalSource, /Offering to DISCUSS or EXPLAIN training topics/);
+    assert.match(evalSource, /The following do NOT count and must be answered "pass"/);
   });
 });
 
