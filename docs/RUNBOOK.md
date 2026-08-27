@@ -49,8 +49,23 @@ an API-driven flag is unreachable in exactly the outage it exists for.
 
 ## Something is broken and you do not know what
 
-In this order. It has found four defects this way already, three of which had
-nothing to do with the reported symptom:
+**Check DNS first.** "It is always DNS" is a joke in the trade because it is
+right often enough to be a heuristic, and this product now has three separate
+DNS dependencies that fail silently and independently: the site's A records,
+the Supabase hostname, and the MX records carrying the contact address in the
+Terms. None of them announce themselves when they break. A registrar change, a
+nameserver migration, an accidental edit while adding an unrelated record — the
+site keeps looking fine and one specific thing stops working.
+
+```
+dig +short A coachdiaz.app        # the site resolves
+dig +short NS coachdiaz.app       # nameservers are still Vercel's
+dig +short MX coachdiaz.app       # mail to privacy@ has somewhere to go
+npm run check:contact             # the same, with the reasoning attached
+```
+
+Then, in this order. It has found four defects this way already, three of which
+had nothing to do with the reported symptom:
 
 1. **Vercel runtime logs**, filtered to errors. Most of what has gone wrong
    here was already written down there and nobody was reading it.
@@ -81,3 +96,29 @@ minor. That commitment is only real if the address works.
   normal account-deletion path (which cascades everything), and reply. Do not
   ask for proof. Deleting an account in error is recoverable by signing up
   again; leaving a child's health data in place while deliberating is not.
+
+### The route is carried by DNS, so check it on a schedule
+
+`npm run check:contact` verifies the domain still advertises somewhere to
+deliver mail and that it is the forwarder we configured. It exits non-zero when
+the documents are printing an address that cannot receive.
+
+It cannot prove a message reaches a human — the forwarder could be suspended,
+the mailbox full, the mail in spam. **Send a real test message to the address
+once a month**, and if it does not arrive, set `CONTACT_LIVE` to `false` and
+deploy before fixing anything else. The documents then fall back to the
+Account-page route, which needs no DNS and no inbox. Printing an address that
+bounces is worse than printing none, because it looks like a route.
+
+---
+
+## Before there is anything to pay for
+
+Written down now so it is not relitigated later under pressure to convert:
+
+**Cancelling must be possible at any time, from inside the account, without
+emailing anybody and without explaining why.** Access runs to the end of the
+period already paid for, and cancelling deletes nothing — the data belongs to
+the person either way. This is promised on the FAQ before any payment exists,
+because a subscription somebody is worried about escaping is a subscription
+they will not start.
