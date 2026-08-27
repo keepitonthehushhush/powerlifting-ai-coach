@@ -36,6 +36,37 @@ export function createApp() {
   });
 
   app.disable('x-powered-by');
+
+  /**
+   * Nothing this API returns may be stored by anything.
+   *
+   * Two reasons, and the weaker one is the one that made it urgent.
+   *
+   * PRIVACY, which is the real reason: every authenticated response here is
+   * one person's data, and several of them carry consumer health data - the
+   * profile, the export, the coaching conversation. A response held in a
+   * browser's disk cache or by any intermediary is that data at rest
+   * somewhere nobody has reasoned about. `no-store` is the only correct
+   * answer for an API like this one, and it should have been here from the
+   * start.
+   *
+   * CORRECTNESS, which is how it was found: Express computes an ETag for
+   * every JSON response by default, so a repeat request came back 304 Not
+   * Modified with no body. The client treated any non-2xx as a failure, so a
+   * 304 on /api/consent became "Request failed with status 304" and left the
+   * consent gate in a state it could not leave - a permanent spinner on a
+   * page whose data was, in fact, perfectly fine.
+   *
+   * Turning ETags off removes the conditional-request path entirely rather
+   * than teaching every client to handle it.
+   */
+  app.disable('etag');
+  app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    next();
+  });
+
   app.use(express.json({ limit: '256kb' }));
 
   // In production the frontend is served from the same Vercel origin, so no
