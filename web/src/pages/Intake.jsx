@@ -17,6 +17,9 @@ const EMPTY = {
   goal: '',
   competition_date: '',
   equipment_available: '',
+  gender: '',
+  gender_self_described: '',
+  pronouns: '',
   gym_chains: [],
   gym_label: '',
   days_per_week: '',
@@ -89,6 +92,8 @@ const REQUIRED_FIELDS = [
  * largest chain by membership and the one whose answer changes the program
  * most - it has no barbell and no rack.
  */
+const GENDER_OPTIONS = ['woman', 'man', 'nonbinary', 'self_described', 'prefer_not_to_say'];
+
 const GYM_OPTIONS = [
   'planet_fitness',
   'anytime_fitness',
@@ -128,6 +133,10 @@ function toPayload(form) {
     // away from one - otherwise the row violates the constraint on save.
     competition_date: MEET_GOALS.has(form.goal) && form.competition_date ? form.competition_date : null,
     equipment_available: form.equipment_available || null,
+    gender: form.gender || null,
+    gender_self_described:
+      form.gender === 'self_described' ? form.gender_self_described.trim() || null : null,
+    pronouns: form.pronouns?.trim() || null,
     gym_chains: Array.isArray(form.gym_chains) ? form.gym_chains : [],
     gym_label: form.gym_label?.trim() || null,
     days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
@@ -308,6 +317,49 @@ export function Intake() {
             />
             <span className="muted small">{t('intake.dateOfBirthHint')}</span>
           </label>
+
+          {/* Two questions, not one, and they are treated differently on
+              purpose. Pronouns are how the coach refers to you and are NOT
+              behind the health consent - being addressed correctly should not
+              be something anybody trades privacy for. Gender IS treated as
+              consumer health data, sits with the injury fields, and is used
+              for exactly two things, both spelled out in the hint. */}
+          <label>
+            {t('intake.pronouns')}
+            <input
+              type="text"
+              maxLength={40}
+              value={form.pronouns}
+              onChange={(e) => update('pronouns', e.target.value)}
+              placeholder={t('intake.pronounsPlaceholder')}
+            />
+            <span className="muted small">{t('intake.pronounsHint')}</span>
+          </label>
+
+          <label>
+            {t('intake.gender')}
+            <select value={form.gender} onChange={(e) => update('gender', e.target.value)}>
+              <option value="">{t('intake.select')}</option>
+              {GENDER_OPTIONS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`intake.genderOptions.${key}`)}
+                </option>
+              ))}
+            </select>
+            <span className="muted small">{t('intake.genderHint')}</span>
+          </label>
+
+          {form.gender === 'self_described' && (
+            <label>
+              {t('intake.genderSelfDescribed')}
+              <input
+                type="text"
+                maxLength={60}
+                value={form.gender_self_described}
+                onChange={(e) => update('gender_self_described', e.target.value)}
+              />
+            </label>
+          )}
 
           <label>
             {t('intake.units')}

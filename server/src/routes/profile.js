@@ -68,6 +68,11 @@ const ProfileUpdate = z
       })
       .optional(),
     gym_label: z.string().max(120).nullish(),
+    gender: z.enum(['woman', 'man', 'nonbinary', 'self_described', 'prefer_not_to_say']).nullish(),
+    gender_self_described: z.string().max(60).nullish(),
+    // Not health data and not consent-gated - see migration 0024. Being
+    // addressed correctly must not be something a person trades privacy for.
+    pronouns: z.string().max(40).nullish(),
     days_per_week: z.number().int().min(1).max(7).nullish(),
     // Equipment, not health data. The smallest single plate the athlete can
     // reach; the smallest jump they can make is twice it. See migration 0017.

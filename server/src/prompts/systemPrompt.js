@@ -564,6 +564,98 @@ ${lines.join('\n')}
  * best version of what it can, and let them decide whether to change gyms.
  * That is their decision and they can only make it if somebody says it.
  */
+/**
+ * How to refer to this athlete, and what their gender is and is not for.
+ *
+ * ── THE NEGATIVE SPACE IS MOST OF THIS DIRECTIVE ──────────────────────────
+ *
+ * The lesson from the clearance gate applies here more than anywhere: a
+ * prohibition alone is half a specification, and a field handed over without
+ * saying what it is NOT for gets used expansively. Told only "this athlete is
+ * a woman", a model will reach for lighter loads, different exercise
+ * selection, unrequested talk about toning, and assumptions about what she
+ * wants her body to look like - none of which were asked for and all of which
+ * are worse coaching.
+ *
+ * So the useful half of this is short and the forbidden half is long.
+ *
+ * ── WHAT IT IS ACTUALLY FOR ───────────────────────────────────────────────
+ *
+ * Two things. Competition divisions and weight classes are separated by sex in
+ * every federation, so meet prep needs to know which set of numbers applies.
+ * And the energy availability floor differs - 25 vs 30 kcal/kg FFM - which
+ * matters when somebody is dieting.
+ *
+ * Note what the second one is NOT: an inference. The coach is told to ask
+ * rather than assume, because a category label does not answer the question
+ * the floor actually turns on. A trans man may menstruate, a trans woman may
+ * not, a post-menopausal woman is a different case again, and guessing wrong
+ * here means either a needless warning or a missed one.
+ *
+ * ── PRONOUNS ARE SEPARATE, AND UNCONDITIONAL ──────────────────────────────
+ *
+ * Not derived from gender - that inference is the mistake this exists to
+ * avoid - and not behind the health consent, so an athlete who shares nothing
+ * else still gets addressed correctly.
+ */
+export function describeAddressing(profile) {
+  const pronouns = (profile?.pronouns ?? '').trim();
+  const gender = profile?.gender ?? null;
+  const described = (profile?.gender_self_described ?? '').trim();
+  if (!pronouns && !gender) return null;
+
+  const lines = [];
+
+  if (pronouns) {
+    lines.push(
+      `- PRONOUNS: ${asData(pronouns, { maxLength: 40 })}. Use them. Do not remark on them, do not
+  thank the athlete for sharing them, and do not work them into a sentence to demonstrate that
+  you noticed. Getting it right silently is the whole job.`
+    );
+  } else {
+    lines.push(
+      `- No pronouns given. Address the athlete in the second person and do not guess a set from
+  anything else in this profile. "You" works everywhere and needs no assumption.`
+    );
+  }
+
+  if (gender && gender !== 'prefer_not_to_say') {
+    const label = gender === 'self_described' && described
+      ? asData(described, { maxLength: 60 })
+      : gender.replace(/_/g, ' ');
+
+    lines.push(
+      `- GENDER: ${label}. This is here for exactly two reasons and you must not extend it past
+  them. ONE: competition divisions and weight classes are sex-separated in every federation, so
+  meet prep needs the right set of numbers. TWO: the energy availability floor differs, 25
+  against 30 kcal/kg of fat-free mass, which matters only when somebody is in a deficit - and
+  even then you ASK rather than assume, because the floor turns on whether someone menstruates
+  and that is not something a gender tells you.`
+    );
+  } else if (gender === 'prefer_not_to_say') {
+    lines.push(
+      `- The athlete was asked their gender and chose not to say. That is a complete answer.
+  Do not ask again, do not try to work it out, and do not treat it as missing information. If
+  something genuinely needs it - a competition division, say - ask the specific question you
+  actually need answered.`
+    );
+  }
+
+  lines.push(
+    `- WHAT GENDER IS NOT FOR, and this list is not exhaustive so use the principle behind it: it
+  does not change how heavy you are willing to program, the exercises you select, the rate of
+  progression you expect, or the structure of the block. It is not a reason to raise body
+  composition, weight loss, "toning", or how anybody looks - and if the athlete raises those,
+  answer the question they asked and nothing more. It is not a reason to soften your language,
+  add reassurance nobody requested, or assume anybody is a beginner. Strength standards are
+  computed from the numbers this athlete has actually lifted, not from a category. If what you
+  are about to write would be different for an identical athlete of another gender, and the
+  difference is not one of the two reasons above, do not write it.`
+  );
+
+  return lines.join('\n');
+}
+
 export function describeGymContext(profile) {
   const chains = Array.isArray(profile?.gym_chains) ? profile.gym_chains : [];
   if (chains.length === 0) return null;
@@ -723,6 +815,14 @@ function renderProfile(profile) {
     `  current_squat:       ${fmtWeight(profile.current_squat, u)}`,
     `  current_bench:       ${fmtWeight(profile.current_bench, u)}`,
     `  current_deadlift:    ${fmtWeight(profile.current_deadlift, u)}`,
+    `  gender:              ${
+      profile.gender === 'self_described' && profile.gender_self_described
+        ? asData(profile.gender_self_described, { maxLength: 60 })
+        : profile.gender
+          ? asData(profile.gender, { maxLength: 40 })
+          : UNKNOWN
+    }`,
+    `  pronouns:            ${profile.pronouns ? asData(profile.pronouns, { maxLength: 40 }) : UNKNOWN}`,
     `  goal:                ${profile.goal ? asData(profile.goal) : UNKNOWN}`,
     `  competition_date:    ${fmtDate(comp)}${until != null ? ` (${until} days away)` : ''}`,
     `  equipment_available: ${profile.equipment_available ? asData(profile.equipment_available) : UNKNOWN}`,
@@ -1074,6 +1174,12 @@ function buildSystemParts({
   // Suppressed with everything else when the clearance gate is up: an athlete
   // waiting on a doctor does not need macros, and a fuelling directive sitting
   // under a gate that forbids programming reads as a way around it.
+  // Never suppressed by the clearance gate. How to address somebody is not a
+  // programming decision and applies to every sentence, including the one
+  // telling them to see a doctor.
+  const addressing = describeAddressing(profile);
+  if (addressing) directives.push(addressing);
+
   // NOT suppressed by the clearance gate. "Your gym has no barbell" is true
   // whether or not somebody is waiting on a doctor, and it is exactly the kind
   // of thing worth knowing during that wait.

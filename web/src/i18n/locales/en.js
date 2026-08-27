@@ -121,6 +121,22 @@ export const en = {
   intake: {
     dateOfBirth: 'Date of birth',
     dateOfBirthHint: 'Used to age-appropriate your programming. Coach Diaz cannot store injury or lifestyle information for under-18s yet, because consent for that has to come from a parent or guardian.',
+    pronouns: 'Your pronouns (optional)',
+    pronounsPlaceholder: 'e.g. she/her, he/him, they/them',
+    pronounsHint:
+      'So Coach refers to you correctly. This one is not part of the health-data consent — being addressed properly should not be something you have to trade privacy for.',
+    gender: 'Gender (optional)',
+    genderHint:
+      'Coach uses this for two things only: competition divisions and weight classes are separated by sex in every federation, and the minimum energy intake guidance differs. It never changes how heavy your program is, which exercises you get, or how fast you are expected to progress. It is stored under the health-data consent and you can leave it blank.',
+    genderOptions: {
+      woman: 'Woman',
+      man: 'Man',
+      nonbinary: 'Non-binary',
+      self_described: 'I would rather describe it myself',
+      prefer_not_to_say: 'Prefer not to say',
+    },
+    genderSelfDescribed: 'How would you describe it?',
+
 
     aboutYouLegend: 'About you',
     liftsLegend: 'Your best lifts',

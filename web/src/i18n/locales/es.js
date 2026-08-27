@@ -123,6 +123,22 @@ export const es = {
   intake: {
     dateOfBirth: 'Fecha de nacimiento',
     dateOfBirthHint: 'Se usa para adaptar tu programación a tu edad. Coach Diaz todavía no puede guardar información de lesiones o de estilo de vida de menores de 18 años, porque ese consentimiento tiene que darlo un padre, madre o tutor.',
+    pronouns: 'Tus pronombres (opcional)',
+    pronounsPlaceholder: 'p. ej. ella, él, elle',
+    pronounsHint:
+      'Para que el entrenador se dirija a ti correctamente. Esto no forma parte del consentimiento de datos de salud: que te traten bien no debería costarte privacidad.',
+    gender: 'Género (opcional)',
+    genderHint:
+      'El entrenador lo usa solo para dos cosas: las categorías de competición y las de peso están separadas por sexo en todas las federaciones, y la recomendación de ingesta mínima de energía difiere. Nunca cambia lo pesado que es tu programa, qué ejercicios haces ni la rapidez con la que se espera que progreses. Se guarda bajo el consentimiento de datos de salud y puedes dejarlo en blanco.',
+    genderOptions: {
+      woman: 'Mujer',
+      man: 'Hombre',
+      nonbinary: 'No binario',
+      self_described: 'Prefiero describirlo yo',
+      prefer_not_to_say: 'Prefiero no decirlo',
+    },
+    genderSelfDescribed: '¿Cómo lo describirías?',
+
 
     aboutYouLegend: 'Sobre ti',
     liftsLegend: 'Tus mejores levantamientos',
