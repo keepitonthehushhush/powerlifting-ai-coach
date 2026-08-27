@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { missingConfig } from './lib/config.js';
+import { missingConfig, misconfigured } from './lib/config.js';
 import { ConfigError } from './components/ConfigError.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ConsentProvider } from './context/ConsentContext.jsx';
@@ -24,6 +24,13 @@ export function App() {
   // of an empty body.
   const missing = missingConfig();
   if (missing.length > 0) return <ConfigError missing={missing} />;
+
+  // A variable that is set to the wrong thing fails as loudly as one that is
+  // absent. Without this the app boots, the login screen works - it talks to
+  // Supabase directly - and every other feature 404s, which puts the symptom
+  // nowhere near the cause.
+  const wrong = misconfigured();
+  if (wrong.length > 0) return <ConfigError problems={wrong} />;
 
   return (
     <I18nProvider>

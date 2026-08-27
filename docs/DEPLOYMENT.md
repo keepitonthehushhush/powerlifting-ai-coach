@@ -118,7 +118,7 @@ running deployment keeps the values it was built with, forever, until something
 rebuilds it.
 
 ```bash
-npx vercel@latest redeploy powerlifting-ai-coach.vercel.app
+npx vercel@latest redeploy coachdiaz.app
 ```
 
 `redeploy` rebuilds the same commit with the project's *current* environment,
@@ -130,7 +130,7 @@ changing the variable alone does not.
 ## 3. Verify the deployment, not the build
 
 ```bash
-npm run verify:deployment -- https://powerlifting-ai-coach.vercel.app
+npm run verify:deployment -- https://coachdiaz.app
 ```
 
 `npm run verify:bundle` scans `web/dist` on the machine that ran it. It passed

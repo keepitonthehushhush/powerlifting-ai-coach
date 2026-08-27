@@ -63,3 +63,46 @@ describe('browser configuration handling', () => {
     assert.match(source, /=== 'undefined'/);
   });
 });
+
+describe('configuration that is present but wrong', () => {
+  // missingConfig() catches an empty variable. This is the quieter failure: a
+  // variable set to a plausible value that happens to be the wrong one.
+  //
+  // The real case. VITE_API_BASE_URL and VITE_SUPABASE_URL sit next to each
+  // other in a hosting dashboard, both are https URLs, and one of them
+  // genuinely IS a Supabase address. Set the first to the second and every
+  // request to this app's own API goes to <project>.supabase.co/api/... and
+  // 404s - while the login screen, which talks to Supabase directly, keeps
+  // working perfectly. The app looks half alive and the cause is nowhere near
+  // the symptom.
+  const configSource = read('web/src/lib/config.js');
+  const appSource = read('web/src/App.jsx');
+  const errorSource = read('web/src/components/ConfigError.jsx');
+
+  test('the Supabase host is recognised as a wrong value for the API base', () => {
+    assert.match(configSource, /export function misconfigured\(\)/);
+    assert.match(configSource, /supabase/);
+  });
+
+  test('an unset API base is NOT flagged, because empty means same-origin', () => {
+    // The correct configuration for this deployment is no value at all. A
+    // guard that fired on the correct setup would be worse than no guard.
+    assert.match(configSource, /typeof apiBase === 'string'/);
+  });
+
+  test('it blocks the app rather than warning into a console nobody reads', () => {
+    assert.match(appSource, /const wrong = misconfigured\(\);/);
+    assert.match(appSource, /ConfigError problems=\{wrong\}/);
+  });
+
+  test('the error screen still depends on nothing that could itself be broken', () => {
+    // Same rule as the missing-variable screen: no imports at all. It has to
+    // render in exactly the situation where the app cannot start.
+    assert.doesNotMatch(errorSource, /^import /m);
+  });
+
+  test('the screen distinguishes the two failures rather than blaming the wrong one', () => {
+    assert.match(errorSource, /missing its configuration/);
+    assert.match(errorSource, /configured incorrectly/);
+  });
+});

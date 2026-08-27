@@ -26,6 +26,7 @@ const REQUIRED = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY'];
 const RAW = {
   VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
   VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
 };
 
 /**
@@ -42,8 +43,45 @@ export function missingConfig() {
   });
 }
 
+/**
+ * Configuration that is PRESENT but wrong.
+ *
+ * missingConfig() catches an empty variable. This catches the other failure,
+ * which is quieter and worse: a variable that is set to a plausible-looking
+ * value that happens to be the wrong one.
+ *
+ * The specific case is VITE_API_BASE_URL set to the Supabase project URL. It
+ * is an easy mistake - the two sit next to each other in a dashboard, both are
+ * https URLs, and one of them genuinely is a Supabase address. But this one
+ * prefixes our own API paths, so setting it that way sends every coaching
+ * request to `https://<project>.supabase.co/api/chat`, which does not exist.
+ * Every feature in the app fails with a 404 while the login screen, which
+ * talks to Supabase directly, keeps working perfectly - so the app looks half
+ * alive and the cause is nowhere near the symptom.
+ *
+ * Left alone it is correct: unset means '' means same-origin, which is what a
+ * deployment where the API and the client share a host actually wants. So the
+ * guard fires only on a value that could not possibly be right.
+ */
+export function misconfigured() {
+  const problems = [];
+  const apiBase = RAW.VITE_API_BASE_URL;
+
+  if (typeof apiBase === 'string' && /\.supabase\.(co|in)\b/i.test(apiBase)) {
+    problems.push(
+      'VITE_API_BASE_URL points at Supabase. It should be empty when the API is ' +
+        'served from the same host as this page, which is the normal setup. As set, ' +
+        'every request to this app\u2019s own API would 404.'
+    );
+  }
+
+  return problems;
+}
+
 export const config = {
   supabaseUrl: RAW.VITE_SUPABASE_URL,
   supabasePublishableKey: RAW.VITE_SUPABASE_PUBLISHABLE_KEY,
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
+  // Empty means same-origin. See misconfigured() for the one value that is
+  // certainly wrong here.
+  apiBaseUrl: RAW.VITE_API_BASE_URL ?? '',
 };

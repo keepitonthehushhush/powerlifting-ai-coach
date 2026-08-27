@@ -2461,3 +2461,31 @@ model yet. It is now wired to run itself.
 - Exercise library with verified third-party videos — **done** (D.20)
 ## Phase 3 — Monetization — **NOT STARTED** (awaiting explicit go-ahead)
 ## Phase 4 — Portfolio polish — **IN PROGRESS** (README, ARCHITECTURE, SECURITY, CI written early)
+
+## Custom domain: coachdiaz.app
+
+The product moved from `powerlifting-ai-coach.vercel.app` to `https://coachdiaz.app`. The
+earlier entries in this file still name the old host and are deliberately left
+alone - a build log that edits its own history to look tidier is not a log.
+
+`.app` rather than the free Vercel subdomain, and not only for memorability:
+the `.app` TLD is HSTS-preloaded at the registry level, so every browser
+refuses to speak plain HTTP to it before a single request is made. On a product
+holding injury and lifestyle data that is worth ten dollars a year on its own.
+
+The rename touches four places, and the order matters because getting it wrong
+locks people out of their own accounts rather than failing loudly:
+
+1. Vercel project settings - moves the alias. The old `.vercel.app` host now
+   307s to the new domain, so existing links survive.
+2. Supabase Authentication - Site URL AND the redirect allow-list, including
+   the `/reset-password` entry. Miss this and email confirmation and password
+   reset break silently, which is the worst way for auth to break.
+3. `VITE_API_BASE_URL` - checked and correctly NOT set. The client falls back
+   to `''` and calls `/api/...` on its own origin, so a domain change needs no
+   edit at all. Verified against the deployed bundle rather than assumed: it
+   contains no absolute host prefixed onto `/api`, and exactly one occurrence
+   of the Supabase URL, which is the auth client and belongs there.
+4. This repository - README and DEPLOYMENT updated; the GitHub repository name
+   is deliberately unchanged, since renaming it breaks every existing clone
+   URL for no user-visible benefit.

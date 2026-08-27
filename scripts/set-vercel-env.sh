@@ -142,9 +142,9 @@ cat <<'NEXT'
 Environment variables are read at BUILD time. The running deployment was built
 with the old values and will not change until it is rebuilt:
 
-  npx vercel@latest redeploy powerlifting-ai-coach.vercel.app
+  npx vercel@latest redeploy coachdiaz.app
 
 Then confirm what the public actually downloads:
 
-  npm run verify:deployment -- https://powerlifting-ai-coach.vercel.app
+  npm run verify:deployment -- https://coachdiaz.app
 NEXT

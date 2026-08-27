@@ -11,7 +11,7 @@ next block based on real reported performance rather than a static template.
 > That gate is enforced in code, not left to the model's judgement.
 
 **Status:** Deployed and running at
-[powerlifting-ai-coach.vercel.app](https://powerlifting-ai-coach.vercel.app).
+[coachdiaz.app](https://coachdiaz.app).
 Phase 1 (signup → consent → intake → coaching conversation) is complete and
 exercised by real use; Phase 2 (session logging UI, automatic progression,
 progress charts, exercise library) is in progress.
