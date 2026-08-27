@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
-import { buildSystemPrompt } from '../prompts/systemPrompt.js';
+import { buildSystemBlocks } from '../prompts/systemPrompt.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
@@ -127,7 +127,9 @@ chatRouter.post('/', async (req, res, next) => {
       { role: 'user', content: message },
     ];
 
-    const system = buildSystemPrompt(context);
+    // Blocks, not a string: the first carries the cache breakpoint. See
+    // buildSystemBlocks() for why the breakpoint sits where it does.
+    const system = buildSystemBlocks(context);
     const reply = await createCoachReply(system, apiMessages);
 
     if (!reply.text) throw new HttpError(502, 'The coach returned an empty response. Please try again.');

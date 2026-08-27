@@ -16,7 +16,9 @@ import { config } from '../config.js';
 const client = new Anthropic({ apiKey: config.anthropic.apiKey });
 
 /**
- * @param {string} system      Fully assembled system prompt.
+ * @param {Array<{type:'text',text:string,cache_control?:object}>} system
+ *   The system prompt as content blocks. An array rather than a string so the
+ *   static prefix can carry a cache breakpoint - see buildSystemBlocks().
  * @param {Array<{role:'user'|'assistant', content:string}>} messages
  * @returns {Promise<{text:string, usage:object, stopReason:string}>}
  */

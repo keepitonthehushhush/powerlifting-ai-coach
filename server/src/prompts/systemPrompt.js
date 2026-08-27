@@ -733,7 +733,73 @@ function renderLibrary(library) {
 ${rows}`;
 }
 
-export function buildSystemPrompt({
+/**
+ * The system prompt as CACHEABLE BLOCKS, which is how it is actually sent.
+ *
+ * ── WHY TWO BLOCKS ────────────────────────────────────────────────────────
+ *
+ * Prompt caching charges a cache read at a tenth of the input price, but it
+ * only ever writes an entry at the breakpoint, and it only hits when the
+ * prefix ending at that breakpoint is byte-identical to a previous request.
+ * The documented way to get nothing out of it is to put the breakpoint on
+ * content that varies - the entry is rewritten every time and never read.
+ *
+ * This prompt is exactly that shape. COACH_ROLE is a module constant: the
+ * role, the safety rules, the clearance boundaries, the fuelling ranges. Then
+ * everything after it varies per request and per athlete - the profile, the
+ * logged sessions, the computed prescriptions, and today's date at the very
+ * end. Caching the assembled string would write a fresh entry on every single
+ * message and cost 25% MORE than not caching at all.
+ *
+ * So the breakpoint goes at the end of COACH_ROLE and nowhere else. That is
+ * roughly 4,000 of the prompt's 5,000 tokens - about 80% - and it is over
+ * Sonnet 5's 1,024-token minimum with room to spare.
+ *
+ * ── THE PROPERTY THAT MATTERS ON A HEALTH-DATA PRODUCT ────────────────────
+ *
+ * The cached block contains NO ATHLETE DATA, by construction rather than by
+ * care: it is a constant assembled at import time from no inputs. Every
+ * injury description, every lifestyle answer, every logged set is in the
+ * second block, which is never cached.
+ *
+ * That matters because the cached prefix is shared - one entry serves every
+ * athlete, which is what makes this so effective, since any traffic at all
+ * keeps it warm and refreshes are free. Sharing a cache entry across users
+ * would be an unpleasant thing to have to reason about if it held anything
+ * personal. It holds our own instructions and nothing else, and a test
+ * asserts that.
+ *
+ * ── WHAT WAS DELIBERATELY NOT DONE ────────────────────────────────────────
+ *
+ * Nothing was reordered to make more of the prompt cacheable. The warm-up
+ * guidance and the video library are also static and could have been moved up
+ * behind the breakpoint for a few hundred more tokens. Moving them would
+ * change the text the model reads, which would invalidate the adversarial
+ * eval results the current ordering was verified against. The assembled
+ * string is byte-for-byte what it was before this change - there is a test
+ * that pins it - so today's 14/14 still means something tomorrow.
+ */
+export function buildSystemBlocks(input = {}) {
+  const [role, athleteState] = buildSystemParts(input);
+  return [
+    // The breakpoint. Everything up to and including this block is the cached
+    // prefix; the next block is where all the variation lives.
+    { type: 'text', text: role, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: athleteState },
+  ];
+}
+
+/**
+ * The prompt as one string.
+ *
+ * Derived from the blocks rather than built separately, so the two can never
+ * drift. Used by the tests and by the adversarial eval script.
+ */
+export function buildSystemPrompt(input = {}) {
+  return buildSystemParts(input).join('\n');
+}
+
+function buildSystemParts({
   profile,
   recentSessions = [],
   recentLogs = [],
@@ -838,8 +904,7 @@ export function buildSystemPrompt({
   const warmupDirective = warmup && warmup.specific.length ? renderWarmup(warmup, units) : null;
   if (warmupDirective) directives.push(warmupDirective);
 
-  return `${COACH_ROLE}
-
+  return [COACH_ROLE, `
 # CURRENT ATHLETE STATE
 <${FENCE_TAG}>
 PROFILE
@@ -871,7 +936,7 @@ ${renderLibrary(exerciseLibrary)}
 # DIRECTIVES FOR THIS TURN
 ${directives.join('\n')}
 
-Today's date is ${new Date().toISOString().slice(0, 10)}. All weights are in ${units} unless the athlete says otherwise.`;
+Today's date is ${new Date().toISOString().slice(0, 10)}. All weights are in ${units} unless the athlete says otherwise.`];
 }
 
 export { COACH_ROLE };
