@@ -67,9 +67,16 @@ describe('one navigation, used everywhere', () => {
   });
 
   test('destinations are ordered by the training loop, not by when they were added', () => {
-    // Talk to the coach, log what you lifted, see what it did, look it up.
+    // Talk to the coach, READ WHAT YOU ARE DOING TODAY, log what you lifted,
+    // see what it did, look up how to do it.
+    //
+    // /program was inserted at position two rather than appended, and the
+    // position is the argument: the program is what you open on the way to
+    // the gym, so it sits between being given the plan and reporting back on
+    // it. Appending it to the end would have put the reference card after the
+    // charts that summarise months of using it.
     const order = [...nav.matchAll(/to: '\/([a-z]+)'/g)].map((m) => m[1]);
-    assert.deepEqual(order.slice(0, 4), ['coach', 'log', 'progress', 'library']);
+    assert.deepEqual(order.slice(0, 5), ['coach', 'program', 'log', 'progress', 'library']);
   });
 
   test('the rarely-used pages are present but quieter', () => {

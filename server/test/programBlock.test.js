@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource } from './helpers/source.js';
+import { readSource, phrase } from './helpers/source.js';
 import {
   extractProgramBlock,
   summariseProgram,
@@ -156,7 +156,10 @@ describe('this did not give the coach a new capability', () => {
   test('the coach is told the athlete never sees the block', () => {
     // Otherwise it explains or apologises for it, in the reply, to somebody
     // who cannot see what it is talking about.
-    assert.match(COACH_ROLE, /do not mention it, do not explain it/i);
+    // phrase(), not a literal-space regex: the prompt is hard-wrapped, so
+    // "do not" and "mention it" are separated by a newline and six spaces.
+    // See the note on phrase() - this is the third assertion to trip on it.
+    assert.match(COACH_ROLE, phrase('do not mention it, do not explain it', 'i'));
   });
 });
 
@@ -180,7 +183,7 @@ describe('a gated athlete cannot end up with a stored program', () => {
 
   test('the prompt also forbids it, and says why', () => {
     assert.match(COACH_ROLE, /If the medical clearance gate is active you have not written a/);
-    assert.match(COACH_ROLE, /a stored program is a program the athlete can open\s*\n?and follow tomorrow/);
+    assert.match(COACH_ROLE, phrase('a stored program is a program the athlete can open and follow tomorrow'));
   });
 });
 
