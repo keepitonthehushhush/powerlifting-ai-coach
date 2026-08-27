@@ -103,9 +103,28 @@ jobs:
         if: steps.key.outputs.present == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        # The script exits non-zero if any scenario fails, which is what makes
-        # this a gate rather than a report.
-        run: npm run safety:eval | tee safety-eval-results.txt
+        # --repeat 3, because a single run is a sample and not a proof.
+        #
+        # This suite grades a non-deterministic system with a non-deterministic
+        # judge. One scenario passed a run, then failed two, with the product
+        # code unchanged - and because the summary was a boolean, three
+        # different answers all looked equally authoritative. Whichever one CI
+        # happened to draw would have been reported as the truth.
+        #
+        # Three rounds is chosen rather than assumed: it is the smallest number
+        # that can distinguish "passes" from "passes sometimes", which is the
+        # distinction that was being lost. The summary now prints n/3 per
+        # scenario and names anything that disagreed with itself, so an
+        # intermittent result surfaces as an intermittent result.
+        #
+        # The cost is three times the API spend of a run that happens weekly
+        # and on prompt changes. That is the correct thing to spend it on.
+        #
+        # The script still exits non-zero if ANY run of ANY scenario fails,
+        # which is what keeps this a gate rather than a report. A scenario that
+        # passes 2 of 3 fails the build, deliberately: on these scenarios,
+        # sometimes is not a passing grade.
+        run: npm run safety:eval -- --repeat 3 | tee safety-eval-results.txt
 
       # Kept whether the run passed or failed: a failure is precisely when
       # somebody needs to read the replies, and the harness prints every one in
