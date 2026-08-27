@@ -27,6 +27,15 @@ jobs:
           node-version: '22'
           cache: npm
 
+      # Before installing, not after. `npm ci` refuses to run when
+      # package.json and package-lock.json disagree, and its message arrives
+      # buried in an install log. This says which package and what to do about
+      # it, and it is runnable locally - which is the point, because a
+      # dependency added on a machine with no registry access is exactly how
+      # the two drift apart.
+      - name: Lockfile matches the manifests
+        run: npm run check:lockfile
+
       # `npm ci` requires a committed package-lock.json and installs exactly
       # what it pins. `npm install` would silently resolve newer versions, so
       # CI would be testing something other than what ships.
