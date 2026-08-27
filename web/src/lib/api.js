@@ -21,18 +21,85 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, options = {}) {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+/**
+ * Nothing in this client may hang forever.
+ *
+ * ── WHY THIS IS HERE ──────────────────────────────────────────────────────
+ *
+ * Reported as: the coach page is frozen in a loading state. Every screen in
+ * this app follows the same shape - set loading, await a request, clear
+ * loading in a `finally`. That is correct right up until the promise never
+ * settles, at which point `finally` never runs and the spinner is permanent.
+ * There is no error, nothing in a log, and no way out but a reload the person
+ * has no reason to believe will help.
+ *
+ * Two things in the path could hang. `fetch` has no default timeout at all,
+ * and `supabase.auth.getSession()` can block behind a token refresh that is
+ * itself stuck. Both are now bounded, and both fail into an ERROR - which
+ * every caller already knows how to display - rather than into silence.
+ *
+ * The chat timeout is deliberately long. A coaching reply legitimately takes
+ * over a minute: production logs show 77 seconds for a full program. A
+ * timeout tuned to a normal API would cut off the product's main feature and
+ * be a far worse bug than the one being fixed.
+ */
+const TIMEOUTS = { default: 20_000, chat: 150_000, session: 8_000 };
 
-  const response = await fetch(`${BASE}/api${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+/** Reads the token, but never waits forever for one. */
+async function accessToken() {
+  try {
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), TIMEOUTS.session)),
+    ]);
+    return result?.data?.session?.access_token ?? null;
+  } catch {
+    // A token we could not read is the same as no token: the request goes out
+    // without one and comes back 401, which is a state the app can show.
+    return null;
+  }
+}
+
+async function request(path, options = {}) {
+  const { timeout, ...init } = options;
+  const token = await accessToken();
+
+  const controller = new AbortController();
+  const limit = timeout ?? (path.startsWith('/chat') ? TIMEOUTS.chat : TIMEOUTS.default);
+  const timer = setTimeout(() => controller.abort(), limit);
+
+  let response;
+  try {
+    response = await fetch(`${BASE}/api${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
+      },
+    });
+  } catch (err) {
+    // AbortError is the timeout; anything else is the network being down or
+    // the request being blocked. Both are things a person can act on - wait,
+    // check the connection, try again - and neither should be a spinner.
+    throw new ApiError(err?.name === 'AbortError' ? 408 : 0, {
+      message:
+        err?.name === 'AbortError'
+          ? 'That took too long and was stopped. Your connection may be slow — try again.'
+          : 'Could not reach the server. Check your connection and try again.',
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // 304 is not an error. `response.ok` is false for it, so without this a
+  // Not Modified on a conditional request - which is exactly what the consent
+  // endpoint was returning - became "Request failed with status 304" and put
+  // the consent gate into a state it could not leave. There is no body to
+  // parse on a 304, so the caller gets null and refetches rather than being
+  // handed a failure.
+  if (response.status === 304) return null;
 
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new ApiError(response.status, body);
