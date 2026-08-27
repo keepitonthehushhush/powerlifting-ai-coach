@@ -210,6 +210,62 @@ larger collection of personal information than anything else this product
 holds, from every user, to catch the small number who lie. That trade is worse
 for everyone. Recorded here so the decision is visible rather than assumed.
 
+### Affiliate revenue on equipment: analysed, not taken
+
+Raised as a second revenue stream: earn a commission on the belts and sleeves
+the coach recommends. It has not been built, and this section is the reasoning
+rather than a refusal — the decision is the owner's and the numbers below are
+most of the argument.
+
+**The money is smaller than it sounds.** Sports-equipment affiliate rates run
+around 3%. A belt is $50–150, so roughly $1.50–4.50 a sale. Suppose 1,000 users
+and an optimistic 5% buying a belt through a link in their first year: about
+**$150 a year**. The subscription already decided on — free logging, paid
+conversations — at even $8/month against those same 1,000 users is a different
+order of magnitude entirely. Affiliate income here is a rounding error on the
+business, and it is being weighed against the following costs.
+
+**It puts a financial interest inside the coaching.** Every other recommendation
+this product makes is defensible as "what this athlete needs". The moment one
+of them earns money, all of them are open to the question of whether they were
+chosen for that reason — including the ones that were not. That is the asset
+being spent, and it is the same asset the subscription is sold on.
+
+**It contradicts a promise already made and consented to.** The consumer health
+data policy says, in terms, that no advertising or analytics scripts run on any
+page of this site. Affiliate links carry click tracking and cookies by
+construction; the standard programmes require it. Adding them means editing
+that sentence, bumping `chd`, and asking every existing user to consent again —
+to a weaker promise than the one they originally agreed to.
+
+**It is a disclosure obligation, not just a link.** The FTC's Endorsement Guides
+require a clear and conspicuous disclosure of a material connection, at the
+point of the recommendation. In a chat interface that means the coach itself
+disclosing, in the same message, every time — which is both correct and a
+constant reminder to the athlete that their coach is on commission.
+
+**And it is the ads argument again in different clothes.** The earlier decision
+against advertising rested on MHMDA's private right of action plus the FTC's
+GoodRx and BetterHelp actions, and on the fact that the privacy positioning is
+load-bearing for this product. An affiliate link is an advertisement with a
+different payment model.
+
+**If it is taken anyway**, the shape that survives the above:
+
+- a separate, clearly labelled gear page, never inside a coaching reply;
+- the coach may mention that the page exists, once, and never links a specific
+  product to a specific athlete's situation;
+- disclosure at the top of that page and beside every link;
+- no tracking pixels — plain outbound links with a partner tag, nothing that
+  sets a cookie on our origin;
+- the health data policy amended honestly and the version bumped.
+
+**What is built instead**, and what the FAQ now states: the coach describes what
+to look for — belt thickness, width, fastening, federation approval — and names
+no brands. That is better coaching regardless of revenue, because a
+specification survives a product going out of stock, and it is the same rule
+already applied to supplements.
+
 ### Gym chains and the decision not to store a location
 
 The intake form now offers commercial gym chains as checkboxes, which pre-fill
@@ -409,7 +465,11 @@ will make it feel better" is treatment.
    doctor or physiotherapist to read. **Does addressing a clinician change the
    product's regulatory posture** — does it read as marketing to a healthcare
    professional, and does that pull it any closer to a device claim?
-11. Disclosure drift: consents are invalidated by a version bump, and every
+11. Affiliate revenue on equipment (see above): **is the separate-gear-page
+   shape defensible for a product holding consumer health data, or does any
+   commission on a recommendation made to somebody whose injuries we hold
+   create a problem that page structure cannot fix?**
+12. Disclosure drift: consents are invalidated by a version bump, and every
    material correction therefore re-prompts every existing user. **Is a
    correction that only makes an existing practice explicit a material change
    requiring re-consent, or does re-prompting on every clarification devalue
