@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Coach Diaz — back shortly</title>
+<!--
+  ============================================================================
+  THE PAGE THAT HAS TO WORK WHEN NOTHING ELSE DOES.
+
+  Which is why it is a single static file with no build step, no imports, no
+  fonts, no images and no framework. It is served straight from web/public,
+  so it survives a broken bundle, a failed deploy, an expired API key, and a
+  database that is refusing connections. Anything it depended on would be one
+  more thing that could be the reason somebody is reading it.
+
+  Same principle as ConfigError.jsx, which has zero imports for the same
+  reason: a screen that renders precisely when the app cannot start must not
+  import the things that failed to start.
+
+  It is used three ways:
+
+    1. PLANNED MAINTENANCE. Uncomment the rewrite in vercel.json and deploy.
+       Every path except /api and this file lands here.
+    2. AN UNPLANNED CRASH. ErrorBoundary.jsx catches a render failure and
+       links here.
+    3. SOMEBODY LANDING ON IT DIRECTLY, because a link was shared.
+
+  The health check below turns it from a dead end into something that knows
+  when it is over. It polls /api/health and tells the reader when the site is
+  back - it does NOT navigate on its own, because yanking somebody out of a
+  game mid-attempt to prove a point is worse than letting them press a button.
+  ============================================================================
+-->
+<style>
+  :root {
+    --bg: #0f0d1a; --surface: #1b1830; --surface-2: #241f3d; --border: #2c2745;
+    --text: #f5f3f7; --muted: #a89ec4; --accent: #ff4f9a; --accent-text: #12101f;
+    --secondary: #22d3d3; --good: #22d3d3; --radius: 10px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f3f8; --surface: #fff; --surface-2: #eeeef4; --border: #d7d7e3;
+      --text: #1a1728; --muted: #56506e; --accent: #c4186b; --accent-text: #fff;
+      --secondary: #0093a0; --good: #0093a0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem 3rem; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+  }
+  main { width: min(560px, 100%); }
+  h1 { font-size: 1.6rem; margin: 0 0 .35rem; }
+  h2 { font-size: 1rem; margin: 0 0 .5rem; }
+  p { margin: 0 0 .9rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .88rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem;
+  }
+  .status { display: flex; align-items: center; gap: .6rem; }
+  .dot {
+    width: .7rem; height: .7rem; border-radius: 50%; background: var(--muted);
+    flex: 0 0 auto;
+  }
+  .dot.back { background: var(--good); }
+  a { color: var(--secondary); }
+  button.primary {
+    background: var(--accent); color: var(--accent-text); border: 0;
+    border-radius: 8px; padding: .7rem 1.1rem; font: inherit; font-weight: 600;
+    cursor: pointer; min-height: 44px;
+  }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* --- the game ---------------------------------------------------------- */
+  #game { width: 100%; }
+  .bar {
+    position: relative; height: 46px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    touch-action: manipulation;
+  }
+  .zone {
+    position: absolute; top: 0; bottom: 0; background: rgba(34, 211, 211, .22);
+    border-left: 2px solid var(--good); border-right: 2px solid var(--good);
+  }
+  .marker {
+    position: absolute; top: 0; bottom: 0; width: 4px; background: var(--accent);
+    /* transform only: the marker moves every frame and a layout property here
+       would cost a reflow 60 times a second on a phone. */
+    will-change: transform;
+  }
+  .readout { display: flex; justify-content: space-between; gap: 1rem; margin-top: .6rem; }
+  .weight { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .misses { letter-spacing: .2em; color: var(--accent); }
+  .hint { margin-top: .75rem; }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  footer { width: min(560px, 100%); margin-top: .5rem; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Coach Diaz is having a lie-down</h1>
+    <p class="muted">
+      Either we are pushing an update or something broke. Nothing you have logged is
+      affected — your training data is in the database and it is fine.
+    </p>
+    <div class="status">
+      <span class="dot" id="dot" aria-hidden="true"></span>
+      <span id="status" role="status">Checking whether we are back…</span>
+    </div>
+    <p style="margin-top:1rem">
+      <button class="primary" id="retry" type="button">Try loading the app</button>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>While you wait: one perfect single</h2>
+    <p class="muted small" id="intro">
+      The marker sweeps. Stop it inside the green and the lift counts, and the bar goes up.
+      Three misses and you are done. <strong>Press space</strong>, or tap the bar.
+    </p>
+
+    <div id="game">
+      <div class="bar" id="barArea" role="button" tabindex="0"
+           aria-label="Timing bar. Press space or tap to attempt the lift.">
+        <div class="zone" id="zone"></div>
+        <div class="marker" id="marker"></div>
+      </div>
+      <div class="readout">
+        <span class="weight"><span id="weight">95</span> <span class="muted small">lb</span></span>
+        <span class="misses" aria-hidden="true" id="misses">● ● ●</span>
+      </div>
+      <p class="hint muted small" id="hint" role="status" aria-live="polite">Ready when you are.</p>
+      <p><button class="primary" id="again" type="button" hidden>Load the bar again</button></p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p class="muted small">
+    A parent or guardian who needs an account removed? <span id="contact-wrap">Write to
+    <a id="contact" href="#">us</a>.</span> This page has no tracking on it and stores nothing —
+    the score lives in memory and goes when you close the tab.
+  </p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- is the site back? ---------------------------------------------------
+  var dot = document.getElementById('dot');
+  var status = document.getElementById('status');
+  var retry = document.getElementById('retry');
+  var back = false;
+
+  function check() {
+    // A cache-busting query, because a cached 200 from before the outage would
+    // cheerfully report that everything is fine.
+    fetch('/api/health?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok; })
+      .catch(function () { return false; })
+      .then(function (ok) {
+        back = ok;
+        dot.className = 'dot' + (ok ? ' back' : '');
+        status.textContent = ok
+          ? 'The site is responding again. Finish your set, then head back.'
+          : 'Still down. This page checks every 15 seconds.';
+      });
+  }
+  check();
+  setInterval(check, 15000);
+  retry.addEventListener('click', function () { window.location.href = '/'; });
+
+  // Kept in step with web/src/lib/contact.js by a test rather than by a build
+  // step: this file has no build step by design, and a test that fails when
+  // the two disagree is cheaper than a pipeline that could itself break.
+  // CONTACT_LIVE there and CONTACT_READY here must move together.
+  var CONTACT = 'privacy@coachdiaz.app';
+  var CONTACT_READY = false;
+  var contact = document.getElementById('contact');
+  if (CONTACT_READY && CONTACT.indexOf('@') > 0) {
+    contact.href = 'mailto:' + CONTACT;
+    contact.textContent = CONTACT;
+  } else {
+    // No dead address on a page somebody reads when they already cannot get
+    // through. Replace the whole sentence rather than the link, so the
+    // fallback is a sentence rather than a clause with a hole in it.
+    document.getElementById('contact-wrap').textContent =
+      'An address for this is being set up; until then, an account can be deleted from the Account page inside the app.';
+  }
+
+  // ---- the game ------------------------------------------------------------
+  //
+  // One button, one decision, no assets. It is a max attempt: the marker
+  // sweeps, you stop it, and the green zone narrows as the weight climbs -
+  // which is the joke, because that is what actually happens.
+  var barArea = document.getElementById('barArea');
+  var marker = document.getElementById('marker');
+  var zone = document.getElementById('zone');
+  var weightEl = document.getElementById('weight');
+  var missesEl = document.getElementById('misses');
+  var hint = document.getElementById('hint');
+  var again = document.getElementById('again');
+
+  var slow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (slow) {
+    document.getElementById('intro').insertAdjacentHTML(
+      'beforeend',
+      ' <span class="muted">(Slowed down, because your system asks for reduced motion.)</span>'
+    );
+  }
+
+  var weight = 95;
+  var misses = 3;
+  var over = false;
+  var pos = 0;            // 0..1 across the bar
+  var dir = 1;
+  var speed = slow ? 0.22 : 0.55;   // fraction of the bar per second... x1000
+  var half = 0.18;        // half-width of the green zone, as a fraction
+  var last = null;
+
+  function layout() {
+    zone.style.left = ((0.5 - half) * 100) + '%';
+    zone.style.width = (half * 2 * 100) + '%';
+  }
+
+  function frame(now) {
+    if (last === null) last = now;
+    var dt = Math.min(now - last, 100) / 1000;
+    last = now;
+    if (!over) {
+      pos += dir * speed * dt;
+      if (pos >= 1) { pos = 1; dir = -1; }
+      if (pos <= 0) { pos = 0; dir = 1; }
+      marker.style.transform = 'translateX(' + (pos * barArea.clientWidth) + 'px)';
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function attempt() {
+    if (over) return;
+    var offset = Math.abs(pos - 0.5);
+    if (offset <= half) {
+      weight += offset < half * 0.25 ? 20 : 10;
+      // The zone narrows and the bar speeds up. Nobody gets to grind this out.
+      half = Math.max(0.045, half * 0.87);
+      speed = Math.min(slow ? 0.7 : 1.9, speed * 1.09);
+      layout();
+      weightEl.textContent = weight;
+      hint.textContent = offset < half * 0.25
+        ? 'Dead centre. That moved fast — ' + weight + ' lb on the bar.'
+        : 'Good lift. Up to ' + weight + ' lb.';
+    } else {
+      misses -= 1;
+      missesEl.textContent = misses > 0 ? '● '.repeat(misses).trim() : '—';
+      hint.textContent = misses > 0
+        ? 'Missed it. ' + misses + (misses === 1 ? ' attempt left.' : ' attempts left.')
+        : '';
+      if (misses === 0) finish();
+    }
+  }
+
+  function finish() {
+    over = true;
+    hint.textContent = 'Three misses — that is the session. You got to ' + weight +
+      ' lb' + (weight >= 315 ? ', which is a genuinely respectable imaginary squat.' : '.');
+    again.hidden = false;
+    again.focus();
+  }
+
+  again.addEventListener('click', function () {
+    weight = 95; misses = 3; over = false; half = 0.18;
+    speed = slow ? 0.22 : 0.55; pos = 0; dir = 1;
+    weightEl.textContent = weight;
+    missesEl.textContent = '● ● ●';
+    hint.textContent = 'Ready when you are.';
+    again.hidden = true;
+    layout();
+    barArea.focus();
+  });
+
+  barArea.addEventListener('pointerdown', function (e) { e.preventDefault(); attempt(); });
+  barArea.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); attempt(); }
+  });
+  // Space anywhere on the page, as long as focus is not in something typable.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ') return;
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+    e.preventDefault();
+    attempt();
+  });
+
+  layout();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

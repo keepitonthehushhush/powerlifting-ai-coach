@@ -201,6 +201,7 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 | Account deletion | `ON DELETE CASCADE` from `auth.users` throughout. Deleting an account purges every associated row — verified, not assumed. |
 | The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organising question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
 | Unauthenticated access | The `anon` role holds no table grants and matches no policy — refused before RLS is even consulted. |
+| When it breaks | `web/public/maintenance.html` is a standalone page with no imports, no build step and no external requests, so it survives a broken bundle, a failed deploy or a database refusing connections. It polls `/api/health` and says when the site is back. `ErrorBoundary.jsx` catches a render crash and links to it. Switching it on is one rewrite in `vercel.json` — see [`docs/RUNBOOK.md`](docs/RUNBOOK.md). |
 | Copyright | No video is hosted, embedded or mirrored. `exercise_library.video_url` links out to the rights holder. |
 
 ---
