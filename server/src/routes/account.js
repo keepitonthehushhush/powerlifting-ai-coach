@@ -27,18 +27,34 @@ export const accountRouter = Router();
  * rules that govern logging do not apply - and the distinction matters. The
  * data goes to the data subject over an authenticated TLS connection, not to
  * an operator's log drain.
+ *
+ * ── WHAT THIS MISSED, AND HOW ─────────────────────────────────────────────
+ *
+ * Until 2026-08-27 this exported five tables while the schema had seven that
+ * hold user rows. Missing were the consent ledger - the record of what
+ * somebody agreed to and when, which is exactly the thing a person exercising
+ * a data right wants to see - and usage_events, added later by migration 0020.
+ * The `not_included` note even said token counts were not held, which had been
+ * true when it was written and stopped being true the moment 0020 landed.
+ *
+ * So the rule for anyone adding a table: a new user-scoped table is not
+ * finished until it appears here. server/test/policyDisclosure.test.js reads
+ * the migrations and fails when a table with a user_id is absent from this
+ * list, because the note above is the kind of thing nobody re-reads.
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, programs, sessions, logs, conversations] = await Promise.all([
+    const [profile, programs, sessions, logs, conversations, consents, usage] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       req.supabase.from('workout_programs').select('*').order('created_at'),
       req.supabase.from('workout_sessions').select('*').order('date'),
       req.supabase.from('progress_logs').select('*').order('date'),
       req.supabase.from('conversations').select('*').order('created_at'),
+      req.supabase.from('consent_records').select('*').order('seq'),
+      req.supabase.from('usage_events').select('*').order('created_at'),
     ]);
 
-    for (const result of [profile, programs, sessions, logs, conversations]) {
+    for (const result of [profile, programs, sessions, logs, conversations, consents, usage]) {
       if (result.error) throw new HttpError(502, 'Could not assemble your data export.');
     }
 
@@ -55,11 +71,12 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         workout_sessions: sessions.data ?? [],
         progress_logs: logs.data ?? [],
         conversations: conversations.data ?? [],
+        consent_records: consents.data ?? [],
+        usage_events: usage.data ?? [],
       },
       not_included: [
         'Authentication records held by Supabase Auth (email, password hash, sign-in timestamps) — request these from the auth provider.',
         'Rate limiting counters, which hold only a request count and a timestamp.',
-        'Anthropic API request metadata (token counts). Message content is included above under conversations.',
       ],
     };
 
@@ -69,6 +86,8 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       programs: programs.data?.length ?? 0,
       sessions: sessions.data?.length ?? 0,
       logs: logs.data?.length ?? 0,
+      consents: consents.data?.length ?? 0,
+      usage: usage.data?.length ?? 0,
     });
 
     res.set('Content-Disposition', `attachment; filename="coach-data-export-${Date.now()}.json"`);
