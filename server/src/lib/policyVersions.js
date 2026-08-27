@@ -10,8 +10,8 @@
  * Dated rather than numbered so a record is self-describing in an audit.
  */
 export const POLICY_VERSIONS = Object.freeze({
-  health_data_collection: 'chd-2026-08-27',
-  ai_processing: 'aip-2026-08-27b',
+  health_data_collection: 'chd-2026-08-27b',
+  ai_processing: 'aip-2026-08-27c',
   terms_of_service: 'tos-2026-08-27b',
 });
 

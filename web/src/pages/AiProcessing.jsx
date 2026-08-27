@@ -33,7 +33,7 @@ export function AiProcessing() {
     <div className="page">
       <header className="page-header">
         <h1>How Coach Diaz uses AI</h1>
-        <p className="muted small">Version aip-2026-08-27b</p>
+        <p className="muted small">Version aip-2026-08-27c</p>
       </header>
 
       <div className="card draft-banner">
@@ -46,6 +46,12 @@ export function AiProcessing() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>aip-2026-08-27c.</strong> Your pronouns and your gender are sent, if you give
+          them. The coach is instructed at length about what gender is <em>not</em> for — it does
+          not change your loads, your exercises, the rate of progression it expects, or the
+          structure of your block, and it is not a reason to raise body composition with you.
+        </p>
         <p className="small">
           <strong>aip-2026-08-27b.</strong> Two new things are sent, and both are listed below:
           which gym chains you tick on the intake form, and the optional note you can type about
@@ -87,6 +93,7 @@ export function AiProcessing() {
           <li>Recovery information you chose to give: sleep, alcohol, nicotine, nutrition notes.</li>
           <li>Injuries and medical conditions you chose to give, and whether you are cleared to train.</li>
           <li>Numbers our own code worked out from the above and hands the model as answers: your next prescribed loads, rounded to the smallest plate you told us you own, your warm-up ramp, and your fuelling ranges.</li>
+          <li>Your pronouns, and your gender if you gave one. Nothing physiological is inferred from either: where a figure genuinely differs, the coach is told to ask you rather than assume.</li>
           <li>Which gym chains you ticked, and the optional branch note you typed. The note goes as written; it is never turned into an address or a location.</li>
           <li>Reference material of ours that says nothing about you: the coaching instructions, and the exercise library with its links to demonstration videos.</li>
         </ul>

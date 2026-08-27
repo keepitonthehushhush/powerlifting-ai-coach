@@ -22,7 +22,7 @@ export function HealthDataPolicy() {
     <div className="page">
       <header className="page-header">
         <h1>Consumer Health Data Privacy Policy</h1>
-        <p className="muted small">Version chd-2026-08-27</p>
+        <p className="muted small">Version chd-2026-08-27b</p>
       </header>
 
       <div className="card draft-banner">
@@ -35,6 +35,20 @@ export function HealthDataPolicy() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>chd-2026-08-27b.</strong> Gender is now asked for and is listed below as
+          consumer health data, which is the cautious reading and the one we are taking. It is
+          optional, &ldquo;prefer not to say&rdquo; is a real answer rather than a blank, and the
+          coach uses it for two narrow things: competition divisions, which every federation
+          separates by sex, and the minimum energy intake guidance, which differs. It never
+          changes how heavy your program is or how fast you are expected to progress.
+        </p>
+        <p className="small">
+          Your <strong>pronouns</strong> are asked for separately and are deliberately{' '}
+          <strong>not</strong> part of this consent. Being addressed correctly should not be
+          something you have to trade privacy for, so that field is available whether or not you
+          agree to anything on this page.
+        </p>
         <p className="small">
           <strong>chd-2026-08-27.</strong> An audit of this document against the database found
           that four things the app collects were not disclosed here: typical sleep hours, weekly
@@ -67,7 +81,8 @@ export function HealthDataPolicy() {
           <li>the hours you typically sleep;</li>
           <li>how many alcoholic drinks you have in a typical week;</li>
           <li>whether you use nicotine, and how often;</li>
-          <li>anything you choose to write about how you eat.</li>
+          <li>anything you choose to write about how you eat;</li>
+          <li>your gender, if you give it.</li>
         </ul>
         <p>
           Washington law treats all of that as <em>consumer health data</em>. Every item is

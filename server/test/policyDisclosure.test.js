@@ -71,6 +71,9 @@ const SENT_TO_THE_MODEL = {
   goal: 'goal',
   competition_date: 'competition date',
   equipment_available: 'equipment',
+  gender: 'your gender if you gave one',
+  gender_self_described: 'your gender if you gave one',
+  pronouns: 'Your pronouns',
   gym_chains: 'Which gym chains you ticked',
   gym_label: 'branch note',
   days_per_week: 'days per week',
@@ -144,9 +147,9 @@ describe('the AI processing page lists what actually goes to Anthropic', () => {
     const columns = profileColumns();
     // A parser that finds nothing passes every assertion below it. This
     // number was checked against information_schema on the live database on
-    // 2026-08-27: 23 columns, matching exactly, then 25 after migration 0023. It goes UP when a migration
+    // 2026-08-27: 23 columns, matching exactly, then 25 after 0023 and 28 after 0024. It goes UP when a migration
     // adds one, and this assertion is meant to be edited when that happens.
-    assert.ok(columns.size >= 25, `only parsed ${columns.size} columns out of the migrations`);
+    assert.ok(columns.size >= 28, `only parsed ${columns.size} columns out of the migrations`);
     for (const column of columns) {
       assert.ok(
         column in SENT_TO_THE_MODEL || column in NOT_SENT,
@@ -184,6 +187,7 @@ describe('the health data policy lists what is stored under that consent', () =>
     alcohol_units_per_week: 'alcoholic drinks',
     nicotine_use: 'whether you use nicotine',
     nutrition_notes: 'anything you choose to write about how you eat',
+    gender: 'your gender, if you give it',
   };
 
   test('each health field the schema holds is named in the policy', () => {
@@ -353,8 +357,8 @@ describe('every policy page dates its own change', () => {
   test('each carries a changelog for the version it is stamped with', () => {
     for (const [page, version] of [
       [termsPage, 'tos-2026-08-27b'],
-      [aiPage, 'aip-2026-08-27b'],
-      [healthPage, 'chd-2026-08-27'],
+      [aiPage, 'aip-2026-08-27c'],
+      [healthPage, 'chd-2026-08-27b'],
     ]) {
       assert.match(page, phrase('What changed in this version'));
       assert.ok(page.includes(version), `${version} is not printed on its own page`);
