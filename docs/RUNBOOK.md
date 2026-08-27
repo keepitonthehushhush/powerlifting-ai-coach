@@ -146,6 +146,26 @@ bounces is worse than printing none, because it looks like a route.
 
 ---
 
+## Where configuration lives
+
+**`.env` at the repository root.** Not `server/.env` — that file does not exist,
+and `server/dev.js` loads the root one through `dotenv/config`. Written down
+because it has been got wrong twice.
+
+`.env` is gitignored and must stay that way. `.env.example` is the committed
+list of what is needed, with no values in it.
+
+**Production is separate.** Vercel does not read `.env`; it injects its own
+environment variables, set in the project dashboard under Settings →
+Environment Variables. So every new key has to be added in **two** places, and
+adding it locally alone is a working laptop and a broken deploy.
+
+One-way door worth knowing: Vercel marks some variables "sensitive" and will
+never show them again, so `vercel env pull` cannot recover the Anthropic key.
+Keep a separate local-dev key rather than expecting to read production back.
+
+---
+
 ## Before there is anything to pay for
 
 Written down now so it is not relitigated later under pressure to convert:

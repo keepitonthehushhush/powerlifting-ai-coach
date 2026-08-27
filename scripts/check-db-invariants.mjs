@@ -36,9 +36,10 @@ const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE
 if (!url || !key) {
   console.error(
     'check-db-invariants needs SUPABASE_URL and SUPABASE_SECRET_KEY in the environment.\n' +
-      'They are in server/.env for local development; this script reads them from the\n' +
-      'environment rather than parsing that file, so run it as:\n\n' +
-      '  set -a; source server/.env; set +a; node scripts/check-db-invariants.mjs\n'
+      'They are in .env at the REPOSITORY ROOT - not server/.env, which does not\n' +
+      'exist; server/dev.js loads the root file through dotenv/config. This script\n' +
+      'reads the environment rather than parsing that file, so run it as:\n\n' +
+      '  set -a; source .env; set +a; node scripts/check-db-invariants.mjs\n'
   );
   process.exit(2);
 }
