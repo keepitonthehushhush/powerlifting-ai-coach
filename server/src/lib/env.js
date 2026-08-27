@@ -116,19 +116,53 @@ export function buildConfig(env) {
      * `enabled` is derived rather than declared. A half-configured Stripe -
      * a secret key with no webhook secret - is the dangerous state, because
      * the checkout would work and the webhook that grants access would not.
-     * Either all four are present or billing is off.
+     *
+     * ── AND THE SERVICE-ROLE KEY IS PART OF "CONFIGURED" ─────────────────
+     *
+     * This originally derived `enabled` from the three Stripe values, which
+     * described the danger exactly and then failed to guard against it. With
+     * all three Stripe keys set and SUPABASE_SECRET_KEY empty, billing reports
+     * itself enabled, checkout completes, the card is charged, Stripe delivers
+     * the webhook - and supabaseAdmin() returns null, so the subscription is
+     * never recorded and the athlete never gets what they paid for. The
+     * webhook answers 200 and logs, correctly, so Stripe does not retry: the
+     * money moves and nothing anywhere is red.
+     *
+     * That is the worst failure this file can produce, and it was one
+     * environment variable away. The service-role key is not incidental to
+     * billing; it is the only thing that can write the row billing exists to
+     * write. So it counts.
      */
     stripe: (() => {
       const secretKey = optional(env, 'STRIPE_SECRET_KEY', '');
       const webhookSecret = optional(env, 'STRIPE_WEBHOOK_SECRET', '');
       const priceId = optional(env, 'STRIPE_PRICE_ID', '');
       const portalReturnUrl = optional(env, 'STRIPE_PORTAL_RETURN_URL', '');
+      // Read again rather than reaching across to config.supabase: this is a
+      // sibling property of the same object literal and does not exist yet.
+      const serviceRoleKey = optional(env, 'SUPABASE_SECRET_KEY', '');
+
+      /**
+       * Which piece is missing, so the 503 and the startup log can say. A
+       * generic "not configured" sends somebody to check all four.
+       */
+      const missing = [
+        ['STRIPE_SECRET_KEY', secretKey],
+        ['STRIPE_WEBHOOK_SECRET', webhookSecret],
+        ['STRIPE_PRICE_ID', priceId],
+        ['SUPABASE_SECRET_KEY', serviceRoleKey],
+      ]
+        .filter(([, value]) => !value)
+        .map(([name]) => name);
+
       return {
         secretKey,
         webhookSecret,
         priceId,
         portalReturnUrl,
-        enabled: Boolean(secretKey && webhookSecret && priceId),
+        missing,
+        // All four, not three. See above.
+        enabled: missing.length === 0,
         // Guards against the mistake that costs real money: pointing a
         // development deployment at live keys. `sk_live_` is Stripe's own
         // prefix and is stable.

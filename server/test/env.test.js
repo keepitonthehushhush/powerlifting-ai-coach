@@ -114,3 +114,77 @@ describe('buildConfig', () => {
     assert.throws(() => buildConfig({ ...VALID, VITE_ANTHROPIC_API_KEY: 'x' }), /Refusing to start/);
   });
 });
+
+/**
+ * ── THE HALF-CONFIGURED DEPLOYMENT ──────────────────────────────────────────
+ *
+ * `enabled` exists to make one state impossible: billing that takes money and
+ * cannot grant access. The first version of it checked the three Stripe
+ * variables, described that exact danger in a comment above itself, and left
+ * out the fourth thing without which the webhook cannot write anything.
+ *
+ * These tests are the guard, and they are written as the failure rather than
+ * as the feature, because the failure is silent: the charge succeeds, the
+ * webhook answers 200 so Stripe does not retry, and nothing anywhere is red.
+ */
+describe('billing is enabled only when it can actually deliver what it sells', () => {
+  const STRIPE_KEYS = {
+    STRIPE_SECRET_KEY: 'sk_test_x',
+    STRIPE_WEBHOOK_SECRET: 'whsec_x',
+    STRIPE_PRICE_ID: 'price_x',
+    SUPABASE_SECRET_KEY: 'sb_secret_x',
+  };
+
+  test('all four present means enabled', () => {
+    const config = buildConfig({ ...VALID, ...STRIPE_KEYS });
+    assert.equal(config.stripe.enabled, true);
+    assert.deepEqual(config.stripe.missing, []);
+  });
+
+  test('NO SERVICE-ROLE KEY MEANS NOT ENABLED, EVEN WITH EVERY STRIPE KEY SET', () => {
+    // The specific bug. Checkout would complete and the subscription would
+    // never be recorded, because supabaseAdmin() returns null without this.
+    const config = buildConfig({ ...VALID, ...STRIPE_KEYS, SUPABASE_SECRET_KEY: '' });
+    assert.equal(config.stripe.enabled, false);
+    assert.deepEqual(config.stripe.missing, ['SUPABASE_SECRET_KEY']);
+  });
+
+  test('any one of the four missing switches billing off', () => {
+    for (const key of Object.keys(STRIPE_KEYS)) {
+      const config = buildConfig({ ...VALID, ...STRIPE_KEYS, [key]: '' });
+      assert.equal(config.stripe.enabled, false, `${key} missing should disable billing`);
+      assert.deepEqual(config.stripe.missing, [key]);
+    }
+  });
+
+  test('and it names what is missing, so nobody has to check all four', () => {
+    const config = buildConfig({ ...VALID, STRIPE_SECRET_KEY: 'sk_test_x' });
+    assert.deepEqual(config.stripe.missing, [
+      'STRIPE_WEBHOOK_SECRET',
+      'STRIPE_PRICE_ID',
+      'SUPABASE_SECRET_KEY',
+    ]);
+  });
+
+  test('no keys at all is the free product, not a broken deployment', () => {
+    const config = buildConfig(VALID);
+    assert.equal(config.stripe.enabled, false);
+    assert.equal(config.stripe.livemode, false);
+  });
+
+  test('livemode is derived from the key prefix, which is what stops a costly mistake', () => {
+    assert.equal(buildConfig({ ...VALID, ...STRIPE_KEYS }).stripe.livemode, false);
+    assert.equal(
+      buildConfig({ ...VALID, ...STRIPE_KEYS, STRIPE_SECRET_KEY: 'sk_live_x' }).stripe.livemode,
+      true,
+    );
+  });
+
+  test('the portal return URL is not part of enabled, because a default exists', () => {
+    // Checkout falls back to the request origin. A missing return URL degrades
+    // to a slightly worse redirect; a missing webhook secret loses the sale.
+    // Treating them the same would be the checker crying wolf.
+    const config = buildConfig({ ...VALID, ...STRIPE_KEYS, STRIPE_PORTAL_RETURN_URL: '' });
+    assert.equal(config.stripe.enabled, true);
+  });
+});

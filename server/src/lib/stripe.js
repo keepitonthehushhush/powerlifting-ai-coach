@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { logger } from './logger.js';
 
 /**
  * The Stripe client, created once and only when billing is configured.
@@ -70,6 +71,29 @@ export async function stripeClient() {
  * a legitimate state to report to the frontend, not an error condition.
  */
 export function billingUnavailableReason() {
-  if (!config.stripe.enabled) return 'billing_not_configured';
+  if (!config.stripe.enabled) {
+    warnOnceAboutMissingConfig();
+    return 'billing_not_configured';
+  }
   return null;
+}
+
+let warned = false;
+
+/**
+ * Say WHICH variable is missing - in the log, not in the response.
+ *
+ * The code the client gets stays generic. Naming the specific environment
+ * variables in an HTTP body tells an unauthenticated caller about the
+ * deployment's configuration, and they cannot act on it anyway. The operator
+ * can, so the operator gets the list.
+ *
+ * Once, not per request. A partially configured deployment answers every
+ * billing call this way, and a line repeated on every request is a line
+ * nobody reads - which is how the rate limiter sat broken for a day.
+ */
+function warnOnceAboutMissingConfig() {
+  if (warned) return;
+  warned = true;
+  logger.warn('billing.not_configured', { missing: config.stripe.missing });
 }

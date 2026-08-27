@@ -2,6 +2,7 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readRaw, phrase } from './helpers/source.js';
 import { entitlement, requiresSubscription, PAYING_STATUSES, PAID_FEATURE } from '../src/lib/entitlement.js';
+import { buildConfig } from '../src/lib/env.js';
 
 const raw = readRaw(new URL('../src/lib/entitlement.js', import.meta.url));
 const migration = readRaw(new URL('../../supabase/migrations/0025_subscriptions.sql', import.meta.url));
@@ -133,9 +134,46 @@ describe('billing is optional configuration', () => {
   });
 
   test('half-configured billing is treated as off', () => {
-    // The dangerous state: a secret key with no webhook secret means checkout
-    // works and the webhook that grants access does not.
-    assert.match(env, /enabled: Boolean\(secretKey && webhookSecret && priceId\)/);
+    // ── THIS TEST USED TO ASSERT THE BUG ────────────────────────────────
+    //
+    // It read:
+    //
+    //   assert.match(env, /enabled: Boolean\(secretKey && webhookSecret && priceId\)/)
+    //
+    // which pinned the EXPRESSION rather than the behaviour, and the
+    // expression was wrong: it omitted SUPABASE_SECRET_KEY, without which the
+    // webhook cannot write the subscription, so a deployment could charge a
+    // card and grant nothing. A test written against the source text cannot
+    // tell a correct implementation from the one that happens to be there -
+    // it just makes the current one harder to change, which is the opposite
+    // of what it is for.
+    //
+    // Asserted through buildConfig now. The exhaustive per-variable cases
+    // live in env.test.js; this keeps the entitlement story readable on its
+    // own, because "billing is off unless it can deliver" belongs to the
+    // question this file is about.
+    const base = {
+      ANTHROPIC_API_KEY: 'sk-ant-x',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
+    };
+    const complete = {
+      STRIPE_SECRET_KEY: 'sk_test_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      STRIPE_PRICE_ID: 'price_x',
+      SUPABASE_SECRET_KEY: 'sb_secret_x',
+    };
+    assert.equal(buildConfig({ ...base, ...complete }).stripe.enabled, true);
+    assert.equal(
+      buildConfig({ ...base, ...complete, STRIPE_WEBHOOK_SECRET: '' }).stripe.enabled,
+      false,
+      'a secret key with no webhook secret means checkout works and access is never granted',
+    );
+    assert.equal(
+      buildConfig({ ...base, ...complete, SUPABASE_SECRET_KEY: '' }).stripe.enabled,
+      false,
+      'without the service-role key the webhook cannot record the subscription it was paid for',
+    );
     assert.match(env, phrase('is the dangerous state'));
   });
 
