@@ -41,7 +41,7 @@ export function Terms() {
     <div className="page">
       <header className="page-header">
         <h1>Terms of Service</h1>
-        <p className="muted small">Version tos-2026-08-27</p>
+        <p className="muted small">Version tos-2026-08-27b</p>
       </header>
 
       <div className="card draft-banner">
@@ -54,6 +54,13 @@ export function Terms() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>tos-2026-08-27b.</strong> The under-18 rule is now enforced rather than only
+          stated. Talking to Coach requires a date of birth showing you are 18 or over, and the
+          check runs on our server rather than in your browser, so it is not something a page can
+          be persuaded to skip. The section below also says plainly what we rely on, what we
+          cannot verify, and what happens when we are told an account belongs to a minor.
+        </p>
         <p className="small">
           <strong>tos-2026-08-27.</strong> We checked this document against the code and found a
           claim that was not true: it said accounts are refused when the date of birth given shows
@@ -100,17 +107,33 @@ export function Terms() {
 
         <h2 className="h3">You must be 18 or older</h2>
         <p>
-          This service is for adults. If you are under 18, do not use it. We have not built a way
-          for a parent or guardian to consent on your behalf, and until we have, you are not
+          <strong>This service is for adults. By creating an account and using it, you confirm
+          that you are 18 or over.</strong> If you are under 18, do not use it. We have not built a
+          way for a parent or guardian to consent on your behalf, and until we have, you are not
           someone this service is for.
         </p>
         <p>
-          What we enforce in code is narrower than that rule, and you should know which is which.
-          Signing up does not ask your age. The date of birth on the intake form is optional. What
-          the application refuses is <strong>storing injury or lifestyle information for anyone
-          under 18</strong> — and because it fails closed, it refuses that for anyone who has not
-          given a date of birth at all. It does not verify the date you give, and a self-reported
-          birth date cannot be verified by anyone.
+          Here is exactly what we do about it, so that you know what is a rule and what is a
+          mechanism. We ask for your date of birth. Coaching will not start without one, and it
+          will not start if the date shows you are under 18 — that check runs on our server, not in
+          your browser, so it is not something a page can be persuaded to skip. Separately, we
+          refuse to store injury or lifestyle information for anyone under 18, and because that
+          check fails closed it also refuses when no date of birth has been given at all.
+        </p>
+        <p>
+          <strong>What we cannot do is verify any of it.</strong> A date of birth typed into a form
+          is a statement, not proof, and the only way to actually verify age is to collect
+          government identity documents — a far larger collection of personal information than
+          anything else this service holds, and a worse trade for everyone. So we rely on what you
+          tell us. Giving a false date of birth to get access is a breach of these terms, and we
+          may close an account we believe was obtained that way.
+        </p>
+        <p>
+          If you are a parent or guardian and you believe an account belongs to someone under 18,
+          tell us and we will delete it and the data with it. Anyone with access to the account can
+          also delete it immediately from the Account page, which removes everything and is not
+          recoverable. We act on what we are told: we do not knowingly provide this service to
+          minors, and being informed is what makes it knowing.
         </p>
 
         <h2 className="h3">Your account</h2>
@@ -129,7 +152,7 @@ export function Terms() {
 
         <h2 className="h3">What you may not do</h2>
         <ul>
-          <li>Use the service if you are under 18.</li>
+          <li>Use the service if you are under 18, or give a false date of birth to get past the age check.</li>
           <li>Try to obtain another user&rsquo;s data.</li>
           <li>Attempt to get the coach to give medical advice, or to work around the clearance gate.</li>
           <li>Ask for guidance on performance-enhancing drugs. It will refuse.</li>

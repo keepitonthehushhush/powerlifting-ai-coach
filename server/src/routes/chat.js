@@ -4,6 +4,7 @@ import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
+import { adultGateDecision, MINIMUM_AGE } from '../lib/ageGate.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
@@ -120,6 +121,34 @@ chatRouter.post('/', async (req, res, next) => {
       loadCoachingContext(req.supabase),
       loadOrCreateConversation(req.supabase, conversationId),
     ]);
+
+    /**
+     * THE ADULT GATE, ENFORCED IN THE API RATHER THAN IN THE BROWSER.
+     *
+     * The sign-up form asks for a date of birth and refuses below 18, which is
+     * a courtesy. This is the control. The browser is not ours, and somebody
+     * who wants past a client-side check has to open one tab.
+     *
+     * It sits here rather than in middleware because the profile has already
+     * been loaded a few lines up - a second query to answer a question we
+     * already have the data for would be a cost on every message for nothing.
+     *
+     * Fails closed on a missing date. The intake form requires one, so its
+     * absence means somebody went around the form.
+     */
+    const adult = adultGateDecision(context.profile);
+    if (!adult.allowed) {
+      // Never log the date or the computed age. The reason code is what makes
+      // this diagnosable, and it is all anybody needs.
+      logger.warn('chat.refused_not_adult', { userId: req.user.id, reason: adult.reason });
+      throw new HttpError(
+        403,
+        adult.reason === 'too_young'
+          ? `Coach Diaz is only for people aged ${MINIMUM_AGE} and over. We have not built a way for a parent or guardian to consent on a younger person's behalf, and until we have, we are not going to coach anyone under ${MINIMUM_AGE}. Nothing you have entered has been deleted.`
+          : 'Please add your date of birth on the profile page before talking to Coach.',
+        { code: `adult_gate_${adult.reason}` }
+      );
+    }
 
     const history = Array.isArray(conversation.messages) ? conversation.messages : [];
     const window = history.slice(-config.chat.historyWindow);

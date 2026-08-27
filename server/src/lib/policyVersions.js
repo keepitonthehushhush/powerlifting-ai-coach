@@ -12,7 +12,7 @@
 export const POLICY_VERSIONS = Object.freeze({
   health_data_collection: 'chd-2026-08-27',
   ai_processing: 'aip-2026-08-27b',
-  terms_of_service: 'tos-2026-08-27',
+  terms_of_service: 'tos-2026-08-27b',
 });
 
 export const CONSENT_TYPES = Object.freeze(Object.keys(POLICY_VERSIONS));

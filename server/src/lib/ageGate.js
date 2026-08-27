@@ -85,3 +85,49 @@ export function evaluateAgeGate(dateOfBirth, asOf = new Date()) {
 
   return { allowed: true, age, reason: 'ok' };
 }
+
+/**
+ * Whether this profile may be coached at all.
+ *
+ * ── WHY THIS EXISTS SEPARATELY FROM evaluateAgeGate ───────────────────────
+ *
+ * evaluateAgeGate answers "may we STORE health information about this
+ * person". That question was answered correctly from the start and it is not
+ * the only one that needed asking.
+ *
+ * Until 2026-08-27 the terms said this service is for adults and NOTHING
+ * refused an account. A fifteen-year-old could sign up, skip the injury boxes,
+ * and be handed a barbell program. The product's own error message said as
+ * much - "you can still use the rest of the app" - while the terms said
+ * accounts are refused. The documents and the code disagreed, and the code was
+ * the one people were actually using.
+ *
+ * This closes it on the side that matters. A refusal in the browser is a
+ * courtesy; a refusal in the API is the control, because the browser is not
+ * ours and a determined teenager with the network tab open is not a difficult
+ * adversary.
+ *
+ * ── WHAT IT CANNOT DO ─────────────────────────────────────────────────────
+ *
+ * It cannot verify anybody's age. A self-reported date of birth is trivially
+ * falsified and no gate anywhere solves that; the ones that do require
+ * government ID, which is a far larger collection of personal data than
+ * anything else this product holds and would be a worse trade.
+ *
+ * What it does is make sure this product never KNOWINGLY coaches a minor, and
+ * that the record shows a date was asked for, checked, and acted on. That is
+ * the obligation that actually attaches. It is not the same thing as immunity,
+ * and docs/LEGAL_CONSIDERATIONS.md says so in the words of somebody who is not
+ * a lawyer.
+ *
+ * FAILS CLOSED on a missing date, like every other gate here: the intake form
+ * requires one, so an absent date means somebody went around the form.
+ *
+ * @param {object|null} profile
+ * @param {Date} [asOf]
+ * @returns {{allowed: boolean, reason: 'ok'|'unknown'|'too_young'|'implausible'}}
+ */
+export function adultGateDecision(profile, asOf = new Date()) {
+  const { allowed, reason } = evaluateAgeGate(profile?.date_of_birth, asOf);
+  return { allowed, reason };
+}
