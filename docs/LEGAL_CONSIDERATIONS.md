@@ -218,10 +218,13 @@ dropped. The reasoning is kept in full below rather than deleted, because the
 idea is an obvious one that will occur to somebody again, and the numbers are
 most of the argument against it.
 
-**The money is smaller than it sounds.** Sports-equipment affiliate rates run
-around 3%. A belt is $50–150, so roughly $1.50–4.50 a sale. Suppose 1,000 users
+**The money is smaller than it sounds.** Amazon Associates pays **5% on Sports &
+Outdoors** and 3% on Health & Personal Care (rates checked 2026-08-27; an
+earlier draft of this section said 3% for equipment, from memory, and was
+wrong). A belt is $50–150, so roughly **$2.50–7.50 a sale**. Suppose 1,000 users
 and an optimistic 5% buying a belt through a link in their first year: about
-**$150 a year**. The subscription already decided on — free logging, paid
+**$250 a year**. The correction makes affiliate revenue look better and changes
+nothing about the conclusion, which is the point of correcting it. The subscription already decided on — free logging, paid
 conversations — at even $8/month against those same 1,000 users is a different
 order of magnitude entirely. Affiliate income here is a rounding error on the
 business, and it is being weighed against the following costs.

@@ -536,12 +536,16 @@ argument for moving, and it is stronger than the professionalism one.
 
 **When there is revenue**, the options, in the order they are worth considering:
 
+Prices checked 2026-08-27 against published sources; an earlier version of
+this table was written from memory and two of the four figures were wrong,
+which is the reason each one now carries where it came from.
+
 | Option | Cost | Why |
 |---|---|---|
-| Microsoft 365 Business Basic | ~$6/user/mo | Outlook, real mailboxes, the admin controls and retention policies that make a data-handling story writable. The most defensible choice if the mailbox holds health data |
-| Google Workspace | ~$7/user/mo | Equivalent; pick it if the habit is already Gmail, since the migration is trivial |
-| Fastmail | ~$5/mo | Simpler and cheaper than either, genuinely excellent, weaker admin tooling. Fine while this is one person |
-| ImprovMX paid | ~$9/mo | Adds SMTP so replies come from the right address. Solves the smaller problem and not the larger one |
+| Microsoft 365 Business Basic | **$7/user/mo**, annual commitment | Outlook, real mailboxes, the admin controls and retention policies that make a data-handling story writable. The most defensible choice if the mailbox holds health data |
+| Google Workspace Business Starter | **$7/user/mo** annual, **$8.40** flexible | Equivalent; pick it if the habit is already Gmail, since the migration is trivial. The flexible tier is worth it only if the commitment matters |
+| Fastmail | **$3** Basic / **$5** Standard / **$9** Professional per user/mo, annual | Basic is enough to replace a forwarder. Genuinely good, weaker admin tooling than the two above. Fine while this is one person and the mailbox holds little |
+| ImprovMX paid | price not verified — check directly | Adds SMTP so replies come from the right address. Solves the smaller problem and not the larger one, so it is the least interesting option regardless of price |
 
 Whichever is chosen, the migration is MX records and nothing else — the address
 in the Terms does not change, so no version bump and no re-consent. That is
