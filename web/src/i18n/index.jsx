@@ -90,6 +90,16 @@ export function I18nProvider({ children }) {
     const t = (key, vars) => {
       const value = lookup(catalogue, key) ?? lookup(CATALOGUES[FALLBACK], key);
       if (typeof value !== 'string') {
+        /*
+         * One of two deliberate console calls in the browser. no-console is an
+         * error here because injury and restriction fields must never be
+         * written to a console in plaintext - this writes a KEY NAME, in
+         * development only, and it is the line that would have shouted
+         * "missing key: auth.password" every time the sign-in page rendered
+         * while that bug was live. Nobody was looking at a dev console. It
+         * stays anyway: it costs nothing and it is right.
+         */
+        // eslint-disable-next-line no-console
         if (import.meta.env.DEV) console.warn(`[i18n] missing key: ${key} (${locale})`);
         return key;
       }

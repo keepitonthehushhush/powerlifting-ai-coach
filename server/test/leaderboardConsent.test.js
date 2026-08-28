@@ -23,7 +23,6 @@ import { POLICY_DOCUMENTS } from '../../web/src/lib/policyDocuments.js';
 
 const migration = readRaw(new URL('../../supabase/migrations/0028_leaderboard_consent.sql', import.meta.url));
 const page = readSource(new URL('../../web/src/pages/Leaderboard.jsx', import.meta.url));
-const pageRaw = readRaw(new URL('../../web/src/pages/Leaderboard.jsx', import.meta.url));
 const policy = readSource(new URL('../../web/src/pages/LeaderboardPolicy.jsx', import.meta.url));
 const route = readSource(new URL('../src/routes/leaderboard.js', import.meta.url));
 const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.url));

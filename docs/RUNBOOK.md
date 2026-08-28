@@ -236,7 +236,7 @@ neither of you can reproduce, because refreshing fixes it silently.
 
 ### Before a deploy that changes an API shape
 
-1. `npm test`, `npm run check:docs`, `npm run check:lockfile`.
+1. `npm run lint`, `npm test`, `npm run check:docs`, `npm run check:lockfile`.
 2. `npm run build`, then grep the artefact for anything that has to be in it -
    this is how a missing `VITE_` variable gets caught, and it has been caught
    this way once already.

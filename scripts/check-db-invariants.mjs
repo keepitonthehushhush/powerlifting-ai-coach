@@ -28,7 +28,6 @@
  * It is NOT a replacement for test:db. It is the part that runs.
  */
 
-import { readFileSync } from 'node:fs';
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;

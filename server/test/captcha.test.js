@@ -23,6 +23,9 @@ import { readSource, readRaw, phrase } from './helpers/source.js';
 const lib = readSource(new URL('../../web/src/lib/turnstile.js', import.meta.url));
 const libRaw = readRaw(new URL('../../web/src/lib/turnstile.js', import.meta.url));
 const widget = readSource(new URL('../../web/src/components/Turnstile.jsx', import.meta.url));
+// Raw, because the assertion is about a COMMENT: readSource would strip the
+// suppression directive and the check would pass on every file forever.
+const widgetRaw = readRaw(new URL('../../web/src/components/Turnstile.jsx', import.meta.url));
 const login = readSource(new URL('../../web/src/pages/Login.jsx', import.meta.url));
 const loginRaw = readRaw(new URL('../../web/src/pages/Login.jsx', import.meta.url));
 const auth = readSource(new URL('../../web/src/context/AuthContext.jsx', import.meta.url));
@@ -190,8 +193,12 @@ describe('the build can actually see the key', () => {
 
 describe('THE WIDGET IS CREATED ONCE, NOT ON EVERY RENDER', () => {
   /**
-   * The bug: `useEffect(..., [onToken, onUnavailable])`, which is what the
-   * exhaustive-deps lint rule asks for and is wrong here.
+   * The bug: `useEffect(..., [onToken, onUnavailable])`, which is the obvious
+   * thing to write and which this file long claimed exhaustive-deps demands.
+   * It does not. When the rule was actually installed it reported nothing
+   * about this effect - refs and stable values only, so `[]` is exhaustive -
+   * and the suppression comment that had been sitting here was removed as
+   * unused. The fix satisfied the rule rather than defying it.
    *
    * A parent writing `onUnavailable={() => setBlocked(true)}` creates a new
    * function identity every render, and the sign-in form re-renders on every
@@ -210,6 +217,20 @@ describe('THE WIDGET IS CREATED ONCE, NOT ON EVERY RENDER', () => {
       !/\}, \[on(Token|Unavailable)/.test(effect),
       'the effect depends on a callback prop - it will re-run whenever the parent re-renders',
     );
+  });
+
+  test('AND IT IS NOT SUPPRESSED, BECAUSE IT DOES NOT NEED TO BE', () => {
+    // The suppression was load-bearing for a belief, not for the build. With
+    // it gone, putting a callback prop back into the array makes the linter
+    // the thing that objects. Re-adding the directive would silence that
+    // again, so it fails here first.
+    //
+    // Anchored to the start of a comment line, because the file now EXPLAINS
+    // the directive it no longer carries, and a loose match finds the
+    // explanation. Seventh time this collision has been paid for; here the
+    // usual fix does not apply, since stripping comments would delete the
+    // subject of the assertion along with the prose about it.
+    assert.doesNotMatch(widgetRaw, /^\s*\/\/\s*eslint-disable[^\n]*exhaustive-deps/m);
   });
 
   test('and the callbacks reach it through refs, so they are still current', () => {

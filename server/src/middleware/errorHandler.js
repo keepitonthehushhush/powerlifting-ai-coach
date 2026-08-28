@@ -55,7 +55,10 @@ function statusOf(err) {
  * the last line of defence in the request pipeline, and the last thing that
  * should stop working because configuration failed to load.
  */
-// eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity.
+// Express identifies an error handler BY ARITY: four parameters or it is
+// treated as ordinary middleware and never called on an error. `next` is
+// unused on purpose, and removing it silently disables this whole file.
+// (The linter is configured not to report unused arguments for this reason.)
 export function errorHandler(err, req, res, _next) {
   const isProduction = process.env.NODE_ENV === 'production';
 

@@ -10,9 +10,9 @@
  * meaning the same thing.
  */
 export const SECRET_PATTERNS = [
-  { name: 'Anthropic API key', re: /sk-ant-[A-Za-z0-9_\-]{16,}/ },
+  { name: 'Anthropic API key', re: /sk-ant-[A-Za-z0-9_-]{16,}/ },
   { name: 'Supabase service role JWT', re: /"?role"?\s*:\s*"service_role"/ },
-  { name: 'Supabase secret key', re: /sb_secret_[A-Za-z0-9_\-]{8,}/ },
+  { name: 'Supabase secret key', re: /sb_secret_[A-Za-z0-9_-]{8,}/ },
   { name: 'Generic private key block', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
 ];
 

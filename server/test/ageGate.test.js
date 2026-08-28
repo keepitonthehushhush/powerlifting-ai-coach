@@ -1,6 +1,5 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { readProfileApi } from './helpers/source.js';
 
 import { evaluateAgeGate, ageInYears, MINIMUM_AGE } from '../src/lib/ageGate.js';

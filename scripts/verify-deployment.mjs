@@ -50,7 +50,7 @@ const base = new URL(target);
  */
 const REQUIRED_CONFIG = [
   { name: 'VITE_SUPABASE_URL', re: /https:\/\/[a-z0-9]{16,}\.supabase\.co/ },
-  { name: 'VITE_SUPABASE_PUBLISHABLE_KEY', re: /sb_publishable_[A-Za-z0-9_\-]{16,}/ },
+  { name: 'VITE_SUPABASE_PUBLISHABLE_KEY', re: /sb_publishable_[A-Za-z0-9_-]{16,}/ },
 ];
 
 async function get(url) {

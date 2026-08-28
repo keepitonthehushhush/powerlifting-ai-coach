@@ -673,6 +673,86 @@ source - remain unenforced. This repository has no linter, and that is the next
 gap rather than a solved one.
 
 
+### ADR-16 · A linter, adopted for four rules and configured for none of the rest
+
+**Context.** One commit produced two production outages in the same week, and a
+default ESLint rule describes each of them exactly.
+
+`glp1_status: form.glp1_status || null` was left inside `EMPTY`, a module-level
+constant where `form` does not exist. That is `no-undef`. The same object
+already declared `glp1_status`, so it is also `no-dupe-keys`. The site went
+blank on every route. Separately, `auth` declared `password` twice in the
+locale catalogue - a string and then an object - and the sign-in field was
+labelled `auth.password` in production. `no-dupe-keys` again.
+
+Both are valid JavaScript. `vite build` succeeded, `node --check` passed, the
+bundle parsed, and thirteen checks read the code without analysing it. A linter
+is the one tool in the standard toolbox that would have said something, at the
+moment of typing, for free.
+
+**Decision.** ESLint 10 flat config, `@eslint/js` recommended, `globals`. Three
+first-party packages and no plugins.
+
+**It is not a style guide, deliberately.** No formatting rules, no opinionated
+preferences, nothing that generates a review argument. Everything enabled here
+describes something that is almost always a mistake. A linter adopted for taste
+gets arguments and then gets `--fix` run over it and then gets ignored; a
+linter adopted for four rules that have each cost a day gets read when it
+speaks.
+
+**Rejected: eslint-plugin-react.** It exists in this configuration for one
+reason - `no-unused-vars` works from scope analysis, and ESLint's analyser does
+not treat a JSXIdentifier as a reference, so `import { Foo }` used as `<Foo />`
+reads as unused and every page reports false positives. That is a hundred rules
+and a release cadence to track for one behaviour. The behaviour is fifteen
+lines, written inline in `eslint.config.js` as a local plugin: mark the
+identifier at the head of each JSX element as used, ignoring lowercase names,
+which are host elements rather than variables.
+
+**`react-hooks/exhaustive-deps` is ON, and that was a reversal.** The first
+draft of this decision rejected it: `Turnstile.jsx` deliberately passes `[]` and
+holds its callbacks in refs, because a dependency array containing a callback
+prop rebuilt the widget on every keystroke - which is what "Cloudflare is
+freaking out" turned out to be. A rule that recommends the bug looked like a
+rule not worth having.
+
+Then the first lint run found the answer already in the source: four components
+carry `// eslint-disable-next-line react-hooks/exhaustive-deps`, each with its
+reason written above it, suppressing a rule that had never run in this
+repository's history. Leaving it off keeps those comments decorative. Turning it
+on makes each of them a decision somebody had to write down - and makes a fifth
+one, added by somebody silencing a warning rather than thinking about it, show
+up in a diff. The disagreement is the argument for the rule, not against it.
+
+Two of the plugin's thirty rules are enabled, registered by hand.
+`configs.recommended` in v7 carries the React Compiler set - purity,
+memoisation, immutability, static components - which is a commitment to a style
+of writing React rather than a bug detector, and is not a decision this project
+has made. `rules-of-hooks` is the other one: a hook called conditionally is
+always a bug, with no judgement attached.
+
+**`__BUILD_ID__` is declared as a browser global.** Vite replaces it at build
+time, so it exists in the bundle and nowhere else. Undeclared, `no-undef`
+would read the deploy-version mechanism as a typo.
+
+**`no-console` is on for the browser, and it is a health-data rule.** Injury and
+restriction fields must never be written to a console or an error tracker in
+plaintext, and `console.log(profile)` is one keystroke that leaves no trace in
+review. Two calls survive behind explicit disables: `ErrorBoundary`, where an
+unrecoverable render error has no other channel and logs the error rather than
+the state, and the i18n `t()` fallback, which warns in development that a key
+is missing - the line that would have shouted `missing key: auth.password` on
+every render of the sign-in page for as long as that bug was live, had anybody
+had a dev console open.
+
+**What this does not cover.** It is static analysis of one file at a time. It
+would not have caught the `glp1_status: ''` the payload builder sent - that is
+a contract between two modules, and `server/test/profilePayload.test.js` is
+what covers it - and it would not have caught the CSS selector that crushed the
+chat composer. It closes the cheapest class of defect, which had stayed open
+for thirteen months because nobody had spent twenty minutes on it.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

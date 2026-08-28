@@ -257,7 +257,7 @@ function splitIntoSpans(evidence) {
  * untouched, so a fragment still has to appear in the reply verbatim.
  */
 function trimEdgePunctuation(fragment) {
-  return fragment.replace(/^[\s.,;:!?()[\]"'\-]+/, '').replace(/[\s.,;:!?()[\]"'\-]+$/, '');
+  return fragment.replace(/^[\s.,;:!?()[\]"'-]+/, '').replace(/[\s.,;:!?()[\]"'-]+$/, '');
 }
 
 /** Length, in words, of the longest run of `needle` appearing inside `haystack`. */

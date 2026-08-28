@@ -19,7 +19,6 @@ import { COACH_ROLE, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
  *      about how somebody should look.
  */
 
-const prompt = readSource(new URL('../src/prompts/systemPrompt.js', import.meta.url));
 const promptRaw = readRaw(new URL('../src/prompts/systemPrompt.js', import.meta.url));
 const migration = readRaw(new URL('../../supabase/migrations/0033_body_composition.sql', import.meta.url));
 const logger = readSource(new URL('../src/lib/logger.js', import.meta.url));

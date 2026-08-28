@@ -15,6 +15,7 @@
     "dev:api": "node --watch server/dev.js",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w web",
+    "lint": "eslint .",
     "test": "node --test \"server/test/*.test.js\"",
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
@@ -22,7 +23,7 @@
     "safety:eval": "node scripts/safety-eval.mjs",
     "verify:deps": "node scripts/verify-frontend-deps.mjs",
     "verify": "npm run verify:deps && npm run verify:bundle",
-    "check": "npm run check:lockfile && npm test && npm run verify:deps && npm run build && npm run check:mounts && npm run verify:bundle",
+    "check": "npm run check:lockfile && npm run lint && npm test && npm run verify:deps && npm run build && npm run check:mounts && npm run verify:bundle",
     "check:db": "node scripts/check-db-invariants.mjs",
     "test:db:psql": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/rls_isolation_test.sql",
     "check:contact": "node scripts/check-contact-route.mjs",
@@ -39,8 +40,12 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "concurrently": "^9.1.2",
     "dotenv": "^16.4.7",
+    "eslint": "^10.9.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.11.0",
     "pg": "^8.23.0"
   },
   "optionalDependencies": {

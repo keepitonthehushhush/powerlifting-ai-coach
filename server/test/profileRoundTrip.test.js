@@ -27,7 +27,6 @@ import { ProfileUpdate, describeValidationFailure } from '../src/lib/profileSche
  */
 
 const profileRoute = readProfileApi();
-const profileRouteRaw = readProfileApi({ raw: true });
 const schemaSourceRaw = readRaw(new URL('../src/lib/profileSchema.js', import.meta.url));
 
 /** Every page that writes to the profile. */

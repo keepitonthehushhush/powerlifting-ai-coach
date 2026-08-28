@@ -42,6 +42,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # First, because it is the fastest check in the file and it catches the
+      # cheapest class of mistake. Two production outages in one week were both
+      # default ESLint rules - `no-undef` for a variable that does not exist at
+      # module scope, `no-dupe-keys` for the same key declared twice - and both
+      # got through a green build, a green suite and a green deploy.
+      - name: Lint
+        run: npm run lint
+
       # Deliberately no `env:` block. The suite runs with an empty environment,
       # which is the assertion: nothing under test should need a credential to
       # be constructed. Injecting placeholder secrets here would hide exactly

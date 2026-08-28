@@ -54,7 +54,16 @@ export function BillingPanel() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
-  const [returned, setReturned] = useState(() => readCheckoutParam());
+  /**
+   * Read once, at mount, and never written again - which is why there is no
+   * setter. The query parameter is stripped from the URL as soon as it has
+   * been read (a refresh must not replay the poll, and a bookmark must not
+   * show a payment confirmation weeks later), so this state is the only
+   * remaining record that the person arrived here from checkout. Losing it
+   * would swap the "your payment went through" panel for a subscribe button
+   * one render after they paid.
+   */
+  const [returned] = useState(() => readCheckoutParam());
   const [settling, setSettling] = useState(false);
   const cancelled = useRef(false);
 

@@ -76,9 +76,15 @@ export function Turnstile({ onToken, onUnavailable }) {
         widgetId.current = null;
       }
     };
-    // Deliberately empty. See the note above: this must run once, and the
-    // callbacks reach it through refs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Deliberately empty, and NOT suppressed. This carried an
+    // `eslint-disable-next-line react-hooks/exhaustive-deps` for months on the
+    // belief that the rule was wrong here. When the rule was finally installed
+    // it said nothing: the effect closes over refs and stable values only, so
+    // `[]` genuinely IS exhaustive. Holding the callbacks in refs did not
+    // defeat the rule, it satisfied it. The suppression was hiding agreement.
+    //
+    // Left unsuppressed on purpose. Put a callback prop back in this array and
+    // the rule will now be the thing that objects, which is the whole point.
   }, []);
 
   if (!enabled()) return null;

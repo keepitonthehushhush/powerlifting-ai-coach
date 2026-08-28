@@ -22,7 +22,6 @@ import { readSource, readRaw, phrase } from './helpers/source.js';
 const version = readSource(new URL('../../web/src/lib/version.js', import.meta.url));
 const versionRaw = readRaw(new URL('../../web/src/lib/version.js', import.meta.url));
 const banner = readSource(new URL('../../web/src/components/NewVersionBanner.jsx', import.meta.url));
-const bannerRaw = readRaw(new URL('../../web/src/components/NewVersionBanner.jsx', import.meta.url));
 const api = readSource(new URL('../../web/src/lib/api.js', import.meta.url));
 const app = readSource(new URL('../src/app.js', import.meta.url));
 const viteConfig = readRaw(new URL('../../web/vite.config.js', import.meta.url));

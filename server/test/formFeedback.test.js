@@ -19,7 +19,6 @@ import { readSource, readRaw, phrase } from './helpers/source.js';
  *      browser's timing.
  */
 
-const intake = readRaw(new URL('../../web/src/pages/Intake.jsx', import.meta.url));
 const intakeCode = readSource(new URL('../../web/src/pages/Intake.jsx', import.meta.url));
 const chat = readSource(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
 const summary = readRaw(new URL('../../web/src/components/ErrorSummary.jsx', import.meta.url));
