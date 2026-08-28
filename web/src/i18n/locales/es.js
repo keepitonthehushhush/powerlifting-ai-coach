@@ -295,6 +295,8 @@ export const es = {
     withdrawAnytime:
       'Puedes retirar cualquiera de estos permisos cuando quieras desde esta pantalla. Retirarlo es tan fácil como concederlo: un clic, sin correos ni esperas.',
     recordedOn: 'Registrado el {date} (versión {version})',
+    staleExplained:
+      'Hemos actualizado esta política, así que te lo preguntamos otra vez. Aceptaste la versión {oldVersion} el {date}; la versión actual es {newVersion}. Tu aceptación anterior no se ha borrado (sigue en tu historial de consentimiento), pero ya no cuenta, porque era la aceptación de un texto que hemos cambiado. La casilla de arriba está vacía a propósito: marcarla es una decisión nueva, y dejarla vacía es una respuesta válida.',
     staleVersion: 'Esta política se ha actualizado desde que diste tu consentimiento. Revísala y confírmala de nuevo.',
     healthDataCleared:
       'Consentimiento retirado. La información sobre lesiones y salud que teníamos guardada se ha eliminado.',

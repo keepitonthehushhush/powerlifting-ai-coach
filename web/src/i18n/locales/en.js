@@ -293,6 +293,8 @@ export const en = {
     withdrawAnytime:
       'You can withdraw any of these at any time from this screen. Withdrawing is as easy as giving — one click, no email, no waiting.',
     recordedOn: 'Recorded {date} (version {version})',
+    staleExplained:
+      'We have updated this policy, so we are asking again. You agreed to version {oldVersion} on {date}; the current version is {newVersion}. Your previous agreement has not been deleted — it stays in your consent history — but it no longer counts, because it was agreement to wording we have since changed. The box above is empty on purpose: ticking it is a fresh decision, and leaving it empty is a valid answer.',
     staleVersion: 'This policy has been updated since you agreed. Please review and confirm again.',
     healthDataCleared:
       'Consent withdrawn. The injury and health information we had stored has been erased.',

@@ -82,10 +82,23 @@ export function ConsentPanel({ onChange, showRequiredOnly = false }) {
               </p>
             )}
 
+            {/* ── A STALE CONSENT RENDERS UNCHECKED ────────────────────
+                The box answers "do you agree to the CURRENT version", not
+                "did you ever agree to anything". When a policy is updated the
+                server marks the old record stale while `granted` is still
+                true, and reflecting that as a ticked box would put a
+                pre-ticked checkbox in front of somebody and call the result
+                consent. It is not: consent has to be an affirmative act, and
+                the CJEU said so plainly in Planet49 (C-673/17) - a pre-ticked
+                box is not valid consent under the GDPR.
+                It is also broken as an interaction. A ticked box gives the
+                person nothing to click; if they did click it, the only thing
+                it could send is a WITHDRAWAL. Re-consent would have been
+                unreachable through the control built for it. */}
             <label className="checkbox">
               <input
                 type="checkbox"
-                checked={Boolean(state?.granted)}
+                checked={Boolean(state?.granted) && !state?.stale}
                 disabled={busy === type}
                 onChange={(e) => toggle(type, e.target.checked)}
               />
@@ -97,11 +110,27 @@ export function ConsentPanel({ onChange, showRequiredOnly = false }) {
               </span>
             </label>
 
+            {/* Why they are seeing this again, in specifics. "Please review
+                and confirm again" tells somebody they have been given
+                homework; naming what they agreed to, when, and what it is now
+                tells them what changed and lets them check. */}
             {state?.stale && (
-              <p className="warning small">{t('consent.staleVersion')}</p>
+              <p className="notice small">
+                {state.recorded_at
+                  ? t('consent.staleExplained', {
+                      date: new Date(state.recorded_at).toLocaleDateString(),
+                      oldVersion: state.policy_version,
+                      newVersion: consents.current_versions?.[type] ?? '',
+                    })
+                  : t('consent.staleVersion')}
+              </p>
             )}
 
-            {state?.granted && state.recorded_at && (
+            {/* Deliberately not shown for a stale consent: a box that is empty
+                above a line reading "recorded on the 3rd" is the screen
+                contradicting itself. The date is in the explanation instead,
+                where it is doing work. */}
+            {state?.granted && !state.stale && state.recorded_at && (
               <p className="muted small indent">
                 {t('consent.recordedOn', {
                   date: new Date(state.recorded_at).toLocaleDateString(),

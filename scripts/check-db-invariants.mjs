@@ -75,6 +75,18 @@ const CHECKS = [
            where n.nspname = 'public' and p.proname = 'consume_rate_limit'`,
   },
   {
+    name: 'HAS_ACTIVE_CONSENT REQUIRES THE CURRENT POLICY VERSION',
+    why: 'It used to answer "did they ever grant this, most recently?" and ignore policy_version. So after a policy bump the gate refused entry and the panel showed an empty checkbox while the database went on accepting health-data writes under the superseded agreement. The screen said one thing, the enforcement said another, and the enforcement is the half that decides what gets stored.',
+    sql: `select position('policy_versions' in pg_get_functiondef(
+            'public.has_active_consent(text)'::regprocedure)) > 0 as ok`,
+  },
+  {
+    name: 'and it still orders by seq, not created_at',
+    why: 'now() is transaction start time, so a grant and a withdrawal written in one transaction carry identical created_at values and sort arbitrarily - which once made a withdrawal read as a grant. Migration 0010 fixed it; 0027 rewrote the same function and must not have undone it.',
+    sql: `select position('order by c.seq desc' in pg_get_functiondef(
+            'public.has_active_consent(text)'::regprocedure)) > 0 as ok`,
+  },
+  {
     name: 'the leaderboard writers are SECURITY DEFINER with a pinned search_path',
     why: 'They are the only way a leaderboard row can be written, and they carry owner rights. Definer without a pinned search_path is the classic escalation shape; definer lost on a `create or replace` is how the rate limiter failed open for a day. Asserted against the catalogue, never the migration file.',
     sql: `select bool_and(p.prosecdef and array_to_string(p.proconfig, ',') like '%search_path=%') as ok
