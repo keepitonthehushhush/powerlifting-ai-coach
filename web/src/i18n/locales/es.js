@@ -42,6 +42,11 @@ export const es = {
     newHerePrompt: '¿Eres nuevo aquí?',
     haveAccountPrompt: '¿Ya tienes una cuenta?',
     confirmEmail: 'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
+    captcha: {
+      why: 'Una comprobación rápida de que no eres un bot. Normalmente se resuelve sola.',
+      blocked:
+        'No se pudo cargar la comprobación antibots: puede que un bloqueador de anuncios, una extensión de privacidad o un filtro de red esté bloqueando challenges.cloudflare.com. Permite esa dirección, o prueba con otro navegador u otra red.',
+    },
     reset: {
       forgot: '¿Olvidaste tu contraseña?',
       forgotAction: 'Enviarme un enlace para restablecerla',

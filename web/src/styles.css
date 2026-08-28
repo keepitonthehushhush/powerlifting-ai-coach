@@ -1235,3 +1235,8 @@ form > button.primary {
   background: var(--surface-2);
   font-size: 0.9rem;
 }
+
+/* The bot check. Given breathing room above the button it gates, and a
+   min-height so the form does not jump when the widget finishes loading -
+   layout shift under a submit button is how people click the wrong thing. */
+.turnstile { display: flex; flex-direction: column; gap: 0.4rem; min-height: 70px; }

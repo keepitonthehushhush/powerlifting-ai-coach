@@ -89,8 +89,25 @@ export function AuthProvider({ children }) {
       session,
       user: session?.user ?? null,
       loading,
-      signUp: (email, password) => supabase.auth.signUp({ email, password }),
-      signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
+      /**
+       * ── WHERE captchaToken GOES IS NOT CONSISTENT ────────────────────
+       *
+       * signUp and signInWithPassword take it inside `options`.
+       * resetPasswordForEmail takes it TOP-LEVEL, alongside redirectTo.
+       *
+       * That is the library's shape, not ours - checked against
+       * @supabase/auth-js's own type definitions rather than assumed. Getting
+       * it wrong does not throw: the field is simply ignored, no token
+       * reaches Supabase, and the request is rejected as if the person failed
+       * a challenge they visibly passed. So the three call sites are written
+       * out separately here, once, rather than each form guessing.
+       *
+       * Undefined when CAPTCHA is not configured, which the SDK omits.
+       */
+      signUp: (email, password, captchaToken) =>
+        supabase.auth.signUp({ email, password, options: { captchaToken } }),
+      signIn: (email, password, captchaToken) =>
+        supabase.auth.signInWithPassword({ email, password, options: { captchaToken } }),
       /**
        * Sends the recovery email.
        *
@@ -102,9 +119,11 @@ export function AuthProvider({ children }) {
        * themselves - a hardcoded production URL would send a developer
        * testing locally to the live site.
        */
-      resetPassword: (email) =>
+      resetPassword: (email, captchaToken) =>
         supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
+          // Top-level, not inside `options`. See the note above.
+          captchaToken,
         }),
 
       /**

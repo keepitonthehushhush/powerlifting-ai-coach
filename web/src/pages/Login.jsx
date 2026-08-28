@@ -5,6 +5,8 @@ import { useI18n } from '../i18n/index.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
+import { Turnstile, resetTurnstile } from '../components/Turnstile.jsx';
+import { enabled as captchaEnabled } from '../lib/turnstile.js';
 
 export function Login() {
   const { session, signIn, signUp, resetPassword, lastSignOut } = useAuth();
@@ -12,6 +14,8 @@ export function Login() {
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaBlocked, setCaptchaBlocked] = useState(false);
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   // 'idle' | 'checking' | 'safe' | 'breached' | 'unknown'
@@ -64,8 +68,22 @@ export function Login() {
     event.preventDefault();
     setBusy(true);
     setStatus(null);
-    await resetPassword(email);
+    await resetPassword(email, captchaToken ?? undefined);
     setBusy(false);
+
+    /**
+     * The reset request is the endpoint most worth protecting and the one
+     * people forget: it is unauthenticated, it sends mail, and it costs an
+     * attacker nothing. Leaving it uncovered while guarding sign-in would
+     * protect the expensive door and leave the cheap one open.
+     *
+     * Reset the widget here too - same single-use token, same trap.
+     */
+    if (captchaEnabled()) {
+      setCaptchaToken(null);
+      resetTurnstile();
+    }
+
     // Deliberately not branching on the result. See above.
     setStatus({ kind: 'info', text: t('auth.reset.sent') });
   }
@@ -108,9 +126,25 @@ export function Login() {
     setStatus(null);
 
     const { error, data } =
-      mode === 'signup' ? await signUp(email, password) : await signIn(email, password);
+      mode === 'signup'
+        ? await signUp(email, password, captchaToken ?? undefined)
+        : await signIn(email, password, captchaToken ?? undefined);
 
     setBusy(false);
+
+    /**
+     * Reset AFTER EVERY ATTEMPT, including the failed ones.
+     *
+     * A Turnstile token is single-use. Without this, somebody who mistypes
+     * their password, is told so, corrects it and presses sign in again gets
+     * a CAPTCHA failure on a spent token - which reads as the app rejecting a
+     * password they know is right, fixable only by a page reload they have no
+     * reason to try.
+     */
+    if (captchaEnabled()) {
+      setCaptchaToken(null);
+      resetTurnstile();
+    }
 
     if (error) {
       setStatus({ kind: 'error', text: error.message });
@@ -213,10 +247,25 @@ export function Login() {
             </div>
           )}
 
+          {/* The widget sits directly above the button it gates, which is the
+              only place it reads as part of the action rather than an advert.
+              Renders nothing when no site key is configured. */}
+          <Turnstile onToken={setCaptchaToken} onUnavailable={() => setCaptchaBlocked(true)} />
+
+          {captchaBlocked && (
+            <p className="error">{t('auth.captcha.blocked')}</p>
+          )}
+
           <button
             type="submit"
             className="primary"
-            disabled={busy || (isSignUp && (!policy.ok || breach.status === 'breached'))}
+            disabled={
+              busy ||
+              (isSignUp && (!policy.ok || breach.status === 'breached')) ||
+              // Disabled rather than allowed-and-rejected. Pressing a button
+              // that is certain to fail teaches people the app is unreliable.
+              (captchaEnabled() && !captchaBlocked && !captchaToken)
+            }
           >
             {busy
               ? t('common.working')

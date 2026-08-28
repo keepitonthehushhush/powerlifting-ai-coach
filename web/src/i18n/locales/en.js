@@ -40,6 +40,11 @@ export const en = {
     newHerePrompt: 'New here?',
     haveAccountPrompt: 'Already have an account?',
     confirmEmail: 'Check your email to confirm your account, then sign in.',
+    captcha: {
+      why: 'A quick check that you are not a bot. It usually resolves on its own.',
+      blocked:
+        'The bot check could not load — an ad blocker, a privacy extension or a network filter may be blocking challenges.cloudflare.com. Allow that address, or try a different browser or network.',
+    },
     reset: {
       forgot: 'Forgot your password?',
       forgotAction: 'Email me a reset link',

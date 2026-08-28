@@ -165,7 +165,15 @@ describe('the reset path is held to the same rules as sign-up', () => {
     // is deliberately not branched on at all.
     const handler = login.slice(login.indexOf('async function handleReset'));
     const body = handler.slice(0, handler.indexOf('async function handleSubmit'));
-    assert.match(body, /await resetPassword\(email\);/);
+    // Asserted as BEHAVIOUR, not as the literal call. This used to pin
+    // `await resetPassword(email);` exactly, and adding a captcha token as a
+    // second argument - a change that does not touch enumeration at all -
+    // failed it. A test that pins the call text stops the code changing rather
+    // than protecting the property; the property is "the result is never
+    // looked at".
+    assert.match(body, /await resetPassword\(/);
+    assert.doesNotMatch(body, /(const|let)\s*\{[^}]*\}\s*=\s*await resetPassword/,
+      'the reset request destructures the result, which is the first step to leaking it');
     assert.doesNotMatch(body, /if \(error/, 'the reset request branches on the result');
     assert.doesNotMatch(body, /error\.message/, 'a provider error reaches the screen');
     assert.match(body, /t\('auth\.reset\.sent'\)/);
