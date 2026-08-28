@@ -1,4 +1,4 @@
-import { HttpError } from './httpError.js';
+import { codedError } from './errorCodes.js';
 
 /**
  * Read the calling user's subscription row.
@@ -31,6 +31,6 @@ import { HttpError } from './httpError.js';
  */
 export async function loadSubscription(supabase) {
   const { data, error } = await supabase.from('subscriptions').select('*').maybeSingle();
-  if (error) throw new HttpError(502, 'Could not read your subscription.', { code: error.code });
+  if (error) throw codedError('storage_unavailable', 'Could not read your subscription.', { cause: error.code });
   return data ?? null;
 }

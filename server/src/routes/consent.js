@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
 import {
   CONSENT_TYPES,
@@ -39,7 +39,7 @@ consentRouter.get('/', async (req, res, next) => {
       .select('consent_type, granted, policy_version, created_at, seq')
       .order('seq', { ascending: false });
 
-    if (error) throw new HttpError(502, 'Could not load your consent records.');
+    if (error) throw codedError('storage_unavailable', 'Could not load your consent records.');
 
     // Rows arrive ordered by seq descending, so the first occurrence of each
     // type is its current state. See migration 0010 for why not created_at.
@@ -67,7 +67,7 @@ consentRouter.post('/', async (req, res, next) => {
   try {
     const parsed = ConsentRequest.safeParse(req.body);
     if (!parsed.success) {
-      throw new HttpError(400, 'Invalid consent request.', parsed.error.flatten().fieldErrors);
+      throw codedError('invalid_request', 'Invalid consent request.', { fields: parsed.error.flatten().fieldErrors });
     }
     const { consent_type: consentType, granted } = parsed.data;
 
@@ -82,7 +82,7 @@ consentRouter.post('/', async (req, res, next) => {
       .select('consent_type, granted, policy_version, created_at')
       .single();
 
-    if (error) throw new HttpError(502, 'Could not record your decision.', { code: error.code });
+    if (error) throw codedError('storage_unavailable', 'Could not record your decision.', { cause: error.code });
 
     // Withdrawing health data consent must also stop the data being held.
     // Leaving it stored while recording that permission was withdrawn is the
@@ -111,8 +111,8 @@ consentRouter.post('/', async (req, res, next) => {
           userId: req.user.id,
           code: clearError.code,
         });
-        throw new HttpError(
-          502,
+        throw codedError(
+          'withdrawal_incomplete',
           'Your withdrawal was recorded but the stored health information could not be removed. Please contact support.'
         );
       }
@@ -143,7 +143,7 @@ consentRouter.get('/history', async (req, res, next) => {
       .order('seq', { ascending: false })
       .limit(200);
 
-    if (error) throw new HttpError(502, 'Could not load your consent history.');
+    if (error) throw codedError('storage_unavailable', 'Could not load your consent history.');
     res.json({ history: data ?? [] });
   } catch (err) {
     next(err);

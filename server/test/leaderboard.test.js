@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { ERROR_CODES } from '../src/lib/errorCodes.js';
 import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
 import { rankEntries, toKg, fromKg, BOARDS } from '../src/lib/leaderboard.js';
 import { canonicalLift } from '../src/lib/progression.js';
@@ -98,7 +99,11 @@ describe('leaving is a delete, not a flag', () => {
     // Publishing somebody under an email or a uuid must not be reachable by
     // accident.
     assert.match(migration, /raise exception 'display_name_required'/);
-    assert.match(route, /code: 'display_name_required'/);
+    // The route no longer invents a per-site code string: the KIND is
+    // precondition_missing and the thing still missing travels beside it, so
+    // the client can act on either.
+    assert.match(route, /codedError\('precondition_missing'[\s\S]{0,140}needs: 'display_name'/);
+    assert.equal(ERROR_CODES.precondition_missing.status, 400);
   });
 });
 

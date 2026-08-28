@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { ERROR_CODES } from '../src/lib/errorCodes.js';
 import { readProfileApi } from './helpers/source.js';
 
 import { evaluateAgeGate, ageInYears, MINIMUM_AGE } from '../src/lib/ageGate.js';
@@ -82,7 +83,12 @@ describe('the gate is enforced where it counts', () => {
   test('the API checks it, not only the form', () => {
     // The form is not the control. Anyone can POST to this route.
     assert.match(route, /evaluateAgeGate/);
-    assert.match(route, /403/);
+    // Through the registry, not by matching "403" in the source. The literal
+    // moved into errorCodes.js and this test failed on a change that made the
+    // status MORE reliable, which is the shape of a test asserting text
+    // instead of behaviour - the sixth in this repository.
+    assert.match(route, /codedError\(\s*'age_restricted'/);
+    assert.equal(ERROR_CODES.age_restricted.status, 403);
   });
 
   test('it fires on health fields rather than on every write', () => {

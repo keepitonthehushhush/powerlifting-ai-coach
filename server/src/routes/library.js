@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 
 export const libraryRouter = Router();
 
@@ -18,7 +18,7 @@ libraryRouter.get('/', async (req, res, next) => {
       .select('slug, name, category, cues, common_faults, video_url, video_source')
       .order('category')
       .order('name');
-    if (error) throw new HttpError(502, 'Could not load the exercise library.');
+    if (error) throw codedError('storage_unavailable', 'Could not load the exercise library.');
     res.json({ exercises: data ?? [] });
   } catch (err) {
     next(err);

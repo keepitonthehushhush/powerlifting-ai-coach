@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
-import { api } from '../lib/api.js';
+import { api, errorText } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 
 export function Chat() {
@@ -59,7 +59,10 @@ export function Chat() {
       setDraft(text);
       // 429 gets a purpose-written message; the server's own text is used
       // otherwise, since it is more specific than anything generic here.
-      setError(err.status === 429 ? err.message || t('chat.rateLimited') : err.message);
+      // errorText appends the quotable code on a 5xx and nothing on a 4xx.
+      // The rate-limit message from the server already says when the window
+      // resets, which is more use than the generic string.
+      setError(err.status === 429 ? err.message || t('chat.rateLimited') : errorText(err));
     } finally {
       setBusy(false);
     }

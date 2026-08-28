@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 import { computeAchievements } from '../lib/achievements.js';
 
 export const achievementsRouter = Router();
@@ -22,7 +22,7 @@ achievementsRouter.get('/', async (req, res, next) => {
       req.supabase.from('progress_logs').select('date, lift, weight, reps, completed'),
       req.supabase.from('user_profile').select('units').maybeSingle(),
     ]);
-    if (error) throw new HttpError(502, 'Could not load your training history.', { code: error.code });
+    if (error) throw codedError('storage_unavailable', 'Could not load your training history.', { cause: error.code });
 
     res.json({ achievements: computeAchievements({ logs: logs ?? [], profile }) });
   } catch (err) {

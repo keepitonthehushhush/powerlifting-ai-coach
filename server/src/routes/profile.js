@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
 import { evaluateAgeGate, MINIMUM_AGE } from '../lib/ageGate.js';
 import { ProfileUpdate, describeValidationFailure } from '../lib/profileSchema.js';
@@ -11,7 +11,7 @@ profileRouter.get('/', async (req, res, next) => {
   try {
     // No .eq('user_id', ...) needed - RLS restricts this to the caller's row.
     const { data, error } = await req.supabase.from('user_profile').select('*').maybeSingle();
-    if (error) throw new HttpError(502, 'Could not load your profile.');
+    if (error) throw codedError('storage_unavailable', 'Could not load your profile.');
     res.json({ profile: data });
   } catch (err) {
     next(err);
@@ -28,7 +28,7 @@ profileRouter.put('/', async (req, res, next) => {
       // schema in lib/profileSchema.js - next to the rules it is describing,
       // and where a test can run it instead of reading it.
       const failure = describeValidationFailure(parsed.error);
-      throw new HttpError(400, failure.message, { code: 'invalid_profile', ...failure.details });
+      throw codedError('invalid_profile', failure.message, failure.details);
     }
 
     // Health data may not be collected from a minor, because no consent path
@@ -76,7 +76,7 @@ profileRouter.put('/', async (req, res, next) => {
               ? 'That date of birth does not look right — please check it.'
               : 'Please add your date of birth before entering health or lifestyle information.';
 
-        throw new HttpError(403, message, { code: `age_gate_${gate.reason}` });
+        throw codedError('age_restricted', message, { reason: gate.reason });
       }
     }
 
@@ -113,14 +113,14 @@ profileRouter.put('/', async (req, res, next) => {
       // The database is the enforcement point; this only turns its refusal
       // into something a client can act on.
       if (error.code === '23514' && /consent/i.test(error.message ?? '')) {
-        throw new HttpError(
-          403,
+        throw codedError(
+          'consent_required',
           'Injury and health information cannot be saved until you have given consent for it. ' +
             'Record consent first, or leave the health field blank.',
           { requires_consent: 'health_data_collection' }
         );
       }
-      throw new HttpError(502, 'Could not save your profile.', { code: error.code });
+      throw codedError('storage_unavailable', 'Could not save your profile.', { cause: error.code });
     }
 
     // Which fields were touched, never their values - health_restrictions is

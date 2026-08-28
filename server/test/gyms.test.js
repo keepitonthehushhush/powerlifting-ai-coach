@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { ERROR_CODES } from '../src/lib/errorCodes.js';
 import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
 import { GYM_PROFILES, GYM_SLUGS, barbellAccess, gymNotes } from '../src/lib/gyms.js';
 import { describeGymContext, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
@@ -224,7 +225,8 @@ describe('the adult gate', () => {
     // past one takes a single open tab.
     assert.match(chat, /const adult = adultGateDecision\(context\.profile\)/);
     assert.match(chat, /if \(!adult\.allowed\)/);
-    assert.match(chat, /throw new HttpError\(\s*403/);
+    assert.match(chat, /throw codedError\(\s*'age_restricted'/);
+    assert.equal(ERROR_CODES.age_restricted.status, 403);
   });
 
   test('it costs no extra query', () => {

@@ -1,5 +1,5 @@
-import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
+import { codedError } from '../lib/errorCodes.js';
 
 /**
  * Per-user rate limiting, enforced in Postgres.
@@ -72,8 +72,8 @@ export function rateLimit(bucket) {
         res.set('Retry-After', String(resetSeconds));
         logger.warn('ratelimit.exceeded', { userId: req.user?.id, bucket, used, quota });
 
-        throw new HttpError(
-          429,
+        throw codedError(
+          'rate_limited',
           `You have reached the limit of ${quota} requests for this window. ` +
             `It resets in ${Math.ceil(resetSeconds / 60)} minute(s).`
         );

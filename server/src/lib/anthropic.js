@@ -40,6 +40,28 @@ export async function createCoachReply(system, messages) {
     text,
     usage: response.usage,
     stopReason: response.stop_reason,
+    /**
+     * ── WHY THESE TWO ARE RETURNED ────────────────────────────────────────
+     *
+     * A reply came back with no text and the route threw "The coach returned
+     * an empty response", which is a description of the symptom and contains
+     * no information. The response was carrying the reason the whole time and
+     * this function dropped it on the floor.
+     *
+     * `stop_reason: "refusal"` arrives as a normal HTTP 200 with no usable
+     * text - Anthropic's safety classifiers return it that way deliberately -
+     * so a refusal and a genuine blank are indistinguishable downstream unless
+     * the stop reason travels with them. `stop_details` names the policy
+     * category when there is one.
+     *
+     * `blockTypes` is the other half: it separates "the model said nothing"
+     * from "the model produced only blocks we do not read", which is what a
+     * truncated response looks like when the tokens went somewhere other than
+     * text. Types only - never the contents, which is the athlete's
+     * conversation.
+     */
+    stopDetails: response.stop_details ?? null,
+    blockTypes: response.content.map((block) => block.type),
     model: response.model,
   };
 }

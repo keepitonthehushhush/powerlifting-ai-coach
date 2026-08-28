@@ -1,4 +1,5 @@
 import { createUserScopedClient } from '../lib/supabase.js';
+import { displayCode } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -26,6 +27,11 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({
       error: 'unauthorized',
       message: 'Missing Bearer token.',
+      // ONE code for both 401 paths, on purpose. The vagueness below is a
+      // security decision - telling a caller whether a token was expired,
+      // malformed or revoked tells an attacker which knob to turn - and a
+      // shared code keeps that property while still making 401s countable.
+      details: { code: 'auth_required', errorCode: displayCode('auth_required') },
     });
   }
 
@@ -41,6 +47,7 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({
         error: 'unauthorized',
         message: 'Invalid or expired session.',
+        details: { code: 'auth_required', errorCode: displayCode('auth_required') },
       });
     }
 

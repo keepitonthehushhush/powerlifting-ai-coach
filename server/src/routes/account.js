@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { logger } from '../lib/logger.js';
 
@@ -24,7 +24,7 @@ accountRouter.get('/activity', async (req, res, next) => {
       .select('action, actor, detail, created_at')
       .order('seq', { ascending: false })
       .limit(100);
-    if (error) throw new HttpError(502, 'Could not load your activity.', { code: error.code });
+    if (error) throw codedError('storage_unavailable', 'Could not load your activity.', { cause: error.code });
     res.json({ events: data ?? [] });
   } catch (err) {
     next(err);
@@ -84,7 +84,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
     ]);
 
     for (const result of [profile, programs, sessions, logs, conversations, consents, usage, subscription]) {
-      if (result.error) throw new HttpError(502, 'Could not assemble your data export.');
+      if (result.error) throw codedError('storage_unavailable', 'Could not assemble your data export.');
     }
 
     const exportDocument = {
@@ -171,9 +171,10 @@ accountRouter.delete('/', async (req, res, next) => {
   try {
     const parsed = DeleteRequest.safeParse(req.body);
     if (!parsed.success) {
-      throw new HttpError(
-        400,
-        'Account deletion requires an explicit confirmation. Send { "confirm": "DELETE MY ACCOUNT" }.'
+      throw codedError(
+        'precondition_missing',
+        'Account deletion requires an explicit confirmation. Send { "confirm": "DELETE MY ACCOUNT" }.',
+        { needs: 'typed_confirmation' }
       );
     }
 
@@ -200,7 +201,7 @@ accountRouter.delete('/', async (req, res, next) => {
     }
 
     const { error } = await req.supabase.rpc('delete_my_account');
-    if (error) throw new HttpError(502, 'Could not delete the account.', { code: error.code });
+    if (error) throw codedError('storage_unavailable', 'Could not delete the account.', { cause: error.code });
 
     logger.info('account.deleted', { userId: req.user.id });
 

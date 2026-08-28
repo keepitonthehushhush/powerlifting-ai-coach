@@ -19,7 +19,33 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
     this.details = body?.details;
+    /** The stable key, for code that branches. See server/src/lib/errorCodes.js. */
+    this.code = body?.details?.code ?? null;
+    /** The quotable form, CD-00N, for a person. */
+    this.errorCode = body?.details?.errorCode ?? null;
   }
+}
+
+/**
+ * What to put on the screen.
+ *
+ * ── WHY THE CODE IS NOT ALWAYS SHOWN ──────────────────────────────────────
+ *
+ * A code beside "that message is too long" is clutter: the sentence is
+ * actionable on its own and the athlete has nothing to report. A code beside
+ * "the coach is unreachable" is the whole point - it is the difference between
+ * a support message that says "it broke" and one that says "CD-004", which can
+ * be counted, grouped and looked up.
+ *
+ * So: 5xx only. Something on our side went wrong and somebody may need to tell
+ * us about it. Under 500 the athlete can fix it themselves and the code would
+ * only make them feel they had hit a bug.
+ */
+export function errorText(error) {
+  const message = error?.message ?? 'Something went wrong.';
+  const code = error?.errorCode;
+  if (!code || !(error?.status >= 500)) return message;
+  return `${message} (${code})`;
 }
 
 /**

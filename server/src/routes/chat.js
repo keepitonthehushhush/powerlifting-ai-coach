@@ -8,7 +8,13 @@ import { adultGateDecision, MINIMUM_AGE } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
 import { prescribeAll } from '../lib/progression.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
+import {
+  describeCoachReply,
+  coachError,
+  coachApiError,
+  TRUNCATION_NOTICE,
+} from '../lib/coachOutcome.js';
 import { entitlement, requiresSubscription, PAID_FEATURE } from '../lib/entitlement.js';
 import { loadSubscription } from '../lib/subscriptions.js';
 import { logger } from '../lib/logger.js';
@@ -40,7 +46,7 @@ async function loadCoachingContext(supabase) {
   ]);
 
   for (const result of [profile, sessions, logs, program, library]) {
-    if (result.error) throw new HttpError(502, 'Could not load your training data.', { code: result.error.code });
+    if (result.error) throw codedError('storage_unavailable', 'Could not load your training data.', { cause: result.error.code });
   }
 
   return {
@@ -60,11 +66,11 @@ async function loadOrCreateConversation(supabase, conversationId) {
       .select('id, messages')
       .eq('id', conversationId)
       .maybeSingle();
-    if (error) throw new HttpError(502, 'Could not load the conversation.');
+    if (error) throw codedError('storage_unavailable', 'Could not load the conversation.');
     // A conversation belonging to somebody else is invisible to this client
     // thanks to RLS, so "not found" and "not yours" are indistinguishable here
     // by design - there is no way to probe for another user's conversation ids.
-    if (!data) throw new HttpError(404, 'Conversation not found.');
+    if (!data) throw codedError('not_found', 'Conversation not found.');
     return data;
   }
 
@@ -75,7 +81,7 @@ async function loadOrCreateConversation(supabase, conversationId) {
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (findError) throw new HttpError(502, 'Could not load the conversation.');
+  if (findError) throw codedError('storage_unavailable', 'Could not load the conversation.');
   if (existing) return existing;
 
   // No user_id here, deliberately, and it is the same premise as the reads
@@ -88,7 +94,7 @@ async function loadOrCreateConversation(supabase, conversationId) {
     .insert({ title: 'Coaching' })
     .select('id, messages')
     .single();
-  if (createError) throw new HttpError(502, 'Could not start a conversation.');
+  if (createError) throw codedError('storage_unavailable', 'Could not start a conversation.');
   return created;
 }
 
@@ -111,13 +117,13 @@ chatRouter.post('/', async (req, res, next) => {
       // as the app being broken - which is exactly how it was reported.
       const length = typeof req.body?.message === 'string' ? req.body.message.length : null;
       if (length !== null && length > config.chat.maxMessageLength) {
-        throw new HttpError(
-          400,
+        throw codedError(
+          'message_too_long',
           `That message is ${length.toLocaleString()} characters and the limit is ${config.chat.maxMessageLength.toLocaleString()}. Send it in a couple of parts and the coach will keep the context.`,
-          { code: 'message_too_long', limit: config.chat.maxMessageLength, length }
+          { limit: config.chat.maxMessageLength, length }
         );
       }
-      throw new HttpError(400, 'Invalid request.', parsed.error.flatten().fieldErrors);
+      throw codedError('invalid_request', 'Invalid request.', { fields: parsed.error.flatten().fieldErrors });
     }
     const { message, conversationId } = parsed.data;
 
@@ -161,8 +167,8 @@ chatRouter.post('/', async (req, res, next) => {
       // Never log the date or the computed age. The reason code is what makes
       // this diagnosable, and it is all anybody needs.
       logger.warn('chat.refused_not_adult', { userId: req.user.id, reason: adult.reason });
-      throw new HttpError(
-        403,
+      throw codedError(
+        'age_restricted',
         adult.reason === 'too_young'
           ? `Coach Diaz is only for people aged ${MINIMUM_AGE} and over. We have not built a way for a parent or guardian to consent on a younger person's behalf, and until we have, we are not going to coach anyone under ${MINIMUM_AGE}. Nothing you have entered has been deleted.`
           : 'Please add your date of birth on the profile page before talking to Coach.',
@@ -194,12 +200,12 @@ chatRouter.post('/', async (req, res, next) => {
       });
       if (!decision.entitled) {
         logger.info('chat.refused_no_subscription', { userId: req.user.id, reason: decision.reason });
-        throw new HttpError(
-          402,
+        throw codedError(
+          'payment_required',
           decision.reason === 'lapsed'
             ? 'Your subscription has ended, so the coaching conversations are paused. Everything else - your logs, your charts, your programme - is still here and still free. You can restart the subscription from your account page.'
             : 'Coaching conversations are part of the subscription. Your logs, charts, programme and the exercise library stay free. You can subscribe from your account page.',
-          { code: 'subscription_required', reason: decision.reason }
+          { reason: decision.reason }
         );
       }
     }
@@ -217,15 +223,61 @@ chatRouter.post('/', async (req, res, next) => {
     // Blocks, not a string: the first carries the cache breakpoint. See
     // buildSystemBlocks() for why the breakpoint sits where it does.
     const system = buildSystemBlocks(context);
-    const reply = await createCoachReply(system, apiMessages);
+    /**
+     * ── ONE RETRY, AND ONLY FOR THE CASE WHERE IT CAN HELP ────────────────
+     *
+     * A genuinely empty completion is usually transient, and telling somebody
+     * to press send again is asking them to do by hand what we can do in
+     * 900ms. A refusal is not transient - the same words refuse again - and
+     * retrying one would double the cost of every refusal for no benefit, so
+     * `outcome.retry` decides rather than a loop counter.
+     *
+     * Exactly one retry. Two is a pattern that turns a bad afternoon at the
+     * API into a bill.
+     */
+    // The SDK throwing is a different failure from the SDK returning
+    // something unusable, and until now it had no handling at all: it became a
+    // generic 500, indistinguishable from a bug of ours.
+    const ask = async () => {
+      try {
+        return await createCoachReply(system, apiMessages);
+      } catch (err) {
+        logger.error('coach.call_failed', {
+          userId: req.user.id,
+          name: err?.name,
+          upstreamStatus: err?.status ?? null,
+        });
+        throw coachApiError(err);
+      }
+    };
 
-    if (!reply.text) throw new HttpError(502, 'The coach returned an empty response. Please try again.');
+    let reply = await ask();
+    let outcome = describeCoachReply(reply);
+
+    if (!outcome.ok && outcome.retry) {
+      logger.warn('coach.reply_unusable', { userId: req.user.id, attempt: 1, ...outcome.log });
+      reply = await ask();
+      outcome = describeCoachReply(reply);
+    }
+
+    if (!outcome.ok) {
+      logger.error('coach.reply_unusable', { userId: req.user.id, attempt: 2, ...outcome.log });
+      throw coachError(outcome);
+    }
+
+    if (outcome.truncated) {
+      logger.warn('coach.reply_truncated', { userId: req.user.id, ...outcome.log });
+    }
 
     // Split the machine-readable copy of the program off the prose before
     // anything else touches the text. The athlete never sees the block, and it
     // is stripped whether or not it parsed - a visible chunk of JSON is a
     // worse failure than a missing record.
-    const { reply: replyText, program, problem } = extractProgramBlock(reply.text);
+    const { reply: extracted, program, problem } = extractProgramBlock(reply.text);
+
+    // Appended after the block is stripped, so the notice is never mistaken
+    // for part of the program and never lands inside the JSON.
+    const replyText = outcome.truncated ? `${extracted}${TRUNCATION_NOTICE}` : extracted;
     if (problem) logger.warn('program.block_unusable', { userId: req.user.id, problem });
 
     /**
@@ -258,7 +310,7 @@ chatRouter.post('/', async (req, res, next) => {
       .from('conversations')
       .update({ messages: updated })
       .eq('id', conversation.id);
-    if (saveError) throw new HttpError(502, 'Reply generated but could not be saved.');
+    if (saveError) throw codedError('reply_not_saved', 'Reply generated but could not be saved.');
 
     const costMicrodollars = costInMicrodollars(reply.usage, reply.model);
 
@@ -396,7 +448,7 @@ chatRouter.get('/conversation', async (req, res, next) => {
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) throw new HttpError(502, 'Could not load the conversation.');
+    if (error) throw codedError('storage_unavailable', 'Could not load the conversation.');
 
     // The limit travels with the conversation so the client never hardcodes
     // its own copy. CHAT_MAX_MESSAGE_LENGTH is a deploy variable; a duplicated

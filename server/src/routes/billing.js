@@ -1,9 +1,9 @@
 import { Router } from 'express';
+import { codedError } from '../lib/errorCodes.js';
 import { config } from '../config.js';
 import { stripeClient, billingUnavailableReason } from '../lib/stripe.js';
 import { entitlement } from '../lib/entitlement.js';
 import { loadSubscription } from '../lib/subscriptions.js';
-import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -99,7 +99,7 @@ billingRouter.get('/status', async (req, res, next) => {
 billingRouter.post('/checkout', async (req, res, next) => {
   try {
     const unavailable = billingUnavailableReason();
-    if (unavailable) throw new HttpError(503, 'Subscriptions are not available yet.', { code: unavailable });
+    if (unavailable) throw codedError('billing_unavailable', 'Subscriptions are not available yet.', { missing: unavailable });
 
     const stripe = await stripeClient();
     const existing = await loadSubscription(req.supabase);
@@ -108,7 +108,7 @@ billingRouter.post('/checkout', async (req, res, next) => {
     // subscription by pressing the button twice or opening two tabs. Stripe
     // would happily create it and then charge them for both.
     if (entitlement(existing).entitled) {
-      throw new HttpError(409, 'You already have an active subscription.', { code: 'already_subscribed' });
+      throw codedError('already_subscribed', 'You already have an active subscription.');
     }
 
     const origin = req.get('origin') || config.stripe.portalReturnUrl || '';
@@ -172,11 +172,11 @@ billingRouter.post('/checkout', async (req, res, next) => {
 billingRouter.post('/portal', async (req, res, next) => {
   try {
     const unavailable = billingUnavailableReason();
-    if (unavailable) throw new HttpError(503, 'Subscriptions are not available yet.', { code: unavailable });
+    if (unavailable) throw codedError('billing_unavailable', 'Subscriptions are not available yet.', { missing: unavailable });
 
     const subscription = await loadSubscription(req.supabase);
     if (!subscription?.stripe_customer_id) {
-      throw new HttpError(404, 'There is no subscription on this account yet.', { code: 'no_customer' });
+      throw codedError('not_found', 'There is no subscription on this account yet.', { subject: 'subscription' });
     }
 
     const stripe = await stripeClient();

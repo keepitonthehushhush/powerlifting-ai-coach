@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
 
 export const sessionsRouter = Router();
@@ -30,7 +30,7 @@ sessionsRouter.get('/', async (req, res, next) => {
       .select('*')
       .order('date', { ascending: false })
       .limit(limit);
-    if (error) throw new HttpError(502, 'Could not load your sessions.');
+    if (error) throw codedError('storage_unavailable', 'Could not load your sessions.');
     res.json({ sessions: data ?? [] });
   } catch (err) {
     next(err);
@@ -57,7 +57,7 @@ sessionsRouter.post('/', async (req, res, next) => {
   try {
     const parsed = SessionCreate.safeParse(req.body);
     if (!parsed.success) {
-      throw new HttpError(400, 'Invalid session data.', parsed.error.flatten().fieldErrors);
+      throw codedError('invalid_request', 'Invalid session data.', { fields: parsed.error.flatten().fieldErrors });
     }
     const { program_id, date, exercises, notes } = parsed.data;
 
@@ -73,7 +73,7 @@ sessionsRouter.post('/', async (req, res, next) => {
       .select('*')
       .single();
 
-    if (sessionError) throw new HttpError(502, 'Could not save the session.', { code: sessionError.code });
+    if (sessionError) throw codedError('storage_unavailable', 'Could not save the session.', { cause: sessionError.code });
 
     const logRows = exercises
       .filter((e) => e.weight != null && e.reps != null)
@@ -129,7 +129,7 @@ sessionsRouter.get('/progress', async (req, res, next) => {
     if (req.query.lift) query = query.eq('lift', String(req.query.lift));
 
     const { data, error } = await query;
-    if (error) throw new HttpError(502, 'Could not load progress data.');
+    if (error) throw codedError('storage_unavailable', 'Could not load progress data.');
     res.json({ logs: data ?? [] });
   } catch (err) {
     next(err);

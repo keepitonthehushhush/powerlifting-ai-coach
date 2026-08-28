@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { ERROR_CODES } from '../src/lib/errorCodes.js';
 import { readSource, readRaw, phrase } from './helpers/source.js';
 import { buildConfig } from '../src/lib/env.js';
 import { entitlement, requiresSubscription, PAID_FEATURE } from '../src/lib/entitlement.js';
@@ -149,8 +150,10 @@ describe('what the paywall actually gates', () => {
   });
 
   test('it answers 402, which is the status that means what happened', () => {
-    assert.match(chat, /402/);
-    assert.match(chat, /code: 'subscription_required'/);
+    assert.match(chat, /codedError\(\s*'payment_required'/);
+    // 402 is asserted where it is now decided. A status pinned in two places
+    // is a status that can disagree with itself.
+    assert.equal(ERROR_CODES.payment_required.status, 402);
   });
 
   test('and the refusal tells them what they still have', () => {

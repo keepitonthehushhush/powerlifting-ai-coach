@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HttpError } from '../lib/httpError.js';
+import { codedError } from '../lib/errorCodes.js';
 import { rankEntries } from '../lib/leaderboard.js';
 
 export const leaderboardRouter = Router();
@@ -22,7 +22,7 @@ leaderboardRouter.get('/', async (req, res, next) => {
     const { data, error } = await req.supabase
       .from('leaderboard_entries')
       .select('display_name, best_squat, best_bench, best_deadlift, units, updated_at');
-    if (error) throw new HttpError(502, 'Could not load the leaderboard.', { code: error.code });
+    if (error) throw codedError('storage_unavailable', 'Could not load the leaderboard.', { cause: error.code });
 
     const { data: profile } = await req.supabase
       .from('user_profile')
@@ -55,15 +55,15 @@ leaderboardRouter.get('/', async (req, res, next) => {
 leaderboardRouter.put('/opt-in', async (req, res, next) => {
   try {
     const optIn = req.body?.optIn;
-    if (typeof optIn !== 'boolean') throw new HttpError(400, 'Invalid request.', { code: 'opt_in_required' });
+    if (typeof optIn !== 'boolean') throw codedError('invalid_request', 'Invalid request.', { field: 'opt_in' });
 
     const { error } = await req.supabase.rpc('set_leaderboard_opt_in', { opt_in: optIn });
     if (error) {
       // The one failure a person can act on, so it gets its own answer rather
       // than a 502 that reads as the app being broken.
       if (/display_name_required/.test(error.message ?? '')) {
-        throw new HttpError(400, 'Choose a display name before joining the leaderboard.', {
-          code: 'display_name_required',
+        throw codedError('precondition_missing', 'Choose a display name before joining the leaderboard.', {
+          needs: 'display_name',
         });
       }
       // The database refuses to publish without an active, current consent
@@ -72,11 +72,11 @@ leaderboardRouter.put('/opt-in', async (req, res, next) => {
       // loading and the button being pressed - both of which deserve a
       // sentence rather than a 502.
       if (/leaderboard_consent_required/.test(error.message ?? '')) {
-        throw new HttpError(400, 'Agree to the leaderboard terms before joining.', {
-          code: 'leaderboard_consent_required',
+        throw codedError('precondition_missing', 'Agree to the leaderboard terms before joining.', {
+          needs: 'leaderboard_consent',
         });
       }
-      throw new HttpError(502, 'Could not update your leaderboard setting.', { code: error.code });
+      throw codedError('storage_unavailable', 'Could not update your leaderboard setting.', { cause: error.code });
     }
 
     res.json({ optIn });
