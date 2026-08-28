@@ -182,6 +182,83 @@ describe('the FAQ', () => {
     assert.match(faq, phrase('you will eventually need a barbell'));
   });
 
+  /**
+   * ── THE COMPARISON ANSWERS ──────────────────────────────────────────────
+   *
+   * "Why would I use this when I already pay for an AI, or my ring has a
+   * coach in it?" is the question that decides whether somebody signs up, and
+   * the page did not answer it. It does now, which means the page has become
+   * marketing - and marketing is where a product that has been careful about
+   * every other claim starts making sloppy ones about somebody else's.
+   *
+   * These assertions are the guard rails for that.
+   */
+  describe('it says why to use this rather than the alternatives', () => {
+    test('it answers all three versions of the question', () => {
+      for (const fragment of [
+        'Why use this when I already pay for ChatGPT or Claude?',
+        'My watch or ring already has an AI coach. Is this the same thing?',
+        'What about the dedicated powerlifting apps?',
+        'Should I use this instead of a real coach?',
+      ]) {
+        assert.ok(faq.includes(fragment), `the FAQ does not answer: ${fragment}`);
+      }
+    });
+
+    test('EVERY COMPARISON NAMES SOMEBODY WHO SHOULD USE THE OTHER THING', () => {
+      // A comparison with no such case is an advertisement. Each of these is
+      // a real concession, and losing one would be the first sign this page
+      // had drifted from honest into promotional.
+      assert.match(faq, phrase('a general AI is a fine sounding board and you are already paying for it'));
+      assert.match(faq, phrase('you should probably use it'));
+      assert.match(faq, phrase('not if you have a good one and can afford them'));
+      assert.match(faq, phrase('Nothing here competes with that'));
+    });
+
+    test('the claim about other AI is sourced, not asserted', () => {
+      // Numbers about somebody else's product, with no citation, are the exact
+      // thing this page would be criticised for. The study is linked.
+      assert.match(faq, /link\.springer\.com\/article\/10\.1186\/s13102-025-01409-7/);
+      assert.match(faq, phrase('Seven strength-and-conditioning experts'));
+      assert.match(faq, phrase('fifteen repetitions at 85% of maximum'));
+    });
+
+    test('AND A COMPETITOR PRICE CARRIES THE DATE IT WAS CHECKED', () => {
+      // Prices move. A dated figure that has gone stale reads as stale; an
+      // undated one reads as a lie. Any dollar amount on this page has to say
+      // when it was true.
+      const amounts = [...faq.matchAll(/\$\d[\d.,]*/g)].map((m) => m[0]);
+      assert.ok(amounts.length > 0, 'the comparison quotes no price at all - has the answer changed?');
+      for (const amount of amounts) {
+        const at = faq.indexOf(amount);
+        const sentence = faq.slice(at, at + 240);
+        assert.match(
+          sentence,
+          /when this answer was written, in [A-Z][a-z]+ \d{4}/,
+          `${amount} is quoted with no date - it will be wrong and nothing will say so`
+        );
+      }
+    });
+
+    test('and it earns nothing from any of it', () => {
+      // The same rule the equipment answer states, applied to the one place a
+      // comparison page would be tempted to break it.
+      //
+      // faqCode, not faq: this is an ABSENCE assertion, and the page carries a
+      // comment saying there are no affiliate links, which the raw text
+      // matches. Sixth time. readSource exists for exactly this.
+      assert.doesNotMatch(faqCode, /amazon\.|amzn\.|\?tag=|affiliate|utm_|\?ref=/i);
+    });
+
+    test('it does not claim a capability the product does not have', () => {
+      // Wearable integration does not exist. Saying so is the difference
+      // between a roadmap and a lie, and this page is read by people deciding
+      // whether to trust the rest of it.
+      assert.match(faq, phrase('Coach Diaz cannot read your wearable'));
+      assert.match(faq, phrase('on the list, not in the product'));
+    });
+  });
+
   test('it states that no equipment recommendation earns us anything', () => {
     assert.match(faq, phrase('We do not earn anything'));
     assert.match(faq, phrase('no shopping links anywhere in the app'));

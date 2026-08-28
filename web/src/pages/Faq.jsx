@@ -118,6 +118,118 @@ export function Faq() {
           you will not try.
         </p>
 
+        {/*
+          ── THE COMPARISON ANSWERS ──────────────────────────────────────────
+
+          "Why would I use this when I already pay for an AI, or my ring
+          already has a coach in it?" is the question that decides whether
+          somebody signs up, and it was not answered anywhere.
+
+          Three rules for this section, because a comparison page is where
+          products start lying:
+
+          1. Every claim about somebody else's product is sourced and dated,
+             and describes what it DOES rather than what it fails at. Prices
+             move; the one below carries the month it was checked so a stale
+             figure reads as stale rather than as a lie.
+          2. Each answer names the person who should use the other thing.
+             A comparison with no such case is an advertisement.
+          3. No affiliate links, no tracking parameters, nothing here earns
+             anything - the same rule the equipment answer above states, and
+             for the same reason.
+        */}
+        <h2 className="h3">Why use this when I already pay for ChatGPT or Claude?</h2>
+        <p>
+          Because a conversation is not a training history. Ask a general AI for a twelve-week
+          block and you will get one, and it will look good. Ask again next month and it starts
+          from nothing: it does not know that you missed the last two reps of every top set, that
+          your bench has not moved since March, or that you trained three days this week instead
+          of four. Coach Diaz reads what you logged and builds the next block out of it. That is
+          the difference, and it is not a difference in how clever the model is.
+        </p>
+        <p>
+          The cleverness has actually been measured. Seven strength-and-conditioning experts
+          scored twelve-week programmes written by three versions of ChatGPT: the newest averaged
+          4.14 out of 5 and the oldest 2.37, so these models are improving quickly. One error
+          turned up in <em>all</em> of them — prescribing fifteen repetitions at 85% of maximum, a
+          load almost nobody gets past five. The authors concluded that qualified human oversight
+          is still necessary.{' '}
+          <a
+            className="link"
+            href="https://link.springer.com/article/10.1186/s13102-025-01409-7"
+            rel="noreferrer"
+          >
+            (the study, 2025)
+          </a>
+        </p>
+        <p>
+          Our answer to that is not a cleverer model. It is to take the numbers out of the
+          model&rsquo;s hands entirely. Whether you need medical clearance, how much weight goes on
+          the bar next, how the warm-up ramps to it, how long you rest between sets, and whether
+          what you logged is physically plausible at all are worked out by ordinary code and handed
+          to the AI as answers it is instructed to use as given. A model asked to write coaching
+          around a correct number cannot get the number wrong.
+        </p>
+        <p>
+          The honest version: if you already know how to programme and you want something to argue
+          with, a general AI is a fine sounding board and you are already paying for it. This is
+          for the person who does not want to become their own coach.
+        </p>
+
+        <h2 className="h3">My watch or ring already has an AI coach. Is this the same thing?</h2>
+        <p>
+          Different job, and they are not really competitors. A ring or a strap is a recovery
+          instrument: it measures sleep, heart-rate variability and strain, and tells you how hard
+          to go <em>today</em>. Whoop&rsquo;s strength trainer will build a session from your
+          lifting history and volume trends and de-load it, or shorten your rest, when your
+          recovery score is poor. That is genuinely useful and it is a decision about this
+          afternoon.
+        </p>
+        <p>
+          A powerlifting programme is a decision about the next twelve weeks: which lifts, at what
+          percentages, rising to what, by when, and what to do about it when a week goes badly.
+          &ldquo;You are recovered, go hard&rdquo; does not tell you what to go hard at.
+        </p>
+        <p>
+          The two belong together, and today they are not joined up here: Coach Diaz cannot read
+          your wearable. If your ring says you slept five hours, say so in the chat and the session
+          will account for it. Reading it automatically is on the list, not in the product — and
+          this page will say so when that changes rather than before.
+        </p>
+
+        <h2 className="h3">What about the dedicated powerlifting apps?</h2>
+        <p>
+          If you are an intermediate or advanced lifter who wants a proven block and does not
+          particularly want to talk to anybody about it, JuggernautAI is a good product built by
+          established powerlifting coaches, and you should probably use it. It was $34.99 a month
+          when this answer was written, in August 2026.
+        </p>
+        <p>
+          The difference is what happens when the plan meets your actual week. Those apps hand you
+          a programme and you execute it. You cannot ask why your bench is stalling, or say
+          &ldquo;I have three days instead of four and my shoulder is sore&rdquo;, and have the
+          plan change in response and explain itself. This is a conversation with a programme
+          attached, rather than a programme with a chat attached.
+        </p>
+        <p>
+          The other difference is where you train. Most strength apps assume a barbell, a rack and
+          plates. This one asks where you actually train and programmes somebody with a Smith
+          machine and a pair of dumbbells differently from somebody with a competition bar.
+        </p>
+
+        <h2 className="h3">Should I use this instead of a real coach?</h2>
+        <p>
+          No — not if you have a good one and can afford them. A coach who watches you squat sees
+          things that no amount of typing will convey, and can put a hand on your ribcage and tell
+          you what your brace is doing. Nothing here competes with that.
+        </p>
+        <p>
+          This is for the very large majority of people who are never going to hire a coach. It is
+          better than the internet, better than a programme copied off a forum by somebody whose
+          body is not yours, and it is available at eleven at night when you are trying to work out
+          whether to deload.
+        </p>
+
         <h2 className="h3">Do I need a belt, or special shoes, or supplements?</h2>
         <p>
           No. The programme works with a barbell and whatever your gym has. The coach will mention
