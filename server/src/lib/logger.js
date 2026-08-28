@@ -40,6 +40,10 @@ const SENSITIVE_KEYS = [
   // same list. Substring matching means a stray key like `sleepMs` gets
   // redacted too; over-redacting a retry delay costs nothing.
   'sleep', 'alcohol', 'nicotine', 'nutrition',
+  // 'medication' above already matches by substring, but glp1 does not contain
+  // it. Whether somebody takes a prescription drug is health data by any
+  // reading, and naming it explicitly is cheaper than being clever.
+  'glp1', 'glp_1', 'semaglutide', 'tirzepatide', 'ozempic', 'wegovy', 'mounjaro', 'zepbound',
   'date_of_birth', 'dateofbirth',
   'password', 'access_token', 'refresh_token', 'authorization',
   'apikey', 'api_key',

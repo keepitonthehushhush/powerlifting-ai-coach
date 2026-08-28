@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 /**
  * Every answerable option in the profile lives in four places at once: a CHECK
@@ -19,7 +19,24 @@ import { readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
-const migration = read('../../supabase/migrations/0019_training_history_and_goals.sql');
+/**
+ * ALL migrations, in order, not just the one that first defined a constraint.
+ *
+ * This read only 0019, which is where the goal constraint was born. Adding
+ * `body_composition` in 0033 - by dropping and recreating the constraint, which
+ * is the only way to change a CHECK - failed this test with "the form offers
+ * body_composition and the database refuses it", while the live database
+ * accepted it perfectly well. The test was describing a database from five
+ * migrations ago.
+ *
+ * constraintValues() now takes the LAST definition it finds, which is what
+ * Postgres has: a later drop-and-recreate supersedes the earlier one.
+ */
+const migration = readdirSync(new URL('../../supabase/migrations/', import.meta.url))
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => read(`../../supabase/migrations/${f}`))
+  .join('\n');
 const routes = read('../../server/src/routes/profile.js');
 const intake = read('../../web/src/pages/Intake.jsx');
 const en = read('../../web/src/i18n/locales/en.js');
@@ -27,7 +44,10 @@ const es = read('../../web/src/i18n/locales/es.js');
 
 /** The values inside `check (col is null or col in ( ... ))`, comments stripped. */
 function constraintValues(sql, column) {
-  const start = sql.indexOf(`check (${column} is null or ${column} in (`);
+  // lastIndexOf: a constraint redefined by a later migration is the one in
+  // force. Taking the first would hold the code to a schema that no longer
+  // exists.
+  const start = sql.lastIndexOf(`check (${column} is null or ${column} in (`);
   assert.notEqual(start, -1, `no CHECK constraint found for ${column}`);
   const body = sql.slice(start, sql.indexOf('));', start));
   return new Set(

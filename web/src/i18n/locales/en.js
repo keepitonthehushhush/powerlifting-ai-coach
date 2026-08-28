@@ -197,10 +197,20 @@ export const en = {
       'These three numbers are what your first program is calculated from, so the one thing worth getting right is that each is a SINGLE rep. A heavy set of five entered here makes every weight the coach prescribes too heavy. If you have never tested a true one-rep max, an honest estimate or a blank is better than a guess dressed up as a number — Coach Diaz works the real figure out from what you log, usually within a week.',
 
     goal: 'What are you training for?',
+    glp1: 'Are you using a GLP-1 medication?',
+    glp1Help:
+      'Optional, and you can skip it. It is asked for one reason: on a GLP-1 a large share of the weight lost is muscle, and lifting is what keeps it — so knowing changes the programme. Coach Diaz will never tell you whether to take one. That is between you and your prescriber.',
+    glp1Options: {
+      none: 'No',
+      using: 'Yes, currently',
+      considering: 'Thinking about it',
+      declined_to_say: 'Prefer not to say',
+    },
     goalOptions: {
       learn_the_lifts: 'Learn the lifts properly',
       general_strength: 'Get generally stronger',
       return_from_layoff: 'Come back after time off',
+      body_composition: 'Lose fat and keep the muscle I build',
       first_meet: 'Compete in my first meet',
       meet_prep: 'Prepare for a meet — I have competed before',
     },

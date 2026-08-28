@@ -22,7 +22,7 @@ export function HealthDataPolicy() {
     <div className="page">
       <header className="page-header">
         <h1>Consumer Health Data Privacy Policy</h1>
-        <p className="muted small">Version chd-2026-08-28a</p>
+        <p className="muted small">Version chd-2026-08-28b</p>
       </header>
 
       <div className="card draft-banner">
@@ -35,6 +35,14 @@ export function HealthDataPolicy() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>chd-2026-08-28b.</strong> If your goal is losing fat, you can now
+          optionally tell Coach Diaz whether you use a GLP-1 medication. That is health
+          information: it is listed below, it needs your health-data consent before it can be
+          stored at all, it is never written to logs, and it expires after 12 months like the
+          rest. Because this adds a category of health information, we are asking you to agree
+          again.
+        </p>
         <p className="small">
           <strong>chd-2026-08-28a.</strong> Retention periods are now set rather than
           promised. Injury and medical notes expire after 12 months, conversation messages after
@@ -85,6 +93,13 @@ export function HealthDataPolicy() {
         <ul>
           <li>injuries, pain, and medical conditions that affect your training, and whether a
             professional has cleared you to train;</li>
+          <li>
+            <strong>GLP-1 medication use</strong>, if you choose to answer. Only "using",
+            "considering" or "no" — never a drug name, a dose or a prescriber. It is asked only
+            when your goal is losing fat, and it is used for one thing: on these medications much
+            of the weight lost is muscle rather than fat, and it changes how your training is
+            written. Coach Diaz will never advise you about the medication itself.
+          </li>
           <li>the hours you typically sleep;</li>
           <li>how many alcoholic drinks you have in a typical week;</li>
           <li>whether you use nicotine, and how often;</li>

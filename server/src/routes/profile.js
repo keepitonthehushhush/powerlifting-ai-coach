@@ -62,10 +62,24 @@ const ProfileUpdate = z
       .regex(/^[A-Za-z0-9_-]+$/)
       .nullish(),
     goal: z
-      .enum(['learn_the_lifts', 'general_strength', 'return_from_layoff', 'first_meet', 'meet_prep'])
+      .enum([
+        'learn_the_lifts',
+        'general_strength',
+        'return_from_layoff',
+        'body_composition',
+        'first_meet',
+        'meet_prep',
+      ])
       .nullish(),
     competition_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
     health_restrictions: z.string().max(4000).nullish(),
+    /**
+     * Medication use. HEALTH DATA - the database refuses to store anything but
+     * 'declined_to_say' without an active health_data_collection consent
+     * (migration 0033), so this schema is the polite half of a gate that is
+     * actually enforced in Postgres.
+     */
+    glp1_status: z.enum(['none', 'using', 'considering', 'declined_to_say']).nullish(),
     cleared_to_train: z.boolean().optional(),
     equipment_available: z.string().max(2000).nullish(),
     // A closed vocabulary, mirroring GYM_SLUGS and the CHECK in migration 0023.

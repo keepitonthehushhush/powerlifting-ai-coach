@@ -26,6 +26,8 @@ const EMPTY = {
   smallest_plate_pair: '',
   date_of_birth: '',
   health_restrictions: '',
+  glp1_status: '',
+  glp1_status: form.glp1_status || null,
   sleep_hours_typical: '',
   alcohol_units_per_week: '',
   nicotine_use: '',
@@ -112,9 +114,13 @@ const GOAL_OPTIONS = [
   'learn_the_lifts',
   'general_strength',
   'return_from_layoff',
+  'body_composition',
   'first_meet',
   'meet_prep',
 ];
+
+/** Asked only of people whose goal involves losing fat. */
+const GLP1_OPTIONS = ['none', 'using', 'considering', 'declined_to_say'];
 
 /** Empty strings mean "not answered"; the API and the database both want null. */
 function toPayload(form) {
@@ -145,6 +151,7 @@ function toPayload(form) {
     // here would invent equipment the athlete never claimed to own.
     smallest_plate_pair: num(form.smallest_plate_pair),
     health_restrictions: form.health_restrictions ?? '',
+    glp1_status: form.glp1_status ?? '',
     cleared_to_train: Boolean(form.cleared_to_train),
     date_of_birth: form.date_of_birth || null,
     // Empty means "not answered" and must stay null. Coercing a blank field to
@@ -461,6 +468,27 @@ export function Intake() {
               ))}
             </select>
           </label>
+
+          {/* Asked only when the goal involves losing fat, and never as a
+              precondition. This is medication data: the database refuses to
+              store anything but "prefer not to say" without health-data
+              consent, so somebody who has not given it simply cannot be asked
+              to answer - which is why the option to decline is a real answer
+              and not a cop-out. */}
+          {form.goal === 'body_composition' && (
+            <label>
+              {t('intake.glp1')}
+              <select value={form.glp1_status || ''} onChange={(e) => update('glp1_status', e.target.value)}>
+                <option value="">{t('intake.select')}</option>
+                {GLP1_OPTIONS.map((key) => (
+                  <option key={key} value={key}>
+                    {t(`intake.glp1Options.${key}`)}
+                  </option>
+                ))}
+              </select>
+              <span className="muted small">{t('intake.glp1Help')}</span>
+            </label>
+          )}
 
           {MEET_GOALS.has(form.goal) && (
             <label>

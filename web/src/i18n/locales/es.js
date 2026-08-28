@@ -199,10 +199,20 @@ export const es = {
       'Tu primer programa se calcula a partir de estos tres números, así que lo único importante es que cada uno sea de UNA sola repetición. Una serie pesada de cinco puesta aquí hace que todos los pesos que prescriba el entrenador sean demasiado altos. Si nunca has probado un máximo real a una repetición, una estimación honesta o un hueco en blanco es mejor que una suposición disfrazada de número: Coach Diaz deduce la cifra real de lo que registres, normalmente en una semana.',
 
     goal: '¿Para qué entrenas?',
+    glp1: '¿Estás usando un medicamento GLP-1?',
+    glp1Help:
+      'Opcional, y puedes saltarlo. Se pregunta por un motivo: con un GLP-1 buena parte del peso que se pierde es músculo, y entrenar con pesas es lo que lo conserva, así que saberlo cambia el programa. Coach Diaz nunca te dirá si debes tomarlo o no. Eso es entre tú y quien te lo receta.',
+    glp1Options: {
+      none: 'No',
+      using: 'Sí, actualmente',
+      considering: 'Me lo estoy planteando',
+      declined_to_say: 'Prefiero no decirlo',
+    },
     goalOptions: {
       learn_the_lifts: 'Aprender bien los levantamientos',
       general_strength: 'Ponerme más fuerte en general',
       return_from_layoff: 'Volver después de un tiempo parado',
+      body_composition: 'Perder grasa y conservar el músculo que gane',
       first_meet: 'Competir en mi primera competición',
       meet_prep: 'Preparar una competición: ya he competido antes',
     },

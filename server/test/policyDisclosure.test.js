@@ -72,6 +72,7 @@ const SENT_TO_THE_MODEL = {
   competition_date: 'competition date',
   equipment_available: 'equipment',
   gender: 'your gender if you gave one',
+  glp1_status: 'whether you use a GLP-1 medication, if you told us',
   gender_self_described: 'your gender if you gave one',
   pronouns: 'Your pronouns',
   gym_chains: 'Which gym chains you ticked',
@@ -103,6 +104,10 @@ const NOT_SENT = {
     'marks somebody promised free coaching before the paywall existed ' +
     '(migration 0032). Not sent: it is a billing fact, and what somebody pays ' +
     'has no business shaping how they are coached.',
+  glp1_status_updated_at:
+    'when the medication answer last changed, used only to expire it after 12 ' +
+    'months. Not sent, for the same reason as the injury timestamp: how old an ' +
+    'answer is tells the model nothing it can coach on.',
   intake_completed_at: 'bookkeeping',
   created_at: 'bookkeeping',
   updated_at: 'bookkeeping',
@@ -114,7 +119,10 @@ function columnsRenderedToTheModel() {
   assert.ok(start > 0, 'renderProfile has been renamed - this test is now measuring nothing');
   const end = prompt.indexOf('\nfunction ', start + 1);
   const body = prompt.slice(start, end === -1 ? undefined : end);
-  return new Set([...body.matchAll(/profile\.([a-z_]+)/g)].map((m) => m[1]));
+  // [a-z0-9_], not [a-z_]: the first column with a digit in its name -
+  // glp1_status - parsed as "glp" and produced a demand to disclose a field
+  // that does not exist, while the one that does went unchecked.
+  return new Set([...body.matchAll(/profile\.([a-z0-9_]+)/g)].map((m) => m[1]));
 }
 
 /** Every column that exists on user_profile, from the migrations. */
@@ -124,7 +132,9 @@ function profileColumns() {
     migrations.indexOf('comment on table  public.user_profile')
   );
   const columns = new Set(
-    [...created.matchAll(/^\s{2}([a-z_]+)\s+(uuid|text|numeric|boolean|int|date|timestamptz)/gm)].map((m) => m[1])
+    // [a-z0-9_] here too - same digit problem as above, and this is the half
+    // that decides which columns get audited at all.
+    [...created.matchAll(/^\s{2}([a-z0-9_]+)\s+(uuid|text|numeric|boolean|int|date|timestamptz)/gm)].map((m) => m[1])
   );
   // One `alter table` can add several columns in a single statement - 0012
   // adds four - so this takes the whole statement and then every `add column`
@@ -133,7 +143,7 @@ function profileColumns() {
   // first reported that alcohol_units_per_week had "vanished from the schema".
   for (const statement of migrations.split('alter table public.user_profile').slice(1)) {
     const body = statement.slice(0, statement.indexOf(';'));
-    for (const m of body.matchAll(/add column (?:if not exists )?([a-z_]+)/g)) columns.add(m[1]);
+    for (const m of body.matchAll(/add column (?:if not exists )?([a-z0-9_]+)/g)) columns.add(m[1]);
   }
   return columns;
 }
