@@ -606,6 +606,73 @@ still making the promise to.
 
 ---
 
+### ADR-15 · One check runs the app; every other check reads it
+
+**Context.** Two blank pages have now reached production, three weeks apart.
+Different code, identical shape: a module threw while it was being *imported* -
+before `createRoot` ran, before React existed on the page - so there was nothing
+mounted to fail, nothing rendered to look wrong, and no error anywhere a human
+would look.
+
+  1. `supabase.js` threw when a `VITE_` variable was missing.
+  2. `Intake.jsx`'s module-level `EMPTY` constant referenced `form`, which only
+     exists inside the component. One stray line, left behind by an edit fifty
+     lines away.
+
+The second one is the argument, because by then the repository already had
+eleven checks. `vite build` succeeded - the code is valid JavaScript, `form` is
+simply not bound at the moment that object is evaluated. `node --check` passed.
+The secret scanner read the bundle as text and found no secret. The unit suite
+never imports a page component. `check:docs`, `check:lockfile`, `verify:deps`,
+`check:db` were all looking at other artefacts. CI was green and the deploy was
+green and the site was white.
+
+The common property is that every one of those checks *reads a file*. None of
+them *runs the thing*.
+
+**Decision.** `scripts/check-app-mounts.mjs` serves the real `web/dist` and
+loads it in headless Chrome, then asserts four things a file cannot tell you:
+nothing threw, `#root` has children, the rendered DOM contains "Coach Diaz", and
+the `ErrorBoundary` fallback did *not* render. It runs in CI immediately after
+the build.
+
+**The browser has no network.** `--host-resolver-rules` maps every host except
+loopback to NOTFOUND, so Turnstile and Supabase are unreachable by design. A
+smoke test whose result depends on whether `challenges.cloudflare.com` is up is
+not a test of this repository - and the degraded state it forces is worth
+asserting anyway, because it is what a visitor behind a corporate filter sees.
+
+**Rejected: Playwright.** A much nicer API, a large dependency, a browser
+download in CI, and a version to keep current - for one page load and one DOM
+read. Chrome's own `--dump-dom` is the entire feature required, and Chrome and
+Chromium are both preinstalled on GitHub's ubuntu runners, so the step needs no
+setup.
+
+**Rejected: making it skippable.** There is no `SKIP=1`. A missing browser fails
+the check rather than passing it, because a check that quietly does not run is
+indistinguishable from the eleven that were quietly looking elsewhere.
+
+**It immediately found a second live bug.** On the fixed bundle it failed again,
+this time reporting that the literal text `auth.password` was rendering as the
+sign-in form's field label: `auth` declared `password` twice in the locale file,
+once a string and once an object of password-strength messages, and the object
+won. `t()` returns the key itself on a miss, so the label had been broken on the
+live sign-in page for as long as the second declaration existed - and the
+existing locale test could not see it, because it compares English against
+Spanish and both were duplicated identically. Three tests in `i18n.test.js` now
+close that: every literal `t()` key must resolve to a *string*, every key the
+source mentions must exist, and the locale *sources* are scanned for a key
+declared twice - which has to read the file, because by the time the catalogue
+is an object the duplicate is already gone.
+
+**What this does not cover.** It loads one route, unauthenticated. It is a smoke
+test, not a browser suite: it answers "does anything appear", which is precisely
+the question that was going unasked. `no-undef` and `no-dupe-keys` - both
+default ESLint rules, and either would have caught the `Intake.jsx` line at the
+source - remain unenforced. This repository has no linter, and that is the next
+gap rather than a solved one.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

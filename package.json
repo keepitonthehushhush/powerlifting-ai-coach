@@ -22,11 +22,12 @@
     "safety:eval": "node scripts/safety-eval.mjs",
     "verify:deps": "node scripts/verify-frontend-deps.mjs",
     "verify": "npm run verify:deps && npm run verify:bundle",
-    "check": "npm run check:lockfile && npm test && npm run verify:deps && npm run build && npm run verify:bundle",
+    "check": "npm run check:lockfile && npm test && npm run verify:deps && npm run build && npm run check:mounts && npm run verify:bundle",
     "check:db": "node scripts/check-db-invariants.mjs",
     "test:db:psql": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/rls_isolation_test.sql",
     "check:contact": "node scripts/check-contact-route.mjs",
     "check:lockfile": "node scripts/check-lockfile.mjs",
+    "check:mounts": "node scripts/check-app-mounts.mjs",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "dependencies": {

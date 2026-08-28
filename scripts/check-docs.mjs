@@ -83,6 +83,10 @@ const EXPECTED_ABSENT = {
     mode: 'untracked',
     why: 'Vercel-generated, and also secret-bearing.',
   },
+  'web/dist': {
+    mode: 'untracked',
+    why: 'the build output, which check:mounts loads and the docs therefore name. Generated, and never committed.',
+  },
   'server/.env': {
     mode: 'absent',
     why: 'DOES NOT EXIST, and the runbook says so on purpose. Referencing it was the bug that produced this checker.',
@@ -140,13 +144,26 @@ function gitTrackedFiles() {
 }
 
 function isIgnored(path) {
-  try {
-    // check-ignore exits 0 when the path IS ignored, 1 when it is not.
-    execFileSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root, stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
+  // Both spellings, because the answer for a DIRECTORY depends on whether it
+  // happens to exist right now. `.gitignore` says `dist/`, which only matches
+  // a directory - and with no `web/dist` on disk, git cannot tell that
+  // `web/dist` names one, so it reports "not ignored". Run the same command
+  // after a build and it reports "ignored".
+  //
+  // That is the identical mistake this checker was written to stop making:
+  // asking a question whose answer turns on incidental machine state, and
+  // getting an answer that flips between a developer's laptop and CI. The
+  // trailing slash tells git the path is a directory without needing one to
+  // exist.
+  return [path, `${path.replace(/\/$/, '')}/`].some((candidate) => {
+    try {
+      // check-ignore exits 0 when the path IS ignored, 1 when it is not.
+      execFileSync('git', ['check-ignore', '-q', '--no-index', candidate], { cwd: root, stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 const tracked = gitTrackedFiles();
@@ -212,7 +229,7 @@ const absentCount = Object.values(EXPECTED_ABSENT).filter((e) => e.mode === 'abs
 if (problems.length === 0) {
   console.log(
     `PASS - ${FILES.length} documents check out: every path, script and migration exists, ` +
-      `${untrackedCount} secret-bearing file(s) are still untracked and still ignored, ` +
+      `${untrackedCount} path(s) that must never be committed are still untracked and still ignored, ` +
       `and ${absentCount} documented absence(s) are still absent.`
   );
   process.exit(0);

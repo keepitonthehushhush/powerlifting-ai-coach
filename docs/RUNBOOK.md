@@ -240,9 +240,11 @@ neither of you can reproduce, because refreshing fixes it silently.
 2. `npm run build`, then grep the artefact for anything that has to be in it -
    this is how a missing `VITE_` variable gets caught, and it has been caught
    this way once already.
-3. Push to a **branch**, not main. Vercel builds a preview deployment.
-4. Open the preview URL and exercise the path you changed.
-5. Merge.
+3. `npm run check:mounts` - loads the build you just made in headless Chrome
+   and fails if the page is blank. `npm run check` runs all of it in order.
+4. Push to a **branch**, not main. Vercel builds a preview deployment.
+5. Open the preview URL and exercise the path you changed.
+6. Merge.
 
 ### THE THING TO KNOW ABOUT PREVIEW DEPLOYMENTS
 

@@ -61,6 +61,17 @@ jobs:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_test
 
+      # Every other check in this file reads a file. Two blank pages have now
+      # shipped past all of them, both because a module threw while it was
+      # being IMPORTED - which is invisible to anything that does not run the
+      # code in a browser. This is a visitor: it serves web/dist, loads it in
+      # headless Chrome with the network cut off, and fails if nothing renders.
+      #
+      # Chrome and Chromium are both preinstalled on the ubuntu runner image,
+      # so this needs no setup step and no browser download.
+      - name: The built app mounts in a browser
+        run: npm run check:mounts
+
       # The deploy gate. A secret in the browser bundle is readable by every
       # visitor, so this failing must block the merge.
       - name: Scan built bundle for server-side secrets
