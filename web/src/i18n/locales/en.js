@@ -17,7 +17,6 @@ export const en = {
     working: 'Working…',
     signOut: 'Sign out',
     language: 'Language',
-    somethingWentWrong: 'Something went wrong.',
   },
 
   medical: {
@@ -32,10 +31,9 @@ export const en = {
     password: 'Password',
     signIn: 'Sign in',
     createAccount: 'Create account',
-    toSignIn: 'Already have an account? Sign in',
-    toSignUp: 'New here? Create an account',
-    /* The pair above bundle a question and an action into one string, which is
-       what made three choices read as one line. These split them. */
+    /* One question, one action, as separate strings. The single combined
+       string they replaced - "New here? Create an account" - is what made
+       three choices read as one line. */
     forgotPrompt: 'Forgotten your password?',
     newHerePrompt: 'New here?',
     haveAccountPrompt: 'Already have an account?',
@@ -46,9 +44,7 @@ export const en = {
         'The bot check could not load — an ad blocker, a privacy extension or a network filter may be blocking challenges.cloudflare.com. Allow that address, or try a different browser or network.',
     },
     reset: {
-      forgot: 'Forgot your password?',
       forgotAction: 'Email me a reset link',
-      requestTitle: 'Reset your password',
       requestIntro: 'Enter the email address on your account and we will send you a link to set a new password.',
       send: 'Send the reset link',
       sent: 'If an account exists for that address, a reset link is on its way. Check your inbox, and your spam folder.',
@@ -59,7 +55,7 @@ export const en = {
       linkExpired: 'This reset link is no longer valid.',
       linkExpiredHelp: 'Reset links can only be used once, and they expire. Request a fresh one and use the newest email.',
     },
-    password: {
+    passwordRules: {
       met: 'Met',
       notMet: 'Not met',
       requirements: 'Your password needs:',
@@ -70,11 +66,11 @@ export const en = {
       symbol: 'A symbol, such as ! @ # $ %',
       weak: 'This password does not meet the requirements below yet.',
       managerHint: 'A password manager can generate and remember one for you.',
-    breachChecking: 'Checking this password against known breaches…',
-    breachSafe: 'Not found in any known breach.',
-    breached: 'This password has appeared in {count} known data breaches. Please choose a different one — it is one of the first an attacker will try.',
-    breachedBlocked: 'That password appears in known data breaches. Choose a different one to continue.',
-    breachUnknown: 'Could not reach the breach-check service, so this password has not been checked. You can still continue.',
+      breachChecking: 'Checking this password against known breaches…',
+      breachSafe: 'Not found in any known breach.',
+      breached: 'This password has appeared in {count} known data breaches. Please choose a different one — it is one of the first an attacker will try.',
+      breachedBlocked: 'That password appears in known data breaches. Choose a different one to continue.',
+      breachUnknown: 'Could not reach the breach-check service, so this password has not been checked. You can still continue.',
     },
   },
 
@@ -279,11 +275,7 @@ export const en = {
   },
 
   chat: {
-    progress: 'Progress',
-    exerciseLibrary: 'Exercise library',
     characterCount: '{count} of {limit} characters',
-    logSession: 'Log session',
-    editProfile: 'Edit profile',
     emptyPrompt:
       'Say hello and Coach Diaz will take it from there — it will ask what it needs before writing anything.',
     you: 'You',
@@ -349,7 +341,6 @@ export const en = {
       'Permanently removes your account and every associated record — profile, programs, sessions, progress logs and conversations. This cannot be undone.',
     deleteButton: 'Delete my account',
     deleteConfirmPrompt: 'Type DELETE MY ACCOUNT to confirm.',
-    deleted: 'Your account and all associated data have been permanently deleted.',
   },
   billing: {
     title: 'Subscription',

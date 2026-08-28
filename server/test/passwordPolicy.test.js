@@ -67,15 +67,15 @@ describe('password policy is fully translated', () => {
   for (const [name, catalogue] of [['en', en], ['es', es]]) {
     test(`${name}: every rule has a label`, () => {
       for (const { id } of PASSWORD_RULES) {
-        const label = catalogue.auth?.password?.[id];
-        assert.equal(typeof label, 'string', `${name} is missing auth.password.${id}`);
-        assert.ok(label.trim().length > 0, `${name}: auth.password.${id} is blank`);
+        const label = catalogue.auth?.passwordRules?.[id];
+        assert.equal(typeof label, 'string', `${name} is missing auth.passwordRules.${id}`);
+        assert.ok(label.trim().length > 0, `${name}: auth.passwordRules.${id} is blank`);
       }
     });
 
     test(`${name}: has the surrounding copy the checklist needs`, () => {
       for (const key of ['requirements', 'weak', 'managerHint', 'met', 'notMet']) {
-        assert.equal(typeof catalogue.auth?.password?.[key], 'string', `${name} is missing auth.password.${key}`);
+        assert.equal(typeof catalogue.auth?.passwordRules?.[key], 'string', `${name} is missing auth.passwordRules.${key}`);
       }
     });
   }

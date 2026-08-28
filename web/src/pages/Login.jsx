@@ -101,7 +101,7 @@ export function Login() {
     // weak existing password on sign-in as its own error, which is where a
     // prompt to change it belongs.
     if (isSignUp && !policy.ok) {
-      setStatus({ kind: 'error', text: t('auth.password.weak') });
+      setStatus({ kind: 'error', text: t('auth.passwordRules.weak') });
       return;
     }
 
@@ -115,7 +115,7 @@ export function Login() {
         : await checkPwned(password);
       setBreach(result);
       if (result.status === 'breached') {
-        setStatus({ kind: 'error', text: t('auth.password.breachedBlocked') });
+        setStatus({ kind: 'error', text: t('auth.passwordRules.breachedBlocked') });
         return;
       }
       // 'unknown' deliberately falls through. A third party being unreachable
@@ -214,7 +214,7 @@ export function Login() {
 
           {isSignUp && (
             <div id="password-requirements" className="fineprint">
-              <p>{t('auth.password.requirements')}</p>
+              <p>{t('auth.passwordRules.requirements')}</p>
               <ul className="checklist">
                 {policy.results.map(({ id, satisfied }) => (
                   <li key={id} className={satisfied ? 'met' : 'unmet'}>
@@ -224,25 +224,25 @@ export function Login() {
                         tree. */}
                     <span aria-hidden="true">{satisfied ? '\u2713' : '\u2022'}</span>{' '}
                     <span className="visually-hidden">
-                      {t(satisfied ? 'auth.password.met' : 'auth.password.notMet')}:{' '}
+                      {t(satisfied ? 'auth.passwordRules.met' : 'auth.passwordRules.notMet')}:{' '}
                     </span>
-                    {t(`auth.password.${id}`)}
+                    {t(`auth.passwordRules.${id}`)}
                   </li>
                 ))}
               </ul>
-              <p>{t('auth.password.managerHint')}</p>
+              <p>{t('auth.passwordRules.managerHint')}</p>
 
               {/* aria-live, because this arrives asynchronously after focus has
                   already moved on. Without it a screen reader user is told
                   nothing at all. */}
               <p className={breach.status === 'breached' ? 'error' : 'muted'} aria-live="polite">
-                {breach.status === 'checking' && t('auth.password.breachChecking')}
-                {breach.status === 'safe' && t('auth.password.breachSafe')}
+                {breach.status === 'checking' && t('auth.passwordRules.breachChecking')}
+                {breach.status === 'safe' && t('auth.passwordRules.breachSafe')}
                 {breach.status === 'breached' &&
-                  t('auth.password.breached', { count: breach.count.toLocaleString() })}
+                  t('auth.passwordRules.breached', { count: breach.count.toLocaleString() })}
                 {/* Said out loud rather than passed over in silence: "we could
                     not check" is not the same claim as "this is fine". */}
-                {breach.status === 'unknown' && t('auth.password.breachUnknown')}
+                {breach.status === 'unknown' && t('auth.passwordRules.breachUnknown')}
               </p>
             </div>
           )}

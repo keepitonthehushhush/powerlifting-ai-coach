@@ -198,8 +198,17 @@ describe('the reset path is held to the same rules as sign-up', () => {
   });
 
   test('the way out is offered before somebody has to fail', () => {
+    // Asserted against the KEYS the login page renders, not against the
+    // English behind them. The first version of this matched a string in the
+    // catalogue - `forgot: 'Forgot your password?'` - which turned out to be a
+    // string nothing displayed: the page shows auth.forgotPrompt above a
+    // button labelled auth.reset.forgotAction. So the test passed while
+    // pinning a dead string, and then failed when the dead string was removed.
+    // i18n.test.js now guarantees every literal t() key resolves to a real
+    // string, which makes the key the stronger thing to assert on: this
+    // survives a reword and still fails if the affordance disappears.
     assert.match(login, /setMode\('reset'\)/);
-    const en = readRaw(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
-    assert.match(en, /forgot: 'Forgot your password\?'/);
+    assert.match(login, /t\('auth\.forgotPrompt'\)/);
+    assert.match(login, /t\('auth\.reset\.forgotAction'\)/);
   });
 });

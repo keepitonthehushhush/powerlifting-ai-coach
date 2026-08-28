@@ -79,7 +79,7 @@ export function ResetPassword() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!policy.ok) {
-      setStatus({ kind: 'error', text: t('auth.password.weak') });
+      setStatus({ kind: 'error', text: t('auth.passwordRules.weak') });
       return;
     }
 
@@ -91,7 +91,7 @@ export function ResetPassword() {
     setBreach(result);
     if (result.status === 'breached') {
       setBusy(false);
-      setStatus({ kind: 'error', text: t('auth.password.breachedBlocked') });
+      setStatus({ kind: 'error', text: t('auth.passwordRules.breachedBlocked') });
       return;
     }
 
@@ -152,24 +152,24 @@ export function ResetPassword() {
             </label>
 
             <div id="reset-requirements" className="fineprint">
-              <p>{t('auth.password.requirements')}</p>
+              <p>{t('auth.passwordRules.requirements')}</p>
               <ul className="checklist">
                 {policy.results.map(({ id, satisfied }) => (
                   <li key={id} className={satisfied ? 'met' : 'unmet'}>
                     <span aria-hidden="true">{satisfied ? '✓' : '•'}</span>{' '}
                     <span className="visually-hidden">
-                      {t(satisfied ? 'auth.password.met' : 'auth.password.notMet')}:{' '}
+                      {t(satisfied ? 'auth.passwordRules.met' : 'auth.passwordRules.notMet')}:{' '}
                     </span>
-                    {t(`auth.password.${id}`)}
+                    {t(`auth.passwordRules.${id}`)}
                   </li>
                 ))}
               </ul>
               <p className={breach.status === 'breached' ? 'error' : 'muted'} aria-live="polite">
-                {breach.status === 'checking' && t('auth.password.breachChecking')}
-                {breach.status === 'safe' && t('auth.password.breachSafe')}
+                {breach.status === 'checking' && t('auth.passwordRules.breachChecking')}
+                {breach.status === 'safe' && t('auth.passwordRules.breachSafe')}
                 {breach.status === 'breached' &&
-                  t('auth.password.breached', { count: breach.count.toLocaleString() })}
-                {breach.status === 'unknown' && t('auth.password.breachUnknown')}
+                  t('auth.passwordRules.breached', { count: breach.count.toLocaleString() })}
+                {breach.status === 'unknown' && t('auth.passwordRules.breachUnknown')}
               </p>
             </div>
 

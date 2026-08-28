@@ -35,7 +35,7 @@ export const MIN_LENGTH = 12;
 const SYMBOLS = /[!@#$%^&*()_+\-=[\]{};'\\:"|<>?,./`~]/;
 
 /**
- * Rule ids double as i18n keys under `auth.password.*`. A test asserts every
+ * Rule ids double as i18n keys under `auth.passwordRules.*`. A test asserts every
  * id has a label in every locale, so adding a rule without translating it
  * fails the build rather than rendering a blank line.
  */

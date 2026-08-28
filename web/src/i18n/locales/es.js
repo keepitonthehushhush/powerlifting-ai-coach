@@ -21,7 +21,6 @@ export const es = {
     working: 'Procesando…',
     signOut: 'Cerrar sesión',
     language: 'Idioma',
-    somethingWentWrong: 'Algo salió mal.',
   },
 
   medical: {
@@ -36,8 +35,6 @@ export const es = {
     password: 'Contraseña',
     signIn: 'Iniciar sesión',
     createAccount: 'Crear cuenta',
-    toSignIn: '¿Ya tienes cuenta? Inicia sesión',
-    toSignUp: '¿Eres nuevo? Crea una cuenta',
     forgotPrompt: '¿Has olvidado tu contraseña?',
     newHerePrompt: '¿Eres nuevo aquí?',
     haveAccountPrompt: '¿Ya tienes una cuenta?',
@@ -48,9 +45,7 @@ export const es = {
         'No se pudo cargar la comprobación antibots: puede que un bloqueador de anuncios, una extensión de privacidad o un filtro de red esté bloqueando challenges.cloudflare.com. Permite esa dirección, o prueba con otro navegador u otra red.',
     },
     reset: {
-      forgot: '¿Olvidaste tu contraseña?',
       forgotAction: 'Enviarme un enlace para restablecerla',
-      requestTitle: 'Restablecer tu contraseña',
       requestIntro: 'Escribe el correo electrónico de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.',
       send: 'Enviar el enlace',
       sent: 'Si existe una cuenta con esa dirección, el enlace ya va en camino. Revisa tu bandeja de entrada y también la carpeta de spam.',
@@ -61,7 +56,7 @@ export const es = {
       linkExpired: 'Este enlace de restablecimiento ya no es válido.',
       linkExpiredHelp: 'Los enlaces solo se pueden usar una vez y caducan. Pide uno nuevo y usa el correo más reciente.',
     },
-    password: {
+    passwordRules: {
       met: 'Cumplido',
       notMet: 'Sin cumplir',
       requirements: 'Tu contraseña necesita:',
@@ -72,11 +67,11 @@ export const es = {
       symbol: 'Un símbolo, como ! @ # $ %',
       weak: 'Esta contraseña todavía no cumple los requisitos indicados abajo.',
       managerHint: 'Un gestor de contraseñas puede generarla y recordarla por ti.',
-    breachChecking: 'Comprobando esta contraseña frente a filtraciones conocidas…',
-    breachSafe: 'No aparece en ninguna filtración conocida.',
-    breached: 'Esta contraseña ha aparecido en {count} filtraciones de datos conocidas. Elige otra: es de las primeras que probará un atacante.',
-    breachedBlocked: 'Esa contraseña aparece en filtraciones de datos conocidas. Elige otra para continuar.',
-    breachUnknown: 'No se pudo contactar con el servicio de comprobación, así que esta contraseña no se ha verificado. Puedes continuar igualmente.',
+      breachChecking: 'Comprobando esta contraseña frente a filtraciones conocidas…',
+      breachSafe: 'No aparece en ninguna filtración conocida.',
+      breached: 'Esta contraseña ha aparecido en {count} filtraciones de datos conocidas. Elige otra: es de las primeras que probará un atacante.',
+      breachedBlocked: 'Esa contraseña aparece en filtraciones de datos conocidas. Elige otra para continuar.',
+      breachUnknown: 'No se pudo contactar con el servicio de comprobación, así que esta contraseña no se ha verificado. Puedes continuar igualmente.',
     },
   },
 
@@ -281,11 +276,7 @@ export const es = {
   },
 
   chat: {
-    progress: 'Progreso',
-    exerciseLibrary: 'Biblioteca de ejercicios',
     characterCount: '{count} de {limit} caracteres',
-    logSession: 'Registrar sesión',
-    editProfile: 'Editar perfil',
     emptyPrompt:
       'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',
     you: 'Tú',
@@ -351,7 +342,6 @@ export const es = {
       'Elimina permanentemente tu cuenta y todos los registros asociados — perfil, programas, sesiones, registros de progreso y conversaciones. Esta acción no se puede deshacer.',
     deleteButton: 'Eliminar mi cuenta',
     deleteConfirmPrompt: 'Escribe DELETE MY ACCOUNT para confirmar.',
-    deleted: 'Tu cuenta y todos los datos asociados se han eliminado permanentemente.',
   },
   billing: {
     title: 'Suscripción',
