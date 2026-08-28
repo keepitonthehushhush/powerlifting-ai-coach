@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { assertNoLeakedSecrets, buildConfig, optional, required } from '../src/lib/env.js';
 
 /**
@@ -186,5 +187,33 @@ describe('billing is enabled only when it can actually deliver what it sells', (
     // Treating them the same would be the checker crying wolf.
     const config = buildConfig({ ...VALID, ...STRIPE_KEYS, STRIPE_PORTAL_RETURN_URL: '' });
     assert.equal(config.stripe.enabled, true);
+  });
+});
+
+describe('the deployed Node version is pinned, not floating', () => {
+  const pkg = JSON.parse(
+    readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+  );
+  const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+
+  test('ENGINES.NODE NAMES ONE MAJOR', () => {
+    /**
+     * It read `>=20`, and Vercel warned about it in the build log: an open
+     * range deploys the LATEST available major, which is 24.x today and will
+     * be something else later. So production could change Node underneath a
+     * working deployment with no commit, and the first sign would be a build
+     * or a runtime failure nobody caused.
+     *
+     * Their docs are explicit that `>=20.0.0` maps to the latest 24.x.
+     */
+    assert.match(pkg.engines.node, /^\d+\.x$/, 'engines.node is a range - production Node will float');
+  });
+
+  test('and it matches the version CI tests on', () => {
+    // Testing on one major and shipping on another is a difference that shows
+    // up as "works in CI".
+    const major = pkg.engines.node.split('.')[0];
+    assert.match(ci, new RegExp(`node-version: '${major}'`),
+      `CI does not use Node ${major}, which is what production will run`);
   });
 });
