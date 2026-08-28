@@ -353,6 +353,45 @@ export const es = {
     checkoutCancelled: 'No se ha cobrado nada. Puedes suscribirte cuando quieras.',
     noRedirect: 'No se pudo abrir la página de pago. Inténtalo de nuevo.',
   },
+  leaderboard: {
+    title: 'Clasificación',
+    intro:
+      'Únete para comparar tus mejores levantamientos con otras personas que usan Coach Diaz. Está desactivada salvo que la actives, y puedes salir cuando quieras.',
+    whatIsShown:
+      'Si te unes, otras personas registradas verán tu nombre público y tus mejores marcas de sentadilla, press de banca y peso muerto, y nada más. Ni tu peso corporal, ni tu edad, ni tus lesiones o información de salud, ni tu correo. Eso nunca sale de tu cuenta.',
+    handleLabel: 'Tu nombre público',
+    handlePlaceholder: 'p. ej. eddy_lifts',
+    handleHelp:
+      'De tres a veinticuatro caracteres: letras, números, guiones bajos y guiones. Es lo que verán otras personas; no uses tu nombre real salvo que quieras.',
+    join: 'Unirme a la clasificación',
+    leave: 'Salir de la clasificación',
+    leaveIsDelete:
+      'Salir borra tu entrada en lugar de ocultarla. Tus registros y tu programa no se tocan.',
+    loggedOnly:
+      'Los números salen de sesiones que registraste y completaste: no se pueden escribir a mano, y una repetición fallada no cuenta.',
+    empty: 'Todavía nadie ha registrado ese levantamiento.',
+    rank: '#',
+    lifter: 'Atleta',
+    best: 'Mejor',
+    thatsYou: '(tú)',
+    converted: '(registrado como {weight} {units})',
+    lift: { squat: 'Sentadilla', bench: 'Press de banca', deadlift: 'Peso muerto' },
+  },
+  achievements: {
+    title: 'Lo que has hecho',
+    private: 'Solo tú puedes verlos. Nunca se muestran en la clasificación.',
+    none: 'Registra una sesión y aquí aparecerá el primero.',
+    noStreaks:
+      'Aquí no hay rachas, y es a propósito. Una racha te dice que entrenes mañana pase lo que pase hoy, y así es como la gente entrena con la espalda tocada o se salta la descarga que tocaba. Aparecer a lo largo de un mes cuenta. Una semana de descanso no deshace nada.',
+    milestone: '{weight} {units} en {lift}',
+    cameBack: 'De vuelta tras {days} días',
+    name: {
+      first_session: 'Primera sesión registrada',
+      consistent_month: 'Ocho sesiones en un mes',
+      honest_log: 'Registraste un fallo',
+      all_three: 'Los tres levantamientos registrados',
+    },
+  },
   library: {
     title: 'Biblioteca de ejercicios',
     subtitle:
@@ -407,6 +446,7 @@ export const es = {
     progress: 'Progreso',
     library: 'Biblioteca',
     profile: 'Perfil',
+    leaderboard: 'Clasificación',
     data: 'Tus datos',
     faq: 'Preguntas frecuentes',
     jumpToTop: 'Arriba',

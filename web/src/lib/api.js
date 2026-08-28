@@ -134,6 +134,12 @@ export const api = {
   startCheckout: () => request('/billing/checkout', { method: 'POST' }),
   openBillingPortal: () => request('/billing/portal', { method: 'POST' }),
 
+  // The leaderboard and the badge shelf.
+  getLeaderboard: () => request('/leaderboard'),
+  setLeaderboardOptIn: (optIn) =>
+    request('/leaderboard/opt-in', { method: 'PUT', body: JSON.stringify({ optIn }) }),
+  getAchievements: () => request('/achievements'),
+
   // Data subject rights.
   exportData: () => request('/account/export'),
   deleteAccount: (confirm) =>

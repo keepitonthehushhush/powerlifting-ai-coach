@@ -231,3 +231,87 @@ describe('the route stays inside ADR-1', () => {
     assert.match(route, /select\('display_name, best_squat, best_bench, best_deadlift, units, updated_at'\)/);
   });
 });
+
+describe('the page', () => {
+  const page = readSource(new URL('../../web/src/pages/Leaderboard.jsx', import.meta.url));
+  const app = readSource(new URL('../../web/src/App.jsx', import.meta.url));
+  const nav = readSource(new URL('../../web/src/components/SiteNav.jsx', import.meta.url));
+  const styles = readRaw(new URL('../../web/src/styles.css', import.meta.url));
+  const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
+  const profileRoute = readSource(new URL('../src/routes/profile.js', import.meta.url));
+
+  test('it is behind the sign-in gate, because the board is not public', () => {
+    // Opting in publishes to other athletes, not to the internet.
+    assert.match(app, /path="\/leaderboard"[\s\S]{0,120}<ProtectedRoute>/);
+    assert.match(nav, /to: '\/leaderboard'/);
+  });
+
+  test('WHAT GETS PUBLISHED IS STATED BEFORE ANYBODY CAN JOIN', () => {
+    // Consent to publish is worth nothing if what is published is a surprise.
+    assert.match(page, /whatIsShown/);
+    assert.match(en, phrase('nothing else. Not your bodyweight, not your age'));
+    assert.ok(
+      page.indexOf('whatIsShown') < page.indexOf("t('leaderboard.join')"),
+      'the join button appears before the disclosure',
+    );
+  });
+
+  test('the handle is asked for in the same action that needs it', () => {
+    // A name requested on a separate screen is how somebody clicks Join and is
+    // told to go elsewhere. It is a prerequisite, so it lives in the action.
+    assert.match(page, /handleLabel/);
+    assert.match(page, /display_name: handle/);
+  });
+
+  test('and join is disabled until the handle would actually be accepted', () => {
+    // Prevented rather than reported: the same rule as the CHECK in 0026 and
+    // the zod schema, so the button cannot produce a refusal.
+    assert.match(page, /\/\^\[A-Za-z0-9_-\]\{3,24\}\$\/\.test\(handle\)/);
+    assert.match(profileRoute, /regex\(\/\^\[A-Za-z0-9_-\]\+\$\/\)/);
+  });
+
+  test('leaving says it deletes, because that is what it does', () => {
+    assert.match(en, phrase('Leaving deletes your leaderboard entry rather than hiding it'));
+  });
+
+  test('the board says the numbers cannot be typed in', () => {
+    assert.match(en, phrase('they cannot be typed in, and a missed rep does not count'));
+  });
+
+  test('a converted figure is marked in the row, not silently rounded', () => {
+    assert.match(page, /row\.converted/);
+    assert.match(en, phrase('logged as {weight} {units}'));
+  });
+
+  test('the reader own row is findable without relying on colour', () => {
+    assert.match(page, /thatsYou/);
+    assert.match(styles, /\.board tr\.you td:first-child \{ box-shadow/);
+  });
+
+  test('the styles it uses exist', () => {
+    for (const rule of ['.board {', '.badges {', '.badge {', '.table-scroll {']) {
+      assert.ok(styles.includes(rule), `${rule} is missing from styles.css`);
+    }
+  });
+
+  test('a wide board scrolls inside itself rather than pushing the page sideways', () => {
+    assert.match(styles, /\.table-scroll \{ overflow-x: auto; \}/);
+  });
+});
+
+describe('the rate limit bucket exists', () => {
+  const app = readSource(new URL('../src/app.js', import.meta.url));
+
+  test('EVERY BUCKET NAMED IN app.js IS ONE consume_rate_limit KNOWS', () => {
+    // The function raises on an unknown bucket, the middleware catches it,
+    // logs, and calls next() - so a typo or an invented name produces an
+    // UNLIMITED endpoint that writes an error line on every request. This was
+    // very nearly shipped as rateLimit('read').
+    const known = new Set(['chat', 'chat_daily', 'write', 'export']);
+    const used = [...app.matchAll(/rateLimit\('([a-z_]+)'\)/g)].map((m) => m[1]);
+    assert.ok(used.length >= 6, 'the scan found suspiciously few rate-limited routes');
+    for (const bucket of used) {
+      assert.ok(known.has(bucket), `app.js uses rateLimit('${bucket}') and consume_rate_limit has no such bucket`);
+    }
+  });
+});

@@ -57,6 +57,7 @@ const PLACES = [
   { to: '/progress', key: 'nav.progress' },
   { to: '/library', key: 'nav.library' },
   { to: '/intake', key: 'nav.profile', quiet: true },
+  { to: '/leaderboard', key: 'nav.leaderboard' },
   { to: '/account', key: 'nav.data', quiet: true },
   { to: '/faq', key: 'nav.faq', quiet: true },
 ];

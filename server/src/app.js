@@ -13,6 +13,7 @@ import { accountRouter } from './routes/account.js';
 import { consentRouter } from './routes/consent.js';
 import { billingRouter } from './routes/billing.js';
 import { leaderboardRouter } from './routes/leaderboard.js';
+import { achievementsRouter } from './routes/achievements.js';
 import { billingWebhookRouter } from './routes/billingWebhook.js';
 import { initMonitoring } from './lib/monitoring.js';
 import { logger } from './lib/logger.js';
@@ -151,6 +152,12 @@ export function createApp() {
   // us and not free for Stripe, and a loop here is somebody's bad afternoon.
   app.use('/api/billing', rateLimit('write'), billingRouter);
   app.use('/api/leaderboard', rateLimit('write'), leaderboardRouter);
+  // 'write', not a new 'read' bucket. consume_rate_limit() knows four buckets -
+  // chat, chat_daily, write, export - and raises on anything else. The
+  // middleware catches that, logs, and calls next(), so an invented bucket name
+  // produces an unlimited endpoint that writes an error line on every request.
+  // Adding a bucket means changing the function, not the call site.
+  app.use('/api/achievements', rateLimit('write'), achievementsRouter);
   app.use('/api/profile', rateLimit('write'), profileRouter);
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/program', programRouter);

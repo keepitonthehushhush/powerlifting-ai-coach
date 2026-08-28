@@ -351,6 +351,45 @@ export const en = {
     checkoutCancelled: 'No payment was taken. You can subscribe whenever you like.',
     noRedirect: 'Could not open the payment page. Please try again.',
   },
+  leaderboard: {
+    title: 'Leaderboard',
+    intro:
+      'Opt in to compare your best lifts with other people using Coach Diaz. It is off unless you turn it on, and you can leave whenever you like.',
+    whatIsShown:
+      'If you join, other signed-in lifters see your display name and your best squat, bench and deadlift — nothing else. Not your bodyweight, not your age, not your injuries or health information, not your email. Those never leave your account.',
+    handleLabel: 'Your display name',
+    handlePlaceholder: 'e.g. eddy_lifts',
+    handleHelp:
+      'Three to twenty-four characters: letters, numbers, underscores and hyphens. This is what other lifters see — do not use your real name unless you want to.',
+    join: 'Join the leaderboard',
+    leave: 'Leave the leaderboard',
+    leaveIsDelete:
+      'Leaving deletes your leaderboard entry rather than hiding it. Your own logs and programme are untouched.',
+    loggedOnly:
+      'Numbers come from sessions you logged and completed — they cannot be typed in, and a missed rep does not count.',
+    empty: 'Nobody has logged that lift yet.',
+    rank: '#',
+    lifter: 'Lifter',
+    best: 'Best',
+    thatsYou: '(you)',
+    converted: '(logged as {weight} {units})',
+    lift: { squat: 'Squat', bench: 'Bench', deadlift: 'Deadlift' },
+  },
+  achievements: {
+    title: 'What you have done',
+    private: 'Only you can see these. They are never shown on the leaderboard.',
+    none: 'Log a session and the first one appears here.',
+    noStreaks:
+      'There are deliberately no streaks here. A streak tells you to train tomorrow whatever happened today, and that is how people train on a tweaked back or skip the deload their programme called for. Turning up over a month counts. A week off does not undo anything.',
+    milestone: '{weight} {units} {lift}',
+    cameBack: 'Back after {days} days',
+    name: {
+      first_session: 'First session logged',
+      consistent_month: 'Eight sessions in a month',
+      honest_log: 'Logged a miss',
+      all_three: 'All three lifts logged',
+    },
+  },
   library: {
     title: 'Exercise library',
     subtitle:
@@ -405,6 +444,7 @@ export const en = {
     progress: 'Progress',
     library: 'Library',
     profile: 'Profile',
+    leaderboard: 'Leaderboard',
     data: 'Your data',
     faq: 'FAQ',
     jumpToTop: 'Top',

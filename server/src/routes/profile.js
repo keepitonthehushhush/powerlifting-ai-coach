@@ -46,6 +46,21 @@ const ProfileUpdate = z
     current_deadlift: z.number().nonnegative().max(2000).nullish(),
     bodyweight: z.number().positive().max(1000).nullish(),
     units: z.enum(['lb', 'kg']).optional(),
+    /**
+     * The public handle. Mirrors the CHECK in migration 0026 exactly, so a
+     * name the database would reject is refused here with a sentence somebody
+     * can act on rather than a 502 carrying a constraint name.
+     *
+     * Letters, digits, underscore and hyphen only. This is the one string in
+     * the product that is shown to strangers, so no spaces, nothing that
+     * renders as another character, and nothing that could be read as markup.
+     */
+    display_name: z
+      .string()
+      .min(3)
+      .max(24)
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .nullish(),
     goal: z
       .enum(['learn_the_lifts', 'general_strength', 'return_from_layoff', 'first_meet', 'meet_prep'])
       .nullish(),

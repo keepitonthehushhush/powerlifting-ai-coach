@@ -13,6 +13,7 @@ import { LogSession } from './pages/LogSession.jsx';
 import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { Library } from './pages/Library.jsx';
+import { Leaderboard } from './pages/Leaderboard.jsx';
 import { Progress } from './pages/Progress.jsx';
 import { Program } from './pages/Program.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
@@ -59,6 +60,14 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <LogSession />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leaderboard"
+                element={
+                  <ProtectedRoute>
+                    <Leaderboard />
                   </ProtectedRoute>
                 }
               />

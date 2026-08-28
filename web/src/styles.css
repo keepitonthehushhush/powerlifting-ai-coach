@@ -1209,3 +1209,29 @@ form > button.primary {
   /* A day split across a page break is how somebody misses their last set. */
   .program-table, section.card { break-inside: avoid-page; page-break-inside: avoid; }
 }
+
+
+/* The board. A table, because it is one: three columns of ranked numbers with
+   a header row is exactly what <table> was built for, and it is what a screen
+   reader announces usefully. */
+.table-scroll { overflow-x: auto; }
+.board { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.board th, .board td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
+.board th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+.board tbody tr:last-child td { border-bottom: 0; }
+/* The reader's own row. A left rule and a wash rather than a colour swap, so
+   it is still findable when the hue is not. */
+.board tr.you td { background: var(--accent-soft); }
+.board tr.you td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+.badges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.badge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
