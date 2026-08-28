@@ -50,7 +50,21 @@ export function Leaderboard() {
        * prerequisite, so it belongs in the same action.
        */
       if (optIn && handle && handle !== profile?.display_name) {
-        await api.saveProfile({ ...profile, display_name: handle });
+        /**
+         * ONE FIELD, not the whole profile.
+         *
+         * This used to be `{ ...profile, display_name: handle }`, which is the
+         * obvious thing to write and was wrong: GET /profile returns
+         * `select('*')` - user_id, created_at, updated_at and the rest - while
+         * PUT validates with a `.strict()` schema that rejects any key it does
+         * not know. So every attempt to join failed with "Invalid profile
+         * data." and the response carried no detail saying which keys.
+         *
+         * PUT upserts the columns it is given, so sending one field changes
+         * one field and leaves everything else alone. Round-tripping a read
+         * into a write is the habit that caused this; do not reintroduce it.
+         */
+        await api.saveProfile({ display_name: handle });
       }
       await api.setLeaderboardOptIn(optIn);
       await load();

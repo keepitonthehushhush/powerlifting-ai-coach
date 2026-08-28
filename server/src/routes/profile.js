@@ -133,7 +133,32 @@ profileRouter.put('/', async (req, res, next) => {
   try {
     const parsed = ProfileUpdate.safeParse(req.body);
     if (!parsed.success) {
-      throw new HttpError(400, 'Invalid profile data.', parsed.error.flatten().fieldErrors);
+      /**
+       * ── WHY THIS IS NOT JUST fieldErrors ──────────────────────────────
+       *
+       * The schema is `.strict()`, and zod reports an unknown key as an
+       * `unrecognized_keys` issue with an EMPTY path. flatten() files
+       * empty-path issues under `formErrors`, so `fieldErrors` is `{}` for
+       * exactly the most common way this route is misused - a caller
+       * spreading a GET response, which returns `select('*')`, into a PUT.
+       *
+       * The result was a 400 reading "Invalid profile data." with no detail
+       * whatsoever, on a failure whose cause is a list of key names we are
+       * holding at the time. That is not a validation message, it is a
+       * shrug. Both halves are sent now, and the unknown keys are named.
+       */
+      const flat = parsed.error.flatten();
+      const unknownKeys = parsed.error.issues
+        .filter((issue) => issue.code === 'unrecognized_keys')
+        .flatMap((issue) => issue.keys ?? []);
+
+      throw new HttpError(
+        400,
+        unknownKeys.length > 0
+          ? `Invalid profile data: this request contained ${unknownKeys.length} field(s) the profile does not accept (${unknownKeys.join(', ')}). Send only the fields you are changing.`
+          : 'Invalid profile data.',
+        { code: 'invalid_profile', fields: flat.fieldErrors, form: flat.formErrors, unknownKeys },
+      );
     }
 
     // Health data may not be collected from a minor, because no consent path
