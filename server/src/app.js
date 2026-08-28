@@ -12,6 +12,7 @@ import { libraryRouter } from './routes/library.js';
 import { accountRouter } from './routes/account.js';
 import { consentRouter } from './routes/consent.js';
 import { billingRouter } from './routes/billing.js';
+import { leaderboardRouter } from './routes/leaderboard.js';
 import { billingWebhookRouter } from './routes/billingWebhook.js';
 import { initMonitoring } from './lib/monitoring.js';
 import { logger } from './lib/logger.js';
@@ -149,6 +150,7 @@ export function createApp() {
   // Rate limited on the write bucket: creating checkout sessions is cheap for
   // us and not free for Stripe, and a loop here is somebody's bad afternoon.
   app.use('/api/billing', rateLimit('write'), billingRouter);
+  app.use('/api/leaderboard', rateLimit('write'), leaderboardRouter);
   app.use('/api/profile', rateLimit('write'), profileRouter);
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/program', programRouter);

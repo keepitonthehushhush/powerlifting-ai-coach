@@ -89,6 +89,11 @@ const SENT_TO_THE_MODEL = {
 const NOT_SENT = {
   user_id: 'the row key',
   smallest_plate_pair: 'feeds the computed loads rather than being stated to the model',
+  display_name:
+    'the public leaderboard handle. Deliberately NOT sent: the coach already ' +
+    'has a preferred name and pronouns for addressing somebody, so the handle ' +
+    'adds nothing to the coaching and sending it would put a name the athlete ' +
+    'chose for strangers into a third party request for no reason.',
   intake_completed_at: 'bookkeeping',
   created_at: 'bookkeeping',
   updated_at: 'bookkeeping',

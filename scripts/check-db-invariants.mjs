@@ -75,6 +75,33 @@ const CHECKS = [
            where n.nspname = 'public' and p.proname = 'consume_rate_limit'`,
   },
   {
+    name: 'the leaderboard writers are SECURITY DEFINER with a pinned search_path',
+    why: 'They are the only way a leaderboard row can be written, and they carry owner rights. Definer without a pinned search_path is the classic escalation shape; definer lost on a `create or replace` is how the rate limiter failed open for a day. Asserted against the catalogue, never the migration file.',
+    sql: `select bool_and(p.prosecdef and array_to_string(p.proconfig, ',') like '%search_path=%') as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname in ('refresh_leaderboard_entry','set_leaderboard_opt_in')`,
+  },
+  {
+    name: 'AUTHENTICATED CANNOT WRITE THE LEADERBOARD',
+    why: 'The whole integrity property. The browser holds a real JWT and can reach PostgREST directly, so an insert or update privilege here would let anybody set their own squat to 9999 - and RLS would allow it, because it is their row. Numbers must come only from the definer function that recomputes them from logs.',
+    sql: `select count(*) = 0 as ok
+            from information_schema.role_table_grants
+           where table_schema = 'public'
+             and table_name = 'leaderboard_entries'
+             and grantee in ('authenticated','anon')
+             and privilege_type in ('INSERT','UPDATE','DELETE')`,
+  },
+  {
+    name: 'the leaderboard is unreadable to anon',
+    why: 'Opting in publishes to other athletes, not to the internet. A signed-out reader must get nothing.',
+    sql: `select count(*) = 0 as ok
+            from information_schema.role_table_grants
+           where table_schema = 'public'
+             and table_name = 'leaderboard_entries'
+             and grantee = 'anon'`,
+  },
+  {
     name: 'every user-scoped table is reachable by authenticated',
     why: 'RLS narrows a granted privilege; it does not create one. A table with perfect policies and no GRANT is unreachable, and the failure is silent on a fire-and-forget write.',
     sql: `select count(*) = 0 as ok
