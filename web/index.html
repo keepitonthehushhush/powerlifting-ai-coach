@@ -22,6 +22,35 @@
       have just finished solving, in exchange for offline access to a coach
       that requires the network to answer.
     -->
+    <!--
+      ── WHAT A SHARED LINK LOOKS LIKE ────────────────────────────────────
+
+      Now that / is a page worth sending somebody rather than a sign-in form,
+      the link gets pasted into messages, and every messaging app renders a
+      preview from these four tags. Without them it renders the bare URL, which
+      reads as something dubious.
+
+      The image is the app icon, and twitter:card is "summary" rather than
+      "summary_large_image" for that reason: summary_large_image crops to
+      roughly 1.91:1 and would take a bite out of a square mark. A wide social
+      image is worth making; it is not worth faking with a square one.
+
+      These are static, so they do not change per route - correct for an SPA
+      with no server rendering, since a crawler that does not run JavaScript
+      sees this file whatever path it asked for. The description matches the
+      manifest and the meta description above it deliberately.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Coach Diaz" />
+    <meta property="og:title" content="Coach Diaz - AI Powerlifting Programming" />
+    <meta
+      property="og:description"
+      content="An AI strength coach that programs, adjusts, and progresses powerlifters over time."
+    />
+    <meta property="og:url" content="https://coachdiaz.app/" />
+    <meta property="og:image" content="https://coachdiaz.app/icons/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+
     <link rel="manifest" href="/manifest.webmanifest" />
 
     <!-- Matches the palette in styles.css so the status bar does not flash a

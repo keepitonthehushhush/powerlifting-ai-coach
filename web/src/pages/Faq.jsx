@@ -32,6 +32,14 @@ export function Faq() {
   return (
     <div className="page">
       <header className="page-header">
+        {/* A way back to the front door. This page is the one most likely to
+            be found by a search or a shared link, and until the landing page
+            existed there was nowhere to go back TO. */}
+        <p className="policy-link">
+          <Link className="link" to="/">
+            Coach Diaz
+          </Link>
+        </p>
         <h1>Questions people ask</h1>
         <p className="muted header-detail">
           Short answers, no jargon. If something here is unclear, that is our fault and worth
@@ -294,6 +302,30 @@ export function Faq() {
           not need any of it — an account email address is enough to act on — and anything you do
           send gets deleted once we have dealt with your request rather than filed away.
         </p>
+      </div>
+
+      {/* Somebody who has read this far and is convinced had, until now, no
+          way to act on it: the page ended in policy links. English rather than
+          t(), to match the rest of a page that is not translated yet - a lone
+          Spanish button under English prose reads as a mistake.
+
+          It offers the same two doors as the landing page and in the same
+          order, because a person arriving here from a search has not seen
+          that page and should not have to. */}
+      <div className="card stack">
+        <h2 className="h3">Ready to try it?</h2>
+        <p className="muted">
+          It is free while it is being built and tested, every health question is optional, and you
+          can delete the account and everything in it from inside the app.
+        </p>
+        <div className="row-actions">
+          <Link className="cta" to="/login?mode=signup">
+            Create your account
+          </Link>
+          <Link className="link strong" to="/login">
+            Already have an account? Sign in
+          </Link>
+        </div>
       </div>
 
       <div className="card stack">

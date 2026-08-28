@@ -28,6 +28,49 @@ export const es = {
       'Coach es una herramienta de IA, no un profesional médico. Si tienes dolor, una lesión o una condición de salud, consulta con un médico o fisioterapeuta antes de entrenar.',
   },
 
+  home: {
+    headline: 'Un entrenador de fuerza que lee lo que de verdad levantaste.',
+    subhead:
+      'Coach Diaz te escribe un programa de powerlifting y luego lo rehace a partir de las sesiones que registras, no de las que el plan daba por hechas.',
+    ctaCreate: 'Crea tu cuenta',
+    ctaOpen: 'Abrir tu entrenador',
+    ctaSignIn: '¿Ya tienes cuenta? Inicia sesión',
+    free: 'Gratis mientras se construye y se prueba.',
+
+    howTitle: 'Cómo funciona',
+    step1Title: 'Cuéntale dónde estás',
+    step1Body:
+      'Cuánto tiempo llevas entrenando, cuáles son tus mejores levantamientos, cuántos días a la semana puedes ir al gimnasio y qué hay realmente en ese gimnasio.',
+    step2Title: 'Recibe un programa, no una plantilla',
+    step2Body:
+      'Ejercicios concretos, pesos concretos y descansos concretos entre series. Esos números se calculan con código normal y se le entregan al entrenador ya resueltos, así que nunca dependen de que un modelo de lenguaje haga bien las cuentas.',
+    step3Title: 'Registra lo que pasó de verdad',
+    step3Body:
+      'Las buenas sesiones y las malas. Una repetición fallada es información, no un fracaso: el siguiente bloque se construye con ella.',
+
+    aiTitle: '¿Por qué no preguntarle a una IA general?',
+    aiBody:
+      'Puedes hacerlo, y te escribirá algo que parece correcto. No lo recordará el mes que viene y nunca sabrá que fallaste las dos últimas repeticiones de cada serie pesada. Cuando siete expertos en fuerza y acondicionamiento evaluaron programas de doce semanas escritos por tres versiones de ChatGPT, un mismo error apareció en todas: quince repeticiones al 85% del máximo, una carga con la que casi nadie pasa de cinco.',
+    aiLink: 'La respuesta larga, incluido cuándo una IA general es la mejor opción',
+
+    gymTitle: 'Te pregunta dónde entrenas, y luego te cree',
+    gymBody:
+      'Un programa que da por hecha una barra de competición y un rack no le sirve de nada a quien solo tiene una máquina Smith y un par de mancuernas. Coach Diaz pregunta a dónde vas de verdad y programa para eso, incluidos los gimnasios que no tienen barra.',
+
+    honestTitle: 'Lo que no va a hacer',
+    honestDoctor:
+      'No es médico. Si le hablas de dolor o de una lesión, deja de escribirte programas hasta que confirmes que un médico o un fisioterapeuta te ha autorizado a entrenar.',
+    honestOptional:
+      'Todas las preguntas de salud son opcionales. Si las dejas en blanco, simplemente programa de forma más conservadora.',
+    honestAds:
+      'No vende tus datos. No hay scripts de publicidad ni de analítica en ninguna parte de este sitio, ni enlaces de compra en ninguna parte de la aplicación.',
+    honestDelete:
+      'Puedes borrar tu cuenta y todo lo asociado a ella desde la página de Cuenta, al instante y sin escribirle a nadie.',
+
+    terms: 'Condiciones',
+    healthPolicy: 'Datos de salud',
+  },
+
   auth: {
     sessionEnded: 'Se cerró tu sesión y no sabemos con certeza por qué; vuelve a iniciar sesión. Si sigue pasando, el código entre paréntesis nos dice qué falló.',
     tagline: 'Programación estructurada de powerlifting que se adapta a lo que realmente levantas.',

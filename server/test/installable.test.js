@@ -30,7 +30,11 @@ describe('the manifest says what it must', () => {
     // requires before it will offer installation.
     assert.ok(manifest.name);
     assert.equal(manifest.display, 'standalone');
-    assert.equal(manifest.start_url, '/');
+    // /coach, not /. The root became the public landing page, and somebody
+    // who installed this wants the product rather than the argument for it.
+    // A signed-out launch still lands correctly: /coach is protected and
+    // redirects to sign-in.
+    assert.equal(manifest.start_url, '/coach');
     assert.equal(manifest.scope, '/');
     assert.ok(manifest.icons.length >= 3);
   });

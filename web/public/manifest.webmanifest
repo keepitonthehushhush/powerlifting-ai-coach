@@ -4,7 +4,7 @@
   "description": "An AI strength coach that programs, adjusts, and progresses powerlifters over time.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/",
+  "start_url": "/coach",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0f0d1a",

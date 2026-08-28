@@ -11,7 +11,22 @@ import { enabled as captchaEnabled } from '../lib/turnstile.js';
 export function Login() {
   const { session, signIn, signUp, resetPassword, lastSignOut } = useAuth();
   const { t } = useI18n();
-  const [mode, setMode] = useState('signin');
+  /**
+   * Read once, from the URL, against a closed list.
+   *
+   * The landing page's primary button says "create your account", and until
+   * this existed it produced the SIGN-IN form - the same class of untruth as a
+   * field labelled "Username or Email" on a form that only accepts email.
+   *
+   * Validated against the three modes this component knows rather than trusted
+   * as a string, so `?mode=` cannot put the form into a state that does not
+   * exist. Reset stays out of it: that flow has its own route, because it
+   * arrives from an email carrying a token.
+   */
+  const [mode, setMode] = useState(() => {
+    const requested = new URLSearchParams(window.location.search).get('mode');
+    return requested === 'signup' ? 'signup' : 'signin';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState(null);

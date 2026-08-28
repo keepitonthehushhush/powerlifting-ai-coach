@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { ConsentProvider } from './context/ConsentContext.jsx';
 import { I18nProvider } from './i18n/index.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
+import { Home } from './pages/Home.jsx';
 import { EasterEggs } from './components/EasterEggs.jsx';
 import { Login } from './pages/Login.jsx';
 import { Intake } from './pages/Intake.jsx';
@@ -49,6 +50,11 @@ export function App() {
             <EasterEggs />
             <NewVersionBanner />
             <Routes>
+              {/* The front door. Public, and NOT behind a session check:
+                  `/` used to fall through the catch-all to /coach, which is
+                  protected, so an anonymous visitor's first sight of this
+                  product was a password field. */}
+              <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route
                 path="/intake"

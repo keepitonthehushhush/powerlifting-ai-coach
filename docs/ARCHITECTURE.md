@@ -665,8 +665,11 @@ source mentions must exist, and the locale *sources* are scanned for a key
 declared twice - which has to read the file, because by the time the catalogue
 is an object the duplicate is already gone.
 
-**What this does not cover.** It loads one route, unauthenticated. It is a smoke
-test, not a browser suite: it answers "does anything appear", which is precisely
+**What this does not cover.** It loads two routes - the landing page and the
+sign-in page - both unauthenticated. (It loaded one until the landing page took
+`/`, which silently stopped it exercising the screen carrying the auth code and
+the CAPTCHA widget; the second route was added with that change rather than
+after the next outage.) It is a smoke test, not a browser suite: it answers "does anything appear", which is precisely
 the question that was going unasked. `no-undef` and `no-dupe-keys` - both
 default ESLint rules, and either would have caught the `Intake.jsx` line at the
 source - remain unenforced. This repository has no linter, and that is the next

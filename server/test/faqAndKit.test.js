@@ -259,6 +259,15 @@ describe('the FAQ', () => {
     });
   });
 
+  test('AND SOMEBODY CONVINCED BY IT CAN ACT ON IT', () => {
+    // The page ended in policy links. A person who read fourteen answers,
+    // decided yes, and found nothing to press is the most expensive kind of
+    // visitor to lose - and this page is the one most likely to be reached
+    // from a search rather than from the front door.
+    assert.match(faqCode, /to="\/login\?mode=signup"/);
+    assert.match(faqCode, /to="\/"/, 'there is no way back to the landing page');
+  });
+
   test('it states that no equipment recommendation earns us anything', () => {
     assert.match(faq, phrase('We do not earn anything'));
     assert.match(faq, phrase('no shopping links anywhere in the app'));

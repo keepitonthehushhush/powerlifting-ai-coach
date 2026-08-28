@@ -24,6 +24,61 @@ export const en = {
       'Coach is an AI tool, not a medical professional. If you have current pain, an injury, or a health condition, get clearance from a doctor or physical therapist before training.',
   },
 
+  /**
+   * The public front door.
+   *
+   * Translated, unlike the FAQ and the policy pages, because this is shell
+   * rather than long prose: short strings, high visibility, and the first
+   * thing anybody sees. A Spanish-speaking visitor who lands on an English
+   * headline has already decided something about the product before they find
+   * the language switcher.
+   *
+   * Every claim here is a claim the FAQ or a policy document already makes, in
+   * the same strength. server/test/landing.test.js holds them together.
+   */
+  home: {
+    headline: 'A strength coach that reads what you actually lifted.',
+    subhead:
+      'Coach Diaz writes you a powerlifting programme, then rebuilds it from the sessions you log — not from the sessions the plan assumed you would have.',
+    ctaCreate: 'Create your account',
+    ctaOpen: 'Open your coach',
+    ctaSignIn: 'Already have an account? Sign in',
+    free: 'Free while it is being built and tested.',
+
+    howTitle: 'How it works',
+    step1Title: 'Tell it where you are',
+    step1Body:
+      'How long you have been training, what your best lifts are, how many days a week you can get to a gym, and what that gym actually has in it.',
+    step2Title: 'Get a programme, not a template',
+    step2Body:
+      'Specific lifts, specific weights, specific rest between sets. Those numbers are worked out in ordinary code and handed to the coach as answers, so they never depend on a language model doing arithmetic.',
+    step3Title: 'Log what actually happened',
+    step3Body:
+      'The good sessions and the bad ones. A missed rep is information rather than a failure — the next block is built out of it.',
+
+    aiTitle: 'Why not just ask a general AI?',
+    aiBody:
+      'You can, and it will write you something that looks right. It will not remember it next month, and it will never know that you missed the last two reps of every top set. When seven strength-and-conditioning experts scored twelve-week programmes from three versions of ChatGPT, one error appeared in all of them: fifteen repetitions at 85% of maximum, a load almost nobody gets past five.',
+    aiLink: 'The longer answer, including when a general AI is the better choice',
+
+    gymTitle: 'It asks where you train, and then believes you',
+    gymBody:
+      'A programme that assumes a competition bar and a squat rack is useless to somebody with a Smith machine and a pair of dumbbells. Coach Diaz asks where you actually go, and programmes for that — including gyms with no barbell at all.',
+
+    honestTitle: 'What it will not do',
+    honestDoctor:
+      'It is not a doctor. Tell it about pain or an injury and it stops writing programmes until you confirm that a doctor or physiotherapist has cleared you to train.',
+    honestOptional:
+      'Every health question is optional. Leave them blank and it simply programmes more conservatively.',
+    honestAds:
+      'It does not sell your data. There are no advertising or analytics scripts anywhere on this site, and no shopping links anywhere in the app.',
+    honestDelete:
+      'You can delete your account and everything attached to it from the Account page, immediately, without emailing anybody.',
+
+    terms: 'Terms',
+    healthPolicy: 'Health data',
+  },
+
   auth: {
     sessionEnded: 'You were signed out and we are not sure why — please sign in again. If this keeps happening, the code in brackets tells us what went wrong.',
     tagline: 'Structured powerlifting programming that adapts to what you actually lift.',

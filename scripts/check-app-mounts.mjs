@@ -26,7 +26,7 @@
  *
  * It would be one npm install and a much nicer API. It would also be a large
  * dependency, a browser download in CI, and a second thing to keep current -
- * for a check that needs exactly one page load and one DOM read. Chrome's own
+ * for a check that needs two page loads and a DOM read each. Chrome's own
  * `--dump-dom` prints the DOM after the page settles, which is the entire
  * feature required. Chrome is preinstalled on GitHub's ubuntu runners
  * (Ubuntu 24.04 ships Google Chrome AND Chromium), so CI needs no new step.
@@ -264,30 +264,19 @@ async function untranslatedKeys(dom) {
   return [...new Set([...text.matchAll(pattern)].map((match) => match[1]))];
 }
 
-async function main() {
-  if (!(await exists(path.join(distDir, 'index.html')))) {
-    console.error(`No build found at ${path.relative(repoRoot, distDir)}/index.html.`);
-    console.error('Run `npm run build` first.');
-    process.exit(1);
-  }
+/**
+ * The routes worth loading.
+ *
+ * `/` was the only one until it stopped being the sign-in page. When the
+ * landing page took the root, this check silently stopped exercising the
+ * screen with the auth code and the third-party CAPTCHA widget on it - the
+ * most breakable page in the app - and nothing would have said so. Two page
+ * loads, a few seconds.
+ */
+const ROUTES = ['/', '/login'];
 
-  const chrome = await findChrome();
-  if (!chrome) {
-    console.error('No Chrome, Chromium or Edge binary found, so the built app cannot be loaded.');
-    console.error('This check is deliberately not skippable: the two blank pages this project has');
-    console.error('shipped were both invisible to every check that reads files instead of running');
-    console.error('them. Install Chrome, or set CHROME_BIN to its path.');
-    process.exit(1);
-  }
-
-  const { server, port } = await serveDist();
-  let dom;
-  try {
-    dom = await dumpDom(chrome, `http://127.0.0.1:${port}/`);
-  } finally {
-    server.close();
-  }
-
+/** Everything a file cannot tell you, asked of one rendered page. */
+async function checkRoute(dom) {
   const failures = [];
 
   const errors = probeValue(dom, '__probe_errors');
@@ -314,6 +303,40 @@ async function main() {
     failures.push(`untranslated i18n keys rendered as visible text: ${leaked.join(', ')}`);
   }
 
+  return failures;
+}
+
+async function main() {
+  if (!(await exists(path.join(distDir, 'index.html')))) {
+    console.error(`No build found at ${path.relative(repoRoot, distDir)}/index.html.`);
+    console.error('Run `npm run build` first.');
+    process.exit(1);
+  }
+
+  const chrome = await findChrome();
+  if (!chrome) {
+    console.error('No Chrome, Chromium or Edge binary found, so the built app cannot be loaded.');
+    console.error('This check is deliberately not skippable: the two blank pages this project has');
+    console.error('shipped were both invisible to every check that reads files instead of running');
+    console.error('them. Install Chrome, or set CHROME_BIN to its path.');
+    process.exit(1);
+  }
+
+  const { server, port } = await serveDist();
+  const doms = {};
+  try {
+    for (const route of ROUTES) {
+      doms[route] = await dumpDom(chrome, `http://127.0.0.1:${port}${route}`);
+    }
+  } finally {
+    server.close();
+  }
+
+  const failures = [];
+  for (const [route, dom] of Object.entries(doms)) {
+    for (const failure of await checkRoute(dom)) failures.push(`${route}: ${failure}`);
+  }
+
   if (failures.length) {
     console.error(`\nThe built app does not work in a browser (${path.basename(chrome)}):\n`);
     for (const failure of failures) console.error(`  - ${failure}`);
@@ -321,7 +344,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`The built app mounts and renders in ${path.basename(chrome)}, with the network cut off.`);
+  console.log(
+    `${ROUTES.length} route(s) mount and render in ${path.basename(chrome)}, with the network cut off: ${ROUTES.join(', ')}`
+  );
 }
 
 await main();

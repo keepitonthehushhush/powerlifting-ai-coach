@@ -1260,3 +1260,189 @@ form > button.primary {
   background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
   font-size: 0.9rem;
 }
+
+/* ── THE PUBLIC CALL TO ACTION ──────────────────────────────────────────────
+
+   Used on the landing page and at the foot of the FAQ, which is why it is not
+   `.home-cta`: a class named for one page and used on two is a lie that later
+   gets "tidied" by somebody who believes the name.
+
+   An anchor, not a button, because it navigates. `.primary` is deliberately
+   not reused - it is styled for real buttons, and both `form > button.primary`
+   and `.stack > button.primary` carry min-width rules written for a different
+   layout, which is precisely how this stylesheet once crushed the chat
+   composer's textarea to 24px on a phone. */
+
+.cta {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.05rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: 8px;
+  min-height: 44px;
+}
+
+.cta:hover {
+  filter: brightness(1.06);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 3px;
+}
+
+/* ── THE PUBLIC LANDING PAGE ────────────────────────────────────────────────
+
+   Its own block of classes rather than reusing `.page` and `.card`, because
+   this page has a different job from every other one: it is read by somebody
+   standing still, deciding, rather than by somebody using a tool. Wider
+   measure, larger type, more air.
+
+   Everything here is prefixed `home-`. That is not tidiness - this stylesheet
+   has already produced one bug where a rule written for a form's submit button
+   found the chat composer's send button and crushed the textarea to 24px on a
+   phone. A prefix is how a rule written for one page is prevented from finding
+   another. */
+
+.home {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 1.25rem clamp(1rem, 5vw, 2rem) 4rem;
+}
+
+.home-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 2rem;
+}
+
+.home-hero {
+  padding: clamp(1.5rem, 6vw, 4rem) 0 clamp(2rem, 6vw, 3.5rem);
+  max-width: 34ch;
+}
+
+.home-headline {
+  font-size: clamp(2rem, 6.5vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin: 0 0 1rem;
+}
+
+/* Wider than the headline: a 34ch measure is right for something set at 3rem
+   and far too narrow for body copy. */
+.home-subhead {
+  max-width: 46ch;
+  font-size: clamp(1.02rem, 2.2vw, 1.2rem);
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.home-free {
+  margin: 1.1rem 0 0;
+}
+
+.home-section {
+  max-width: 62ch;
+  padding: clamp(1.5rem, 4vw, 2.25rem) 0;
+  border-top: 1px solid var(--border);
+}
+
+.home-h2 {
+  font-size: clamp(1.3rem, 3vw, 1.6rem);
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+
+.home-h3 {
+  font-size: 1.02rem;
+  font-weight: 600;
+  margin: 0 0 0.3rem;
+}
+
+.home-section p {
+  margin: 0.6rem 0;
+}
+
+/* Numbered, and the numbers are visible: the order is the argument. */
+.home-steps {
+  list-style: none;
+  counter-reset: home-step;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.home-steps > li {
+  counter-increment: home-step;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0 0.9rem;
+}
+
+.home-steps > li::before {
+  content: counter(home-step);
+  grid-row: 1 / span 2;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--accent);
+  line-height: 1.5;
+}
+
+.home-steps > li p {
+  grid-column: 2;
+  margin: 0;
+  color: var(--muted);
+}
+
+.home-honest {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.home-honest > li {
+  padding-left: 1.1rem;
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+}
+
+.home-footer {
+  max-width: 62ch;
+  padding-top: 2rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
+}
+
+/* The wordmark sits alone at the top here rather than inside a nav, so it does
+   not inherit .site-nav's rules. Its own line, so it never collides with the
+   language switcher on a narrow phone. */
+@media (max-width: 380px) {
+  .home-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
