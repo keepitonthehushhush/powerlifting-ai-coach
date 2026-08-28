@@ -164,3 +164,62 @@ describe('both halves are guarded, because both can reach the database', () => {
     );
   });
 });
+
+describe('the migrations can rebuild the database', () => {
+  const replay = readSource(new URL('../../scripts/replay-migrations.mjs', import.meta.url));
+  const runbook = readRaw(new URL('../../docs/RUNBOOK.md', import.meta.url));
+
+  test('IT REFUSES THE PRODUCTION PROJECT BY REF', () => {
+    // A connection string is one paste away from being the wrong one, and the
+    // wrong one here recreates a schema over live data.
+    assert.match(replay, /connectionString\.includes\(PRODUCTION_SUPABASE_REF\)/);
+    // Imported rather than retyped: a third copy of the ref is a third thing
+    // to keep in step.
+    assert.match(replay, /from '\.\.\/server\/src\/lib\/environment\.js'/);
+  });
+
+  test('AND IT REFUSES ANY DATABASE THAT IS NOT EMPTY', () => {
+    // The check is on the TARGET rather than on a flag somebody passes,
+    // because a flag is the thing that gets passed by habit.
+    assert.match(replay, /table_schema = 'public' and table_type = 'BASE TABLE'/);
+    assert.match(replay, /Refusing to run: this database already has/);
+  });
+
+  test('each file gets its own transaction', () => {
+    // Postgres makes DDL transactional, so a file that fails halfway leaves
+    // nothing behind and the replay stops at a known point - which is what
+    // makes "start again from empty" a recovery rather than a guess.
+    assert.match(replay, /await client\.query\('begin'\)/);
+    assert.match(replay, /await client\.query\('rollback'\)/);
+  });
+
+  test('and the order is the filename order, said out loud', () => {
+    assert.match(replay, /lexical order IS the order/);
+  });
+
+  test('a failure says the whole recovery, not just the error', () => {
+    assert.match(replay, /replay from empty rather than patching around it/);
+  });
+
+  test('no log line can carry the password', () => {
+    // The connection string holds one, and a script that prints where it is
+    // connecting is a script that prints it. readRaw for the reasoning,
+    // readSource for the absence - the eighth time that distinction has
+    // mattered in this repository.
+    assert.match(
+      readRaw(new URL('../../scripts/replay-migrations.mjs', import.meta.url)),
+      /Just the host, so a log line never carries the password/
+    );
+    // Precisely: the string is never interpolated and never passed straight to
+    // a console call. `hostOf(connectionString)` is the only way it is allowed
+    // near one, which the first version of this assertion flagged as a
+    // violation - a check too blunt to tell the safe use from the unsafe one.
+    assert.doesNotMatch(replay, /\$\{connectionString\}/);
+    assert.doesNotMatch(replay, /console\.(log|error)\(\s*connectionString/);
+    assert.match(replay, /hostOf\(connectionString\)/);
+  });
+
+  test('the runbook tells somebody it exists', () => {
+    assert.match(runbook, /npm run db:replay/);
+  });
+});

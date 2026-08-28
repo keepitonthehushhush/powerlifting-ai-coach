@@ -321,7 +321,18 @@ thing failing is a preview.
 **Setting up the preview project** (once):
 
 1. Create a second Supabase project in the same organisation.
-2. Apply every migration in `supabase/migrations/` to it, in order.
+2. Replay the schema into it:
+
+   ```sh
+   DATABASE_URL='<the preview project's URI>' npm run db:replay
+   ```
+
+   It applies every file in `supabase/migrations/` in order, each in its own
+   transaction, and refuses to run against the production project or against
+   any database that already has tables. It is also the only thing that has
+   ever answered "can these files rebuild the database from nothing" — they
+   were applied one at a time, months apart, to a database that was never
+   empty.
 3. In the Vercel dashboard, add these scoped to **Preview** only:
    `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `VITE_SUPABASE_URL`,
    `VITE_SUPABASE_PUBLISHABLE_KEY`.

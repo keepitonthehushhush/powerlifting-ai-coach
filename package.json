@@ -29,6 +29,7 @@
     "check:contact": "node scripts/check-contact-route.mjs",
     "check:lockfile": "node scripts/check-lockfile.mjs",
     "check:mounts": "node scripts/check-app-mounts.mjs",
+    "db:replay": "node scripts/replay-migrations.mjs",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "dependencies": {
