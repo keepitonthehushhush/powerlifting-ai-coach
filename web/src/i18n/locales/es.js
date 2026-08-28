@@ -424,6 +424,12 @@ export const es = {
       subscription_changed: 'Cambió el estado de la suscripción',
     },
   },
+  version: {
+    updated:
+      'Hay una versión más reciente de Coach Diaz. Esta pestaña sigue usando la anterior, que puede comportarse de forma extraña hasta que la recargues.',
+    reload: 'Recargar ahora',
+    later: 'Ahora no',
+  },
   library: {
     title: 'Biblioteca de ejercicios',
     subtitle:

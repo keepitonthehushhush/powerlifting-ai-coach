@@ -422,6 +422,12 @@ export const en = {
       subscription_changed: 'Subscription status changed',
     },
   },
+  version: {
+    updated:
+      'A newer version of Coach Diaz is available. This tab is still running the older one, which can behave oddly until you reload.',
+    reload: 'Reload now',
+    later: 'Not now',
+  },
   library: {
     title: 'Exercise library',
     subtitle:

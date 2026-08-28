@@ -204,3 +204,66 @@ When you run `npm update stripe` or bump the major:
 
 Current pin: `2026-08-26.dahlia`, verified 2026-08-27 against stripe-node
 v22.6.0.
+
+## Deploying without confusing anybody
+
+### What can actually go wrong
+
+Not what you would guess. This app has **no code splitting**, so the classic
+"refresh during a deploy and get a 404 on a chunk" failure cannot happen here -
+there is one bundle, and Vercel serves `index.html` with `must-revalidate`, so a
+refresh gets fresh HTML pointing at a fresh asset.
+
+The real exposure is **version skew**: somebody leaves a tab open, a deploy
+lands, and their JavaScript is now a commit behind the API answering it. Nothing
+crashes. A field the old client does not send, an error code it does not know, a
+response shape it mis-reads - and a report that "it did something weird" that
+neither of you can reproduce, because refreshing fixes it silently.
+
+### What is in place
+
+- `/api/health` reports the deployment id currently serving.
+- The bundle carries the id of the build that produced it (`__BUILD_ID__`).
+- When a tab regains focus, it compares them. If they differ, a banner offers a
+  reload. It does **not** reload by itself: somebody may be halfway through
+  logging a session, and taking that off the screen to fix a problem they have
+  not hit yet trades a possible confusion for a certain loss.
+- Every API request sends `x-deployment-id`. Vercel's Skew Protection would use
+  it to pin an old client to the deployment it came from; it is Pro-and-above
+  and does not support a plain Vite SPA automatically, so today Vercel ignores
+  the header. It is sent anyway so the feature works the day the plan changes
+  rather than being something to remember.
+
+### Before a deploy that changes an API shape
+
+1. `npm test`, `npm run check:docs`, `npm run check:lockfile`.
+2. `npm run build`, then grep the artefact for anything that has to be in it -
+   this is how a missing `VITE_` variable gets caught, and it has been caught
+   this way once already.
+3. Push to a **branch**, not main. Vercel builds a preview deployment.
+4. Open the preview URL and exercise the path you changed.
+5. Merge.
+
+### THE THING TO KNOW ABOUT PREVIEW DEPLOYMENTS
+
+**A preview deployment talks to the production database.** There is one Supabase
+project, so the preview URL reads and writes the same rows as coachdiaz.app.
+Testing a destructive change on a preview is testing it on production data.
+
+Until there is a second Supabase project for preview, treat a preview deployment
+as production for anything that writes: it is safe for reading, for UI work, and
+for checking a build carries what it should. It is not a place to try a
+migration or a delete.
+
+Migrations are applied directly to the one project and are not branch-scoped at
+all, so a migration is live the moment it is applied - before the code that uses
+it deploys. Write them so the old code still works: add columns, do not rename
+or drop them in the same change as the code that stops using them.
+
+### If a deploy has to be rolled back
+
+Vercel keeps previous deployments. Promote the last good one from the dashboard
+rather than reverting and rebuilding - it is immediate, and a revert commit can
+be written calmly afterwards. A database migration does **not** roll back with
+it, which is the other reason migrations should be written so the previous
+version of the code still runs.

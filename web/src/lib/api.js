@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { config } from './config.js';
+import { BUILD_ID } from './version.js';
 
 /**
  * Thin fetch wrapper that attaches the current Supabase access token to every
@@ -76,6 +77,17 @@ async function request(path, options = {}) {
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        /**
+         * Vercel's Skew Protection pins a request to the deployment that
+         * served the page, so an old client keeps talking to the server that
+         * understands it. It is Pro-and-above and does not support a plain
+         * Vite SPA automatically, so this header is the manual half.
+         *
+         * Sent unconditionally and harmless when the feature is off - Vercel
+         * ignores it. The point is that the day the plan changes, this already
+         * works rather than being a thing somebody has to remember.
+         */
+        ...(BUILD_ID && BUILD_ID !== 'dev' ? { 'x-deployment-id': BUILD_ID } : {}),
         ...init.headers,
       },
     });

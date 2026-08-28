@@ -28,6 +28,22 @@ export default defineConfig({
    * unaffected either way.
    */
   envDir: '..',
+
+  /**
+   * The build's identity, baked in so the running client can recognise that a
+   * newer one exists.
+   *
+   * VERCEL_DEPLOYMENT_ID is a system variable available at build AND runtime,
+   * which is what makes the comparison possible: the bundle carries the value
+   * from the build that produced it, and /api/health reports the value of
+   * whatever deployment is serving right now. Different means the tab is
+   * running yesterday's code.
+   *
+   * Falls back to 'dev' locally, where there is nothing to skew against.
+   */
+  define: {
+    __BUILD_ID__: JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID ?? 'dev'),
+  },
   server: {
     port: 5173,
     // Proxy /api to the local Express server so development and production

@@ -140,7 +140,20 @@ export function createApp() {
   );
 
   // Unauthenticated: a liveness probe that touches nothing and reveals nothing.
-  app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+  /**
+   * Health, plus the identity of the deployment answering.
+   *
+   * The client compares this against the id compiled into its own bundle. When
+   * they differ, the person is looking at a page built by an older deployment
+   * - which is exactly the situation where a refresh mid-fix produces
+   * behaviour nobody can explain, because the JavaScript in the tab and the
+   * API answering it are from different commits.
+   *
+   * Unauthenticated on purpose: it is already the maintenance page's poll
+   * target, and a deployment id is not a secret.
+   */
+  app.get('/api/health', (_req, res) =>
+    res.json({ status: 'ok', deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev' }));
 
   // Everything past this line requires a verified session. Applying requireAuth
   // to the whole /api surface at once, rather than route by route, means a new

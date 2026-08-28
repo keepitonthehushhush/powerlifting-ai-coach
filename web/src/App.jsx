@@ -14,6 +14,7 @@ import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { Library } from './pages/Library.jsx';
 import { Leaderboard } from './pages/Leaderboard.jsx';
+import { NewVersionBanner } from './components/NewVersionBanner.jsx';
 import { LeaderboardPolicy } from './pages/LeaderboardPolicy.jsx';
 import { Progress } from './pages/Progress.jsx';
 import { Program } from './pages/Program.jsx';
@@ -46,6 +47,7 @@ export function App() {
             {/* Mounted once, above the router: the eggs belong to the product
                 rather than to any one page. */}
             <EasterEggs />
+            <NewVersionBanner />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route

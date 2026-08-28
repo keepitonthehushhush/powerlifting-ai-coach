@@ -1240,3 +1240,23 @@ form > button.primary {
    min-height so the form does not jump when the widget finishes loading -
    layout shift under a submit button is how people click the wrong thing. */
 .turnstile { display: flex; flex-direction: column; gap: 0.4rem; min-height: 70px; }
+
+
+/* The new-version notice. Pinned to the top of the viewport rather than
+   inserted into the page flow: appearing inline would push whatever somebody
+   is reading down the screen, which is a worse interruption than the problem
+   it is reporting. */
+.version-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
+  font-size: 0.9rem;
+}
