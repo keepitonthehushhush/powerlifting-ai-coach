@@ -95,6 +95,26 @@ const CHECKS = [
              and p.proname in ('refresh_leaderboard_entry','set_leaderboard_opt_in')`,
   },
   {
+    name: 'NO LEADERBOARD ENTRY EXISTS WITHOUT A CURRENT CONSENT BEHIND IT',
+    why: 'Publishing somebody lifts to other users needs an active, current leaderboard_publication consent (0028). set_leaderboard_opt_in() enforces that on the way in, but an entry written by any other path - or predating the rule, which one did - would sit published with no record that anybody agreed. This is the condition itself, checked rather than assumed.',
+    sql: `select count(*) = 0 as ok
+            from public.leaderboard_entries e
+           where not exists (
+             select 1 from (
+               select distinct on (c.user_id) c.user_id, c.granted, c.policy_version
+                 from public.consent_records c
+                where c.consent_type = 'leaderboard_publication'
+                order by c.user_id, c.seq desc
+             ) latest
+             where latest.user_id = e.user_id
+               and latest.granted
+               and latest.policy_version = (
+                 select v.version from public.policy_versions v
+                  where v.consent_type = 'leaderboard_publication'
+               )
+           )`,
+  },
+  {
     name: 'AUTHENTICATED CANNOT WRITE THE LEADERBOARD',
     why: 'The whole integrity property. The browser holds a real JWT and can reach PostgREST directly, so an insert or update privilege here would let anybody set their own squat to 9999 - and RLS would allow it, because it is their row. Numbers must come only from the definer function that recomputes them from logs.',
     sql: `select count(*) = 0 as ok

@@ -166,3 +166,52 @@ describe('the policy document', () => {
       /pending legal review/i);
   });
 });
+
+describe('the rule was backfilled, not just applied to newcomers', () => {
+  const backfill = readRaw(new URL('../../supabase/migrations/0029_leaderboard_entries_need_consent.sql', import.meta.url));
+  const invariants = readRaw(new URL('../../scripts/check-db-invariants.mjs', import.meta.url));
+
+  test('ENTRIES PUBLISHED BEFORE THE CONSENT EXISTED ARE REMOVED', () => {
+    // A rule introduced with no backfill holds for everybody who arrives after
+    // it and nobody who arrived before - and the rows created before the rule
+    // are precisely the ones with no record of agreement.
+    assert.match(backfill, /delete from public\.leaderboard_entries e/);
+    assert.match(backfill, /where not exists \(/);
+  });
+
+  test('it deletes only the cache, and says which data it does not touch', () => {
+    // Every number in leaderboard_entries is recomputed from progress_logs on
+    // rejoining, so nothing an athlete created is lost.
+    assert.match(backfill, phrase('Does NOT touch: progress_logs, user_profile, display names'));
+    assert.match(backfill, phrase('they were derived here'));
+    assert.ok(!/delete from public\.(progress_logs|user_profile|consent_records)/.test(backfill));
+  });
+
+  test('"latest decision" means seq, not created_at, here too', () => {
+    // The 0010 bug is one careless ORDER BY away in every query that reduces
+    // this ledger.
+    //
+    // Scoped to the STATEMENT, not the file. The header comment explains the
+    // bug and therefore contains the words "created_at", so an absence
+    // assertion against the whole file matches the explanation of why the
+    // thing is absent. That is the fifth time this collision has bitten this
+    // suite - see helpers/source.js - and the fix here is to assert against
+    // the code rather than the prose about the code.
+    const statement = backfill.slice(backfill.indexOf('delete from public.leaderboard_entries'));
+    assert.match(statement, /order by c\.user_id, c\.seq desc/);
+    assert.ok(!/created_at/.test(statement), 'the delete statement orders by created_at');
+  });
+
+  test('AND THE CONDITION IS CHECKED FROM NOW ON, NOT FIXED ONCE', () => {
+    // A one-time DELETE fixes today. The invariant fails if any future path
+    // ever writes an entry around set_leaderboard_opt_in().
+    assert.match(invariants, /NO LEADERBOARD ENTRY EXISTS WITHOUT A CURRENT CONSENT BEHIND IT/);
+    assert.match(invariants, /from public\.leaderboard_entries e/);
+    assert.match(invariants, /order by c\.user_id, c\.seq desc/);
+  });
+
+  test('the invariant requires the CURRENT version, matching has_active_consent', () => {
+    const check = invariants.slice(invariants.indexOf('NO LEADERBOARD ENTRY EXISTS'));
+    assert.match(check.slice(0, 1400), /latest\.policy_version = \(/);
+  });
+});
