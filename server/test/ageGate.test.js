@@ -1,6 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readProfileApi } from './helpers/source.js';
 
 import { evaluateAgeGate, ageInYears, MINIMUM_AGE } from '../src/lib/ageGate.js';
 import { buildSystemPrompt } from '../src/prompts/systemPrompt.js';
@@ -77,7 +78,7 @@ describe('evaluateAgeGate', () => {
 });
 
 describe('the gate is enforced where it counts', () => {
-  const route = readFileSync(new URL('../src/routes/profile.js', import.meta.url), 'utf8');
+  const route = readProfileApi({ raw: true });
 
   test('the API checks it, not only the form', () => {
     // The form is not the control. Anyone can POST to this route.

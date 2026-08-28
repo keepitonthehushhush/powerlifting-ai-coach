@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
 import { GYM_PROFILES, GYM_SLUGS, barbellAccess, gymNotes } from '../src/lib/gyms.js';
 import { describeGymContext, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE } from '../src/lib/ageGate.js';
@@ -14,7 +14,7 @@ const migration = readRaw(
   new URL('../../supabase/migrations/0023_gym_context_and_adult_gate.sql', import.meta.url)
 );
 const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
-const profileRoute = readSource(new URL('../src/routes/profile.js', import.meta.url));
+const profileRoute = readProfileApi();
 
 describe('the gym list is one list, in four places', () => {
   test('the form offers exactly the slugs the module defines', () => {

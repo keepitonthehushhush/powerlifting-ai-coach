@@ -133,3 +133,25 @@ export function phrase(text, flags = '') {
  * that belongs rather than in every caller reflowing a comment to suit a test.
  */
 const GAP = '\\s+(?:(?:\\*|--|//|#)\\s+)?';
+
+/**
+ * The profile write API, as one text.
+ *
+ * Its zod schema moved out of `routes/profile.js` into `lib/profileSchema.js`
+ * so that a test could import it without dragging express, the logger and the
+ * request pipeline along with it - see server/test/profilePayload.test.js,
+ * which parses what the browser actually builds.
+ *
+ * Seven test files broke on that move, and every one of them was right to
+ * exist and wrong about its subject: they read "the profile route" and meant
+ * "the profile API". Which file a validation rule is declared in is not a fact
+ * any of them were trying to assert. So they read both, and a future split
+ * changes one function instead of seven files.
+ */
+export function readProfileApi({ raw = false } = {}) {
+  const read = raw ? readRaw : readSource;
+  return [
+    read(new URL('../../src/routes/profile.js', import.meta.url)),
+    read(new URL('../../src/lib/profileSchema.js', import.meta.url)),
+  ].join('\n');
+}

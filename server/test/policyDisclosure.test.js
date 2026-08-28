@@ -2,7 +2,7 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
 import { redact } from '../src/lib/logger.js';
 
 /**
@@ -263,7 +263,7 @@ describe('the logger redacts everything the disclosure says it redacts', () => {
     // no call site happened to pass a profile.
     assert.match(aiPage, phrase('they do not record', 'i'));
     assert.match(aiPage, phrase('which fields you changed', 'i'));
-    assert.match(readRaw(new URL('../src/routes/profile.js', import.meta.url)), /fields: Object\.keys/);
+    assert.match(readProfileApi({ raw: true }), /field\(s\) were rejected/);
   });
 
   test('no log call site is handed a message body', () => {
@@ -319,7 +319,7 @@ describe('the terms describe the age rule the code actually enforces', () => {
   test('nothing in the codebase refuses an account on age', () => {
     // The claim the terms used to make. The gate is on health data, and it is
     // in one place.
-    const profileRoute = readSource(new URL('../src/routes/profile.js', import.meta.url));
+    const profileRoute = readProfileApi();
     assert.match(profileRoute, /if \(carriesHealthData\)/);
     assert.match(profileRoute, /evaluateAgeGate\(dateOfBirth\)/);
     // Only the operative text. The changelog above it quotes the claim that

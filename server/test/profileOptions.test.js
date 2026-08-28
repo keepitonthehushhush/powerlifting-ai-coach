@@ -1,6 +1,8 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { readProfileApi } from './helpers/source.js';
+import { EMPTY, toPayload } from '../../web/src/lib/profileForm.js';
 
 /**
  * Every answerable option in the profile lives in four places at once: a CHECK
@@ -37,8 +39,12 @@ const migration = readdirSync(new URL('../../supabase/migrations/', import.meta.
   .sort()
   .map((f) => read(`../../supabase/migrations/${f}`))
   .join('\n');
-const routes = read('../../server/src/routes/profile.js');
+const routes = readProfileApi();
 const intake = read('../../web/src/pages/Intake.jsx');
+// The payload half of the form. EMPTY, MEET_GOALS and toPayload live here
+// rather than in the page so a test can import and run them - see
+// web/src/lib/profileForm.js for why that turned out to matter.
+const intakeForm = read('../../web/src/lib/profileForm.js');
 const en = read('../../web/src/i18n/locales/en.js');
 const es = read('../../web/src/i18n/locales/es.js');
 
@@ -168,7 +174,7 @@ describe('the competition date belongs to the meet goals and only those', () => 
     );
     assert.deepEqual([...inConstraint].sort(), ['first_meet', 'meet_prep']);
 
-    for (const [where, source] of [['the API', routes], ['the form', intake]]) {
+    for (const [where, source] of [['the API', routes], ['the form', intakeForm]]) {
       const at = source.indexOf('MEET_GOALS = new Set(');
       assert.notEqual(at, -1, `${where} has no MEET_GOALS set`);
       const values = new Set(
@@ -182,7 +188,13 @@ describe('the competition date belongs to the meet goals and only those', () => 
     // Otherwise changing the goal after picking a date sends a row that
     // violates the constraint, and the save fails with a Postgres error at
     // the end of a long form.
-    assert.match(intake, /MEET_GOALS\.has\(form\.goal\) && form\.competition_date/);
+    //
+    // Run, not matched. server/test/profilePayload.test.js asserts the same
+    // property by parsing the output with the API's own schema; this states it
+    // in the file about option parity, where somebody changing the goal list
+    // will be reading.
+    assert.equal(toPayload({ ...EMPTY, goal: 'meet_prep', competition_date: '2026-11-14' }).competition_date, '2026-11-14');
+    assert.equal(toPayload({ ...EMPTY, goal: 'general_strength', competition_date: '2026-11-14' }).competition_date, null);
   });
 });
 

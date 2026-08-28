@@ -1,134 +1,10 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 import { evaluateAgeGate, MINIMUM_AGE } from '../lib/ageGate.js';
-import { GYM_SLUGS } from '../lib/gyms.js';
+import { ProfileUpdate, describeValidationFailure } from '../lib/profileSchema.js';
 
 export const profileRouter = Router();
-
-/**
- * Validation mirrors the CHECK constraints in migrations 0001 and 0019 rather
- * than replacing them. The database is the authority - it is the layer that
- * cannot be bypassed - but rejecting bad input here produces a useful
- * field-level error message instead of an opaque Postgres constraint
- * violation. A test holds these two lists to each other, because the failure
- * mode when they drift is a valid answer rejected by one layer and accepted by
- * the other.
- */
-/** The goals a competition date belongs to. Mirrors the constraint in 0019. */
-const MEET_GOALS = new Set(['meet_prep', 'first_meet']);
-
-const ProfileUpdate = z
-  .object({
-    // How long, not how good. See migration 0019 for why self-rating went.
-    // The last three are legacy values kept legal for rows saved before that
-    // migration; the intake form does not offer them.
-    experience_level: z
-      .enum([
-        'never_lifted',
-        'learning_lifts',
-        'under_6_months',
-        'six_to_24_months',
-        'over_2_years',
-        'never_trained',
-        'some_experience',
-        'currently_training',
-      ])
-      .nullish(),
-    // How fast the bar has been going up lately - the observation that decides
-    // whether linear progression is the right model for this athlete at all.
-    progress_cadence: z
-      .enum(['every_session', 'every_week', 'every_month_or_slower', 'stalled', 'no_history'])
-      .nullish(),
-    current_squat: z.number().nonnegative().max(2000).nullish(),
-    current_bench: z.number().nonnegative().max(2000).nullish(),
-    current_deadlift: z.number().nonnegative().max(2000).nullish(),
-    bodyweight: z.number().positive().max(1000).nullish(),
-    units: z.enum(['lb', 'kg']).optional(),
-    /**
-     * The public handle. Mirrors the CHECK in migration 0026 exactly, so a
-     * name the database would reject is refused here with a sentence somebody
-     * can act on rather than a 502 carrying a constraint name.
-     *
-     * Letters, digits, underscore and hyphen only. This is the one string in
-     * the product that is shown to strangers, so no spaces, nothing that
-     * renders as another character, and nothing that could be read as markup.
-     */
-    display_name: z
-      .string()
-      .min(3)
-      .max(24)
-      .regex(/^[A-Za-z0-9_-]+$/)
-      .nullish(),
-    goal: z
-      .enum([
-        'learn_the_lifts',
-        'general_strength',
-        'return_from_layoff',
-        'body_composition',
-        'first_meet',
-        'meet_prep',
-      ])
-      .nullish(),
-    competition_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
-    health_restrictions: z.string().max(4000).nullish(),
-    /**
-     * Medication use. HEALTH DATA - the database refuses to store anything but
-     * 'declined_to_say' without an active health_data_collection consent
-     * (migration 0033), so this schema is the polite half of a gate that is
-     * actually enforced in Postgres.
-     */
-    glp1_status: z.enum(['none', 'using', 'considering', 'declined_to_say']).nullish(),
-    cleared_to_train: z.boolean().optional(),
-    equipment_available: z.string().max(2000).nullish(),
-    // A closed vocabulary, mirroring GYM_SLUGS and the CHECK in migration 0023.
-    // Bounded at the count as well as the values: nobody trains at nine gyms,
-    // and an unbounded array is an unbounded prompt.
-    //
-    // refine() rather than z.enum(GYM_SLUGS): z.enum wants a literal tuple and
-    // GYM_SLUGS is a frozen array derived from the profile map. This validates
-    // the same thing without depending on how zod narrows a spread.
-    gym_chains: z
-      .array(z.string().max(40))
-      .max(4)
-      .refine((values) => values.every((slug) => GYM_SLUGS.includes(slug)), {
-        message: 'unknown gym',
-      })
-      .optional(),
-    gym_label: z.string().max(120).nullish(),
-    gender: z.enum(['woman', 'man', 'nonbinary', 'self_described', 'prefer_not_to_say']).nullish(),
-    gender_self_described: z.string().max(60).nullish(),
-    // Not health data and not consent-gated - see migration 0024. Being
-    // addressed correctly must not be something a person trades privacy for.
-    pronouns: z.string().max(40).nullish(),
-    days_per_week: z.number().int().min(1).max(7).nullish(),
-    // Equipment, not health data. The smallest single plate the athlete can
-    // reach; the smallest jump they can make is twice it. See migration 0017.
-    smallest_plate_pair: z.number().positive().max(25).nullish(),
-
-    // Recovery inputs. All optional, all consumer health data under MHMDA, all
-    // gated by the trigger from migration 0012 - a write here without an
-    // active health_data_collection consent is refused by Postgres.
-    //
-    // The ranges are generous by design. A validator that rejects an honest
-    // answer for being unflattering teaches people to lie to their coach, and
-    // a coach working from numbers the athlete edited to look better is worse
-    // than one working from nothing.
-    sleep_hours_typical: z.number().min(0).max(24).nullish(),
-    alcohol_units_per_week: z.number().int().min(0).max(200).nullish(),
-    nicotine_use: z.enum(['none', 'occasional', 'daily']).nullish(),
-    nutrition_notes: z.string().max(4000).nullish(),
-
-    // Personal data, not health data - see migration 0015 for why that
-    // distinction decides which gate it sits behind.
-    date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
-  })
-  .strict()
-  .refine((v) => !(v.competition_date && v.goal && !MEET_GOALS.has(v.goal)), {
-    message: 'A competition date only applies when the goal is a meet.',
-    path: ['competition_date'],
-  });
 
 /** GET /api/profile */
 profileRouter.get('/', async (req, res, next) => {
@@ -147,32 +23,12 @@ profileRouter.put('/', async (req, res, next) => {
   try {
     const parsed = ProfileUpdate.safeParse(req.body);
     if (!parsed.success) {
-      /**
-       * ── WHY THIS IS NOT JUST fieldErrors ──────────────────────────────
-       *
-       * The schema is `.strict()`, and zod reports an unknown key as an
-       * `unrecognized_keys` issue with an EMPTY path. flatten() files
-       * empty-path issues under `formErrors`, so `fieldErrors` is `{}` for
-       * exactly the most common way this route is misused - a caller
-       * spreading a GET response, which returns `select('*')`, into a PUT.
-       *
-       * The result was a 400 reading "Invalid profile data." with no detail
-       * whatsoever, on a failure whose cause is a list of key names we are
-       * holding at the time. That is not a validation message, it is a
-       * shrug. Both halves are sent now, and the unknown keys are named.
-       */
-      const flat = parsed.error.flatten();
-      const unknownKeys = parsed.error.issues
-        .filter((issue) => issue.code === 'unrecognized_keys')
-        .flatMap((issue) => issue.keys ?? []);
-
-      throw new HttpError(
-        400,
-        unknownKeys.length > 0
-          ? `Invalid profile data: this request contained ${unknownKeys.length} field(s) the profile does not accept (${unknownKeys.join(', ')}). Send only the fields you are changing.`
-          : 'Invalid profile data.',
-        { code: 'invalid_profile', fields: flat.fieldErrors, form: flat.formErrors, unknownKeys },
-      );
+      // Everything about WHY this is not just fieldErrors, and why the
+      // message has to name the fields rather than shrug, lives with the
+      // schema in lib/profileSchema.js - next to the rules it is describing,
+      // and where a test can run it instead of reading it.
+      const failure = describeValidationFailure(parsed.error);
+      throw new HttpError(400, failure.message, { code: 'invalid_profile', ...failure.details });
     }
 
     // Health data may not be collected from a minor, because no consent path

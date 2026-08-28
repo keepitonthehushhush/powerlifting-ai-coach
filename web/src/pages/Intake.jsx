@@ -5,37 +5,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ErrorSummary } from '../components/ErrorSummary.jsx';
-
-const EMPTY = {
-  experience_level: '',
-  progress_cadence: '',
-  units: 'lb',
-  bodyweight: '',
-  current_squat: '',
-  current_bench: '',
-  current_deadlift: '',
-  goal: '',
-  competition_date: '',
-  equipment_available: '',
-  gender: '',
-  gender_self_described: '',
-  pronouns: '',
-  gym_chains: [],
-  gym_label: '',
-  days_per_week: '',
-  smallest_plate_pair: '',
-  date_of_birth: '',
-  health_restrictions: '',
-  glp1_status: '',
-  sleep_hours_typical: '',
-  alcohol_units_per_week: '',
-  nicotine_use: '',
-  nutrition_notes: '',
-  cleared_to_train: false,
-};
-
-/** The goals that a competition date belongs to. Mirrors migration 0019. */
-const MEET_GOALS = new Set(['meet_prep', 'first_meet']);
+import { EMPTY, FIELD_LABELS, MEET_GOALS, toPayload } from '../lib/profileForm.js';
 
 /**
  * The experience answers the form offers, in order of training age.
@@ -120,48 +90,6 @@ const GOAL_OPTIONS = [
 
 /** Asked only of people whose goal involves losing fat. */
 const GLP1_OPTIONS = ['none', 'using', 'considering', 'declined_to_say'];
-
-/** Empty strings mean "not answered"; the API and the database both want null. */
-function toPayload(form) {
-  const num = (v) => (v === '' || v === null ? null : Number(v));
-  return {
-    experience_level: form.experience_level || null,
-    progress_cadence: form.progress_cadence || null,
-    units: form.units,
-    bodyweight: num(form.bodyweight),
-    current_squat: num(form.current_squat),
-    current_bench: num(form.current_bench),
-    current_deadlift: num(form.current_deadlift),
-    goal: form.goal || null,
-    // Mirrors the CHECK constraint in migration 0019: a date belongs to either
-    // meet goal, and must be dropped rather than sent when the goal changes
-    // away from one - otherwise the row violates the constraint on save.
-    competition_date: MEET_GOALS.has(form.goal) && form.competition_date ? form.competition_date : null,
-    equipment_available: form.equipment_available || null,
-    gender: form.gender || null,
-    gender_self_described:
-      form.gender === 'self_described' ? form.gender_self_described.trim() || null : null,
-    pronouns: form.pronouns?.trim() || null,
-    gym_chains: Array.isArray(form.gym_chains) ? form.gym_chains : [],
-    gym_label: form.gym_label?.trim() || null,
-    days_per_week: form.days_per_week === '' ? null : Number(form.days_per_week),
-    // Blank means "I don't know what my gym has", which the engine handles by
-    // assuming the standard 2.5 lb / 1.25 kg plate. Coercing it to a number
-    // here would invent equipment the athlete never claimed to own.
-    smallest_plate_pair: num(form.smallest_plate_pair),
-    health_restrictions: form.health_restrictions ?? '',
-    glp1_status: form.glp1_status ?? '',
-    cleared_to_train: Boolean(form.cleared_to_train),
-    date_of_birth: form.date_of_birth || null,
-    // Empty means "not answered" and must stay null. Coercing a blank field to
-    // 0 would tell the coach this athlete never sleeps and never drinks - a
-    // confident wrong answer, which is worse than an honest gap.
-    sleep_hours_typical: num(form.sleep_hours_typical),
-    alcohol_units_per_week: num(form.alcohol_units_per_week),
-    nicotine_use: form.nicotine_use || null,
-    nutrition_notes: form.nutrition_notes || null,
-  };
-}
 
 export function Intake() {
   const navigate = useNavigate();
@@ -264,6 +192,30 @@ export function Intake() {
       navigate('/coach');
     } catch (err) {
       setError(err.message);
+      /**
+       * A server rejection is put into the SAME summary as a missing required
+       * field, because to the person pressing Save they are one thing: it did
+       * not save, and something on this page is why.
+       *
+       * Without this the reported experience was exact - "it says invalid
+       * profile data and is not telling me what is required to continue" -
+       * even though the response body was carrying the field names the whole
+       * time. The 400 was read for its message and its detail was dropped on
+       * the floor one line later.
+       *
+       * Fields the form does not render still get named. That is deliberate:
+       * a rejection the person cannot see the cause of is worth showing, not
+       * hiding, because it is the shape of a bug rather than a typo.
+       */
+      const rejected = Object.keys(err?.details?.fields ?? {});
+      if (rejected.length > 0) {
+        setMissing(
+          rejected.map((name) => ({
+            name,
+            label: FIELD_LABELS[name] ? t(FIELD_LABELS[name]) : name,
+          })),
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -477,7 +429,12 @@ export function Intake() {
           {form.goal === 'body_composition' && (
             <label>
               {t('intake.glp1')}
-              <select value={form.glp1_status || ''} onChange={(e) => update('glp1_status', e.target.value)}>
+              <select
+                id="glp1_status"
+                name="glp1_status"
+                value={form.glp1_status || ''}
+                onChange={(e) => update('glp1_status', e.target.value)}
+              >
                 <option value="">{t('intake.select')}</option>
                 {GLP1_OPTIONS.map((key) => (
                   <option key={key} value={key}>

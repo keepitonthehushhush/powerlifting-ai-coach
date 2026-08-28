@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
 import { rankEntries, toKg, fromKg, BOARDS } from '../src/lib/leaderboard.js';
 import { canonicalLift } from '../src/lib/progression.js';
 
@@ -238,7 +238,7 @@ describe('the page', () => {
   const nav = readSource(new URL('../../web/src/components/SiteNav.jsx', import.meta.url));
   const styles = readRaw(new URL('../../web/src/styles.css', import.meta.url));
   const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
-  const profileRoute = readSource(new URL('../src/routes/profile.js', import.meta.url));
+  const profileRoute = readProfileApi();
 
   test('it is behind the sign-in gate, because the board is not public', () => {
     // Opting in publishes to other athletes, not to the internet.

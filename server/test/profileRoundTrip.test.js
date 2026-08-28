@@ -1,6 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
+import { ProfileUpdate, describeValidationFailure } from '../src/lib/profileSchema.js';
 
 /**
  * ── THE BUG THIS FILE EXISTS FOR ────────────────────────────────────────────
@@ -25,8 +26,9 @@ import { readSource, readRaw, phrase } from './helpers/source.js';
  * is a shrug with a status code.
  */
 
-const profileRoute = readSource(new URL('../src/routes/profile.js', import.meta.url));
-const profileRouteRaw = readRaw(new URL('../src/routes/profile.js', import.meta.url));
+const profileRoute = readProfileApi();
+const profileRouteRaw = readProfileApi({ raw: true });
+const schemaSourceRaw = readRaw(new URL('../src/lib/profileSchema.js', import.meta.url));
 
 /** Every page that writes to the profile. */
 const WRITERS = ['../../web/src/pages/Leaderboard.jsx', '../../web/src/pages/Intake.jsx'];
@@ -56,29 +58,59 @@ describe('nothing round-trips a profile read into a profile write', () => {
 });
 
 describe('the validation error names what was wrong', () => {
+  /**
+   * These used to match source text - one of them pinned the trailing comma of
+   * the ternary the message was built with. Two of the three then FAILED on a
+   * correct change, which is the fourth time a text-pinned assertion in this
+   * repository has blocked a fix rather than caught a bug. The message builder
+   * is a function now, so these run it.
+   */
+  function failureFor(body) {
+    const parsed = ProfileUpdate.safeParse(body);
+    assert.equal(parsed.success, false, 'this fixture was supposed to be invalid');
+    return describeValidationFailure(parsed.error);
+  }
+
+  const VALID = { units: 'lb', goal: 'general_strength' };
+
   test('IT DOES NOT RELY ON fieldErrors ALONE', () => {
     // fieldErrors is {} for an unrecognized-key failure, which is the most
     // common way this route is misused. Forwarding only that produced a 400
     // with an empty body.
-    assert.match(profileRoute, /unrecognized_keys/);
-    assert.match(profileRoute, /formErrors/);
+    const failure = failureFor({ ...VALID, user_id: 'abc', created_at: 'x' });
+    assert.deepEqual(failure.details.fields, {}, 'the premise: zod files these under formErrors');
+    assert.deepEqual(failure.details.unknownKeys.sort(), ['created_at', 'user_id']);
   });
 
   test('the message lists the offending keys, in the message itself', () => {
     // Not only in a details object - the client renders err.message, so a
     // detail nobody displays is a detail nobody reads.
-    assert.match(profileRoute, /the profile does not accept \(\$\{unknownKeys\.join\(', '\)\}\)/);
-    assert.match(profileRoute, phrase('Send only the fields you are changing'));
+    const failure = failureFor({ ...VALID, user_id: 'abc', created_at: 'x' });
+    assert.match(failure.message, /user_id/);
+    assert.match(failure.message, /created_at/);
+    assert.match(failure.message, phrase('Send only the fields you are changing'));
   });
 
-  test('and it still says something sensible for an ordinary bad value', () => {
-    // A number out of range is not an unknown key, and must not get the
-    // unknown-key sentence.
-    assert.match(profileRoute, /'Invalid profile data\.',/);
+  test('AND AN ORDINARY BAD VALUE IS NAMED TOO', () => {
+    // The gap that shipped: a rejected value is not an unknown key, so it fell
+    // through to a bare "Invalid profile data." A single hidden select sending
+    // an empty string was enough to stop every athlete finishing intake, and
+    // the error told them nothing about which field to look at.
+    const failure = failureFor({ ...VALID, glp1_status: '', days_per_week: 40 });
+    assert.match(failure.message, /glp1_status/);
+    assert.match(failure.message, /days_per_week/);
+    assert.doesNotMatch(failure.message, /does not accept/, 'that is the unknown-key sentence');
+    assert.ok(failure.details.fields.glp1_status, 'the detail carries the specifics');
+  });
+
+  test('and a failure with neither still says something rather than nothing', () => {
+    const failure = failureFor([]);
+    assert.equal(typeof failure.message, 'string');
+    assert.ok(failure.message.length > 0);
   });
 
   test('the reasoning survives, because this will look like over-explaining later', () => {
-    assert.match(profileRouteRaw, phrase('That is not a validation message, it is a shrug'));
+    assert.match(schemaSourceRaw, phrase('That is not a validation message, it is a shrug'));
   });
 });
 

@@ -1,6 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readProfileApi } from './helpers/source.js';
 
 import { buildSystemPrompt, describeRecoveryConcerns, COACH_ROLE } from '../src/prompts/systemPrompt.js';
 
@@ -141,7 +142,7 @@ describe('lifestyle data is treated as health data end to end', () => {
   });
 
   test('the profile API accepts them, so they cannot be written by another path', () => {
-    const profileRoute = read('../src/routes/profile.js');
+    const profileRoute = readProfileApi();
     for (const column of LIFESTYLE_COLUMNS) {
       assert.ok(profileRoute.includes(column), `${column} is not in the validated schema`);
     }
