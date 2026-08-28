@@ -110,9 +110,21 @@ describe('the database agrees with the screen', () => {
       .join('\n');
 
     for (const type of CONSENT_TYPES) {
+      const version = POLICY_VERSIONS[type];
+      /**
+       * Two shapes, because a version arrives two ways: seeded with the type
+       * when the consent is introduced, and later BUMPED by an update when the
+       * document changes. The first version of this test only understood the
+       * insert form, so bumping the health policy in 0031 failed it - a
+       * correct change, flagged as a regression.
+       */
+      const seeded = new RegExp(`'${type}'\\s*,\\s*'${version}'`).test(allMigrations);
+      const bumped = new RegExp(
+        `set version = '${version}'[\\s\\S]{0,200}?consent_type = '${type}'`,
+      ).test(allMigrations);
       assert.ok(
-        new RegExp(`'${type}'\\s*,\\s*'${POLICY_VERSIONS[type]}'`).test(allMigrations),
-        `no migration seeds public.policy_versions with ${type} at ${POLICY_VERSIONS[type]}`,
+        seeded || bumped,
+        `no migration seeds or bumps public.policy_versions to ${version} for ${type}`,
       );
     }
   });

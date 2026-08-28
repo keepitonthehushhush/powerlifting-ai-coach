@@ -22,7 +22,7 @@ export function HealthDataPolicy() {
     <div className="page">
       <header className="page-header">
         <h1>Consumer Health Data Privacy Policy</h1>
-        <p className="muted small">Version chd-2026-08-27b</p>
+        <p className="muted small">Version chd-2026-08-28a</p>
       </header>
 
       <div className="card draft-banner">
@@ -35,6 +35,13 @@ export function HealthDataPolicy() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>chd-2026-08-28a.</strong> Retention periods are now set rather than
+          promised. Injury and medical notes expire after 12 months, conversation messages after
+          12 months, and activity and usage records after 24 months. Your logged training is
+          explicitly excluded and is never deleted automatically. Because this changes how long we
+          hold your health information, we are asking you to agree again.
+        </p>
         <p className="small">
           <strong>chd-2026-08-27b.</strong> Gender is now asked for and is listed below as
           consumer health data, which is the cautious reading and the one we are taking. It is
@@ -147,9 +154,40 @@ export function HealthDataPolicy() {
 
         <h2 className="h3">Retention</h2>
         <p>
-          Your data is kept until you delete your account or withdraw the relevant consent. A
-          defined maximum retention period has not yet been set; this section will be updated when
-          it is.
+          Your data is kept until you delete your account or withdraw the relevant consent, and in
+          addition the following expire on their own:
+        </p>
+        <ul>
+          <li>
+            <strong>Injury and medical notes: 12 months</strong> from the last time you changed
+            them. They are erased, and your training clearance is reset at the same moment, so the
+            coach asks again rather than programming around something two years old. This is as
+            much a coaching decision as a privacy one — a healed injury still shaping your
+            programme is wrong twice over.
+          </li>
+          <li>
+            <strong>Conversation messages: 12 months.</strong> The coach only ever reads a short
+            recent window of a conversation, so older messages are never used by anything. They are
+            also where people mention injuries, weight and what is happening at home, so keeping
+            them served nobody.
+          </li>
+          <li>
+            <strong>Account activity records: 24 months.</strong> The log of exports, deletions and
+            subscription changes shown on your account page.
+          </li>
+          <li>
+            <strong>Usage and cost records: 24 months.</strong> How much each conversation cost to
+            run. No conversation content.
+          </li>
+        </ul>
+        <p>
+          <strong>Your logged training is never deleted automatically.</strong> Your sessions,
+          lifts and programmes are the record you came here to build, and a year away from the gym
+          is not a reason to destroy it. Only you can delete those, from your account page.
+        </p>
+        <p>
+          These sweeps run daily. Deletion from a backup is not instant: backups roll off on their
+          own schedule, and anything you delete is gone from them within six months at the outside.
         </p>
 
         <h2 className="h3">Contact</h2>

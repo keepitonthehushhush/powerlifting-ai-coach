@@ -94,6 +94,11 @@ const NOT_SENT = {
     'has a preferred name and pronouns for addressing somebody, so the handle ' +
     'adds nothing to the coaching and sending it would put a name the athlete ' +
     'chose for strangers into a third party request for no reason.',
+  health_restrictions_updated_at:
+    'when the injury note last changed, used only to expire it after 12 months ' +
+    '(migration 0031). Not sent: the coach is given the restriction itself when ' +
+    'there is one, and how old it is tells the model nothing it can coach on ' +
+    'while being one more fact about somebody health in a third-party request.',
   intake_completed_at: 'bookkeeping',
   created_at: 'bookkeeping',
   updated_at: 'bookkeeping',

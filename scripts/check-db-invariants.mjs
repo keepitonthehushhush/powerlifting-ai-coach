@@ -95,6 +95,28 @@ const CHECKS = [
              and p.proname in ('refresh_leaderboard_entry','set_leaderboard_opt_in')`,
   },
   {
+    name: 'THE RETENTION SWEEP IS ACTUALLY SCHEDULED',
+    why: 'A retention policy that is written down and never runs is worse than none: the privacy policy states periods the database does not honour. This asserts the cron job exists and is active, which is the only thing that makes the promise true.',
+    sql: `select count(*) = 1 as ok
+            from cron.job
+           where jobname = 'apply-retention' and active`,
+  },
+  {
+    name: 'AND ACCOUNT DELETION IS NOT',
+    why: 'delete_inactive_accounts() is built and deliberately unscheduled: nothing can warn anybody before it runs until transactional email exists. If it ever appears in cron.job without that being a decision somebody made, this fails.',
+    sql: `select count(*) = 0 as ok
+            from cron.job
+           where command like '%delete_inactive_accounts%'`,
+  },
+  {
+    name: 'health_restrictions has its own timestamp, separate from updated_at',
+    why: 'Expiring it on user_profile.updated_at would be silently wrong - that column moves on any edit, so changing a bodyweight would reset the injury clock and a restriction could outlive its retention period while appearing swept.',
+    sql: `select count(*) = 1 as ok
+            from information_schema.columns
+           where table_schema = 'public' and table_name = 'user_profile'
+             and column_name = 'health_restrictions_updated_at'`,
+  },
+  {
     name: 'THE AUDIT TRAIL IS READ-ONLY TO USERS',
     why: 'An audit trail a user can write is a diary; one they can edit is fiction. The privilege is the control here, not the policy - RLS narrows a granted privilege and does not create one (0021).',
     sql: `select count(*) = 0 as ok
