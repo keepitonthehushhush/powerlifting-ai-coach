@@ -103,6 +103,58 @@ describe('when it prompts, and when it refuses to', () => {
   });
 });
 
+describe('THE BANNER DOES NOT SIT ON TOP OF THE PAGE HEADER', () => {
+  /**
+   * Reported as: "when scrolling down with the newer version banner, it
+   * clashes with the your training profile banner."
+   *
+   * Both were `position: sticky; top: 0`. Sticky does not stack - it pins each
+   * element to the same coordinate, so one covers the other, on every page in
+   * the app, since they all use StickyHeader.
+   */
+  const styles = readSource(new URL('../../web/src/styles.css', import.meta.url));
+
+  function rule(selector) {
+    const at = styles.indexOf(`${selector} {`);
+    assert.notEqual(at, -1, `${selector} is not in the stylesheet`);
+    return styles.slice(at, styles.indexOf('}', at));
+  }
+
+  test('THEY DO NOT BOTH PIN TO THE SAME COORDINATE', () => {
+    assert.match(rule('.version-banner'), /position:\s*sticky/);
+    assert.match(rule('.version-banner'), /top:\s*0/);
+
+    const header = rule('.sticky-header');
+    assert.match(header, /position:\s*sticky/);
+    assert.doesNotMatch(header, /top:\s*0\s*;/, 'the header pins to the same place as the banner');
+    assert.match(header, /top:\s*var\(--banner-height, 0px\)/);
+  });
+
+  test('and the banner wins if they ever do overlap', () => {
+    // It is the only route out of a stale build, so it is the one that has to
+    // stay readable.
+    const bannerZ = Number(rule('.version-banner').match(/z-index:\s*(\d+)/)[1]);
+    const headerZ = Number(rule('.sticky-header').match(/z-index:\s*(\d+)/)[1]);
+    assert.ok(bannerZ > headerZ, `banner z-index ${bannerZ} is not above header ${headerZ}`);
+  });
+
+  test('THE HEIGHT IS MEASURED, NOT GUESSED', () => {
+    // A hardcoded offset is right on one device and wrong on the rest: the
+    // banner wraps on a narrow phone, is longer in Spanish, and grows with the
+    // reader's font size.
+    assert.match(banner, /new ResizeObserver/);
+    assert.match(banner, /offsetHeight/);
+    assert.doesNotMatch(banner, /--banner-height', '\d+px'/);
+  });
+
+  test('and the property is removed when the banner goes', () => {
+    // Otherwise dismissing it leaves the header floating below a gap where
+    // the banner used to be.
+    const removals = banner.match(/removeProperty\('--banner-height'\)/g) ?? [];
+    assert.ok(removals.length >= 2, 'the property must be cleared on unmount AND when not rendered');
+  });
+});
+
 describe('the platform feature is wired even though it is not available', () => {
   test('every request carries x-deployment-id', () => {
     // Vercel Skew Protection is Pro-and-above and does not support a plain
