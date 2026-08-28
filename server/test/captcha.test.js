@@ -147,3 +147,37 @@ describe('the widget does not make the form jump', () => {
     assert.match(styles, /\.turnstile \{[^}]*min-height/);
   });
 });
+
+describe('the build can actually see the key', () => {
+  const viteConfig = readRaw(new URL('../../web/vite.config.js', import.meta.url));
+
+  test('VITE READS .env FROM THE REPOSITORY ROOT', () => {
+    /**
+     * Found by checking a real build rather than trusting it: the site key was
+     * correctly set in `.env` and the bundle contained neither the key nor the
+     * Turnstile loader.
+     *
+     * Vite's envDir defaults to the Vite project root - `web/` - and there is
+     * no `web/.env`. A missing variable inlines as `undefined`, `enabled()`
+     * becomes constant-false, and Rollup removes the whole feature. No error,
+     * no warning, just a widget that never appears.
+     *
+     * This is the same shape as the blank-page incident in lib/config.js: a
+     * configuration variable that was set, in the documented place, and never
+     * arrived.
+     */
+    assert.match(viteConfig, /envDir: '\.\.'/);
+  });
+
+  test('and the reason is recorded, because envDir looks removable', () => {
+    assert.match(viteConfig, phrase('there is no `web/.env`'));
+    assert.match(viteConfig, phrase('is not reproducible'));
+  });
+
+  test('there is exactly one .env, and .env.example describes that one', () => {
+    // Two env files, one of which is silently authoritative for half the
+    // variables, is worse than either.
+    assert.match(envExample, /^VITE_TURNSTILE_SITE_KEY=$/m);
+    assert.match(envExample, /^VITE_SUPABASE_URL=/m);
+  });
+});
