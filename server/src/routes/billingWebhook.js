@@ -173,6 +173,24 @@ async function apply(admin, stripe, event) {
   const { error } = await admin.from('subscriptions').upsert(row, { onConflict: 'user_id' });
   if (error) throw new Error(`subscription upsert failed: ${error.message}`);
 
+  /**
+   * The service-role write, recorded. ADR-12 documents the exception; this
+   * makes it OBSERVABLE - every use of the elevated client leaves a row the
+   * subscriber can read, so the one place RLS is bypassed is also the one
+   * place with an independent record of what it did.
+   *
+   * actor 'stripe', because there is no user in this request. Never fails the
+   * webhook: a non-2xx would make Stripe retry for days over a bookkeeping
+   * write.
+   */
+  const { error: auditError } = await admin.from('audit_events').insert({
+    user_id: userId,
+    action: 'subscription_changed',
+    actor: 'stripe',
+    detail: { event_id: event.id, type: event.type, status: row.status },
+  });
+  if (auditError) logger.error('audit.write_failed', { action: 'subscription_changed', code: auditError.code });
+
   logger.info('billing.subscription_recorded', {
     userId,
     type: event.type,

@@ -95,6 +95,22 @@ const CHECKS = [
              and p.proname in ('refresh_leaderboard_entry','set_leaderboard_opt_in')`,
   },
   {
+    name: 'THE AUDIT TRAIL IS READ-ONLY TO USERS',
+    why: 'An audit trail a user can write is a diary; one they can edit is fiction. The privilege is the control here, not the policy - RLS narrows a granted privilege and does not create one (0021).',
+    sql: `select count(*) = 0 as ok
+            from information_schema.role_table_grants
+           where table_schema = 'public' and table_name = 'audit_events'
+             and grantee in ('authenticated','anon')
+             and privilege_type in ('INSERT','UPDATE','DELETE')`,
+  },
+  {
+    name: 'AND THE RECORD OF A DELETION SURVIVES THE DELETION',
+    why: 'audit_events.user_id must be ON DELETE SET NULL. Cascade is the obvious choice and it erases the record that an account was deleted - so the operation most likely to be disputed would be the one with no evidence, and the evidence would disappear at exactly the moment it became relevant. Checked in the catalogue because a later migration could recreate the constraint.',
+    sql: `select bool_and(confdeltype = 'n') as ok
+            from pg_constraint
+           where conrelid = 'public.audit_events'::regclass and contype = 'f'`,
+  },
+  {
     name: 'NO LEADERBOARD ENTRY EXISTS WITHOUT A CURRENT CONSENT BEHIND IT',
     why: 'Publishing somebody lifts to other users needs an active, current leaderboard_publication consent (0028). set_leaderboard_opt_in() enforces that on the way in, but an entry written by any other path - or predating the rule, which one did - would sit published with no record that anybody agreed. This is the condition itself, checked rather than assumed.',
     sql: `select count(*) = 0 as ok

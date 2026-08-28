@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { ConsentPanel } from '../components/ConsentPanel.jsx';
 import { BillingPanel } from '../components/BillingPanel.jsx';
+import { ActivityLog } from '../components/ActivityLog.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 
@@ -89,6 +90,8 @@ export function Account() {
           {busy === 'export' ? t('common.working') : t('account.exportButton')}
         </button>
       </section>
+
+      <ActivityLog />
 
       <section className="card stack danger">
         <h2 className="h3">{t('account.deleteHeading')}</h2>

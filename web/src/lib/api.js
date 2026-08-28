@@ -142,6 +142,7 @@ export const api = {
 
   // Data subject rights.
   exportData: () => request('/account/export'),
+  getActivity: () => request('/account/activity'),
   deleteAccount: (confirm) =>
     request('/account', { method: 'DELETE', body: JSON.stringify({ confirm }) }),
 };

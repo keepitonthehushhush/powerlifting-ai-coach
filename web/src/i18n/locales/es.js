@@ -404,6 +404,17 @@ export const es = {
       all_three: 'Los tres levantamientos registrados',
     },
   },
+  activity: {
+    title: 'Actividad en tu cuenta',
+    intro:
+      'Operaciones que hemos registrado, para que puedas comprobarlas en lugar de fiarte de nuestra palabra. No incluye tu entrenamiento: solo lo que se hace sobre la cuenta.',
+    byStripe: 'desde Stripe',
+    action: {
+      data_exported: 'Descargaste tus datos',
+      account_deleted: 'Se solicitó borrar la cuenta',
+      subscription_changed: 'Cambió el estado de la suscripción',
+    },
+  },
   library: {
     title: 'Biblioteca de ejercicios',
     subtitle:

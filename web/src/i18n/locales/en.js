@@ -402,6 +402,17 @@ export const en = {
       all_three: 'All three lifts logged',
     },
   },
+  activity: {
+    title: 'Activity on your account',
+    intro:
+      'Operations we recorded, so you can check them rather than take our word for it. This does not include your training — only things done to the account itself.',
+    byStripe: 'from Stripe',
+    action: {
+      data_exported: 'You downloaded your data',
+      account_deleted: 'Account deletion requested',
+      subscription_changed: 'Subscription status changed',
+    },
+  },
   library: {
     title: 'Exercise library',
     subtitle:

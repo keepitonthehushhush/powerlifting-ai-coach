@@ -7,6 +7,31 @@ import { logger } from '../lib/logger.js';
 export const accountRouter = Router();
 
 /**
+ * GET /api/account/activity
+ *
+ * The audit trail, for the person it is about. A record the subject cannot see
+ * is a record they cannot check, and an audit trail nobody can check is
+ * decoration.
+ *
+ * Read with the caller's JWT: the policy on audit_events scopes SELECT to
+ * `user_id = auth.uid()`, so there is nothing here that could return somebody
+ * else's row even if this query were wrong.
+ */
+accountRouter.get('/activity', async (req, res, next) => {
+  try {
+    const { data, error } = await req.supabase
+      .from('audit_events')
+      .select('action, actor, detail, created_at')
+      .order('seq', { ascending: false })
+      .limit(100);
+    if (error) throw new HttpError(502, 'Could not load your activity.', { code: error.code });
+    res.json({ events: data ?? [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * Data subject rights: access (GDPR Art. 15 / CCPA) and erasure (Art. 17).
  *
  * Both are built on the same primitive as everything else - the user-scoped
@@ -86,6 +111,10 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       ],
     };
 
+    const totalRows =
+      (programs.data?.length ?? 0) + (sessions.data?.length ?? 0) + (logs.data?.length ?? 0) +
+      (consents.data?.length ?? 0) + (usage.data?.length ?? 0);
+
     // Logged as a count, never as content.
     logger.info('account.exported', {
       userId: req.user.id,
@@ -95,6 +124,27 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       consents: consents.data?.length ?? 0,
       usage: usage.data?.length ?? 0,
     });
+
+    /**
+     * The durable half of the record. The log line above is the operational
+     * one - useful while somebody is watching a deploy - and it is gone in
+     * days. This row is what answers "did you actually give me my data" in
+     * three months, and the person it is about can read it.
+     *
+     * Awaited inside its own try/catch: an audit write failing must not deny
+     * somebody their export, but it must also not vanish silently, which is
+     * what a floating promise on a serverless runtime does when the function
+     * freezes on response.
+     */
+    try {
+      const { error: auditError } = await req.supabase.rpc('record_audit_event', {
+        p_action: 'data_exported',
+        p_detail: { tables: Object.keys(exportDocument.data ?? {}).length, rows: totalRows },
+      });
+      if (auditError) logger.error('audit.write_failed', { action: 'data_exported', code: auditError.code });
+    } catch (auditErr) {
+      logger.error('audit.write_failed', { action: 'data_exported', message: auditErr.message });
+    }
 
     res.set('Content-Disposition', `attachment; filename="coach-data-export-${Date.now()}.json"`);
     res.json(exportDocument);
@@ -125,6 +175,28 @@ accountRouter.delete('/', async (req, res, next) => {
         400,
         'Account deletion requires an explicit confirmation. Send { "confirm": "DELETE MY ACCOUNT" }.'
       );
+    }
+
+    /**
+     * BEFORE the deletion, not after - after, there is no caller left to
+     * record it with. auth.uid() is gone the moment the user row goes, so a
+     * record written afterwards could not be attributed and, more simply,
+     * could not be written at all.
+     *
+     * The row survives the deletion with user_id SET NULL (migration 0030),
+     * which is the whole reason that column is not ON DELETE CASCADE. What is
+     * left is "an account was deleted at this time" and nothing that points
+     * back at a person - enough to demonstrate the deletion happened, and not
+     * personal data that erasure was owed.
+     */
+    try {
+      const { error: auditError } = await req.supabase.rpc('record_audit_event', {
+        p_action: 'account_deleted',
+        p_detail: {},
+      });
+      if (auditError) logger.error('audit.write_failed', { action: 'account_deleted', code: auditError.code });
+    } catch (auditErr) {
+      logger.error('audit.write_failed', { action: 'account_deleted', message: auditErr.message });
     }
 
     const { error } = await req.supabase.rpc('delete_my_account');

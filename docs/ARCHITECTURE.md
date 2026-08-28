@@ -595,9 +595,11 @@ records. What remains:
 |---|---|---|
 | Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working programme |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
-| Stripe subscriptions | 2 | Checkout, billing portal and webhook are built and tested; the paywall is wired into the chat route behind `PAYWALL_ENABLED`, which ships **off**. Remaining: the account-page billing UI, and the decision to actually turn it on — which is the commit that also changes the FAQ's free-while-in-testing paragraph (ADR-13) |
+| Stripe subscriptions | 1 | Checkout, billing portal, webhook and the account-page billing UI are built and tested. The paywall is wired into the chat route behind `PAYWALL_ENABLED`, which ships **off**. Remaining: the decision to turn it on — which is the commit that also changes the FAQ's free-while-in-testing paragraph (ADR-13) |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
-| Audit logging | — | Known gap |
+| Audit logging | 1 | `audit_events` (migration 0030) records data exports, account deletions and every service-role subscription write, readable by the person they happened to at `/account`. `user_id` is ON DELETE SET NULL so a deletion record survives the deletion without remaining personal data. Not yet covering: consent changes (already in their own ledger) and sign-in events |
+| Leaderboard | 1 | Opt-in, consent-gated (`leaderboard_publication`, migrations 0026 and 0028). Publishes a handle and three lifted numbers, computed from logs by a definer function so they cannot be self-reported. No bodyweight, no relative-strength ranking — deliberately, given the disordered-eating rules in the coach prompt |
+| Achievements | 1 | Computed on read from logs (`lib/achievements.js`), private, never published. No streaks, no daily logins, nothing tied to bodyweight — the reasoning is in that file and asserted by a test |
 | Multiple conversations per athlete | — | One active conversation today; raised, undecided |
 | CAPTCHA on auth endpoints | — | Supabase supports it; needs an hCaptcha or Turnstile key. Breached-password checking is implemented in the app instead of via the paid Supabase feature (`web/src/lib/pwnedPassword.js`) |
 
