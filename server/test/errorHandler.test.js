@@ -39,30 +39,30 @@ function fakeRes() {
 const req = { method: 'POST', path: '/api/chat', user: { id: 'user-1' } };
 
 describe('errorHandler', () => {
-  test('does not throw on an HttpError — the regression that shipped', () => {
+  test('does not throw on an HttpError — the regression that shipped', async () => {
     const res = fakeRes();
-    assert.doesNotThrow(() => errorHandler(new HttpError(400, 'Invalid request.'), req, res, () => {}));
+    await assert.doesNotReject(async () => errorHandler(new HttpError(400, 'Invalid request.'), req, res, () => {}));
     assert.equal(res.statusCode, 400);
   });
 
-  test('reports the status the error asked for', () => {
+  test('reports the status the error asked for', async () => {
     const res = fakeRes();
-    errorHandler(new HttpError(429, 'Slow down.'), req, res, () => {});
+    await errorHandler(new HttpError(429, 'Slow down.'), req, res, () => {});
     assert.equal(res.statusCode, 429);
     assert.equal(res.body.message, 'Slow down.');
     assert.equal(res.body.error, 'request_failed');
   });
 
-  test('an unrecognised error is a 500', () => {
+  test('an unrecognised error is a 500', async () => {
     const res = fakeRes();
-    errorHandler(new Error('database exploded'), req, res, () => {});
+    await errorHandler(new Error('database exploded'), req, res, () => {});
     assert.equal(res.statusCode, 500);
     assert.equal(res.body.error, 'internal_error');
   });
 
-  test('a 500 never leaks internals to the client', () => {
+  test('a 500 never leaks internals to the client', async () => {
     const res = fakeRes();
-    errorHandler(new Error('connection string postgres://user:hunter2@host'), req, res, () => {});
+    await errorHandler(new Error('connection string postgres://user:hunter2@host'), req, res, () => {});
     const serialised = JSON.stringify(res.body);
     assert.equal(res.body.message, 'Something went wrong on our end.');
     assert.ok(!serialised.includes('hunter2'));
@@ -70,19 +70,19 @@ describe('errorHandler', () => {
     assert.ok(!('stack' in res.body));
   });
 
-  test('a 4xx message DOES reach the client, because it is for them to act on', () => {
+  test('a 4xx message DOES reach the client, because it is for them to act on', async () => {
     const res = fakeRes();
-    errorHandler(new HttpError(400, 'Message cannot be empty'), req, res, () => {});
+    await errorHandler(new HttpError(400, 'Message cannot be empty'), req, res, () => {});
     assert.equal(res.body.message, 'Message cannot be empty');
   });
 
-  test('carries structured validation details through', () => {
+  test('carries structured validation details through', async () => {
     const res = fakeRes();
-    errorHandler(new HttpError(400, 'Invalid.', { message: ['Required'] }), req, res, () => {});
+    await errorHandler(new HttpError(400, 'Invalid.', { message: ['Required'] }), req, res, () => {});
     assert.deepEqual(res.body.details, { message: ['Required'] });
   });
 
-  test('logs the validation details, not just the generic message', () => {
+  test('logs the validation details, not just the generic message', async () => {
     // "Invalid request." is the same sentence whichever field was rejected.
     // Without the details in the log, a 400 can only be diagnosed by guessing
     // at the client - which is how this got missed twice.
@@ -91,7 +91,7 @@ describe('errorHandler', () => {
     const original = console.error;
     console.error = (line) => lines.push(line);
     try {
-      errorHandler(new HttpError(400, 'Invalid request.', { message: ['String must contain at least 1 character(s)'] }), req, fakeRes(), () => {});
+      await errorHandler(new HttpError(400, 'Invalid request.', { message: ['String must contain at least 1 character(s)'] }), req, fakeRes(), () => {});
     } finally {
       console.error = original;
     }
@@ -100,23 +100,23 @@ describe('errorHandler', () => {
     assert.match(logged, /at least 1 character/);
   });
 
-  test('trusts a status only when it is a plausible HTTP status', () => {
+  test('trusts a status only when it is a plausible HTTP status', async () => {
     for (const status of [0, 200, 999, '400', null, undefined, NaN]) {
       const res = fakeRes();
       const err = new Error('odd');
       err.status = status;
-      errorHandler(err, req, res, () => {});
+      await errorHandler(err, req, res, () => {});
       assert.equal(res.statusCode, 500, `status ${String(status)} should not be trusted`);
     }
   });
 
-  test('survives a request object with nothing on it', () => {
+  test('survives a request object with nothing on it', async () => {
     const res = fakeRes();
-    assert.doesNotThrow(() => errorHandler(new HttpError(404, 'Gone'), {}, res, () => {}));
+    await assert.doesNotReject(async () => errorHandler(new HttpError(404, 'Gone'), {}, res, () => {}));
     assert.equal(res.statusCode, 404);
   });
 
-  test('still answers when the response itself misbehaves', () => {
+  test('still answers when the response itself misbehaves', async () => {
     const res = fakeRes();
     let attempts = 0;
     res.json = function (payload) {
@@ -125,13 +125,13 @@ describe('errorHandler', () => {
       this.body = payload;
       return this;
     };
-    assert.doesNotThrow(() => errorHandler(new Error('original'), req, res, () => {}));
+    await assert.doesNotReject(async () => errorHandler(new Error('original'), req, res, () => {}));
     assert.equal(res.body.error, 'internal_error');
   });
 });
 
 describe('notFound', () => {
-  test('names the route that was not found, and nothing else', () => {
+  test('names the route that was not found, and nothing else', async () => {
     const res = fakeRes();
     notFound({ method: 'GET', path: '/api/nope' }, res);
     assert.equal(res.statusCode, 404);

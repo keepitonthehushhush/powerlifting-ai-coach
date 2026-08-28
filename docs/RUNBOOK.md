@@ -234,6 +234,52 @@ neither of you can reproduce, because refreshing fixes it silently.
   the header. It is sent anyway so the feature works the day the plan changes
   rather than being something to remember.
 
+### Finding out what is actually breaking
+
+Every failure the API returns carries a code — `coach_refused`, `CD-002` — and
+every one that happens to a signed-in athlete is written to
+`public.error_events`. That table exists because Vercel's runtime logs expire
+in days, cannot be grouped, and answer "what happened just now" rather than
+"what keeps happening". The failure everybody hits and nobody reports is
+exactly the one a log stream loses.
+
+Read it in the Supabase SQL editor. This is the query worth having a shortcut
+to:
+
+```sql
+select * from private.error_summary(7);
+```
+
+Occurrences, distinct people, which routes, first and last seen — grouped by
+code, worst first. Change the argument for a different window.
+
+Three readings, in order of how much they should worry you:
+
+- **`withdrawal_incomplete` (CD-020), ever.** Somebody withdrew consent and the
+  health data it governed was not removed. Drop everything.
+- **A code with `occurrences` far above `people`.** One person hitting the same
+  wall repeatedly, which usually means the error tells them to do something
+  that cannot work — `coach_empty` said "please try again" for over a year in a
+  case where trying again could never help.
+- **A code that starts appearing on a deploy date.** Compare `first_seen`
+  against the deployment list.
+
+For one athlete who has written in, quoting a code:
+
+```sql
+select created_at, code, http_status, route, detail
+  from public.error_events
+ where user_id = '<their uuid>'
+ order by seq desc
+ limit 50;
+```
+
+The table holds a code, a route, a status and a whitelisted set of diagnostic
+keys. It never holds a message, a reply, or a field value, and there is a
+`CHECK` constraint rather than a convention keeping that true. Rows are removed
+after six months, and rows whose account was deleted already carry no user id.
+
+
 ### Before a deploy that changes an API shape
 
 1. `npm run lint`, `npm test`, `npm run check:docs`, `npm run check:lockfile`.

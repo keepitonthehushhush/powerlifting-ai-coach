@@ -132,6 +132,36 @@ const CHECKS = [
            where conrelid = 'public.audit_events'::regclass and contype = 'f'`,
   },
   {
+    name: 'THE ERROR LOG IS READ-ONLY TO USERS TOO',
+    why: 'A failure log a user can write is one an attacker can flood, and one they can edit is not evidence. Writes go through record_error_event(), which stamps user_id from the JWT so a browser cannot attribute a failure to somebody else.',
+    sql: `select count(*) = 0 as ok
+            from information_schema.role_table_grants
+           where table_schema = 'public' and table_name = 'error_events'
+             and grantee in ('authenticated','anon')
+             and privilege_type in ('INSERT','UPDATE','DELETE')`,
+  },
+  {
+    name: 'AND THE FAILURE HISTORY SURVIVES AN ACCOUNT DELETION',
+    why: 'error_events.user_id must be ON DELETE SET NULL. Cascade would erase every failure an athlete hit on their way to deciding to leave - which is the population whose errors matter most - and it would do it at the moment that evidence became most relevant.',
+    sql: `select bool_and(confdeltype = 'n') as ok
+            from pg_constraint
+           where conrelid = 'public.error_events'::regclass and contype = 'f'`,
+  },
+  {
+    name: 'record_error_event IS DEFINER WITH A PINNED search_path',
+    why: 'It inserts where the caller has no INSERT privilege, so it must be definer; a SECURITY DEFINER function without a pinned search_path is the classic privilege-escalation shape. Asserted from the catalogue because `create or replace function` silently drops both, which cost this project a day of unlimited rate limiting.',
+    sql: `select bool_and(p.prosecdef and p.proconfig is not null) as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname = 'record_error_event'`,
+  },
+  {
+    name: 'AND EVERY RETENTION CATEGORY IS ACTUALLY SWEPT',
+    why: 'apply_retention() reads the months from retention_periods but the DELETE for each category is written out by hand, so adding a row prunes nothing. A published retention promise that nothing keeps is the same shape as the RLS policy with no GRANT in 0021 - correct on paper, inert in fact.',
+    sql: `select bool_and(position(rp.category in pg_get_functiondef(
+                   'private.apply_retention()'::regprocedure)) > 0) as ok
+            from public.retention_periods rp`,
+  },
+  {
     name: 'NO LEADERBOARD ENTRY EXISTS WITHOUT A CURRENT CONSENT BEHIND IT',
     why: 'Publishing somebody lifts to other users needs an active, current leaderboard_publication consent (0028). set_leaderboard_opt_in() enforces that on the way in, but an entry written by any other path - or predating the rule, which one did - would sit published with no record that anybody agreed. This is the condition itself, checked rather than assumed.',
     sql: `select count(*) = 0 as ok

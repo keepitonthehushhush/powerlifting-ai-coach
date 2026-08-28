@@ -1,12 +1,20 @@
 import { logger } from '../lib/logger.js';
 import { captureError } from '../lib/monitoring.js';
 import { HttpError } from '../lib/httpError.js';
+import { recordErrorEvent } from '../lib/errorRecord.js';
 
 // Imported above, then re-exported. `export { X } from './y.js'` alone forwards
 // the binding WITHOUT introducing it into this module's scope - so `HttpError`
 // was undefined inside errorHandler, and the handler threw a ReferenceError on
 // every error it was asked to report. See docs/BUILD_LOG.md D.6.
 export { HttpError };
+
+/**
+ * How long an error response will wait for its own record. Chosen to be short
+ * enough that nobody notices and long enough that a healthy database always
+ * makes it.
+ */
+const RECORD_TIMEOUT_MS = 1200;
 
 export function notFound(req, res) {
   res.status(404).json({ error: 'not_found', message: `No route for ${req.method} ${req.path}` });
@@ -59,7 +67,7 @@ function statusOf(err) {
 // treated as ordinary middleware and never called on an error. `next` is
 // unused on purpose, and removing it silently disables this whole file.
 // (The linter is configured not to report unused arguments for this reason.)
-export function errorHandler(err, req, res, _next) {
+export async function errorHandler(err, req, res, _next) {
   const isProduction = process.env.NODE_ENV === 'production';
 
   try {
@@ -85,6 +93,31 @@ export function errorHandler(err, req, res, _next) {
 
       ...(isProduction ? {} : { stack: err?.stack }),
     });
+
+    /**
+     * ── RECORDED BEFORE THE RESPONSE, NOT AFTER ────────────────────────────
+     *
+     * A serverless function is frozen the moment it responds, so a write
+     * started afterwards dies mid-socket - this project has already lost
+     * telemetry that way once, and the symptom was `TypeError: fetch failed`
+     * rather than anything resembling a database error.
+     *
+     * Bounded, because the one thing worse than not recording an error is a
+     * slow database turning every error response into a hang. If the bound is
+     * reached the row is lost and the request still answers, which is the
+     * right way round.
+     *
+     * It cannot throw: recordErrorEvent swallows everything. The `catch` here
+     * is for the timeout race itself.
+     */
+    try {
+      await Promise.race([
+        recordErrorEvent(req, { status, details: err?.details }),
+        new Promise((resolve) => setTimeout(resolve, RECORD_TIMEOUT_MS)),
+      ]);
+    } catch {
+      // Already logged inside recordErrorEvent. Nothing further to do here.
+    }
 
     if (status >= 500) {
       // captureError redacts again on its way out. The context here is

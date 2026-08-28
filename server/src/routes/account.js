@@ -69,7 +69,7 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, programs, sessions, logs, conversations, consents, usage, subscription] = await Promise.all([
+    const [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       req.supabase.from('workout_programs').select('*').order('created_at'),
       req.supabase.from('workout_sessions').select('*').order('date'),
@@ -77,13 +77,17 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       req.supabase.from('conversations').select('*').order('created_at'),
       req.supabase.from('consent_records').select('*').order('seq'),
       req.supabase.from('usage_events').select('*').order('created_at'),
+      // Failures this account hit. No message content - a code, a route and a
+      // status - but it is a record about them, so it belongs in a subject
+      // access request like everything else here (migration 0034).
+      req.supabase.from('error_events').select('*').order('seq'),
       // Billing state is the person's own data and belongs in a subject access
       // request. It is a mirror of what Stripe holds; Stripe's own copy is
       // requestable from Stripe, and `not_included` says so.
       req.supabase.from('subscriptions').select('*').maybeSingle(),
     ]);
 
-    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, subscription]) {
+    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription]) {
       if (result.error) throw codedError('storage_unavailable', 'Could not assemble your data export.');
     }
 
@@ -102,6 +106,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         conversations: conversations.data ?? [],
         consent_records: consents.data ?? [],
         usage_events: usage.data ?? [],
+        error_events: errors.data ?? [],
         subscription: subscription.data ?? null,
       },
       not_included: [
@@ -113,7 +118,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
 
     const totalRows =
       (programs.data?.length ?? 0) + (sessions.data?.length ?? 0) + (logs.data?.length ?? 0) +
-      (consents.data?.length ?? 0) + (usage.data?.length ?? 0);
+      (consents.data?.length ?? 0) + (usage.data?.length ?? 0) + (errors.data?.length ?? 0);
 
     // Logged as a count, never as content.
     logger.info('account.exported', {
