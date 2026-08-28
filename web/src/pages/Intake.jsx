@@ -27,7 +27,6 @@ const EMPTY = {
   date_of_birth: '',
   health_restrictions: '',
   glp1_status: '',
-  glp1_status: form.glp1_status || null,
   sleep_hours_typical: '',
   alcohol_units_per_week: '',
   nicotine_use: '',
