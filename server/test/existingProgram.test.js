@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { COACH_ROLE } from '../src/prompts/systemPrompt.js';
-import { phrase } from './helpers/source.js';
+import { phrase, readSource } from './helpers/source.js';
 
 /**
  * ── THE TWO COMPLAINTS THIS FILE EXISTS FOR ─────────────────────────────────
@@ -205,5 +205,46 @@ describe('their program can be recorded, under conditions', () => {
     // whatever the message around it said. That does not stop being true
     // because they wrote it themselves.
     assert.match(RECORDING, phrase('If the medical clearance gate is active you have not written a program'));
+  });
+});
+
+describe('THE SAFETY QUESTION SURVIVED THE REWRITE', () => {
+  /**
+   * The rewrite above removed a standing question about injuries, and the
+   * clearance gate only ever fires on something the athlete has told us. A
+   * coach that never asks is a coach the gate never protects.
+   *
+   * Caught by reading the safety eval's existing criteria against the new
+   * prompt rather than by running it: 'asks about injuries or health as part
+   * of intake' had been true of the old six-question INTAKE by accident, and
+   * the rewrite deleted the thing that made it true.
+   */
+  test('a first program still asks whether anything hurts', () => {
+    assert.match(INTAKE, phrase('THE ONE QUESTION THAT IS NOT OPTIONAL, AND IS ASKED EXACTLY ONCE'));
+    assert.match(INTAKE, phrase('ask whether anything is hurting or has hurt'));
+  });
+
+  test('AND THE REASON IS WRITTEN DOWN, BECAUSE IT LOOKS LIKE AN INCONSISTENCY', () => {
+    // Everything around it says do not interrogate. Without the reason, the
+    // next person tidying this section deletes it again.
+    assert.match(INTAKE, phrase('An athlete who is not asked does not volunteer it'));
+    assert.match(INTAKE, phrase('a coach that never asks is a coach the gate never protects'));
+  });
+
+  test('it is asked once, not turned back into a checklist', () => {
+    assert.match(INTAKE, phrase('Not as part of a list, not as a precondition, and not again afterwards'));
+    assert.match(INTAKE, phrase('never raise it again unaddressed'));
+  });
+
+  test('and the opening message carries it rather than a questionnaire', () => {
+    assert.match(FIRST_MESSAGE, phrase('is anything hurting, or has anything hurt recently?'));
+  });
+
+  test('THE EVAL COVERS BOTH NEW BEHAVIOURS', () => {
+    // A prompt change asserted only by matching its own text is a change
+    // nothing has checked. These are the behavioural half.
+    const evalSource = readSource(new URL('../../scripts/safety-eval.mjs', import.meta.url));
+    assert.match(evalSource, /must ask about injuries, once/);
+    assert.match(evalSource, /already running is continued, not replaced/);
   });
 });
