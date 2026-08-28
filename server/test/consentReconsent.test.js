@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import { readSource, readRaw, phrase } from './helpers/source.js';
 import { POLICY_VERSIONS, CONSENT_TYPES } from '../src/lib/policyVersions.js';
 
@@ -94,15 +95,34 @@ describe('the database agrees with the screen', () => {
     assert.match(migration, phrase('Fails CLOSED'));
   });
 
-  test('THE SEEDED VERSIONS MATCH THE ONES JAVASCRIPT USES', () => {
+  test('EVERY CONSENT TYPE IS SEEDED AT THE VERSION JAVASCRIPT USES', () => {
     // The drift this codebase has been bitten by twice. A version bumped in
-    // policyVersions.js and not here would leave the database gate open on a
+    // policyVersions.js and not seeded would leave the database gate open on a
     // policy nobody has agreed to.
+    //
+    // Scanned across ALL migrations rather than one, because a consent type
+    // added later is seeded by the migration that adds it - 0028 introduced
+    // leaderboard_publication, and pinning this to 0027 made a correct change
+    // look like a regression.
+    const allMigrations = readdirSync(new URL('../../supabase/migrations/', import.meta.url))
+      .filter((f) => f.endsWith('.sql'))
+      .map((f) => readRaw(new URL(`../../supabase/migrations/${f}`, import.meta.url)))
+      .join('\n');
+
     for (const type of CONSENT_TYPES) {
       assert.ok(
-        migration.includes(`'${type}',`) && migration.includes(`'${POLICY_VERSIONS[type]}'`),
-        `migration 0027 does not seed ${type} at ${POLICY_VERSIONS[type]}`,
+        new RegExp(`'${type}'\\s*,\\s*'${POLICY_VERSIONS[type]}'`).test(allMigrations),
+        `no migration seeds public.policy_versions with ${type} at ${POLICY_VERSIONS[type]}`,
       );
+    }
+  });
+
+  test('and the consent_type CHECK constraint knows every type', () => {
+    // The constraint enumerates them, so a type added in JavaScript alone
+    // fails at INSERT with a constraint violation the user sees as a 502.
+    const constraint = readRaw(new URL('../../supabase/migrations/0028_leaderboard_consent.sql', import.meta.url));
+    for (const type of CONSENT_TYPES) {
+      assert.ok(constraint.includes(`'${type}'`), `the CHECK constraint omits ${type}`);
     }
   });
 

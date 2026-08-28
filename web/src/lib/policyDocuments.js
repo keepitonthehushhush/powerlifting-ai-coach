@@ -16,6 +16,7 @@ export const POLICY_DOCUMENTS = Object.freeze({
   terms_of_service: '/policies/terms',
   ai_processing: '/policies/ai-processing',
   health_data_collection: '/policies/health-data',
+  leaderboard_publication: '/policies/leaderboard',
 });
 
 export function policyPathFor(consentType) {

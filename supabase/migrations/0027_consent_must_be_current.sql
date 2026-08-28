@@ -24,7 +24,7 @@
 --
 -- The current versions live in server/src/lib/policyVersions.js, and hardcoding
 -- a copy into a function body is the drift this codebase has already been bitten
--- by twice. A table can be read, joined, and - crucially - CHECKED: 
+-- by twice. A table can be read, joined, and - crucially - CHECKED:
 -- check-db-invariants.mjs asserts row-for-row that it matches POLICY_VERSIONS,
 -- so a version bumped in JavaScript and not here fails a check rather than
 -- silently un-gating the database half.

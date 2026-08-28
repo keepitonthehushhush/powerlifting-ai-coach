@@ -311,6 +311,12 @@ export const es = {
         'Tu perfil e historial de entrenamiento se envían a Anthropic, que opera el modelo de IA que escribe tu programación. Sin esto, Coach no puede generar nada.',
       document: 'aviso sobre el procesamiento con IA',
     },
+    leaderboard_publication: {
+      label: 'Mostrar tus marcas en la clasificación',
+      description:
+        'Opcional, y desactivado salvo que lo actives. Publica tu nombre público y tus mejores marcas de sentadilla, press de banca y peso muerto para otras personas registradas, y nada más: nunca tu peso corporal, tu edad ni información de salud. Al desactivarlo se borra tu entrada de inmediato.',
+      document: 'página de la clasificación',
+    },
     health_data_collection: {
       label: 'Guardar tu información sobre lesiones y salud',
       description:
@@ -361,6 +367,10 @@ export const es = {
       'Únete para comparar tus mejores levantamientos con otras personas que usan Coach Diaz. Está desactivada salvo que la actives, y puedes salir cuando quieras.',
     whatIsShown:
       'Si te unes, otras personas registradas verán tu nombre público y tus mejores marcas de sentadilla, press de banca y peso muerto, y nada más. Ni tu peso corporal, ni tu edad, ni tus lesiones o información de salud, ni tu correo. Eso nunca sale de tu cuenta.',
+    agree:
+      'Acepto que mi nombre público y mis mejores marcas de sentadilla, press de banca y peso muerto se muestren a otras personas registradas. Puedo retirarlo cuando quiera, y eso borra mi entrada.',
+    consentRecorded: 'Tu aceptación para publicar queda registrada en tu historial de consentimiento.',
+    consentWhere: 'Ver tus opciones de privacidad',
     handleLabel: 'Tu nombre público',
     handlePlaceholder: 'p. ej. eddy_lifts',
     handleHelp:

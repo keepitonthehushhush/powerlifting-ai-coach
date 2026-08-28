@@ -66,6 +66,16 @@ leaderboardRouter.put('/opt-in', async (req, res, next) => {
           code: 'display_name_required',
         });
       }
+      // The database refuses to publish without an active, current consent
+      // (migration 0028). The UI asks for it first, so reaching this means
+      // either a direct RPC call or a consent that went stale between the page
+      // loading and the button being pressed - both of which deserve a
+      // sentence rather than a 502.
+      if (/leaderboard_consent_required/.test(error.message ?? '')) {
+        throw new HttpError(400, 'Agree to the leaderboard terms before joining.', {
+          code: 'leaderboard_consent_required',
+        });
+      }
       throw new HttpError(502, 'Could not update your leaderboard setting.', { code: error.code });
     }
 

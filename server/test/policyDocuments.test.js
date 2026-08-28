@@ -43,7 +43,7 @@ describe('every consent has something to read', () => {
   test('every routed policy document actually exists as a page', () => {
     // A route pointing at a component that was never written fails at runtime,
     // which is exactly when the person is trying to read it.
-    for (const component of ['Terms', 'AiProcessing', 'HealthDataPolicy']) {
+    for (const component of ['Terms', 'AiProcessing', 'HealthDataPolicy', 'LeaderboardPolicy']) {
       assert.ok(
         app.includes(`import { ${component} }`),
         `${component} is routed but not imported`,
@@ -62,7 +62,14 @@ describe('every consent has something to read', () => {
       terms_of_service: read('../../web/src/pages/Terms.jsx'),
       ai_processing: read('../../web/src/pages/AiProcessing.jsx'),
       health_data_collection: read('../../web/src/pages/HealthDataPolicy.jsx'),
+      leaderboard_publication: read('../../web/src/pages/LeaderboardPolicy.jsx'),
     };
+    // A consent type with no page in this map used to fail as "cannot read
+    // properties of undefined", which names the test's own gap rather than the
+    // missing document. Say what is actually wrong.
+    for (const type of Object.keys(POLICY_VERSIONS)) {
+      assert.ok(pages[type], `${type} has no page listed in this test - write the document, then list it here`);
+    }
     for (const [type, version] of Object.entries(POLICY_VERSIONS)) {
       assert.ok(
         pages[type].includes(version),

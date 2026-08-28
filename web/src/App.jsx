@@ -14,6 +14,7 @@ import { Account } from './pages/Account.jsx';
 import { Consent } from './pages/Consent.jsx';
 import { Library } from './pages/Library.jsx';
 import { Leaderboard } from './pages/Leaderboard.jsx';
+import { LeaderboardPolicy } from './pages/LeaderboardPolicy.jsx';
 import { Progress } from './pages/Progress.jsx';
 import { Program } from './pages/Program.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
@@ -112,6 +113,7 @@ export function App() {
               <Route path="/policies/terms" element={<Terms />} />
               <Route path="/policies/ai-processing" element={<AiProcessing />} />
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />
+              <Route path="/policies/leaderboard" element={<LeaderboardPolicy />} />
               {/* The old path, kept so links already in the wild still land. */}
               <Route path="/privacy/health-data" element={<Navigate to="/policies/health-data" replace />} />
               <Route

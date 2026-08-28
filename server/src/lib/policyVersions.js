@@ -13,6 +13,13 @@ export const POLICY_VERSIONS = Object.freeze({
   health_data_collection: 'chd-2026-08-27b',
   ai_processing: 'aip-2026-08-27c',
   terms_of_service: 'tos-2026-08-27b',
+  /**
+   * Publishing your lifts to other users. A separate purpose from coaching,
+   * so a separate consent - and deliberately NOT in REQUIRED_CONSENTS below,
+   * because a permission that costs something to refuse is not freely given.
+   * Refusing this costs nothing: every other feature behaves identically.
+   */
+  leaderboard_publication: 'lbp-2026-08-28a',
 });
 
 export const CONSENT_TYPES = Object.freeze(Object.keys(POLICY_VERSIONS));

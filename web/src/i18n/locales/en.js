@@ -309,6 +309,12 @@ export const en = {
         'Your profile and training history are sent to Anthropic, which runs the AI model that writes your coaching. Without this, Coach cannot generate anything.',
       document: 'AI Processing disclosure',
     },
+    leaderboard_publication: {
+      label: 'Showing your lifts on the leaderboard',
+      description:
+        'Optional, and off unless you turn it on. Publishes your display name and your best squat, bench and deadlift to other signed-in users — nothing else, and never your bodyweight, age or health information. Turning it off deletes your entry immediately.',
+      document: 'leaderboard page',
+    },
     health_data_collection: {
       label: 'Storing your injury and health information',
       description:
@@ -359,6 +365,10 @@ export const en = {
       'Opt in to compare your best lifts with other people using Coach Diaz. It is off unless you turn it on, and you can leave whenever you like.',
     whatIsShown:
       'If you join, other signed-in lifters see your display name and your best squat, bench and deadlift — nothing else. Not your bodyweight, not your age, not your injuries or health information, not your email. Those never leave your account.',
+    agree:
+      'I agree that my display name and my best squat, bench and deadlift may be shown to other signed-in users. I can withdraw this at any time, and it deletes my entry.',
+    consentRecorded: 'Your agreement to publish is recorded in your consent history.',
+    consentWhere: 'See your privacy choices',
     handleLabel: 'Your display name',
     handlePlaceholder: 'e.g. eddy_lifts',
     handleHelp:

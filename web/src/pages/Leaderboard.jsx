@@ -4,6 +4,8 @@ import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { AchievementShelf } from '../components/AchievementShelf.jsx';
+import { Link } from 'react-router-dom';
+import { policyPathFor } from '../lib/policyDocuments.js';
 
 const BOARDS = ['squat', 'bench', 'deadlift'];
 
@@ -25,13 +27,27 @@ export function Leaderboard() {
   const [board, setBoard] = useState('squat');
   const [handle, setHandle] = useState('');
   const [profile, setProfile] = useState(null);
+  const [consented, setConsented] = useState(false);
+  const [agreedNow, setAgreedNow] = useState(false);
 
   async function load() {
     try {
-      const [board_, profile_] = await Promise.all([api.getLeaderboard(), api.getProfile()]);
+      const [board_, profile_, consents_] = await Promise.all([
+        api.getLeaderboard(),
+        api.getProfile(),
+        api.getConsents(),
+      ]);
       setData(board_);
       setProfile(profile_);
       if (profile_?.display_name) setHandle(profile_.display_name);
+      /**
+       * Granted AND current. A consent recorded against a superseded version
+       * of the leaderboard terms is not agreement to the terms as they stand -
+       * the same rule the consent panel and has_active_consent() apply, so all
+       * three agree about what counts.
+       */
+      const record = consents_?.consents?.leaderboard_publication;
+      setConsented(Boolean(record?.granted) && !record?.stale);
     } catch (err) {
       setError(err.message);
     }
@@ -49,6 +65,14 @@ export function Leaderboard() {
        * clicking Join and being told to go elsewhere - the name is a
        * prerequisite, so it belongs in the same action.
        */
+      /**
+       * Record the consent BEFORE asking to be published, because the database
+       * refuses to publish without it (migration 0028). Doing it in the other
+       * order would produce a refusal on the very first attempt, every time.
+       */
+      if (optIn && !consented) {
+        await api.recordConsent('leaderboard_publication', true);
+      }
       if (optIn && handle && handle !== profile?.display_name) {
         /**
          * ONE FIELD, not the whole profile.
@@ -109,6 +133,28 @@ export function Leaderboard() {
           </label>
         )}
 
+        {data && !data.onLeaderboard && !consented && (
+          <>
+            {/* The document first, then the control. Agreeing to something
+                before it has been made available is not informed consent, and
+                a link placed under the checkbox is a link most people never
+                see - the same ordering the consent panel uses. */}
+            <p className="policy-link">
+              <Link className="link strong" to={policyPathFor('leaderboard_publication')}>
+                {t('consent.readBeforeAgreeing', { document: t('consent.leaderboard_publication.document') })}
+              </Link>
+            </p>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={agreedNow}
+                onChange={(e) => setAgreedNow(e.target.checked)}
+              />
+              <span className="small">{t('leaderboard.agree')}</span>
+            </label>
+          </>
+        )}
+
         {data && (
           <div className="row-actions">
             {data.onLeaderboard ? (
@@ -120,7 +166,7 @@ export function Leaderboard() {
                 type="button"
                 className="primary"
                 onClick={() => toggle(true)}
-                disabled={busy || !/^[A-Za-z0-9_-]{3,24}$/.test(handle)}
+                disabled={busy || !/^[A-Za-z0-9_-]{3,24}$/.test(handle) || !(consented || agreedNow)}
               >
                 {busy ? t('common.working') : t('leaderboard.join')}
               </button>
@@ -129,6 +175,12 @@ export function Leaderboard() {
         )}
 
         {data?.onLeaderboard && <p className="muted small">{t('leaderboard.leaveIsDelete')}</p>}
+        {data?.onLeaderboard && (
+          <p className="muted small">
+            {t('leaderboard.consentRecorded')}{' '}
+            <Link className="link" to="/consent">{t('leaderboard.consentWhere')}</Link>
+          </p>
+        )}
         {error && <p className="error">{error}</p>}
       </section>
 
