@@ -43,10 +43,32 @@ export const PAID_FEATURE = 'coaching_conversation';
 
 /**
  * @param {object|null} subscription a row from public.subscriptions
- * @param {Date} [asOf]
- * @returns {{entitled: boolean, reason: 'paid'|'grace'|'none'|'lapsed'|'payment_failing'}}
+ * @param {Date|{asOf?: Date, freeForever?: boolean}} [options]
+ *        A Date is accepted for the existing call sites and means `asOf`.
+ * @returns {{entitled: boolean, reason: 'paid'|'grace'|'none'|'lapsed'|'payment_failing'|'promised_free'}}
  */
-export function entitlement(subscription, asOf = new Date()) {
+export function entitlement(subscription, options = {}) {
+  const { asOf = new Date(), freeForever = false } =
+    options instanceof Date ? { asOf: options } : options;
+
+  /**
+   * ── THE PROMISE OUTRANKS EVERYTHING BELOW ────────────────────────────────
+   *
+   * The FAQ said, to everybody who signed up before the paywall existed, that
+   * the product was free while it was being built. `free_forever` marks those
+   * people (migration 0032), and it is checked FIRST - before status, before
+   * dates, before anything Stripe knows.
+   *
+   * Position matters here. Anywhere lower and a grandfathered athlete who once
+   * subscribed and later cancelled would fall through to `lapsed` and lose
+   * access they were promised permanently - the promise silently outranked by
+   * a subscription record that should be irrelevant to them.
+   *
+   * They can still subscribe if they want to; it just buys them nothing they
+   * do not already have, which is the correct shape for a gift.
+   */
+  if (freeForever) return { entitled: true, reason: 'promised_free' };
+
   if (!subscription || !subscription.status) return { entitled: false, reason: 'none' };
 
   const periodEnd = subscription.current_period_end

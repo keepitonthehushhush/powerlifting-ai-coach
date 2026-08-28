@@ -346,11 +346,15 @@ export const es = {
   billing: {
     title: 'Suscripción',
     offerBody:
-      'Las conversaciones con el entrenador forman parte de la suscripción: 9,99 $ al mes, cancela cuando quieras.',
+      'Las conversaciones con el entrenador forman parte de la suscripción: gratis durante 14 días y después 9,99 $ al mes. Cancela cuando quieras; durante la prueba no se te cobra nada.',
     lapsedBody:
       'Tu suscripción ha terminado, así que las conversaciones con el entrenador están en pausa. Todo lo que registraste sigue aquí.',
     staysFree:
       'Registrar tus sesiones, tus gráficas, tu programa y la biblioteca de ejercicios siguen siendo gratis, y siempre lo serán.',
+    promisedFree:
+      'Tu entrenamiento es gratis, para siempre. Te registraste mientras Coach Diaz aún se estaba construyendo y probando, cuando era gratuito: esa promesa se mantiene, y no tienes nada que pagar.',
+    promisedFreeSubscribed:
+      'Además tienes una suscripción. No te está dando nada que no tengas ya, así que cancélala cuando quieras y no cambiará nada en tu cuenta.',
     subscribe: 'Suscribirme',
     resubscribe: 'Reactivar mi suscripción',
     manage: 'Gestionar suscripción',

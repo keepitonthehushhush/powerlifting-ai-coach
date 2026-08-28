@@ -94,7 +94,12 @@ describe('the webhook', () => {
   test('the user id is stamped on the subscription, not just the session', () => {
     // Renewal events arriving months later have no memory of the checkout
     // session, so metadata on the subscription is the durable link.
-    assert.match(billing, /subscription_data: \{ metadata: \{ user_id: req\.user\.id \} \}/);
+    // The PROPERTY is that the subscription carries the user id, not the
+    // formatting of the object literal. Adding trial_period_days reflowed it
+    // onto several lines and failed the exact form, on a change that does not
+    // touch attribution.
+    const block = billing.slice(billing.indexOf('subscription_data:'));
+    assert.match(block.slice(0, 220), /metadata:\s*\{\s*user_id: req\.user\.id\s*\}/);
     assert.match(billing, /client_reference_id: req\.user\.id/);
     assert.match(webhook, /object\?\.metadata\?\.user_id/);
   });
@@ -163,7 +168,11 @@ describe('checkout and the portal', () => {
     // ROSCA: clear and conspicuous disclosure of material terms BEFORE
     // obtaining billing information.
     assert.match(billing, /custom_text/);
-    assert.match(billing, phrase('This renews every month at $9.99 until you cancel'));
+    // The renewal terms must be stated on the payment screen; the sentence
+    // now opens with the trial, so this asserts the terms rather than the
+    // whole string verbatim.
+    assert.match(billing, phrase('renews every month at $9.99 until you cancel'));
+    assert.match(billing, phrase('Free for ${TRIAL_DAYS} days'));
     assert.match(billing, phrase('you keep access until the end of the period you have paid for'));
   });
 

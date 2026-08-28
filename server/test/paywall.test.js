@@ -134,7 +134,11 @@ describe('what the paywall actually gates', () => {
     // The route must not grow its own opinion about which Stripe statuses
     // count. past_due and in-period cancellations are decided in one place.
     assert.ok(!/status\s*===\s*'(active|trialing|past_due|canceled)'/.test(chat));
-    assert.match(chat, /entitlement\(subscription\)/);
+    // `entitlement(subscription` rather than the whole call: adding the
+    // grandfathering option as a second argument failed the exact form, on a
+    // change that does not touch delegation at all. The property is that the
+    // route hands the row to entitlement() and does not decide anything itself.
+    assert.match(chat, /entitlement\(subscription[,)]/);
   });
 
   test('a subscription still inside its paid period is served, cancelled or not', () => {
@@ -246,5 +250,121 @@ describe('A PAYWALL IN TEST MODE IS A LOCKED DOOR IN PRODUCTION', () => {
     const app = readSource(new URL('../src/app.js', import.meta.url));
     assert.match(app, /paywall\.test_keys_in_production/);
     assert.match(app, /locked everybody out with no way to pay/);
+  });
+});
+
+describe('the promise made to people who signed up first', () => {
+  const migration = readRaw(new URL('../../supabase/migrations/0032_free_forever.sql', import.meta.url));
+  const entitlementSrc = readSource(new URL('../src/lib/entitlement.js', import.meta.url));
+  const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
+  const panel = readSource(new URL('../../web/src/components/BillingPanel.jsx', import.meta.url));
+
+  test('a grandfathered athlete is entitled with no subscription at all', () => {
+    assert.deepEqual(entitlement(null, { freeForever: true }), {
+      entitled: true, reason: 'promised_free',
+    });
+  });
+
+  test('AND STILL ENTITLED AFTER A SUBSCRIPTION THEY ONCE HAD LAPSES', () => {
+    // The reason the check sits first. Lower down, somebody who subscribed and
+    // later cancelled would fall through to `lapsed` and lose access that was
+    // promised permanently - the promise outranked by a subscription record
+    // that should be irrelevant to them.
+    const past = new Date(Date.now() - 7 * 864e5).toISOString();
+    assert.equal(
+      entitlement({ status: 'canceled', current_period_end: past }, { freeForever: true }).entitled,
+      true,
+    );
+    // The same row without the promise is correctly lapsed.
+    assert.equal(entitlement({ status: 'canceled', current_period_end: past }).entitled, false);
+  });
+
+  test('the check is positioned first, not merely present', () => {
+    const fn = entitlementSrc.slice(entitlementSrc.indexOf('export function entitlement'));
+    assert.ok(
+      fn.indexOf('if (freeForever)') < fn.indexOf('PAYING_STATUSES.includes'),
+      'the promise is checked after Stripe status, so a lapsed subscription would override it',
+    );
+  });
+
+  test('a Date as the second argument still works, so existing callers are unbroken', () => {
+    const future = new Date(Date.now() + 7 * 864e5).toISOString();
+    assert.equal(entitlement({ status: 'active', current_period_end: future }, new Date()).entitled, true);
+  });
+
+  test('THE FLAG IS PROTECTED BY A TRIGGER, NOT A REVOKE THAT DOES NOTHING', () => {
+    /**
+     * `revoke update (free_forever) ... from authenticated` ran without error
+     * and changed nothing: authenticated holds a TABLE-level UPDATE grant, and
+     * a column-level revoke cannot subtract from one. Shipped, "free coaching
+     * forever" would have been a boolean any signed-in person could set on
+     * themselves through PostgREST.
+     */
+    assert.match(migration, /create trigger protect_free_forever/);
+    assert.match(migration, /new\.free_forever := old\.free_forever/);
+    assert.match(migration, phrase('a column-level revoke cannot subtract from a table-level privilege'));
+    assert.ok(
+      !/^\s*revoke update \(free_forever\)/m.test(migration),
+      'the ineffective column revoke is back',
+    );
+  });
+
+  test('and the backfill is deliberately not in this migration', () => {
+    // It belongs to the commit that turns the paywall on. Running it now marks
+    // three accounts and excludes everybody who signs up before the switch -
+    // the people the FAQ is still promising.
+    assert.ok(
+      !/^\s*update public\.user_profile set free_forever = true;/m.test(migration),
+      'the backfill runs now, which grandfathers the wrong set of people',
+    );
+    assert.match(migration, phrase('belongs to the commit that turns the paywall on'));
+  });
+
+  test('the chat route passes it from the profile it already loaded', () => {
+    assert.match(chat, /freeForever: context\.profile\?\.free_forever === true/);
+  });
+
+  test('and they are never shown a subscribe button', () => {
+    // Offering to sell somebody something they already have for nothing reads
+    // as an upsell to a person you made a promise to.
+    assert.match(panel, /if \(reason === 'promised_free'\)/);
+    const branch = panel.slice(panel.indexOf("reason === 'promised_free'"));
+    assert.ok(!branch.slice(0, 900).includes('billing.subscribe'));
+  });
+});
+
+describe('the trial', () => {
+  const billing = readSource(new URL('../src/routes/billing.js', import.meta.url));
+  const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
+
+  test('is 14 days, set once', () => {
+    assert.match(billing, /const TRIAL_DAYS = 14;/);
+    assert.match(billing, /trial_period_days: TRIAL_DAYS/);
+  });
+
+  test('THE CONVERSION IS DISCLOSED ON THE PAYMENT SCREEN', () => {
+    // A trial that becomes a charge is a negative option, and the disclosure
+    // that counts is the one where the card is entered.
+    assert.match(billing, /Free for \$\{TRIAL_DAYS\} days\./);
+    assert.match(billing, /renews every month at \$9\.99 until you cancel/);
+    assert.match(billing, /during the trial you are charged nothing at all/);
+  });
+
+  test('there is exactly one subscription_data, so metadata is not silently dropped', () => {
+    // Adding the trial created a second one; a later duplicate key wins in a
+    // JS object literal, so the user_id metadata a renewal depends on could
+    // have vanished without an error.
+    assert.equal((billing.match(/subscription_data:/g) ?? []).length, 1);
+    const block = billing.slice(billing.indexOf('subscription_data:'));
+    assert.match(block.slice(0, 200), /metadata: \{ user_id: req\.user\.id \}/);
+  });
+
+  test('and the app copy says it too, not only Stripe', () => {
+    assert.match(en, phrase('free for 14 days, then $9.99 a month'));
+  });
+
+  test('trialing already counted as entitled, so the coaching works during it', () => {
+    const future = new Date(Date.now() + 7 * 864e5).toISOString();
+    assert.equal(entitlement({ status: 'trialing', current_period_end: future }).entitled, true);
   });
 });

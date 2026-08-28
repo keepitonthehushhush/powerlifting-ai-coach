@@ -544,6 +544,66 @@ away, and the client can tell the two apart without parsing prose.
 
 ---
 
+### ADR-14 · The paywall waits for users, the promise outranks the subscription
+
+**Context.** The billing machinery is complete and `PAYWALL_ENABLED` ships off.
+Three facts decide when it turns on, and none of them are technical.
+
+Stripe is in **test mode**. A paywall with test keys is a subscribe button whose
+checkout accepts only 4242 4242 4242 4242 — everybody locked out, nobody able to
+pay, and it looks healthy from the operator's side. `config.paywall` now refuses
+that combination in production rather than letting it be discovered from a
+support email.
+
+There are **three accounts and one logged session**. A paywall with no users
+converts nobody and tests nothing, while the variable cost it exists to cover —
+tokens — is currently negligible.
+
+And the FAQ says, live: *"It is free while it is being built and tested."*
+
+**Decision.** The trigger is real usage, not a date and not Stripe activation:
+turn it on when people who are not the owner are logging sessions and holding
+conversations. A test already refuses to let the paywall default on while the
+FAQ still promises free, so the switch and the sentence move together.
+
+**A 14-day trial.** A training block is measured in weeks; the first useful
+signal is a session that went to plan because the prescription was right, and
+the second is the week after. A shorter trial tests the onboarding rather than
+the coaching, and asking somebody to decide before they have trained produces
+refund requests rather than subscribers. `trialing` already counted as entitled,
+so only checkout changed. The trial-to-charge conversion is disclosed on the
+Stripe payment screen itself — a negative option's disclosure belongs where the
+card is entered, not in a policy document.
+
+**Everybody who signed up under the promise keeps coaching free, permanently.**
+`user_profile.free_forever` (migration 0032) marks them, and `entitlement()`
+checks it FIRST — before status, before dates. Position is load-bearing: lower
+down, a grandfathered athlete who once subscribed and later cancelled would fall
+through to `lapsed` and lose access that was promised permanently.
+
+**Rejected: comparing `auth.users.created_at` to a cutoff date.** One line, and
+it rots — the cutoff cannot be written down until the switch is flipped, and any
+later change to how accounts are created moves people across it silently. A flag
+is a fact about a person that no later change alters, and setting it takes a
+migration, which is where a decision like this should be recorded.
+
+**The flag is writable by nobody.** The first attempt,
+`revoke update (free_forever) ... from authenticated`, ran without error and did
+nothing: `authenticated` holds a table-level UPDATE grant, and in Postgres a
+column-level revoke cannot subtract from one. Verified against the live database
+rather than assumed — "free coaching forever" would have been a boolean any
+signed-in person could set on themselves. It is a trigger now, and a test
+impersonating `authenticated` proves the write is discarded while a migration's
+still lands.
+
+**The backfill is not run yet.** It belongs to the commit that turns the paywall
+on, because that is when "everybody who has an account" means something
+definite. Running it today would mark three accounts and silently exclude
+everybody who signs up between now and then — exactly the people the FAQ is
+still making the promise to.
+
+---
+
 ---
 
 ## 5. Operational notes
@@ -595,7 +655,7 @@ records. What remains:
 |---|---|---|
 | Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working programme |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
-| Stripe subscriptions | 1 | Checkout, billing portal, webhook and the account-page billing UI are built and tested. The paywall is wired into the chat route behind `PAYWALL_ENABLED`, which ships **off**. Remaining: the decision to turn it on — which is the commit that also changes the FAQ's free-while-in-testing paragraph (ADR-13) |
+| Stripe subscriptions | 1 | Checkout (with a 14-day trial), portal, webhook and account UI are built and tested. Paywall wired behind `PAYWALL_ENABLED`, which ships **off** and now also refuses to activate on test keys in production. Waiting on real usage, not on code — see ADR-14 |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
 | Data retention | 1 | Tiered, `private.apply_retention()` on a daily `pg_cron` schedule (migration 0031). Health notes and chat messages expire at 12 months, activity and usage records at 24; training logs are never swept. Inactive-account deletion is written and deliberately **unscheduled** until transactional email exists to warn people first |
 | Audit logging | 1 | `audit_events` (migration 0030) records data exports, account deletions and every service-role subscription write, readable by the person they happened to at `/account`. `user_id` is ON DELETE SET NULL so a deletion record survives the deletion without remaining personal data. Not yet covering: consent changes (already in their own ledger) and sign-in events |

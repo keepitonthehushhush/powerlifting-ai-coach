@@ -344,11 +344,15 @@ export const en = {
   billing: {
     title: 'Subscription',
     offerBody:
-      'Coaching conversations are part of the subscription — $9.99 a month, cancel any time.',
+      'Coaching conversations are part of the subscription — free for 14 days, then $9.99 a month. Cancel any time, and during the trial you are charged nothing at all.',
     lapsedBody:
       'Your subscription has ended, so the coaching conversations are paused. Everything you logged is still here.',
     staysFree:
       'Logging your sessions, your charts, your programme and the exercise library stay free, and always will.',
+    promisedFree:
+      'Your coaching is free, permanently. You signed up while Coach Diaz was still being built and tested, when it was free — that promise stands, and there is nothing for you to pay.',
+    promisedFreeSubscribed:
+      'You also have a subscription. It is not buying you anything you do not already have, so cancel it whenever you like and nothing about your account changes.',
     subscribe: 'Subscribe',
     resubscribe: 'Restart my subscription',
     manage: 'Manage subscription',

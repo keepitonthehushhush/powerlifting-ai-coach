@@ -187,7 +187,11 @@ chatRouter.post('/', async (req, res, next) => {
      * counts, and this route does not get an opinion about any of it.
      */
     if (config.paywall.active && requiresSubscription(PAID_FEATURE)) {
-      const decision = entitlement(subscription);
+      const decision = entitlement(subscription, {
+        // Loaded with the profile that the adult gate already used, so this
+        // costs no extra query.
+        freeForever: context.profile?.free_forever === true,
+      });
       if (!decision.entitled) {
         logger.info('chat.refused_no_subscription', { userId: req.user.id, reason: decision.reason });
         throw new HttpError(

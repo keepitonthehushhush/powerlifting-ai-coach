@@ -99,6 +99,10 @@ const NOT_SENT = {
     '(migration 0031). Not sent: the coach is given the restriction itself when ' +
     'there is one, and how old it is tells the model nothing it can coach on ' +
     'while being one more fact about somebody health in a third-party request.',
+  free_forever:
+    'marks somebody promised free coaching before the paywall existed ' +
+    '(migration 0032). Not sent: it is a billing fact, and what somebody pays ' +
+    'has no business shaping how they are coached.',
   intake_completed_at: 'bookkeeping',
   created_at: 'bookkeeping',
   updated_at: 'bookkeeping',

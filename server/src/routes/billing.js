@@ -6,6 +6,21 @@ import { loadSubscription } from '../lib/subscriptions.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 
+/**
+ * The free trial, in days.
+ *
+ * Fourteen because a training block is measured in weeks. Nobody can judge a
+ * coach in a day - the first useful signal is a session that went to plan
+ * because the prescription was right, and the second is the week after. A
+ * trial shorter than that does not test the product, it tests the onboarding,
+ * and asking somebody to decide before they have trained produces refund
+ * requests rather than subscribers.
+ *
+ * `trialing` already counts as entitled in lib/entitlement.js, so nothing else
+ * needed to change for the coaching to work during it.
+ */
+const TRIAL_DAYS = 14;
+
 export const billingRouter = Router();
 
 /**
@@ -47,7 +62,11 @@ billingRouter.get('/status', async (req, res, next) => {
   try {
     const configured = !billingUnavailableReason();
     const subscription = configured ? await loadSubscription(req.supabase) : null;
-    const decision = entitlement(subscription);
+    const { data: profile } = await req.supabase
+      .from('user_profile')
+      .select('free_forever')
+      .maybeSingle();
+    const decision = entitlement(subscription, { freeForever: profile?.free_forever === true });
 
     res.json({
       configured,
@@ -110,17 +129,30 @@ billingRouter.post('/checkout', async (req, res, next) => {
       // it is. Set on the subscription too, because the checkout session is
       // not attached to the events that arrive months later at renewal.
       client_reference_id: req.user.id,
-      subscription_data: { metadata: { user_id: req.user.id } },
-
       success_url: `${origin}/account?checkout=success`,
       cancel_url: `${origin}/account?checkout=cancelled`,
 
       // Stated before the card is collected, which is what ROSCA requires of
       // a recurring charge: the terms, and that it renews until cancelled.
+      /**
+       * ── THE TRIAL, AND SAYING SO WHERE THE CARD IS ENTERED ─────────────
+       *
+       * A free trial that converts to a charge is a negative option, and the
+       * disclosure regulators care about is the one on the payment screen -
+       * not the one in a policy document nobody opened. So the sentence names
+       * the length, the date logic, the price and the cancellation route, in
+       * that order, because that is the order somebody worries about them.
+       */
+      subscription_data: {
+        metadata: { user_id: req.user.id },
+        trial_period_days: TRIAL_DAYS,
+      },
       custom_text: {
         submit: {
           message:
-            'This renews every month at $9.99 until you cancel. You can cancel any time from your account page, and you keep access until the end of the period you have paid for.',
+            `Free for ${TRIAL_DAYS} days. After that it renews every month at $9.99 until you cancel. ` +
+            'Cancel any time from your account page - during the trial you are charged nothing at all, ' +
+            'and afterwards you keep access until the end of the period you have paid for.',
         },
       },
     });

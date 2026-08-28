@@ -148,6 +148,35 @@ export function BillingPanel() {
    */
   if (!paywallActive && !hasSubscription) return null;
 
+  /**
+   * Somebody promised free access before the paywall existed. No subscribe
+   * button: offering to sell them something they already have for nothing
+   * reads as an upsell to a person you made a promise to.
+   */
+  if (reason === 'promised_free') {
+    return (
+      <section className="card stack">
+        <h2 className="h3">{t('billing.title')}</h2>
+        <p className="muted small">{t('billing.promisedFree')}</p>
+        {hasSubscription && (
+          <>
+            <div className="row-actions">
+              <button
+                type="button"
+                onClick={() => go('portal', api.openBillingPortal)}
+                disabled={busy === 'portal'}
+              >
+                {busy === 'portal' ? t('common.working') : t('billing.manage')}
+              </button>
+            </div>
+            <p className="muted small">{t('billing.promisedFreeSubscribed')}</p>
+          </>
+        )}
+        {error && <p className="error">{error}</p>}
+      </section>
+    );
+  }
+
   const renewsOn = currentPeriodEnd
     ? new Date(currentPeriodEnd).toLocaleDateString(undefined, {
         year: 'numeric', month: 'long', day: 'numeric',
