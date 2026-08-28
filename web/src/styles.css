@@ -515,6 +515,35 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 .draft-banner p { margin: 0.4rem 0 0; }
 
+/* A statement that needs to be read, inside a card that is already text.
+   Built from the same tokens as .draft-banner so the two read as one family,
+   and given a left rule rather than a full fill: a subscription notice sits
+   next to body copy and a filled box next to body copy reads as an advert.
+   Colour is not carrying the meaning on its own - the sentence does - which is
+   what keeps it legible to somebody who cannot see the hue. */
+.notice {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+  font-size: 0.92rem;
+}
+
+/* Buttons side by side, wrapping to a column on a narrow screen rather than
+   overflowing. Subscribe and Manage are never both shown, but Manage sits
+   beside the resubscribe button in the lapsed case. */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+.row-actions:empty { display: none; }
+@media (max-width: 420px) {
+  .row-actions { flex-direction: column; align-items: stretch; }
+}
+
 .prose h2 { margin: 1.4rem 0 0.5rem; }
 .prose h2:first-child { margin-top: 0; }
 .prose ul { margin: 0.5rem 0; padding-left: 1.2rem; }

@@ -125,6 +125,15 @@ export const api = {
     request('/consent', { method: 'POST', body: JSON.stringify({ consent_type: consentType, granted }) }),
   getConsentHistory: () => request('/consent/history'),
 
+  /**
+   * Billing. Three calls, and the two that matter return a URL rather than
+   * doing anything themselves: checkout and the portal are Stripe-hosted, so
+   * no card detail ever touches this origin.
+   */
+  getBillingStatus: () => request('/billing/status'),
+  startCheckout: () => request('/billing/checkout', { method: 'POST' }),
+  openBillingPortal: () => request('/billing/portal', { method: 'POST' }),
+
   // Data subject rights.
   exportData: () => request('/account/export'),
   deleteAccount: (confirm) =>

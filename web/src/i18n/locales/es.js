@@ -330,6 +330,29 @@ export const es = {
     deleteConfirmPrompt: 'Escribe DELETE MY ACCOUNT para confirmar.',
     deleted: 'Tu cuenta y todos los datos asociados se han eliminado permanentemente.',
   },
+  billing: {
+    title: 'Suscripción',
+    offerBody:
+      'Las conversaciones con el entrenador forman parte de la suscripción: 9,99 $ al mes, cancela cuando quieras.',
+    lapsedBody:
+      'Tu suscripción ha terminado, así que las conversaciones con el entrenador están en pausa. Todo lo que registraste sigue aquí.',
+    staysFree:
+      'Registrar tus sesiones, tus gráficas, tu programa y la biblioteca de ejercicios siguen siendo gratis, y siempre lo serán.',
+    subscribe: 'Suscribirme',
+    resubscribe: 'Reactivar mi suscripción',
+    manage: 'Gestionar suscripción',
+    cancelAnytime:
+      'Cancela cuando quieras desde Gestionar suscripción: sin correos y sin dar explicaciones. Conservas el acceso hasta el final del periodo que ya has pagado.',
+    renewsOn: 'Activa. Se renueva el {date}.',
+    endsOn: 'Cancelada. Conservas el acceso completo hasta el {date}, y no se borra nada.',
+    paymentFailing:
+      'Un pago de renovación no se completó, así que puede que tengas que actualizar la tarjeta. Tu entrenamiento sigue activo mientras el banco lo reintenta: esto es un aviso, no un bloqueo.',
+    settling: 'Pago recibido. Estamos activando tu suscripción…',
+    settlingSlow:
+      'Tu pago se ha realizado. La cuenta aún no se ha actualizado, algo que a veces tarda un minuto: actualiza esta página en breve y estará activa. No ha fallado nada y no se te ha cobrado dos veces.',
+    checkoutCancelled: 'No se ha cobrado nada. Puedes suscribirte cuando quieras.',
+    noRedirect: 'No se pudo abrir la página de pago. Inténtalo de nuevo.',
+  },
   library: {
     title: 'Biblioteca de ejercicios',
     subtitle:

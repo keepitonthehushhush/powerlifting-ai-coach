@@ -51,6 +51,13 @@ billingRouter.get('/status', async (req, res, next) => {
 
     res.json({
       configured,
+      /**
+       * Whether a subscription is actually REQUIRED right now, which is not
+       * the same as billing being configured (ADR-13). Without this the
+       * account page would offer to sell a subscription for something that is
+       * currently free, which is a worse lie than saying nothing.
+       */
+      paywallActive: config.paywall.active,
       entitled: decision.entitled,
       reason: decision.reason,
       // Enough for the UI to say something specific, and no more. No customer

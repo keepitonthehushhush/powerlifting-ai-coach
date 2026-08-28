@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { ConsentPanel } from '../components/ConsentPanel.jsx';
+import { BillingPanel } from '../components/BillingPanel.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 
@@ -69,6 +70,11 @@ export function Account() {
           <h1 className="page-title">{t('account.title')}</h1>
         </header>
       </StickyHeader>
+
+      {/* Above consent and export, below the header: a subscription is the
+          thing somebody comes to this page to change most often, and it
+          renders nothing at all when there is nothing to say. */}
+      <BillingPanel />
 
       <section className="card stack">
         <h2 className="h3">{t('consent.title')}</h2>

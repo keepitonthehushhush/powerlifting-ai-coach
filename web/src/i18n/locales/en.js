@@ -328,6 +328,29 @@ export const en = {
     deleteConfirmPrompt: 'Type DELETE MY ACCOUNT to confirm.',
     deleted: 'Your account and all associated data have been permanently deleted.',
   },
+  billing: {
+    title: 'Subscription',
+    offerBody:
+      'Coaching conversations are part of the subscription — $9.99 a month, cancel any time.',
+    lapsedBody:
+      'Your subscription has ended, so the coaching conversations are paused. Everything you logged is still here.',
+    staysFree:
+      'Logging your sessions, your charts, your programme and the exercise library stay free, and always will.',
+    subscribe: 'Subscribe',
+    resubscribe: 'Restart my subscription',
+    manage: 'Manage subscription',
+    cancelAnytime:
+      'Cancel any time from Manage subscription — no email, no explanation. You keep access until the end of the period you have paid for.',
+    renewsOn: 'Active. Renews on {date}.',
+    endsOn: 'Cancelled. You keep full access until {date}, and nothing is deleted.',
+    paymentFailing:
+      'A renewal payment did not go through, so your card may need updating. Your coaching is still on while the bank retries — this is a heads-up, not a lock-out.',
+    settling: 'Payment received. Setting up your subscription…',
+    settlingSlow:
+      'Your payment went through. The account has not caught up yet, which occasionally takes a minute — refresh this page shortly and it will be active. Nothing has gone wrong and you have not been charged twice.',
+    checkoutCancelled: 'No payment was taken. You can subscribe whenever you like.',
+    noRedirect: 'Could not open the payment page. Please try again.',
+  },
   library: {
     title: 'Exercise library',
     subtitle:
