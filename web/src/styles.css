@@ -1277,26 +1277,39 @@ form > button.primary {
    `.home-cta`: a class named for one page and used on two is a lie that later
    gets "tidied" by somebody who believes the name.
 
-   An anchor, not a button, because it navigates. `.primary` is deliberately
-   not reused - it is styled for real buttons, and both `form > button.primary`
+   A capsule, because that is what Apple's own marketing pages use and this is
+   a marketing page. An anchor, not a button, because it navigates - and
+   `.primary` is deliberately not reused, since both `form > button.primary`
    and `.stack > button.primary` carry min-width rules written for a different
-   layout, which is precisely how this stylesheet once crushed the chat
-   composer's textarea to 24px on a phone. */
+   layout, which is how this stylesheet once crushed the chat composer's
+   textarea to 24px on a phone.
+
+   min-height 44px is Apple's minimum tap target, unchanged since the original
+   iPhone and the one number in the HIG that is a hard floor rather than a
+   convention. */
 
 .cta {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--accent);
   color: var(--accent-text);
   text-decoration: none;
   font-weight: 600;
-  font-size: 1.05rem;
-  padding: 0.85rem 1.6rem;
-  border-radius: 8px;
+  font-size: var(--text-headline);
+  letter-spacing: -0.01em;
+  padding: 0.75rem 1.75rem;
+  border-radius: 980px;
   min-height: 44px;
+  transition: filter 120ms ease, transform 120ms ease;
 }
 
 .cta:hover {
   filter: brightness(1.06);
+}
+
+.cta:active {
+  transform: scale(0.98);
 }
 
 .cta:focus-visible {
@@ -1304,167 +1317,225 @@ form > button.primary {
   outline-offset: 3px;
 }
 
-/* ── THE PUBLIC LANDING PAGE ────────────────────────────────────────────────
-
-   Its own block of classes rather than reusing `.page` and `.card`, because
-   this page has a different job from every other one: it is read by somebody
-   standing still, deciding, rather than by somebody using a tool. Wider
-   measure, larger type, more air.
-
-   Everything here is prefixed `home-`. That is not tidiness - this stylesheet
-   has already produced one bug where a rule written for a form's submit button
-   found the chat composer's send button and crushed the textarea to 24px on a
-   phone. A prefix is how a rule written for one page is prevented from finding
-   another. */
-
-/* Hugs the content rather than framing it. At 62rem the container was nearly
-   twice the width of the 62ch sections inside it, so on a laptop the whole
-   page sat in the left half of a centred box and read as a phone layout that
-   had been stretched. Checked by rendering it, not by reading it. */
-.home {
-  max-width: 46rem;
-  margin: 0 auto;
-  padding: 1.25rem clamp(1rem, 5vw, 2rem) 4rem;
+@media (prefers-reduced-motion: reduce) {
+  .cta {
+    transition: none;
+  }
+  .cta:active {
+    transform: none;
+  }
 }
 
+/* ── THE PUBLIC LANDING PAGE ────────────────────────────────────────────────
+
+   Reworked against Apple's Human Interface Guidelines, which for a page like
+   this comes down to four things rather than a look:
+
+   1. TYPE IS A SCALE WITH NAMED ROLES, NOT A PILE OF SIZES. The HIG publishes
+      roles - large title, title, headline, body, caption - at 34 / 28 / 17 /
+      17 / 11 pt, and everything below is anchored to those. Body is 17pt,
+      which is larger than the 16px the web defaults to and is the single
+      change that makes a page feel like an Apple one.
+   2. EVERY SIZE IS IN rem. Dynamic Type means the reader's own text size wins;
+      the web equivalent is rem, and a px font-size is a refusal to scale.
+      Nothing here is in px except the 44px tap floor, which is a physical
+      minimum rather than a typographic one.
+   3. SPACE, NOT RULES. The first version separated sections with hairlines.
+      Apple separates them with air. The scale is 8pt with 4pt subdivisions -
+      a convention rather than an Apple mandate, and worth following because
+      an arbitrary 22px next to a 24px is visible even when nobody can say why.
+   4. CENTRED, AND NARROW ENOUGH TO READ. Centring only works at a short
+      measure; a centred 80-character line is genuinely harder to read than a
+      left-aligned one, because the eye loses the start of the next line.
+
+   Everything is prefixed `home-`, and a test parses this block and fails if a
+   selector is not - see the note on `.cta` above for what an unnamespaced rule
+   did to this stylesheet once. */
+
+:root {
+  /* The 8pt grid, in rem so it scales with the reader's text size. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 3rem;
+  --space-7: 4.5rem;
+  --space-8: 6rem;
+
+  /* HIG roles. Fluid between a phone and a laptop, never below the role's
+     own size, never so large it needs a horizontal scroll to read. */
+  --text-large-title: clamp(2.125rem, 6.2vw, 3.5rem);
+  --text-title: clamp(1.5rem, 3.4vw, 2rem);
+  --text-headline: 1.0625rem; /* 17pt */
+  --text-body: 1.0625rem; /* 17pt - the HIG default, and larger than the web's */
+  --text-caption: 0.8125rem;
+}
+
+.home {
+  /* Wide enough that three steps sit side by side without becoming columns of
+     one word. The prose inside is capped separately at its own measure, so
+     widening the container does not widen a line of text. */
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--space-3) clamp(var(--space-3), 5vw, var(--space-5)) var(--space-8);
+  text-align: center;
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+/* The one row that is not centred: a wordmark belongs at the edge it starts
+   from, and the language switcher opposite it. */
 .home-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 2rem;
+  gap: var(--space-3);
+  text-align: left;
+  padding-bottom: var(--space-5);
 }
 
-/* No measure on the hero itself: it was 34ch, which clamped the BUTTONS as
-   well as the words and stacked "Create your account" above "Sign in" in a
-   narrow column on a 1280px screen. Each child gets its own measure instead. */
 .home-hero {
-  padding: clamp(1.5rem, 6vw, 4rem) 0 clamp(2rem, 6vw, 3.5rem);
+  padding: var(--space-7) 0 var(--space-6);
 }
 
 .home-headline {
-  /* Display type wants a much shorter measure than body text: at 34ch this
-     broke into five short ragged lines. */
-  max-width: 17ch;
-  font-size: clamp(2rem, 6.5vw, 3.25rem);
-  line-height: 1.08;
+  max-width: 18ch;
+  margin: 0 auto var(--space-3);
+  font-size: var(--text-large-title);
+  font-weight: 700;
+  line-height: 1.06;
   letter-spacing: -0.03em;
-  margin: 0 0 1rem;
+  text-wrap: balance;
 }
 
-/* Wider than the headline: a 34ch measure is right for something set at 3rem
-   and far too narrow for body copy. */
 .home-subhead {
-  max-width: 46ch;
-  font-size: clamp(1.02rem, 2.2vw, 1.2rem);
+  max-width: 42ch;
+  margin: 0 auto var(--space-5);
+  font-size: clamp(var(--text-body), 2.1vw, 1.25rem);
+  line-height: 1.45;
   color: var(--muted);
-  margin: 0 0 2rem;
+  text-wrap: pretty;
 }
 
 .home-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem 1.5rem;
+  gap: var(--space-3);
 }
 
 .home-free {
-  margin: 1.1rem 0 0;
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-caption);
 }
 
+/* Air between sections rather than hairlines. */
 .home-section {
-  max-width: 62ch;
-  padding: clamp(1.5rem, 4vw, 2.25rem) 0;
-  border-top: 1px solid var(--border);
+  padding: var(--space-6) 0;
 }
 
 .home-h2 {
-  font-size: clamp(1.3rem, 3vw, 1.6rem);
+  max-width: 22ch;
+  margin: 0 auto var(--space-4);
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: 1.15;
   letter-spacing: -0.02em;
-  /* Headings are short; without this one of them broke a single word onto its
-     own second line. */
   text-wrap: balance;
-  margin: 0 0 1rem;
 }
 
 .home-h3 {
-  font-size: 1.02rem;
+  font-size: var(--text-headline);
   font-weight: 600;
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-2);
 }
 
-.home-section p {
-  margin: 0.6rem 0;
+/* Centred, and narrow. A centred line much past this is harder to read than a
+   left-aligned one, because the eye loses where the next line starts. */
+.home-section > p {
+  max-width: 46ch;
+  margin: 0 auto var(--space-3);
+  color: var(--muted);
+  text-wrap: pretty;
 }
 
-/* Numbered, and the numbers are visible: the order is the argument. */
+/* Three across on a laptop, stacked on a phone. The numerals are the ordering,
+   which is the argument: it cannot programme for a gym it has not asked about,
+   and it cannot adjust a block it has not seen you train. */
 .home-steps {
   list-style: none;
   counter-reset: home-step;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 1.5rem;
+  /* One column, then three. NOT auto-fit: inside a 45rem measure it fitted
+     exactly two, so the third step sat alone under a hole the width of a
+     column. A three-step list wants one row or three, never two and a bit. */
+  grid-template-columns: 1fr;
+  gap: var(--space-5) var(--space-4);
+  text-align: center;
+}
+
+@media (min-width: 40rem) {
+  .home-steps {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .home-steps > li {
   counter-increment: home-step;
-  display: grid;
-  grid-template-columns: 2rem 1fr;
-  gap: 0 0.9rem;
 }
 
 .home-steps > li::before {
   content: counter(home-step);
-  grid-row: 1 / span 2;
-  font-variant-numeric: tabular-nums;
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-caption);
   font-weight: 700;
-  font-size: 1.05rem;
+  letter-spacing: 0.08em;
   color: var(--accent);
-  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-steps > li p {
-  grid-column: 2;
   margin: 0;
   color: var(--muted);
+  max-width: 34ch;
+  margin-inline: auto;
 }
 
 .home-honest {
-  margin: 0;
-  padding: 0;
   list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 46ch;
   display: grid;
-  gap: 0.9rem;
+  gap: var(--space-4);
 }
 
 .home-honest > li {
-  padding-left: 1.1rem;
-  border-left: 2px solid var(--border);
   color: var(--muted);
 }
 
-/* No border of its own: the last section already draws one, and the two
-   stacked a few pixels apart and read as a mistake. Seen by rendering it. */
 .home-footer {
-  max-width: 62ch;
-  padding-top: 2rem;
+  max-width: 46ch;
+  margin: 0 auto;
+  padding-top: var(--space-6);
 }
 
 .home-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  margin-top: 1rem;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-4);
 }
 
-/* The wordmark sits alone at the top here rather than inside a nav, so it does
-   not inherit .site-nav's rules. Its own line, so it never collides with the
-   language switcher on a narrow phone. */
-@media (max-width: 380px) {
+@media (max-width: 24rem) {
   .home-top {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 }

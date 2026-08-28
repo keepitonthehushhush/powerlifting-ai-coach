@@ -222,6 +222,70 @@ describe('the stylesheet cannot reach off this page', () => {
   });
 });
 
+describe("it follows Apple's guidelines, in the ways that are checkable", () => {
+  const block = styles.slice(styles.indexOf('.home {'));
+
+  test('EVERY TYPE SIZE IS IN rem, NEVER px', () => {
+    /*
+     * Dynamic Type means the reader's own text size wins. The web equivalent
+     * is rem; a px font-size is a refusal to scale, and on a page whose whole
+     * job is to be read by somebody who has not signed up yet, that is the one
+     * accessibility failure with a direct cost.
+     */
+    const sizes = [...block.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1].trim());
+    assert.ok(sizes.length > 4, `found ${sizes.length} font-size declarations`);
+    const inPixels = sizes.filter((value) => /\d+px/.test(value));
+    assert.deepEqual(inPixels, []);
+  });
+
+  test('and the type scale is anchored to the HIG roles', () => {
+    // Body is 17pt in the HIG, not the 16px the web defaults to. It is the
+    // single value that makes a page feel like an Apple one.
+    assert.match(styles, /--text-body:\s*1\.0625rem/);
+    assert.match(styles, /--text-large-title:/);
+    assert.match(styles, /--text-headline:/);
+    assert.match(styles, /--text-caption:/);
+  });
+
+  test('spacing comes off one scale rather than being invented per rule', () => {
+    // 8pt with 4pt subdivisions. A convention rather than an Apple mandate,
+    // and worth following because an arbitrary 22px beside a 24px is visible
+    // even when nobody can say why.
+    assert.match(styles, /--space-1:\s*0\.25rem/);
+    assert.match(styles, /--space-3:\s*1rem/);
+    const raw = [...block.matchAll(/(?:padding|margin|gap):\s*([^;]+);/g)]
+      .map((m) => m[1])
+      .filter((value) => /\b\d+(\.\d+)?rem\b/.test(value) && !value.includes('var(--space'));
+    assert.deepEqual(raw, [], 'these spacings bypass the scale');
+  });
+
+  test('SPACE SEPARATES THE SECTIONS, NOT HAIRLINES', () => {
+    // The first version drew a rule between every section. Apple separates
+    // with air, and the borders were the main thing making the page read as a
+    // settings screen rather than a front door.
+    const section = block.slice(block.indexOf('.home-section {'), block.indexOf('}', block.indexOf('.home-section {')));
+    assert.doesNotMatch(section, /border/);
+  });
+
+  test('and the call to action clears the 44pt tap floor', () => {
+    // The one number in the HIG that is a hard minimum rather than a
+    // convention, unchanged since the original iPhone.
+    const cta = styles.slice(styles.indexOf('.cta {'), styles.indexOf('}', styles.indexOf('.cta {')));
+    assert.match(cta, /min-height:\s*44px/);
+  });
+
+  test('motion is dropped for anybody who has asked for less of it', () => {
+    assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,200}\.cta/);
+  });
+
+  test('THREE STEPS SIT IN ONE ROW OR THREE, NEVER TWO AND A BIT', () => {
+    // auto-fit fitted exactly two inside the measure, so the third sat alone
+    // beneath a column-wide hole. Found by rendering it.
+    assert.doesNotMatch(block, /\.home-steps[\s\S]{0,200}auto-fit/);
+    assert.match(block, /grid-template-columns:\s*repeat\(3, 1fr\)/);
+  });
+});
+
 describe('the reasoning survives', () => {
   test('the page records what was there before it', () => {
     assert.match(home, phrase('the first thing a person who had merely HEARD about this product saw'));

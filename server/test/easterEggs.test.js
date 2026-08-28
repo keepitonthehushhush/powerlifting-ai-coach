@@ -56,8 +56,21 @@ describe('nothing is hijacked', () => {
   test('the animation is off under reduced motion', () => {
     // Somebody who asked the OS to stop animating things opted out of movement,
     // not out of jokes: the panel still appears, it just does not bounce.
-    const reduced = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
-    assert.match(reduced, /\.egg-panel \{ animation: none/);
+    //
+    // EVERY reduced-motion block, not the last one. This used to take
+    // `lastIndexOf` and read from there, which meant it was really asserting
+    // "the final reduced-motion query in the file mentions the egg panel" -
+    // true only until somebody added another one below it, which the landing
+    // page did. The property is that the rule exists somewhere under a
+    // reduced-motion query, so that is what is checked.
+    const blocks = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\)\s*\{/g)].map(
+      (match) => css.slice(match.index, css.indexOf('\n}', match.index))
+    );
+    assert.ok(blocks.length > 0, 'there is no reduced-motion handling at all');
+    assert.ok(
+      blocks.some((block) => /\.egg-panel \{ animation: none/.test(block)),
+      'the egg panel still bounces for somebody who asked the OS to stop animating things'
+    );
   });
 });
 
