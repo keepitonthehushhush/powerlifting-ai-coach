@@ -147,10 +147,32 @@ export function buildConfig(env) {
    */
   const paywall = (() => {
     const requested = optional(env, 'PAYWALL_ENABLED', 'false').trim().toLowerCase() === 'true';
+
+    /**
+     * ── A PAYWALL IN TEST MODE IS A LOCKED DOOR IN PRODUCTION ────────────
+     *
+     * `stripe.livemode` was computed and used by NOTHING. So the guard above
+     * caught "paywall on, no Stripe keys" and missed the worse case: paywall
+     * on, TEST keys, in production. Coaching gated behind a subscribe button
+     * that opens a checkout accepting only 4242 4242 4242 4242. Every real
+     * person is locked out and none of them can pay, and it looks completely
+     * healthy from the operator's side because the button works.
+     *
+     * That is the same failure the no-keys branch exists to prevent, so it
+     * gets the same answer: the paywall stays off and it is logged.
+     *
+     * Outside production the opposite is wanted - test keys are exactly how
+     * you exercise the paywall end to end - so the check is scoped to
+     * production rather than applied everywhere.
+     */
+    const testKeysInProduction = requested && stripe.enabled && !stripe.livemode
+      && nodeEnv === 'production';
+
     return {
       requested,
-      active: requested && stripe.enabled,
+      active: requested && stripe.enabled && !testKeysInProduction,
       misconfigured: requested && !stripe.enabled,
+      testKeysInProduction,
     };
   })();
 

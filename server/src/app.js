@@ -51,7 +51,11 @@ export function createApp() {
    * silently kept everyone on the free product to avoid locking a door with no
    * handle. That is the right behaviour and the wrong situation.
    */
-  if (config.paywall.misconfigured) {
+  if (config.paywall.testKeysInProduction) {
+    logger.error('paywall.test_keys_in_production', {
+      effect: 'paywall left OFF - a test-mode checkout accepts no real card, so this would have locked everybody out with no way to pay',
+    });
+  } else if (config.paywall.misconfigured) {
     logger.error('paywall.misconfigured', {
       missing: config.stripe.missing,
       effect: 'paywall left OFF - coaching stays available to everyone',

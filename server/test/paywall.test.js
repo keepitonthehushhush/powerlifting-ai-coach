@@ -209,3 +209,42 @@ describe('the switch is documented where somebody setting it up would look', () 
     assert.match(env, phrase('locked door with no handle'));
   });
 });
+
+describe('A PAYWALL IN TEST MODE IS A LOCKED DOOR IN PRODUCTION', () => {
+  /**
+   * `stripe.livemode` was computed and used by NOTHING. The guard caught
+   * "paywall on, no Stripe keys" and missed the worse case: paywall on, TEST
+   * keys, in production - coaching gated behind a checkout that accepts only
+   * 4242 4242 4242 4242.
+   *
+   * Every real person locked out, none of them able to pay, and it looks
+   * healthy from the operator's side because the button works and the checkout
+   * page loads.
+   */
+  const LIVE = { ...BILLING, STRIPE_SECRET_KEY: 'sk_live_x' };
+
+  test('production plus test keys leaves the paywall OFF', () => {
+    const config = buildConfig({ ...BASE, ...BILLING, PAYWALL_ENABLED: 'true', NODE_ENV: 'production' });
+    assert.equal(config.paywall.active, false);
+    assert.equal(config.paywall.testKeysInProduction, true);
+  });
+
+  test('production plus live keys turns it on', () => {
+    const config = buildConfig({ ...BASE, ...LIVE, PAYWALL_ENABLED: 'true', NODE_ENV: 'production' });
+    assert.equal(config.paywall.active, true);
+    assert.equal(config.paywall.testKeysInProduction, false);
+  });
+
+  test('but development with test keys still works, which is how you test it', () => {
+    // Scoped to production deliberately. Test keys are exactly how the paywall
+    // gets exercised end to end everywhere else.
+    const config = buildConfig({ ...BASE, ...BILLING, PAYWALL_ENABLED: 'true' });
+    assert.equal(config.paywall.active, true);
+  });
+
+  test('and the startup log says what happened, since nothing else would', () => {
+    const app = readSource(new URL('../src/app.js', import.meta.url));
+    assert.match(app, /paywall\.test_keys_in_production/);
+    assert.match(app, /locked everybody out with no way to pay/);
+  });
+});
