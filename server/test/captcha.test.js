@@ -117,7 +117,11 @@ describe('when the challenge cannot load', () => {
     // Ad blockers and corporate proxies block challenges.cloudflare.com
     // routinely. A permanently disabled sign-in button with no explanation is
     // indistinguishable from the site being broken.
-    assert.match(widget, /onUnavailable\?\.\(\)/);
+    // Asserted as "the unavailable path notifies the parent", not as the exact
+    // call text - which changed when the callbacks moved into refs, and failed
+    // this test on a fix that did not touch the behaviour at all. Third time a
+    // test pinned to an expression has blocked a correct change.
+    assert.match(widget, /onUnavailable(Ref\.current)?\?\.\(\)/);
     assert.match(login, /captchaBlocked/);
     assert.match(en, phrase('may be blocking challenges.cloudflare.com'));
   });
@@ -134,8 +138,10 @@ describe('when the challenge cannot load', () => {
   });
 
   test('an expired token disables the button rather than being submitted', () => {
-    assert.match(widget, /'expired-callback': \(\) => onToken\?\.\(null\)/);
-    assert.match(widget, /'error-callback': \(\) => onToken\?\.\(null\)/);
+    // Both handlers must clear the token; how they reach the parent is not the
+    // property under test.
+    assert.match(widget, /'expired-callback': \(\) => onToken(Ref\.current)?\?\.\(null\)/);
+    assert.match(widget, /'error-callback': \(\) => onToken(Ref\.current)?\?\.\(null\)/);
     assert.match(login, /captchaEnabled\(\) && !captchaBlocked && !captchaToken/);
   });
 });
@@ -179,5 +185,56 @@ describe('the build can actually see the key', () => {
     // variables, is worse than either.
     assert.match(envExample, /^VITE_TURNSTILE_SITE_KEY=$/m);
     assert.match(envExample, /^VITE_SUPABASE_URL=/m);
+  });
+});
+
+describe('THE WIDGET IS CREATED ONCE, NOT ON EVERY RENDER', () => {
+  /**
+   * The bug: `useEffect(..., [onToken, onUnavailable])`, which is what the
+   * exhaustive-deps lint rule asks for and is wrong here.
+   *
+   * A parent writing `onUnavailable={() => setBlocked(true)}` creates a new
+   * function identity every render, and the sign-in form re-renders on every
+   * keystroke because its inputs are controlled. So every character typed into
+   * the email field tore the widget down and built a new one - visible as
+   * Cloudflare misbehaving, and it burns their rate limits doing it.
+   *
+   * It could also never settle: solving the challenge called setCaptchaToken,
+   * which re-rendered, which destroyed the widget that had just produced the
+   * token.
+   */
+  test('the effect has no dependencies, so props changing identity cannot re-run it', () => {
+    const effect = widget.slice(widget.indexOf('useEffect('), widget.indexOf('if (!enabled()) return null'));
+    assert.match(effect, /\}, \[\]\);/);
+    assert.ok(
+      !/\}, \[on(Token|Unavailable)/.test(effect),
+      'the effect depends on a callback prop - it will re-run whenever the parent re-renders',
+    );
+  });
+
+  test('and the callbacks reach it through refs, so they are still current', () => {
+    // Empty deps with the callbacks captured directly would freeze the first
+    // render's closures. Refs give both: one widget, latest handlers.
+    assert.match(widget, /onTokenRef\.current = onToken/);
+    assert.match(widget, /onUnavailableRef\.current = onUnavailable/);
+    assert.match(widget, /onTokenRef\.current\?\.\(token\)/);
+  });
+
+  test('a second render into the same node is refused', () => {
+    // React 18 StrictMode invokes effects twice in development, and rendering
+    // two widgets into one container throws.
+    assert.match(widget, /if \(widgetId\.current !== null\) return;/);
+    const main = readSource(new URL('../../web/src/main.jsx', import.meta.url));
+    assert.match(main, /StrictMode/, 'StrictMode is off - the guard above was written for it');
+  });
+
+  test('and the id is cleared on teardown, or the guard blocks a legitimate remount', () => {
+    assert.match(widget, /widgetId\.current = null;/);
+  });
+
+  test('the reason is recorded, because the lint rule will ask for the deps back', () => {
+    const raw = readRaw(new URL('../../web/src/components/Turnstile.jsx', import.meta.url));
+    assert.match(raw, phrase('is what the linter asks for and is wrong here'));
+    assert.match(raw, phrase('every character typed tore the widget down'));
   });
 });
