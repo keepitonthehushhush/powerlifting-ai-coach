@@ -5,6 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="An AI strength coach that programs, adjusts, and progresses powerlifters over time." />
     <title>Coach Diaz - AI Powerlifting Programming</title>
+
+    <!--
+      ── INSTALLABLE, NOT AN APP STORE APP ────────────────────────────────
+
+      A manifest gets "Add to Home Screen" on both iOS and Android: own icon,
+      own launcher entry, no browser chrome. No store listing, no review, no
+      commission, and it ships through the same deploy as everything else -
+      which is the whole reason to do this before writing a native app for a
+      product with three users.
+
+      There is deliberately NO service worker. One would make the app work
+      offline and would also introduce a second cache with its own lifetime,
+      capable of serving a build older than the one the version banner is
+      comparing against. That is a caching bug on top of a deploy problem we
+      have just finished solving, in exchange for offline access to a coach
+      that requires the network to answer.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Matches the palette in styles.css so the status bar does not flash a
+         colour the app never uses. Two values because the app themes itself
+         from prefers-color-scheme. -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0d1a" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f3f8" />
+
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" />
+    <link rel="icon" href="/icons/favicon-16.png" sizes="16x16" />
+
+    <!-- iOS reads none of the manifest's icons. It wants this one, it does not
+         composite a background behind it, and it applies its own corner
+         radius - so apple-touch-icon.png carries its own background and sits
+         inside that radius rather than being clipped by it. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Coach Diaz" />
   </head>
   <body>
     <div id="root"></div>

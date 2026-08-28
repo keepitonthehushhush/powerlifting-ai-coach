@@ -267,3 +267,20 @@ rather than reverting and rebuilding - it is immediate, and a revert commit can
 be written calmly afterwards. A database migration does **not** roll back with
 it, which is the other reason migrations should be written so the previous
 version of the code still runs.
+
+
+## Regenerating the icons
+
+`scripts/generate-icons.py` draws the home-screen and favicon images from the
+same coordinates as `web/src/components/Logo.jsx`. It is a script rather than a
+one-off because a mark that drifts from the app's own logo is a second logo, and
+a test compares the two coordinate sets.
+
+    python3 scripts/generate-icons.py
+
+Requires Pillow (`pip install pillow`). It writes into `web/public/icons/`.
+
+If the badge geometry in Logo.jsx ever changes, change it here too and rerun -
+the test will tell you if you forget. If the PALETTE changes, note that these
+files are fixed assets and cannot re-theme the way the in-app SVG does: they are
+pinned to the dark values, which are the `:root` defaults.

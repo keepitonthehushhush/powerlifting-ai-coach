@@ -125,5 +125,11 @@ export function phrase(text, flags = '') {
  * Deliberately still anchored on whitespace at both ends, so this cannot match
  * a `*` that is doing real work - a multiplication, a glob - only one that is
  * sitting at the start of a continuation line where a comment marker goes.
+ *
+ * `#` joined the list when the repository gained its first Python file
+ * (scripts/generate-icons.py) and an assertion about its reasoning failed on a
+ * phrase wrapped across two comment lines. Fourth marker, same cause: the set
+ * of comment syntaxes a repository contains grows, and the helper is where
+ * that belongs rather than in every caller reflowing a comment to suit a test.
  */
-const GAP = '\\s+(?:(?:\\*|--|//)\\s+)?';
+const GAP = '\\s+(?:(?:\\*|--|//|#)\\s+)?';
