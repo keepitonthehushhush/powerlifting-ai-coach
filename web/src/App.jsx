@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { missingConfig, misconfigured } from './lib/config.js';
+import { config, missingConfig, misconfigured } from './lib/config.js';
+import { isPreviewBuild, previewPointsAtProduction } from './lib/environment.js';
 import { ConfigError } from './components/ConfigError.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ConsentProvider } from './context/ConsentContext.jsx';
@@ -40,6 +41,31 @@ export function App() {
   const wrong = misconfigured();
   if (wrong.length > 0) return <ConfigError problems={wrong} />;
 
+  /**
+   * A preview build compiled against the production database.
+   *
+   * Blocking, not a banner. `VITE_SUPABASE_URL` is baked into this bundle, so
+   * the browser talks to whatever it was built with regardless of what the API
+   * is configured with - the server refusing to serve does not stop Supabase
+   * Auth or a direct PostgREST call from this page. The only place this can be
+   * stopped is here, before anything mounts.
+   *
+   * A warning somebody can scroll past is a warning somebody scrolls past, and
+   * on the other side of this one are real athletes' rows.
+   */
+  if (previewPointsAtProduction(config.supabaseUrl)) {
+    return (
+      <ConfigError
+        problems={[
+          'This is a PREVIEW build and it was compiled against the PRODUCTION database. ' +
+            'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY for the Preview ' +
+            'environment in the Vercel dashboard, then redeploy the branch. Nothing is ' +
+            'rendered until then, deliberately.',
+        ]}
+      />
+    );
+  }
+
   return (
     <I18nProvider>
       <AuthProvider>
@@ -48,6 +74,15 @@ export function App() {
             {/* Mounted once, above the router: the eggs belong to the product
                 rather than to any one page. */}
             <EasterEggs />
+            {/* Says which build this is, on every preview, always. Confusing a
+                preview tab for the live site is the mistake a preview
+                environment makes possible, and it is made by looking at a page
+                that is identical to production in every other way. */}
+            {isPreviewBuild() && (
+              <p className="preview-badge" role="status">
+                Preview build — not coachdiaz.app
+              </p>
+            )}
             <NewVersionBanner />
             <Routes>
               {/* The front door. Public, and NOT behind a session check:

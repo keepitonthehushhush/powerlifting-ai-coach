@@ -102,6 +102,8 @@ export default defineConfig([
         // Replaced at build time by vite.config.js, so it exists in the bundle
         // and nowhere else. Undeclared, it reads as a typo.
         __BUILD_ID__: 'readonly',
+        // Replaced at build time too - see web/src/lib/environment.js.
+        __VERCEL_ENV__: 'readonly',
       },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },

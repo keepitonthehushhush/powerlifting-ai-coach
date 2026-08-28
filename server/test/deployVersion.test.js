@@ -169,15 +169,31 @@ describe('the platform feature is wired even though it is not available', () => 
 });
 
 describe('the runbook says the dangerous part out loud', () => {
-  test('A PREVIEW DEPLOYMENT WRITES TO PRODUCTION DATA', () => {
-    // One Supabase project. The preview URL reads and writes the same rows as
-    // the live site, which is the opposite of what "preview" implies.
-    assert.match(runbook, phrase('A preview deployment talks to the production database'));
-    assert.match(runbook, phrase('It is not a place to try a migration or a delete'));
+  test('A PREVIEW GETS ITS OWN DATABASE, AND THE RUNBOOK SAYS WHY', () => {
+    /*
+     * This used to assert the opposite - that a preview writes to production
+     * data - and it was right to, because it did. The fact changed with
+     * ADR-17, so the assertion changed with it rather than being deleted: what
+     * a runbook must not do is describe an arrangement that has been replaced.
+     */
+    assert.match(runbook, phrase('Previews now get their own Supabase project'));
+    assert.match(runbook, phrase('enforced\nrather than configured'));
   });
 
-  test('and that migrations go live before the code that uses them', () => {
-    assert.match(runbook, phrase('a migration is live the moment it is applied'));
+  test('AND THAT AN UNCONFIGURED PREVIEW DOES NOT RUN AT ALL', () => {
+    // The consequence somebody meets first, and would otherwise report as a
+    // broken deploy: Vercel applies "All Environments" variables to previews,
+    // so a branch with nothing Preview-scoped inherits production's and is
+    // refused. Failing closed is the intent, and an intent nobody wrote down
+    // is a bug report.
+    assert.match(runbook, phrase('a preview with no Preview-scoped variables\ndoes not run at all'));
+    assert.match(runbook, phrase('Production is never refused'));
+  });
+
+  test('and that migrations still go live before the code that uses them', () => {
+    // Unchanged by the preview project: migrations are applied to a PROJECT,
+    // not to a branch.
+    assert.match(runbook, phrase('Migrations are still not branch-scoped'));
     assert.match(runbook, phrase('add columns, do not rename or drop them'));
   });
 

@@ -756,6 +756,62 @@ chat composer. It closes the cheapest class of defect, which had stayed open
 for thirteen months because nobody had spent twenty minutes on it.
 
 
+### ADR-17 · Previews get their own database, and prove it before they serve
+
+**Context.** Vercel builds a preview deployment for every branch, and every one
+of them talked to the production database. Testing anything that wrote meant
+writing to real athletes' rows, so in practice nobody opened a preview at all -
+which is how three faults reached coachdiaz.app in a single afternoon: a blank
+page, a profile save nobody could complete, and a chat error that gave no
+reason. Every one was findable by clicking the thing once. There was nowhere to
+click it.
+
+**Decision.** A second Supabase project, with the preview environment's
+variables scoped to Preview in Vercel.
+
+**The isolation is asserted, not configured.** A second database introduces a
+failure worse than the one it fixes: a preview *believed* isolated and quietly
+still pointed at production. That looks safe, invites the destructive testing it
+was built to allow, and does the damage silently - this project's recurring
+defect shape wearing a new hat. So `assertPreviewIsolation()` refuses to build
+the server config when `VERCEL_ENV=preview` and `SUPABASE_URL` is the production
+ref.
+
+**Both halves, because the browser is the other half.** `VITE_SUPABASE_URL` is
+compiled into the bundle, so a preview build carrying production's URL talks to
+production from the page - Supabase Auth and any direct PostgREST call go
+straight out, whatever the API is configured with. The server refusing to serve
+would not stop it. So the browser checks too, before any provider mounts, and
+renders the configuration screen rather than the app. Blocking rather than a
+banner: a warning somebody can scroll past is a warning somebody scrolls past.
+
+**It fails closed.** Vercel applies "All Environments" variables to previews, so
+a branch with nothing Preview-scoped inherits production's and is refused. A
+preview that does not run is the correct outcome for a preview that is not
+isolated.
+
+**Production is never refused, whatever it is pointed at.** The rule everywhere
+else in this codebase is that failing to boot turns a configuration mistake into
+a total outage, which is usually worse than the mistake - `config.paywall`
+exists because of exactly that reasoning. The exception here is that the thing
+failing to boot is not production: a dead preview costs one branch and is fixed
+in a dashboard, while a live preview writing to the real database costs somebody
+their training history. A test asserts the check never throws for production,
+because the day it does, this has become the outage it was written to avoid.
+
+**Every preview says so.** A bar on every page reading "Preview build — not
+coachdiaz.app". The mistake a preview environment makes possible is confusing
+one for the live site, and it is made by looking at a page identical to
+production in every other way.
+
+**What this does not solve.** Migrations are applied to a project rather than to
+a branch, so a migration applied to production is live before the code that uses
+it deploys - unchanged, and still the reason migrations must be written so the
+old code keeps working. The preview project's data is also empty rather than a
+copy of production, so a bug that only appears against real rows still appears
+first in production.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

@@ -1,4 +1,5 @@
 import { buildConfig } from './lib/env.js';
+import { assertPreviewIsolation } from './lib/environment.js';
 
 /**
  * The application's configuration, validated once at module load.
@@ -17,4 +18,12 @@ import { buildConfig } from './lib/env.js';
  * module. If a test cannot run without production secrets, something imported
  * config.js that did not need to.
  */
+/**
+ * Before the config, because a preview pointed at the production database is
+ * not a configuration problem to be reported - it is one to be stopped. See
+ * lib/environment.js for why refusing is the right failure here and nowhere
+ * else: the only thing this can take down is a preview deployment.
+ */
+assertPreviewIsolation(process.env);
+
 export const config = buildConfig(process.env);

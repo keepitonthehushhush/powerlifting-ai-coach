@@ -43,6 +43,11 @@ export default defineConfig({
    */
   define: {
     __BUILD_ID__: JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID ?? 'dev'),
+    // Which environment Vercel built this for. Replaced at build time for the
+    // same reason as __BUILD_ID__ above: it is a fact about the BUILD, and a
+    // browser cannot read the build's environment at runtime. See
+    // src/lib/environment.js for what depends on it.
+    __VERCEL_ENV__: JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
   },
   server: {
     port: 5173,

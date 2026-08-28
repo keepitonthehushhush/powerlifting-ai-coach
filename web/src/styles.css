@@ -1271,6 +1271,21 @@ form > button.primary {
   font-size: 0.9rem;
 }
 
+/* Says which build this is, on a preview and nowhere else. Loud on purpose:
+   the mistake a preview environment makes possible is confusing it for the
+   live site, and it is made by looking at a page identical to production. */
+.preview-badge {
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--warning);
+}
+
 /* ── THE PUBLIC CALL TO ACTION ──────────────────────────────────────────────
 
    Used on the landing page and at the foot of the FAQ, which is why it is not
@@ -1539,3 +1554,12 @@ form > button.primary {
     gap: var(--space-2);
   }
 }
+
+/* ── END OF THE LANDING PAGE BLOCK ──────────────────────────────────────────
+
+   server/test/landing.test.js reads from `.home {` to this marker and asserts
+   every selector between them is `home-` prefixed and every spacing value
+   comes off the scale. It used to read to the end of the file, which made the
+   next rule anybody appended - a preview badge, in the event - a failure of a
+   test about the landing page. Put new rules ABOVE this line only if they
+   belong to that page. */

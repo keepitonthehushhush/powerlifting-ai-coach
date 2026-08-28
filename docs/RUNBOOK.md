@@ -292,19 +292,55 @@ after six months, and rows whose account was deleted already carry no user id.
 5. Open the preview URL and exercise the path you changed.
 6. Merge.
 
-### THE THING TO KNOW ABOUT PREVIEW DEPLOYMENTS
+### Preview deployments, and the database they are allowed to touch
 
-**A preview deployment talks to the production database.** There is one Supabase
-project, so the preview URL reads and writes the same rows as coachdiaz.app.
-Testing a destructive change on a preview is testing it on production data.
+Vercel builds a preview for every branch. Until now every one of them talked to
+the **production** database, so testing anything that writes meant testing on
+real athletes' rows — which is why nobody tested on a preview, and why three
+faults reached coachdiaz.app in one afternoon that a single click would have
+caught.
 
-Until there is a second Supabase project for preview, treat a preview deployment
-as production for anything that writes: it is safe for reading, for UI work, and
-for checking a build carries what it should. It is not a place to try a
-migration or a delete.
+Previews now get their own Supabase project, and the isolation is **enforced
+rather than configured**. A preview whose `SUPABASE_URL` is the production
+project refuses to serve, and a preview *build* carrying production's
+`VITE_SUPABASE_URL` renders a configuration screen instead of the app. Both
+halves, because the browser talks to Supabase directly and a server-side check
+cannot stop it.
 
-Migrations are applied directly to the one project and are not branch-scoped at
-all, so a migration is live the moment it is applied - before the code that uses
+The consequence worth knowing: **a preview with no Preview-scoped variables
+does not run at all.** Vercel applies "All Environments" variables to previews,
+so an unconfigured branch inherits production's and is refused. That is the
+intended failure — fail closed, loudly, on a deployment that is not the live
+site.
+
+Production is never refused, whatever it is pointed at. The check is
+one-directional on purpose: failing to boot normally turns a configuration
+mistake into an outage, and the only reason it is acceptable here is that the
+thing failing is a preview.
+
+**Setting up the preview project** (once):
+
+1. Create a second Supabase project in the same organisation.
+2. Apply every migration in `supabase/migrations/` to it, in order.
+3. In the Vercel dashboard, add these scoped to **Preview** only:
+   `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `VITE_SUPABASE_URL`,
+   `VITE_SUPABASE_PUBLISHABLE_KEY`.
+4. In the new project's Auth settings, add the Vercel preview URL pattern to
+   the redirect allow-list, or sign-in bounces back to nothing.
+5. Use Cloudflare's Turnstile **test keys** for the preview site key
+   (`1x00000000000000000000AA` always passes). A real site key is bound to a
+   hostname and every preview has a different one.
+6. Keep Stripe in test mode there, and point `STRIPE_WEBHOOK_SECRET` at a
+   separate endpoint or leave billing unconfigured — `config.paywall` already
+   refuses to gate anybody when billing is not configured.
+
+**A preview says so.** Every page carries a "Preview build — not
+coachdiaz.app" bar. Confusing a preview tab for the live site is the mistake a
+preview environment makes possible, and it is made by looking at a page that is
+identical to production in every other way.
+
+**Migrations are still not branch-scoped.** They are applied to a project, so
+applying one to production makes it live immediately, before the code that uses
 it deploys. Write them so the old code still works: add columns, do not rename
 or drop them in the same change as the code that stops using them.
 

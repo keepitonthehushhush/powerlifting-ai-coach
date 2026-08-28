@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, stripComments } from './helpers/source.js';
 import { en } from '../../web/src/i18n/locales/en.js';
 import { es } from '../../web/src/i18n/locales/es.js';
 
@@ -27,6 +27,24 @@ const homeCode = readSource(new URL('../../web/src/pages/Home.jsx', import.meta.
 const app = readSource(new URL('../../web/src/App.jsx', import.meta.url));
 const login = readSource(new URL('../../web/src/pages/Login.jsx', import.meta.url));
 const styles = readSource(new URL('../../web/src/styles.css', import.meta.url));
+
+/**
+ * The landing page's own rules, delimited and then stripped of comments.
+ *
+ * Two mistakes, both made here first. The block used to run to the END of the
+ * file, so an unrelated rule appended later failed a test about the landing
+ * page - a test making a claim it was never entitled to make. And the end
+ * marker is a COMMENT, so it has to be found in the raw text before comments
+ * are stripped, or the boundary disappears along with the prose.
+ */
+const LANDING_BLOCK = (() => {
+  const raw = readRaw(new URL('../../web/src/styles.css', import.meta.url));
+  const start = raw.indexOf('.home {');
+  const end = raw.indexOf('END OF THE LANDING PAGE BLOCK');
+  assert.ok(start > 0, 'the landing page block is not in the stylesheet');
+  assert.ok(end > start, 'the landing page block has no end marker');
+  return stripComments(raw.slice(start, end));
+})();
 const indexHtml = readRaw(new URL('../../web/index.html', import.meta.url));
 const faq = readRaw(new URL('../../web/src/pages/Faq.jsx', import.meta.url));
 const manifest = JSON.parse(
@@ -188,9 +206,7 @@ describe('the stylesheet cannot reach off this page', () => {
      * textarea to 24px on a 390px phone. A page-specific block that is not
      * namespaced is that bug waiting to happen again.
      */
-    const start = styles.indexOf('.home {');
-    assert.ok(start > 0, 'the landing page block is not in the stylesheet');
-    const block = styles.slice(start);
+    const block = LANDING_BLOCK;
 
     // One selector per line, ending in `{`. Anchored and brace-free so it
     // cannot start at a closing brace and swallow the `@media` line after it,
@@ -223,7 +239,7 @@ describe('the stylesheet cannot reach off this page', () => {
 });
 
 describe("it follows Apple's guidelines, in the ways that are checkable", () => {
-  const block = styles.slice(styles.indexOf('.home {'));
+  const block = LANDING_BLOCK;
 
   test('EVERY TYPE SIZE IS IN rem, NEVER px', () => {
     /*
