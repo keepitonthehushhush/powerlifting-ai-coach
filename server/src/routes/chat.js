@@ -9,6 +9,8 @@ import { recommendPhase } from '../lib/phase.js';
 import { prescribeAll } from '../lib/progression.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
 import { HttpError } from '../lib/httpError.js';
+import { entitlement, requiresSubscription, PAID_FEATURE } from '../lib/entitlement.js';
+import { loadSubscription } from '../lib/subscriptions.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
 
@@ -119,9 +121,25 @@ chatRouter.post('/', async (req, res, next) => {
     }
     const { message, conversationId } = parsed.data;
 
-    const [context, conversation] = await Promise.all([
+    /**
+     * ── LOAD, THEN GATE, THEN CREATE ────────────────────────────────────
+     *
+     * loadOrCreateConversation used to run in this parallel batch, which meant
+     * a refused request still left a conversation row behind: the adult gate
+     * turned somebody away and the database had already recorded them starting
+     * a conversation. Harmless in itself, and exactly the wrong shape - a
+     * request we are about to refuse should not have written anything.
+     *
+     * So the two reads the gates need happen together, the gates run, and the
+     * one call with a side effect happens after they pass. It costs one extra
+     * round trip on a request whose model call takes tens of seconds.
+     *
+     * The subscription read is skipped entirely when the paywall is off, which
+     * is the state this ships in.
+     */
+    const [context, subscription] = await Promise.all([
       loadCoachingContext(req.supabase),
-      loadOrCreateConversation(req.supabase, conversationId),
+      config.paywall.active ? loadSubscription(req.supabase) : Promise.resolve(null),
     ]);
 
     /**
@@ -151,6 +169,38 @@ chatRouter.post('/', async (req, res, next) => {
         { code: `adult_gate_${adult.reason}` }
       );
     }
+
+    /**
+     * THE PAYWALL, AFTER THE ADULT GATE AND NEVER BEFORE IT.
+     *
+     * The order is not stylistic. If somebody under 18 reaches this route,
+     * the answer is that we do not coach them - not an invitation to pay. A
+     * paywall checked first would show a minor a subscribe button, which is
+     * the one response this product must never give them.
+     *
+     * `config.paywall.active` is a deliberate switch, not a consequence of
+     * Stripe keys existing (see lib/env.js). While it is off, every branch
+     * below is dead and the coaching is free, which is what the FAQ says.
+     *
+     * entitlement() decides. The rule lives there and nowhere else: past_due
+     * still counts, a cancelled subscription inside its paid period still
+     * counts, and this route does not get an opinion about any of it.
+     */
+    if (config.paywall.active && requiresSubscription(PAID_FEATURE)) {
+      const decision = entitlement(subscription);
+      if (!decision.entitled) {
+        logger.info('chat.refused_no_subscription', { userId: req.user.id, reason: decision.reason });
+        throw new HttpError(
+          402,
+          decision.reason === 'lapsed'
+            ? 'Your subscription has ended, so the coaching conversations are paused. Everything else - your logs, your charts, your programme - is still here and still free. You can restart the subscription from your account page.'
+            : 'Coaching conversations are part of the subscription. Your logs, charts, programme and the exercise library stay free. You can subscribe from your account page.',
+          { code: 'subscription_required', reason: decision.reason }
+        );
+      }
+    }
+
+    const conversation = await loadOrCreateConversation(req.supabase, conversationId);
 
     const history = Array.isArray(conversation.messages) ? conversation.messages : [];
     const window = history.slice(-config.chat.historyWindow);

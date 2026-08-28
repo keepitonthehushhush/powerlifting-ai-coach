@@ -54,6 +54,107 @@ export function buildConfig(env) {
 
   const nodeEnv = optional(env, 'NODE_ENV', 'development');
 
+  /**
+   * Billing, and every field is OPTIONAL on purpose.
+   *
+   * The product works entirely without Stripe configured - logging, charts,
+   * the library, the program record and the policy pages are all free, and
+   * the coaching conversation is the only thing behind the paywall. So a
+   * deployment with no Stripe keys is not a broken deployment, it is the
+   * free product, and it must boot.
+   *
+   * That is not a nicety: it is how this gets developed and tested without
+   * putting live payment credentials into every environment, and it is why
+   * `enabled` is derived rather than declared. A half-configured Stripe -
+   * a secret key with no webhook secret - is the dangerous state, because
+   * the checkout would work and the webhook that grants access would not.
+   *
+   * ── AND THE SERVICE-ROLE KEY IS PART OF "CONFIGURED" ─────────────────
+   *
+   * This originally derived `enabled` from the three Stripe values, which
+   * described the danger exactly and then failed to guard against it. With
+   * all three Stripe keys set and SUPABASE_SECRET_KEY empty, billing reports
+   * itself enabled, checkout completes, the card is charged, Stripe delivers
+   * the webhook - and supabaseAdmin() returns null, so the subscription is
+   * never recorded and the athlete never gets what they paid for. The
+   * webhook answers 200 and logs, correctly, so Stripe does not retry: the
+   * money moves and nothing anywhere is red.
+   *
+   * That is the worst failure this file can produce, and it was one
+   * environment variable away. The service-role key is not incidental to
+   * billing; it is the only thing that can write the row billing exists to
+   * write. So it counts.
+   */
+  const stripe = (() => {
+    const secretKey = optional(env, 'STRIPE_SECRET_KEY', '');
+    const webhookSecret = optional(env, 'STRIPE_WEBHOOK_SECRET', '');
+    const priceId = optional(env, 'STRIPE_PRICE_ID', '');
+    const portalReturnUrl = optional(env, 'STRIPE_PORTAL_RETURN_URL', '');
+    // Read again rather than reaching across to config.supabase: this is a
+    // sibling property of the same object literal and does not exist yet.
+    const serviceRoleKey = optional(env, 'SUPABASE_SECRET_KEY', '');
+
+    /**
+     * Which piece is missing, so the 503 and the startup log can say. A
+     * generic "not configured" sends somebody to check all four.
+     */
+    const missing = [
+      ['STRIPE_SECRET_KEY', secretKey],
+      ['STRIPE_WEBHOOK_SECRET', webhookSecret],
+      ['STRIPE_PRICE_ID', priceId],
+      ['SUPABASE_SECRET_KEY', serviceRoleKey],
+    ]
+      .filter(([, value]) => !value)
+      .map(([name]) => name);
+
+    return {
+      secretKey,
+      webhookSecret,
+      priceId,
+      portalReturnUrl,
+      missing,
+      // All four, not three. See above.
+      enabled: missing.length === 0,
+      // Guards against the mistake that costs real money: pointing a
+      // development deployment at live keys. `sk_live_` is Stripe's own
+      // prefix and is stable.
+      livemode: secretKey.startsWith('sk_live_'),
+    };
+  })();
+
+  /**
+   * IS THE PAYWALL ON? A SEPARATE QUESTION FROM "CAN WE TAKE MONEY".
+   *
+   * Conflating the two would be a mistake with a public cost. The FAQ says,
+   * live, today: "It is free while it is being built and tested." Deriving the
+   * paywall from `stripe.enabled` would mean that the moment Stripe keys land
+   * in an environment - which is exactly what you do to TEST checkout - every
+   * existing athlete loses the coaching conversation, with no deploy that
+   * looks like a decision and no change to the sentence promising otherwise.
+   *
+   * So it is its own switch, off unless someone deliberately turns it on, and
+   * turning it on is the commit where the FAQ sentence changes too. A test
+   * holds those two together.
+   *
+   * ── AND IT CANNOT BE ON WITHOUT A WAY TO PAY ────────────────────────────
+   *
+   * PAYWALL_ENABLED with no Stripe configuration is a locked door with no
+   * handle: the athlete is told to subscribe and the subscribe button returns
+   * 503. That is a misconfiguration, and the safe direction is unambiguous -
+   * people keep access. It is logged as an error rather than thrown, because
+   * refusing to boot would turn a billing mistake into a total outage, and the
+   * coaching is the part that matters.
+   */
+  const paywall = (() => {
+    const requested = optional(env, 'PAYWALL_ENABLED', 'false').trim().toLowerCase() === 'true';
+    return {
+      requested,
+      active: requested && stripe.enabled,
+      misconfigured: requested && !stripe.enabled,
+    };
+  })();
+
+
   return {
     nodeEnv,
     isProduction: nodeEnv === 'production',
@@ -102,72 +203,7 @@ export function buildConfig(env) {
       maxMessageLength: Number(optional(env, 'CHAT_MAX_MESSAGE_LENGTH', '12000')),
     },
 
-    /**
-     * Billing, and every field is OPTIONAL on purpose.
-     *
-     * The product works entirely without Stripe configured - logging, charts,
-     * the library, the program record and the policy pages are all free, and
-     * the coaching conversation is the only thing behind the paywall. So a
-     * deployment with no Stripe keys is not a broken deployment, it is the
-     * free product, and it must boot.
-     *
-     * That is not a nicety: it is how this gets developed and tested without
-     * putting live payment credentials into every environment, and it is why
-     * `enabled` is derived rather than declared. A half-configured Stripe -
-     * a secret key with no webhook secret - is the dangerous state, because
-     * the checkout would work and the webhook that grants access would not.
-     *
-     * ── AND THE SERVICE-ROLE KEY IS PART OF "CONFIGURED" ─────────────────
-     *
-     * This originally derived `enabled` from the three Stripe values, which
-     * described the danger exactly and then failed to guard against it. With
-     * all three Stripe keys set and SUPABASE_SECRET_KEY empty, billing reports
-     * itself enabled, checkout completes, the card is charged, Stripe delivers
-     * the webhook - and supabaseAdmin() returns null, so the subscription is
-     * never recorded and the athlete never gets what they paid for. The
-     * webhook answers 200 and logs, correctly, so Stripe does not retry: the
-     * money moves and nothing anywhere is red.
-     *
-     * That is the worst failure this file can produce, and it was one
-     * environment variable away. The service-role key is not incidental to
-     * billing; it is the only thing that can write the row billing exists to
-     * write. So it counts.
-     */
-    stripe: (() => {
-      const secretKey = optional(env, 'STRIPE_SECRET_KEY', '');
-      const webhookSecret = optional(env, 'STRIPE_WEBHOOK_SECRET', '');
-      const priceId = optional(env, 'STRIPE_PRICE_ID', '');
-      const portalReturnUrl = optional(env, 'STRIPE_PORTAL_RETURN_URL', '');
-      // Read again rather than reaching across to config.supabase: this is a
-      // sibling property of the same object literal and does not exist yet.
-      const serviceRoleKey = optional(env, 'SUPABASE_SECRET_KEY', '');
-
-      /**
-       * Which piece is missing, so the 503 and the startup log can say. A
-       * generic "not configured" sends somebody to check all four.
-       */
-      const missing = [
-        ['STRIPE_SECRET_KEY', secretKey],
-        ['STRIPE_WEBHOOK_SECRET', webhookSecret],
-        ['STRIPE_PRICE_ID', priceId],
-        ['SUPABASE_SECRET_KEY', serviceRoleKey],
-      ]
-        .filter(([, value]) => !value)
-        .map(([name]) => name);
-
-      return {
-        secretKey,
-        webhookSecret,
-        priceId,
-        portalReturnUrl,
-        missing,
-        // All four, not three. See above.
-        enabled: missing.length === 0,
-        // Guards against the mistake that costs real money: pointing a
-        // development deployment at live keys. `sk_live_` is Stripe's own
-        // prefix and is stable.
-        livemode: secretKey.startsWith('sk_live_'),
-      };
-    })(),
+    stripe,
+    paywall,
   };
 }

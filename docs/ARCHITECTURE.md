@@ -491,6 +491,59 @@ the key and would be strictly worse — anybody on the internet could call it,
 and the protection would be a shared secret passed as an argument, which is a
 worse version of the signature we already verify.
 
+### ADR-13 · The paywall is a switch of its own, not a consequence of Stripe keys
+
+**Context.** The obvious implementation is to gate the coaching conversation
+whenever billing is configured: if there are Stripe keys, charge; if not, don't.
+It is one fewer variable and it reads as elegant.
+
+It is wrong, and the reason is on a public page. The FAQ says today: *"It is
+free while it is being built and tested."* Adding Stripe keys to an environment
+is exactly how you test checkout end to end. Under the derived design, doing
+that would gate every existing athlete out of the coaching conversation — the
+one thing the product is for — with no deploy that looks like a decision, no
+notice, and no change to the sentence still promising otherwise. The first
+signal would be a support email.
+
+"We can take money" and "coaching now requires a subscription" are two
+decisions. They deserve two switches, made at different times.
+
+**Decision.** `PAYWALL_ENABLED` is its own environment variable, defaulting to
+false. `config.paywall.active` is `PAYWALL_ENABLED && stripe.enabled`, and the
+chat route consults that and nothing else.
+
+Three properties follow, each with a test:
+
+- **It ships off.** Configuring Stripe changes `stripe.enabled` and leaves
+  `paywall.active` false.
+- **It cannot be on without a way to pay.** `PAYWALL_ENABLED` with no Stripe
+  configuration is a locked door with no handle: the athlete is told to
+  subscribe and the subscribe button answers 503. The app logs
+  `paywall.misconfigured` at startup and leaves the paywall off. The safe
+  direction is unambiguous — people keep access — and refusing to boot would
+  turn a billing mistake into a total outage.
+- **Turning it on is the commit that changes the FAQ.** `paywall.test.js`
+  asserts the default and the FAQ paragraph agree in both directions. Flip one
+  without the other and the suite fails, naming which.
+
+**The adult gate is checked first, always.** If somebody under 18 reaches the
+chat route the answer is that we do not coach them — never an invitation to
+pay. A paywall checked first would show a minor a subscribe button, which is
+the one response this product must never give. Asserted by source position,
+because position is what the ordering is.
+
+**What stays free.** Logging, charts, the exercise library, the programme
+record, export, and every policy page — enforced by `requiresSubscription()`,
+which returns true for exactly one feature. Reading an existing conversation is
+free too: only sending a message is gated, so somebody whose subscription
+lapsed keeps the conversations they already have. That is their data.
+
+**402, not 403.** The status means payment is required, which is what happened.
+403 would say they are forbidden, which is not true — they are one subscription
+away, and the client can tell the two apart without parsing prose.
+
+---
+
 ---
 
 ## 5. Operational notes
@@ -542,7 +595,7 @@ records. What remains:
 |---|---|---|
 | Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working programme |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
-| Stripe subscriptions | 3 | Not started, awaiting go-ahead. The model is decided: free logging, charts and library; conversations are the paid tier, because conversations are the only thing that costs money |
+| Stripe subscriptions | 2 | Checkout, billing portal and webhook are built and tested; the paywall is wired into the chat route behind `PAYWALL_ENABLED`, which ships **off**. Remaining: the account-page billing UI, and the decision to actually turn it on — which is the commit that also changes the FAQ's free-while-in-testing paragraph (ADR-13) |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
 | Audit logging | — | Known gap |
 | Multiple conversations per athlete | — | One active conversation today; raised, undecided |

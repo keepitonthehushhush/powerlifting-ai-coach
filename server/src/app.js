@@ -15,6 +15,8 @@ import { billingRouter } from './routes/billing.js';
 import { billingWebhookRouter } from './routes/billingWebhook.js';
 import { initMonitoring } from './lib/monitoring.js';
 import { logger } from './lib/logger.js';
+import { config } from './config.js';
+import { PAID_FEATURE } from './lib/entitlement.js';
 
 /**
  * The Express application, built as a plain app object with no server.listen()
@@ -36,6 +38,27 @@ export function createApp() {
     if (status.enabled) logger.info('monitoring.enabled');
     else logger.info('monitoring.disabled', { reason: status.reason });
   });
+
+  /**
+   * Say what the paywall is doing, once, at startup.
+   *
+   * A paywall is the kind of setting whose state you want stated rather than
+   * inferred from whether anybody is complaining. The misconfigured case -
+   * PAYWALL_ENABLED with no Stripe configuration - is an error rather than a
+   * warning: it means somebody intended to charge and cannot, and the app has
+   * silently kept everyone on the free product to avoid locking a door with no
+   * handle. That is the right behaviour and the wrong situation.
+   */
+  if (config.paywall.misconfigured) {
+    logger.error('paywall.misconfigured', {
+      missing: config.stripe.missing,
+      effect: 'paywall left OFF - coaching stays available to everyone',
+    });
+  } else if (config.paywall.active) {
+    logger.info('paywall.active', { feature: PAID_FEATURE });
+  } else {
+    logger.info('paywall.inactive');
+  }
 
   app.disable('x-powered-by');
 

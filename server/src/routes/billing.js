@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { stripeClient, billingUnavailableReason } from '../lib/stripe.js';
 import { entitlement } from '../lib/entitlement.js';
+import { loadSubscription } from '../lib/subscriptions.js';
 import { HttpError } from '../lib/httpError.js';
 import { logger } from '../lib/logger.js';
 
@@ -33,11 +34,7 @@ export const billingRouter = Router();
  */
 
 /** Reads the caller's mirrored subscription row, or null. */
-async function loadSubscription(supabase) {
-  const { data, error } = await supabase.from('subscriptions').select('*').maybeSingle();
-  if (error) throw new HttpError(502, 'Could not read your subscription.', { code: error.code });
-  return data ?? null;
-}
+
 
 /**
  * GET /api/billing/status
