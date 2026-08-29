@@ -21,7 +21,7 @@ import { InfoHeader } from '../components/InfoHeader.jsx';
 export function HealthDataPolicy() {
   return (
     <div className="page">
-      <InfoHeader title="Consumer Health Data Privacy Policy" version="Version chd-2026-08-28b" />
+      <InfoHeader title="Consumer Health Data Privacy Policy" version="Version chd-2026-08-29a" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -33,6 +33,17 @@ export function HealthDataPolicy() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>chd-2026-08-29a.</strong> This page said that apart from Anthropic there was{' '}
+          <em>one</em> other outbound request in the whole product. There are two. The bot check
+          on the sign-in page is run by Cloudflare, and this page had never said so. It is
+          described below, along with what it receives. Nothing about it is new &mdash; it has
+          been there since sign-in was built &mdash; and no health data is involved: it runs on
+          the sign-in page, not on the pages where you enter anything about your health. But a
+          document whose value is being exact about small technical facts does not get to
+          miscount them, so this version supersedes the last one and you will be asked to agree
+          again.
+        </p>
         <p className="small">
           <strong>chd-2026-08-28b.</strong> If your goal is losing fat, you can now
           optionally tell Coach Diaz whether you use a GLP-1 medication. That is health
@@ -135,13 +146,28 @@ export function HealthDataPolicy() {
           run on the pages where this information is entered — or on any other page of this site.
         </p>
         <p>
-          For completeness, one other outbound request exists anywhere in this product, and it
-          carries nothing about you. When you choose a password we check it against Have I Been
-          Pwned's list of passwords exposed in known breaches. Your password is hashed in your own
+          For completeness, exactly two other outbound requests exist anywhere in this product.
+          Neither carries anything about your health, and both happen on the sign-in page rather
+          than on the pages where you enter anything about yourself.
+        </p>
+        <p>
+          <strong>Have I Been Pwned.</strong> When you choose a password we check it against
+          their list of passwords exposed in known breaches. Your password is hashed in your own
           browser and <strong>only the first five characters of that hash</strong> are sent; the
-          service returns around a thousand candidates and the comparison happens on your device.
-          It never receives your password, the full hash, your email address, or any cookie. No
-          health data is involved.
+          service returns several hundred candidates and the comparison happens on your device.
+          It never receives your password, the full hash, your email address, or any cookie.
+        </p>
+        <p>
+          <strong>Cloudflare Turnstile.</strong> The bot check on the sign-in and sign-up form is
+          run by Cloudflare, which means your browser loads a small script from them and talks to
+          them while the check runs. Cloudflare states that it receives your IP address, a
+          fingerprint of your browser&rsquo;s encrypted connection, your browser&rsquo;s
+          user-agent string, and the identifier of our site &mdash; and that it uses them to tell
+          people from bots and to improve that ability, not for advertising and not to track you
+          across other websites. We chose it over the alternatives for that reason. It exists so
+          that somebody cannot script ten thousand accounts against us, which is a defense of
+          your data rather than an imposition on it &mdash; but it is a third party your browser
+          contacts, so it is named here.
         </p>
 
         <h2 className="h3">How it is protected</h2>
