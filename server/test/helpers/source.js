@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 /**
  * Read a source file with its comments removed.
@@ -154,4 +154,49 @@ export function readProfileApi({ raw = false } = {}) {
     read(new URL('../../src/routes/profile.js', import.meta.url)),
     read(new URL('../../src/lib/profileSchema.js', import.meta.url)),
   ].join('\n');
+}
+
+/**
+ * The CURRENT definition of a database object, wherever it was last defined.
+ *
+ * ── WHY THIS EXISTS ───────────────────────────────────────────────────────
+ *
+ * Two tests asserted things about `private.health_fingerprint` by reading
+ * migration 0012 and migration 0024 - the files that happened to define it at
+ * the time each test was written. Those files are frozen. A migration directory
+ * is append-only, so a later file replacing the function cannot make an
+ * assertion about an earlier file fail, and both tests kept passing while the
+ * live definition changed underneath them.
+ *
+ * That is the same defect as the invariant that checked the fingerprint's
+ * contents but not whether the trigger still called it: reading a real
+ * artefact, and the wrong one. The last file that defines an object is the only
+ * file that describes it.
+ *
+ * @param {string} declaration - the text that opens the definition, without the
+ *   `create [or replace]` prefix, e.g. `function private.health_fingerprint`.
+ * @returns {{file: string, body: string}} the newest migration defining it, and
+ *   the definition from that point to the end of the statement.
+ */
+export function latestDefinition(declaration) {
+  const dir = new URL('../../../supabase/migrations/', import.meta.url);
+  const files = readdirSync(dir).filter((n) => n.endsWith('.sql')).sort().reverse();
+
+  for (const file of files) {
+    const sql = readFileSync(new URL(file, dir), 'utf8');
+    const at = Math.max(
+      sql.lastIndexOf(`create or replace ${declaration}`),
+      sql.lastIndexOf(`create ${declaration}`)
+    );
+    if (at === -1) continue;
+
+    // To the end of the dollar-quoted body, which is where every definition in
+    // this directory ends. Falls back to the end of the file.
+    const open = sql.indexOf('$', at);
+    const tag = open === -1 ? null : sql.slice(open, sql.indexOf('$', open + 1) + 1);
+    const close = tag ? sql.indexOf(tag, sql.indexOf(tag, at) + tag.length) : -1;
+    return { file, body: close === -1 ? sql.slice(at) : sql.slice(at, close + tag.length) };
+  }
+
+  throw new Error(`No migration defines ${declaration}`);
 }

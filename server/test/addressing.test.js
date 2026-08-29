@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readRaw, phrase } from './helpers/source.js';
+import { readRaw, phrase, latestDefinition } from './helpers/source.js';
 import { describeAddressing, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
 
 const migration = readRaw(
@@ -16,7 +16,11 @@ describe('pronouns and gender are two fields, treated differently', () => {
     // The whole point. Gating how somebody is addressed behind an optional
     // consent would mean a non-binary athlete who declines health-data
     // collection gets misgendered by the product for their trouble.
-    const fingerprint = migration.slice(migration.indexOf('create or replace function private.health_fingerprint'));
+    // The NEWEST definition, not 0024's - see latestDefinition. Reading the
+    // file that happened to define it when this test was written meant the
+    // assertion could never fail, which is how 0033 removed the gate without
+    // anything going red.
+    const { body: fingerprint } = latestDefinition('function private.health_fingerprint');
     assert.doesNotMatch(fingerprint, /p\.pronouns/);
     assert.match(fingerprint, /p\.gender/);
   });

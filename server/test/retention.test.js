@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, latestDefinition } from './helpers/source.js';
 import { POLICY_VERSIONS } from '../src/lib/policyVersions.js';
 
 /**
@@ -21,6 +21,21 @@ import { POLICY_VERSIONS } from '../src/lib/policyVersions.js';
  */
 
 const migration = readRaw(new URL('../../supabase/migrations/0031_retention.sql', import.meta.url));
+
+/**
+ * The sweep AS IT STANDS, not as 0031 wrote it.
+ *
+ * Reading 0031 for the sweep's behaviour was a mistake this file made for a
+ * week. Migration files are append-only: 0033 and 0034 both replaced
+ * apply_retention() in full, and nothing they did could have made an assertion
+ * about 0031's text fail. The most important assertion in this file - that the
+ * sweep never touches training logs - was being made against a definition that
+ * had been superseded twice.
+ *
+ * 0031 is still read below for its REASONING, which is where the reasoning
+ * lives and where it cannot move.
+ */
+const sweep = latestDefinition('function private.apply_retention').body;
 const policy = readSource(new URL('../../web/src/pages/HealthDataPolicy.jsx', import.meta.url));
 const invariants = readRaw(new URL('../../scripts/check-db-invariants.mjs', import.meta.url));
 
@@ -28,10 +43,6 @@ describe('what is never swept', () => {
   test('TRAINING LOGS ARE NOT TOUCHED BY ANY SWEEP', () => {
     // The single most important assertion in this file. progress_logs must not
     // appear in a delete or update inside apply_retention().
-    const sweep = migration.slice(
-      migration.indexOf('function private.apply_retention'),
-      migration.indexOf('delete_inactive_accounts'),
-    );
     assert.ok(!/delete from public\.progress_logs/.test(sweep), 'the sweep deletes training logs');
     assert.ok(!/update public\.progress_logs/.test(sweep), 'the sweep modifies training logs');
     assert.ok(!/workout_sessions|workout_programs/.test(sweep), 'the sweep touches sessions or programmes');
@@ -45,7 +56,6 @@ describe('what is never swept', () => {
   test('consent records are not swept either', () => {
     // They are the evidence that consent was obtained; deleting them on a
     // timer would undo 0028's whole argument.
-    const sweep = migration.slice(migration.indexOf('function private.apply_retention'));
     assert.ok(!/delete from public\.consent_records/.test(sweep));
   });
 });
@@ -76,10 +86,30 @@ describe('expiry must not quietly make the coaching less safe', () => {
     // Clearing an injury alone would leave somebody looking unrestricted to a
     // coach that had been working around something. One statement, so there is
     // no window where they are cleared and unrestricted.
-    const stmt = migration.slice(
-      migration.indexOf('update public.user_profile\n     set health_restrictions = null'),
-    ).slice(0, 400);
-    assert.match(stmt, /cleared_to_train = null/);
+    const stmt = sweep
+      .slice(sweep.indexOf('update public.user_profile\n     set health_restrictions = null'))
+      .slice(0, 600);
+
+    /*
+     * `false`, and this assertion used to demand `null`.
+     *
+     * cleared_to_train has been `boolean not null default false` since 0001,
+     * so the sweep could never have run: the first row to age past the health
+     * retention period would raise 23502 and abort every other category with
+     * it - conversations, audit, usage, Stripe and error events included.
+     * Reproduced against the preview database, then fixed in 0035.
+     *
+     * plpgsql does not plan a statement until it executes, which is why the
+     * function created cleanly and the nightly job reported success for as
+     * long as it had nothing to do. The test asserted the bug, and reading
+     * frozen file 0031 meant it would have gone on asserting it forever.
+     *
+     * `false` is what 0031 meant anyway: an athlete whose injury has expired
+     * is "treated exactly as somebody who has not answered yet", and that
+     * person's row says false.
+     */
+    assert.match(stmt, /cleared_to_train = false/);
+    assert.doesNotMatch(stmt, /cleared_to_train = null/);
   });
 
   test('and nothing records that a restriction ever existed', () => {

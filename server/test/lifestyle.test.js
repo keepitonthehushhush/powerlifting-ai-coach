@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readProfileApi } from './helpers/source.js';
+import { readProfileApi, latestDefinition } from './helpers/source.js';
 
 import { buildSystemPrompt, describeRecoveryConcerns, COACH_ROLE } from '../src/prompts/systemPrompt.js';
 
@@ -115,20 +115,34 @@ describe('lifestyle data is treated as health data end to end', () => {
     'nutrition_notes',
   ];
 
-  const migration = read('../../supabase/migrations/0012_lifestyle_factors.sql');
   const consentRoute = read('../src/routes/consent.js');
 
   test('every lifestyle column is inside the consent fingerprint', () => {
-    // The fingerprint is what the trigger compares. A column outside it is a
-    // health field collected with no consent check at all.
-    const fingerprint = migration.slice(
-      migration.indexOf('function private.health_fingerprint'),
-      migration.indexOf('function private.require_health_data_consent')
-    );
+    /*
+     * The fingerprint is what the trigger compares. A column outside it is a
+     * health field collected with no consent check at all.
+     *
+     * This used to read migration 0012, the file that defined the fingerprint
+     * when the test was written. Migration files are append-only, so that
+     * assertion could not fail no matter what a later file did - and 0033
+     * replaced the trigger with a version that ignored the fingerprint
+     * entirely while this test went on passing. `latestDefinition` reads the
+     * newest file that defines the object, which is the only one that
+     * describes it.
+     */
+    const { body: fingerprint } = latestDefinition('function private.health_fingerprint');
     for (const column of LIFESTYLE_COLUMNS) {
       assert.ok(fingerprint.includes(column), `${column} is not gated by the consent trigger`);
     }
     assert.ok(fingerprint.includes('health_restrictions'), 'the original health column must stay gated');
+  });
+
+  test('AND THE TRIGGER STILL COMPARES IT', () => {
+    // The half that was missing. A complete fingerprint that nothing calls
+    // gates nothing, which was true in production for two days.
+    const { body: trigger } = latestDefinition('function private.require_health_data_consent');
+    assert.match(trigger, /private\.health_fingerprint\(new\)/);
+    assert.match(trigger, /security definer/, 'authenticated cannot reach the private schema');
   });
 
   test('withdrawing consent clears every lifestyle column', () => {

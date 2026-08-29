@@ -162,6 +162,54 @@ const CHECKS = [
             from public.retention_periods rp`,
   },
   {
+    name: 'AND THE SWEEP CAN ACTUALLY RUN',
+    why: 'apply_retention() set cleared_to_train = null on a column that has been NOT NULL since 0001. plpgsql does not plan a statement until it executes, so the function created cleanly, this file passed, and the cron job succeeded every night - because no row had yet aged past the retention period. The first one that did would raise 23502 and abort every other category with it. Reproduced against the preview database before it was fixed; see migration 0035. Generic rather than named, because the next one will be a different column.',
+    sql: `select count(*) = 0 as ok
+            from information_schema.columns c
+           where c.table_schema = 'public'
+             and c.is_nullable = 'NO'
+             -- Only tables the sweep actually updates, and the column name
+             -- bounded on the left. The first version of this used LIKE and
+             -- reported four false positives: 'health_restrictions_updated_at
+             -- = null' contains 'updated_at = null', and updated_at is NOT
+             -- NULL on four tables. A check that cries wolf is a check
+             -- somebody comments out.
+             and pg_get_functiondef('private.apply_retention()'::regprocedure)
+                 ~ ('update public\\.' || c.table_name || '\\y')
+             and pg_get_functiondef('private.apply_retention()'::regprocedure)
+                 ~ ('(^|[^a-zA-Z0-9_])' || c.column_name || '\\s*=\\s*null')`,
+  },
+  {
+    name: 'THE CONSENT TRIGGER STILL CALLS THE FINGERPRINT IT IS CHECKED AGAINST',
+    why: 'The check above this one asserts that every column documented as health data appears in private.health_fingerprint. It passed for two days while the trigger did not call the fingerprint at all: migration 0033 replaced it with a version reading two columns directly, and sleep, alcohol, nicotine, nutrition notes and gender became writable with no consent. The invariant was reading the right object and asking the wrong question. This is the missing half.',
+    sql: `select position('health_fingerprint' in pg_get_functiondef(
+            'private.require_health_data_consent()'::regprocedure)) > 0 as ok`,
+  },
+  {
+    name: 'and it is SECURITY DEFINER, because the helper lives in private',
+    why: 'authenticated has no USAGE on the private schema, so an invoker-rights trigger cannot call private.health_fingerprint at all - it raises 42501 on every profile write. 0013 fixed that; 0033 undid it and got away with it only by not calling the helper.',
+    sql: `select bool_and(p.prosecdef) as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'private' and p.proname = 'require_health_data_consent'`,
+  },
+  {
+    name: 'ERASURE IS REACHABLE FROM THE API, NOT MERELY PRESENT IN THE DATABASE',
+    why: 'delete_my_account existed in production, in the private schema, with the right body and the right comment - and account deletion was broken, because supabase-js resolves an rpc against public and PostgREST cannot see private. The GDPR Art.17 path returned "Could not delete the account" while every test passed, since the tests mock rpc and a mock answers to any name. Found by replaying the migrations into an empty database and diffing; nothing else in the schema had drifted.',
+    sql: `select count(*) = 1 as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where p.proname = 'delete_my_account'
+             and n.nspname = 'public'
+             and p.prosecdef
+             and has_function_privilege('authenticated', p.oid, 'EXECUTE')`,
+  },
+  {
+    name: 'and there is exactly one of it',
+    why: 'Two functions with one name and one comment in two schemas is how somebody fixes the wrong one.',
+    sql: `select count(*) = 1 as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where p.proname = 'delete_my_account' and n.nspname in ('public','private')`,
+  },
+  {
     name: 'NO LEADERBOARD ENTRY EXISTS WITHOUT A CURRENT CONSENT BEHIND IT',
     why: 'Publishing somebody lifts to other users needs an active, current leaderboard_publication consent (0028). set_leaderboard_opt_in() enforces that on the way in, but an entry written by any other path - or predating the rule, which one did - would sit published with no record that anybody agreed. This is the condition itself, checked rather than assumed.',
     sql: `select count(*) = 0 as ok
