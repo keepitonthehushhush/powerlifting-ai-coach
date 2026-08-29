@@ -209,6 +209,21 @@ const CHECKS = [
            where n.nspname = 'private' and p.proname = 'require_health_data_consent'`,
   },
   {
+    name: 'A WITHDRAWN HEALTH CONSENT MEANS NO HEALTH DATA IS STILL STORED',
+    why: 'The policy says withdrawing consent erases what is already held. It did not - it erased nothing, for anybody who had answered the gender or GLP-1 question, because the clear left those columns set, the resulting row still fingerprinted as health data, and the consent trigger refused the whole UPDATE. The ledger said withdrawn and the injury note stayed. Four months, no failure signal. This is the condition itself, asked of the rows rather than of the code that maintains them, so a future partial clear shows up as data rather than as a diff nobody reads.',
+    sql: `with latest as (
+            select distinct on (c.user_id) c.user_id, c.granted
+              from public.consent_records c
+             where c.consent_type = 'health_data_collection'
+             order by c.user_id, c.seq desc
+          )
+          select count(*) = 0 as ok
+            from public.user_profile p
+            join latest l on l.user_id = p.user_id
+           where l.granted is false
+             and private.health_fingerprint(p) is not null`,
+  },
+  {
     name: 'ERASURE IS REACHABLE FROM THE API, NOT MERELY PRESENT IN THE DATABASE',
     why: 'delete_my_account existed in production, in the private schema, with the right body and the right comment - and account deletion was broken, because supabase-js resolves an rpc against public and PostgREST cannot see private. The GDPR Art.17 path returned "Could not delete the account" while every test passed, since the tests mock rpc and a mock answers to any name. Found by replaying the migrations into an empty database and diffing; nothing else in the schema had drifted.',
     sql: `select count(*) = 1 as ok

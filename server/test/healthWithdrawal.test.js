@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 
-import { readSource, latestDefinition } from './helpers/source.js';
+import { readSource, readRaw, phrase, latestDefinition } from './helpers/source.js';
 import { redact } from '../src/lib/logger.js';
 
 /**
@@ -140,6 +140,44 @@ test('withdrawing health-data consent', async (t) => {
     // for. Pinned here so a future broad fix cannot quietly take it away.
     assert.ok(!documented.has('pronouns'), 'pronouns must not be documented as health data');
     assert.ok(!cleared.has('pronouns'), 'withdrawal must not erase how to address somebody');
+  });
+});
+
+test('the state the bug left behind is reconciled and then watched', async (t) => {
+  const reconciliation = readRaw(
+    new URL('../../supabase/migrations/0040_reconcile_withdrawals_that_erased_nothing.sql',
+      import.meta.url)
+  );
+  const invariants = readRaw(new URL('../../scripts/check-db-invariants.mjs', import.meta.url));
+
+  await t.test('the one-time clear covers every documented health column', () => {
+    // Same derivation as the withdrawal path above, for the same reason: a
+    // reconciliation that misses a column leaves exactly the state it exists
+    // to remove, and the trigger would refuse this UPDATE too if it ran as a
+    // user rather than as a migration.
+    const missing = [...documentedHealthColumns()]
+      .filter((column) => !new RegExp(`\\b${column}\\s*=`).test(reconciliation))
+      .sort();
+    assert.deepEqual(missing, [], `0040 does not clear: ${missing.join(', ')}`);
+  });
+
+  await t.test('and it is idempotent, so a re-run moves nobody', () => {
+    // Scoped to rows that still hold something. Without this, every deploy
+    // rewrites clean rows and updated_at drifts for people nothing happened to.
+    assert.match(reconciliation, /is not null\s*\)?\s*;?\s*$/m);
+    assert.match(reconciliation, /or p\.glp1_status is not null/);
+  });
+
+  await t.test('the property becomes a standing check, not a one-off', () => {
+    assert.match(invariants, /A WITHDRAWN HEALTH CONSENT MEANS NO HEALTH DATA IS STILL STORED/);
+    assert.match(invariants, /private\.health_fingerprint\(p\) is not null/);
+  });
+
+  await t.test('and the migration says what it found, rather than implying a repair', () => {
+    // It found nothing: production had four profiles and no withdrawals at all.
+    // A cleanup migration that reads as though it rescued somebody is a worse
+    // artefact than one that records the count it actually saw.
+    assert.match(reconciliation, phrase('Nothing, and that is written down rather than implied'));
   });
 });
 
