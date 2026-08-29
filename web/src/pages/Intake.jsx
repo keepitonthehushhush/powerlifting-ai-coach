@@ -470,7 +470,7 @@ export function Intake() {
           </label>
 
           {/* ── WHERE DO YOU TRAIN ────────────────────────────────────────
-              Ticking a gym pre-fills the equipment box below. That is all it
+              Checking a gym pre-fills the equipment box below. That is all it
               does. These are NOT equipment lists we hold as fact: no chain
               publishes what any individual club has, they vary by franchise
               and by year, and a confidently wrong list sends somebody looking

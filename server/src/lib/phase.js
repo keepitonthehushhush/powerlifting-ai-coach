@@ -104,7 +104,7 @@ export function recommendPhase({ profile, prescriptions, currentPhase = null } =
         reason:
           `Linear progression is finished on ${exhausted.join(' and ')} - the reset budget is ` +
           'spent, which is the point at which adding weight every session stops being the right ' +
-          'programme rather than the point at which the athlete stops trying.',
+          'program rather than the point at which the athlete stops trying.',
       };
     }
 

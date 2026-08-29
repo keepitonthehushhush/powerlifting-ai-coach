@@ -103,7 +103,7 @@ describe('WHAT THE COACH IS ALLOWED TO SAY ABOUT A BELT', () => {
   test('somebody who cannot spend money is told the programme works anyway', () => {
     assert.match(COACH_ROLE, phrase('none of it is necessary'.replace('none of it', 'none of it')));
     const d = describeKit({ bodyweight: 200, units: 'lb' }, { squat: { weight: 275 } });
-    assert.match(d, phrase('the programme works without it'));
+    assert.match(d, phrase('the program works without it'));
   });
 
   test('it is suppressed while the clearance gate is up', () => {
@@ -147,7 +147,7 @@ describe('the FAQ', () => {
     // escaping is a subscription they will not start.
     assert.match(faq, phrase('cancel at any time, from inside your'));
     assert.match(faq, phrase('without emailing anybody or explaining yourself'));
-    assert.match(faq, phrase('cancelling does not delete anything'));
+    assert.match(faq, phrase('canceling does not delete anything'));
     // And it is written into the runbook so it survives a later push to convert.
     assert.match(runbook, phrase('Cancelling must be possible at any time'));
   });

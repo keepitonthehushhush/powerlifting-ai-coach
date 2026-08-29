@@ -50,7 +50,7 @@ export function Faq() {
       <div className="card prose faq">
         <h2 className="h3">What is this, exactly?</h2>
         <p>
-          A strength coach that writes you a powerlifting programme, adjusts it based on what you
+          A strength coach that writes you a powerlifting program, adjusts it based on what you
           actually lift, and answers questions in between. You tell it about yourself, it gives you
           a plan, you log your sessions, and the next block is built from what you logged rather
           than from what the plan assumed.
@@ -68,15 +68,15 @@ export function Faq() {
         <h2 className="h3">Is it a doctor? Can it tell me if my back is okay?</h2>
         <p>
           No, and it will not pretend otherwise. If you tell it about an injury or pain, it stops
-          writing you programmes until you confirm a doctor or physiotherapist has cleared you to
-          train. That is not it being difficult — it genuinely cannot see you, and a programme
+          writing you programs until you confirm a doctor or physical therapist has cleared you to
+          train. That is not it being difficult — it genuinely cannot see you, and a program
           written around an injury it cannot examine is a guess with weight on it.
         </p>
 
         <h2 className="h3">Do I have to tell it about my injuries?</h2>
         <p>
           No. Those questions are optional and you can leave every one of them blank. The coach
-          works without them and simply programmes more conservatively. If you do share them,{' '}
+          works without them and simply programs more conservatively. If you do share them,{' '}
           <Link className="link" to="/policies/health-data">
             this page
           </Link>{' '}
@@ -106,7 +106,7 @@ export function Faq() {
         <h2 className="h3">Can I delete everything?</h2>
         <p>
           Yes, from the Account page, and it is immediate. It removes the account and everything
-          attached to it — your profile, your programmes, your logged sessions, your conversations,
+          attached to it — your profile, your programs, your logged sessions, your conversations,
           your consent records. Nothing is kept back. It is not recoverable, so export a copy first
           if you want one; there is a button for that on the same page.
         </p>
@@ -121,7 +121,7 @@ export function Faq() {
           <strong>If you do subscribe, you will be able to cancel at any time, from inside your
           account, without emailing anybody or explaining yourself.</strong> You will keep access
           until the end of the period you have already paid for, and your data stays yours either
-          way — cancelling does not delete anything. We are saying this here, before there is
+          way — canceling does not delete anything. We are saying this here, before there is
           anything to buy, because a subscription you are worried about escaping is a subscription
           you will not try.
         </p>
@@ -157,7 +157,7 @@ export function Faq() {
         </p>
         <p>
           The cleverness has actually been measured. Seven strength-and-conditioning experts
-          scored twelve-week programmes written by three versions of ChatGPT: the newest averaged
+          scored twelve-week programs written by three versions of ChatGPT: the newest averaged
           4.14 out of 5 and the oldest 2.37, so these models are improving quickly. One error
           turned up in <em>all</em> of them — prescribing fifteen repetitions at 85% of maximum, a
           load almost nobody gets past five. The authors concluded that qualified human oversight
@@ -179,7 +179,7 @@ export function Faq() {
           around a correct number cannot get the number wrong.
         </p>
         <p>
-          The honest version: if you already know how to programme and you want something to argue
+          The honest version: if you already know how to program and you want something to argue
           with, a general AI is a fine sounding board and you are already paying for it. This is
           for the person who does not want to become their own coach.
         </p>
@@ -194,7 +194,7 @@ export function Faq() {
           afternoon.
         </p>
         <p>
-          A powerlifting programme is a decision about the next twelve weeks: which lifts, at what
+          A powerlifting program is a decision about the next twelve weeks: which lifts, at what
           percentages, rising to what, by when, and what to do about it when a week goes badly.
           &ldquo;You are recovered, go hard&rdquo; does not tell you what to go hard at.
         </p>
@@ -214,14 +214,14 @@ export function Faq() {
         </p>
         <p>
           The difference is what happens when the plan meets your actual week. Those apps hand you
-          a programme and you execute it. You cannot ask why your bench is stalling, or say
+          a program and you execute it. You cannot ask why your bench is stalling, or say
           &ldquo;I have three days instead of four and my shoulder is sore&rdquo;, and have the
-          plan change in response and explain itself. This is a conversation with a programme
-          attached, rather than a programme with a chat attached.
+          plan change in response and explain itself. This is a conversation with a program
+          attached, rather than a program with a chat attached.
         </p>
         <p>
           The other difference is where you train. Most strength apps assume a barbell, a rack and
-          plates. This one asks where you actually train and programmes somebody with a Smith
+          plates. This one asks where you actually train and programs somebody with a Smith
           machine and a pair of dumbbells differently from somebody with a competition bar.
         </p>
 
@@ -233,14 +233,14 @@ export function Faq() {
         </p>
         <p>
           This is for the very large majority of people who are never going to hire a coach. It is
-          better than the internet, better than a programme copied off a forum by somebody whose
+          better than the internet, better than a program copied off a forum by somebody whose
           body is not yours, and it is available at eleven at night when you are trying to work out
           whether to deload.
         </p>
 
         <h2 className="h3">Do I need a belt, or special shoes, or supplements?</h2>
         <p>
-          No. The programme works with a barbell and whatever your gym has. The coach will mention
+          No. The program works with a barbell and whatever your gym has. The coach will mention
           a belt once, if and when the weight on the bar actually justifies it, and it will tell
           you what a belt does and does not do rather than selling you one. We do not earn anything
           from any equipment recommendation and there are no shopping links anywhere in the app.
@@ -250,7 +250,7 @@ export function Faq() {
         <p>
           It is honest about it, which is better than the alternative. Most Planet Fitness locations
           have no barbell and no squat rack, so you cannot train the three competition lifts the way
-          this programme normally prescribes them. The coach will say that plainly and build the
+          this program normally prescribes them. The coach will say that plainly and build the
           best version of what your gym can actually do. If your goal is to get stronger, you can do
           that there. If your goal is to compete, you will eventually need a barbell.
         </p>

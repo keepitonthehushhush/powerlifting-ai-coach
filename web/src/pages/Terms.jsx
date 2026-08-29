@@ -82,7 +82,7 @@ export function Terms() {
 
         <h2 className="h3">What it is not</h2>
         <p>
-          <strong>Coach Diaz is not a doctor, physiotherapist, dietitian, or licensed healthcare
+          <strong>Coach Diaz is not a doctor, physical therapist, dietitian, or licensed healthcare
           provider of any kind, and nothing it tells you is medical advice.</strong> It cannot
           diagnose an injury, treat one, or tell you whether a pain is serious. If you report an
           injury, pain, or a medical condition, the application will stop writing you programs until

@@ -71,7 +71,7 @@ export function AiProcessing() {
           of birth is &ldquo;not sent to the model&rdquo;. The date itself is not — but{' '}
           <strong>your age is</strong>, and the coach is instructed to use it, because recovery
           between heavy sessions slows as people get older. Saying the date stays behind while the
-          age it produces goes out was a distinction that favoured us, and it is corrected below.
+          age it produces goes out was a distinction that favored us, and it is corrected below.
           Two further things reach the model and were not listed: how quickly your lifts have been
           progressing, and any note you attach to a logged session. Because the document you
           previously agreed to did not describe these, this version supersedes the last one and you
@@ -97,7 +97,7 @@ export function AiProcessing() {
           <li>Your active program, if one has been written.</li>
           <li>Recovery information you chose to give: sleep, alcohol, nicotine, nutrition notes.</li>
           <li>Injuries and medical conditions you chose to give, and whether you are cleared to train.</li>
-          <li>Numbers our own code worked out from the above and hands the model as answers: your next prescribed loads, rounded to the smallest plate you told us you own, your warm-up ramp, and your fuelling ranges.</li>
+          <li>Numbers our own code worked out from the above and hands the model as answers: your next prescribed loads, rounded to the smallest plate you told us you own, your warm-up ramp, and your fueling ranges.</li>
           <li>
             Whether you use a GLP-1 medication, if you told us. Only "using", "considering" or
             "no" — never a drug name, a dose or a prescriber, and never the fact that you declined

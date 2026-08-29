@@ -10,7 +10,7 @@ export const en = {
   common: {
     backToTop: 'Back to top',
     appName: 'Coach Diaz',
-    forYourClinician: 'Information for your doctor or physiotherapist',
+    forYourClinician: 'Information for your doctor or physical therapist',
     faq: 'Questions people ask',
     loading: 'Loading…',
     saving: 'Saving…',
@@ -39,7 +39,7 @@ export const en = {
   home: {
     headline: 'A strength coach that reads what you actually lifted.',
     subhead:
-      'Coach Diaz writes you a powerlifting programme, then rebuilds it from the sessions you log — not from the sessions the plan assumed you would have.',
+      'Coach Diaz writes you a powerlifting program, then rebuilds it from the sessions you log — not from the sessions the plan assumed you would have.',
     ctaCreate: 'Create your account',
     ctaOpen: 'Open your coach',
     ctaSignIn: 'Already have an account? Sign in',
@@ -49,7 +49,7 @@ export const en = {
     step1Title: 'Tell it where you are',
     step1Body:
       'How long you have been training, what your best lifts are, how many days a week you can get to a gym, and what that gym actually has in it.',
-    step2Title: 'Get a programme, not a template',
+    step2Title: 'Get a program, not a template',
     step2Body:
       'Specific lifts, specific weights, specific rest between sets. Those numbers are worked out in ordinary code and handed to the coach as answers, so they never depend on a language model doing arithmetic.',
     step3Title: 'Log what actually happened',
@@ -58,18 +58,18 @@ export const en = {
 
     aiTitle: 'Why not just ask a general AI?',
     aiBody:
-      'You can, and it will write you something that looks right. It will not remember it next month, and it will never know that you missed the last two reps of every top set. When seven strength-and-conditioning experts scored twelve-week programmes from three versions of ChatGPT, one error appeared in all of them: fifteen repetitions at 85% of maximum, a load almost nobody gets past five.',
+      'You can, and it will write you something that looks right. It will not remember it next month, and it will never know that you missed the last two reps of every top set. When seven strength-and-conditioning experts scored twelve-week programs from three versions of ChatGPT, one error appeared in all of them: fifteen repetitions at 85% of maximum, a load almost nobody gets past five.',
     aiLink: 'The longer answer, including when a general AI is the better choice',
 
     gymTitle: 'It asks where you train, and then believes you',
     gymBody:
-      'A programme that assumes a competition bar and a squat rack is useless to somebody with a Smith machine and a pair of dumbbells. Coach Diaz asks where you actually go, and programmes for that — including gyms with no barbell at all.',
+      'A program that assumes a competition bar and a squat rack is useless to somebody with a Smith machine and a pair of dumbbells. Coach Diaz asks where you actually go, and programs for that — including gyms with no barbell at all.',
 
     honestTitle: 'What it will not do',
     honestDoctor:
-      'It is not a doctor. Tell it about pain or an injury and it stops writing programmes until you confirm that a doctor or physiotherapist has cleared you to train.',
+      'It is not a doctor. Tell it about pain or an injury and it stops writing programs until you confirm that a doctor or physical therapist has cleared you to train.',
     honestOptional:
-      'Every health question is optional. Leave them blank and it simply programmes more conservatively.',
+      'Every health question is optional. Leave them blank and it simply programs more conservatively.',
     honestAds:
       'It does not sell your data. There are no advertising or analytics scripts anywhere on this site, and no shopping links anywhere in the app.',
     honestDelete:
@@ -77,6 +77,24 @@ export const en = {
 
     terms: 'Terms',
     healthPolicy: 'Health data',
+
+    /*
+     * FOOTER LABELS ARE SHORT ON PURPOSE, AND SEPARATE FROM THE PAGE ONES.
+     *
+     * The footer used common.faq ("Questions people ask") and
+     * common.forYourClinician ("Information for your doctor or physical
+     * therapist") next to "Terms" and "Health data". A full sentence
+     * beside a single word does not read as a set, it reads as four things
+     * that happened to land there - which is exactly what it looked like.
+     *
+     * The long labels are right where they are: on a page, in a link somebody
+     * reads before deciding to click. In a footer the job is scanning, so the
+     * labels are one or two words and parallel in shape. The destinations are
+     * unchanged.
+     */
+    footerNav: 'Site links',
+    footerFaq: 'FAQ',
+    footerClinicians: 'For clinicians',
   },
 
   auth: {
@@ -89,7 +107,7 @@ export const en = {
     /* One question, one action, as separate strings. The single combined
        string they replaced - "New here? Create an account" - is what made
        three choices read as one line. */
-    forgotPrompt: 'Forgotten your password?',
+    forgotPrompt: 'Forgot your password?',
     newHerePrompt: 'New here?',
     haveAccountPrompt: 'Already have an account?',
     confirmEmail: 'Check your email to confirm your account, then sign in.',
@@ -250,7 +268,7 @@ export const en = {
     goal: 'What are you training for?',
     glp1: 'Are you using a GLP-1 medication?',
     glp1Help:
-      'Optional, and you can skip it. It is asked for one reason: on a GLP-1 a large share of the weight lost is muscle, and lifting is what keeps it — so knowing changes the programme. Coach Diaz will never tell you whether to take one. That is between you and your prescriber.',
+      'Optional, and you can skip it. It is asked for one reason: on a GLP-1 a large share of the weight lost is muscle, and lifting is what keeps it — so knowing changes the program. Coach Diaz will never tell you whether to take one. That is between you and your prescriber.',
     glp1Options: {
       none: 'No',
       using: 'Yes, currently',
@@ -274,7 +292,7 @@ export const en = {
     equipment: 'What equipment can you get to?',
     gyms: 'Where do you train?',
     gymsHint:
-      'Optional. Ticking one fills in the equipment box below with what that chain usually has, so you can correct it instead of writing it from scratch. These are starting points, not facts: no chain publishes what any individual club holds, and they vary a lot between locations.',
+      'Optional. Checking one fills in the equipment box below with what that chain usually has, so you can correct it instead of writing it from scratch. These are starting points, not facts: no chain publishes what any individual club holds, and they vary a lot between locations.',
     gymOptions: {
       planet_fitness: 'Planet Fitness',
       anytime_fitness: 'Anytime Fitness',
@@ -290,9 +308,9 @@ export const en = {
     },
     gymEquipment: {
       planet_fitness:
-        'Planet Fitness: Smith machine, fixed-weight barbells up to about 60lb, dumbbells up to about 50lb, plate-loaded and selectorised machines, cable stations, benches. No Olympic barbell, no squat or power rack, no platform.',
+        'Planet Fitness: Smith machine, fixed-weight barbells up to about 60lb, dumbbells up to about 50lb, plate-loaded and selectorized machines, cable stations, benches. No Olympic barbell, no squat or power rack, no platform.',
       anytime_fitness:
-        'Anytime Fitness: half or full rack, Olympic barbell and plates, Smith machine, flat and adjustable benches, dumbbells, cable and selectorised machines. Deadlift platform only at some locations.',
+        'Anytime Fitness: half or full rack, Olympic barbell and plates, Smith machine, flat and adjustable benches, dumbbells, cable and selectorized machines. Deadlift platform only at some locations.',
       golds_gym:
         "Gold's Gym: squat racks and usually a deadlift platform, Olympic barbells and plates, extensive dumbbells, benches, machines. Bumper plates are uncommon. Powdered chalk generally not allowed; some locations permit liquid chalk.",
       la_fitness:
@@ -300,7 +318,7 @@ export const en = {
       crunch:
         'Crunch: Olympic barbells and plates, squat racks, benches, a full dumbbell range, machines. Some locations have an Olympic half-rack platform.',
       snap_fitness:
-        'Snap Fitness: squat rack at most locations, Olympic barbell and plates, bench stations, dumbbells up to about 100lb, machines. Small-format clubs vary a lot; chalk policy is down to the location.',
+        'Snap Fitness: squat rack at most locations, Olympic barbell and plates, bench stations, dumbbells up to about 100lb, machines. Small-format clubs vary a lot; chalk policy is up to the location.',
       ymca:
         'YMCA: varies a lot between branches. Many have a rack, an Olympic barbell and benches; some are machines and dumbbells only.',
       university_gym:
@@ -356,13 +374,13 @@ export const en = {
       'You can withdraw any of these at any time from this screen. Withdrawing is as easy as giving — one click, no email, no waiting.',
     recordedOn: 'Recorded {date} (version {version})',
     staleExplained:
-      'We have updated this policy, so we are asking again. You agreed to version {oldVersion} on {date}; the current version is {newVersion}. Your previous agreement has not been deleted — it stays in your consent history — but it no longer counts, because it was agreement to wording we have since changed. The box above is empty on purpose: ticking it is a fresh decision, and leaving it empty is a valid answer.',
+      'We have updated this policy, so we are asking again. You agreed to version {oldVersion} on {date}; the current version is {newVersion}. Your previous agreement has not been deleted — it stays in your consent history — but it no longer counts, because it was agreement to wording we have since changed. The box above is empty on purpose: checking it is a fresh decision, and leaving it empty is a valid answer.',
     staleVersion: 'This policy has been updated since you agreed. Please review and confirm again.',
     healthDataCleared:
       'Consent withdrawn. The injury and health information we had stored has been erased.',
     terms_of_service: {
       label: 'Terms of service',
-      description: 'The agreement covering your use of Coach, including the training-risk acknowledgement.',
+      description: 'The agreement covering your use of Coach, including the training-risk acknowledgment.',
       document: 'Terms of Service',
     },
     ai_processing: {
@@ -404,7 +422,7 @@ export const en = {
     lapsedBody:
       'Your subscription has ended, so the coaching conversations are paused. Everything you logged is still here.',
     staysFree:
-      'Logging your sessions, your charts, your programme and the exercise library stay free, and always will.',
+      'Logging your sessions, your charts, your program and the exercise library stay free, and always will.',
     promisedFree:
       'Your coaching is free, permanently. You signed up while Coach Diaz was still being built and tested, when it was free — that promise stands, and there is nothing for you to pay.',
     promisedFreeSubscribed:
@@ -415,7 +433,7 @@ export const en = {
     cancelAnytime:
       'Cancel any time from Manage subscription — no email, no explanation. You keep access until the end of the period you have paid for.',
     renewsOn: 'Active. Renews on {date}.',
-    endsOn: 'Cancelled. You keep full access until {date}, and nothing is deleted.',
+    endsOn: 'Canceled. You keep full access until {date}, and nothing is deleted.',
     paymentFailing:
       'A renewal payment did not go through, so your card may need updating. Your coaching is still on while the bank retries — this is a heads-up, not a lock-out.',
     settling: 'Payment received. Setting up your subscription…',
@@ -441,7 +459,7 @@ export const en = {
     join: 'Join the leaderboard',
     leave: 'Leave the leaderboard',
     leaveIsDelete:
-      'Leaving deletes your leaderboard entry rather than hiding it. Your own logs and programme are untouched.',
+      'Leaving deletes your leaderboard entry rather than hiding it. Your own logs and program are untouched.',
     loggedOnly:
       'Numbers come from sessions you logged and completed — they cannot be typed in, and a missed rep does not count.',
     empty: 'Nobody has logged that lift yet.',
@@ -457,7 +475,7 @@ export const en = {
     private: 'Only you can see these. They are never shown on the leaderboard.',
     none: 'Log a session and the first one appears here.',
     noStreaks:
-      'There are deliberately no streaks here. A streak tells you to train tomorrow whatever happened today, and that is how people train on a tweaked back or skip the deload their programme called for. Turning up over a month counts. A week off does not undo anything.',
+      'There are deliberately no streaks here. A streak tells you to train tomorrow whatever happened today, and that is how people train on a tweaked back or skip the deload their program called for. Showing up over a month counts. A week off does not undo anything.',
     milestone: '{weight} {units} {lift}',
     cameBack: 'Back after {days} days',
     name: {

@@ -252,7 +252,7 @@ describe('what the reported rate of progress is allowed to change', () => {
     for (const cadence of ['every_week', 'every_month_or_slower', 'stalled']) {
       assert.match(
         flatten(describeProgressCadence({ progress_cadence: cadence })),
-        /Do not promise a periodised or block program/
+        /Do not promise a periodized or block program/
       );
     }
   });

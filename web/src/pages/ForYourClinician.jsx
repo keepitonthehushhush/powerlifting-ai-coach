@@ -39,7 +39,7 @@ export function ForYourClinician() {
       <header className="page-header">
         <h1>About Coach Diaz — information for your clinician</h1>
         <p className="muted">
-          Written to be printed or shown to a doctor, physiotherapist, or other healthcare
+          Written to be printed or shown to a doctor, physical therapist, or other healthcare
           professional. Nothing on this page requires an account to read.
         </p>
       </header>
@@ -48,7 +48,7 @@ export function ForYourClinician() {
         <h2 className="h3">What this is, in one sentence</h2>
         <p>
           Coach Diaz is a software strength coach that writes and progresses barbell training
-          programmes for the squat, bench press, deadlift and overhead press.{' '}
+          programs for the squat, bench press, deadlift and overhead press.{' '}
           <strong>
             It is not a medical device, it is not a clinical decision tool, and it is not
             supervised by a healthcare professional.
@@ -64,7 +64,7 @@ export function ForYourClinician() {
           <li>
             <strong>It stops programming entirely when an injury is reported.</strong> If your
             patient records any injury, pain or medical condition, the system refuses to write or
-            adjust a training programme until they confirm a professional has cleared them. That
+            adjust a training program until they confirm a professional has cleared them. That
             gate is decided in code, not by the model, so it cannot be talked out of it.
           </li>
           <li>
@@ -95,7 +95,7 @@ export function ForYourClinician() {
           </li>
           <li>
             <strong>It does not withhold coaching to pressure a lifestyle change.</strong> If your
-            patient drinks, smokes or sleeps badly and does not intend to change that, it programmes
+            patient drinks, smokes or sleeps badly and does not intend to change that, it programs
             for the recovery capacity they actually have.
           </li>
         </ul>
@@ -110,7 +110,7 @@ export function ForYourClinician() {
           ramps are computed the same way.
         </p>
         <p>
-          Practically: the programme is conservative, it is driven by what your patient actually
+          Practically: the program is conservative, it is driven by what your patient actually
           completed rather than by what they hoped to lift, and it does not escalate on request.
         </p>
 
@@ -122,8 +122,8 @@ export function ForYourClinician() {
         <ul>
           <li>
             <strong>To stop programming:</strong> ask them to enter the condition in the injuries
-            and medical conditions field of their profile and to leave the clearance box unticked.
-            The system will not write them a programme while that is the case.
+            and medical conditions field of their profile and to leave the clearance box unchecked.
+            The system will not write them a program while that is the case.
           </li>
           <li>
             <strong>To set restrictions:</strong> tell them what to avoid and ask them to record it
@@ -157,9 +157,9 @@ export function ForYourClinician() {
             flags implausible combinations and asks about them, but it cannot know the truth.
           </li>
           <li>
-            It is a language model and can be wrong, including confidently. Its safety behaviour is
+            It is a language model and can be wrong, including confidently. Its safety behavior is
             tested against an adversarial suite on every change, and that suite is a sample of
-            behaviour rather than a guarantee of it.
+            behavior rather than a guarantee of it.
           </li>
           <li>
             Anyone under 18 cannot record injury or lifestyle information at all, because consent

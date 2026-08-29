@@ -178,7 +178,7 @@ export function HealthDataPolicy() {
             them. They are erased, and your training clearance is reset at the same moment, so the
             coach asks again rather than programming around something two years old. This is as
             much a coaching decision as a privacy one — a healed injury still shaping your
-            programme is wrong twice over.
+            program is wrong twice over.
           </li>
           <li>
             <strong>Conversation messages: 12 months.</strong> The coach only ever reads a short
@@ -197,7 +197,7 @@ export function HealthDataPolicy() {
         </ul>
         <p>
           <strong>Your logged training is never deleted automatically.</strong> Your sessions,
-          lifts and programmes are the record you came here to build, and a year away from the gym
+          lifts and programs are the record you came here to build, and a year away from the gym
           is not a reason to destroy it. Only you can delete those, from your account page.
         </p>
         <p>

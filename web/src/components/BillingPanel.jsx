@@ -28,10 +28,29 @@ import { useI18n } from '../i18n/index.jsx';
 const SETTLE_ATTEMPTS = 10;
 const SETTLE_INTERVAL_MS = 2000;
 
+/**
+ * `?checkout=success` or `?checkout=canceled`, and nothing else.
+ *
+ * ── WHY BOTH SPELLINGS ARE ACCEPTED ───────────────────────────────────────
+ *
+ * The value used to be the British "cancelled", which put it in the address
+ * bar of an American product. Stripe's own field is `canceled`, so the app was
+ * the odd one out.
+ *
+ * It cannot simply be renamed, though: the value in the URL is whatever
+ * `cancel_url` said at the moment the checkout session was CREATED, and a
+ * session created before this deploy is still open in somebody's tab. Reading
+ * only the new spelling would show them a blank panel instead of "no payment
+ * was taken". So both are read, one is written, and the old spelling can be
+ * dropped once no session that old can still return - Stripe sessions expire
+ * after 24 hours.
+ */
 function readCheckoutParam() {
   if (typeof window === 'undefined') return null;
   const value = new URLSearchParams(window.location.search).get('checkout');
-  return value === 'success' || value === 'cancelled' ? value : null;
+  if (value === 'success') return 'success';
+  if (value === 'canceled' || value === 'cancelled') return 'canceled';
+  return null;
 }
 
 /**
@@ -109,7 +128,7 @@ export function BillingPanel() {
   }, [returned, load]);
 
   useEffect(() => {
-    if (returned === 'cancelled') clearCheckoutParam();
+    if (returned === 'canceled') clearCheckoutParam();
   }, [returned]);
 
   async function go(action, call) {
@@ -196,7 +215,7 @@ export function BillingPanel() {
     <section className="card stack">
       <h2 className="h3">{t('billing.title')}</h2>
 
-      {returned === 'cancelled' && <p className="muted small">{t('billing.checkoutCancelled')}</p>}
+      {returned === 'canceled' && <p className="muted small">{t('billing.checkoutCancelled')}</p>}
 
       {settling && <p className="muted small">{t('billing.settling')}</p>}
 

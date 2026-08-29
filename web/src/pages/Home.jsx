@@ -128,19 +128,46 @@ export function Home() {
         </ul>
       </section>
 
+      {/*
+        * ── WHY THE FOOTER IS BUILT RATHER THAN JUST SPACED ────────────────
+        *
+        * "Does not look clean at the bottom of the page and looks sort of
+        * randomly placed."
+        *
+        * It was, and no amount of gap would have fixed it. The row held
+        * "Questions people ask", "Information for your doctor or
+        * physiotherapist", "Terms" and "Health data" - a sentence, a longer
+        * sentence, and two words - centred inside a 46ch prose column. Four
+        * items of wildly unequal length, centre-aligned and wrapping, cannot
+        * read as a set: every line breaks in a different place and the eye
+        * finds no edge to follow.
+        *
+        * Three changes, in the order they matter:
+        *   1. SHORT, PARALLEL LABELS. One or two words each, so the row reads
+        *      as four peers. The descriptive labels stay where they belong -
+        *      in links people read before clicking, not in a footer people
+        *      scan.
+        *   2. The links sit in the page container, not the prose measure. The
+        *      disclaimer keeps the measure, because it is prose and prose has
+        *      one.
+        *   3. Each link is its own 44pt target with real padding, so the row
+        *      has a rhythm rather than four text fragments floating in space.
+        *      Apple's floor for a tap target is also, not coincidentally, what
+        *      makes a link row look built.
+        */}
       <footer className="home-footer">
-        <p className="fineprint">{t('medical.disclaimer')}</p>
-        <nav className="home-links" aria-label={t('home.honestTitle')}>
-          <Link className="link" to="/faq">
-            {t('common.faq')}
+        <p className="home-fineprint">{t('medical.disclaimer')}</p>
+        <nav className="home-links" aria-label={t('home.footerNav')}>
+          <Link className="home-link" to="/faq">
+            {t('home.footerFaq')}
           </Link>
-          <Link className="link" to="/about">
-            {t('common.forYourClinician')}
+          <Link className="home-link" to="/about">
+            {t('home.footerClinicians')}
           </Link>
-          <Link className="link" to="/policies/terms">
+          <Link className="home-link" to="/policies/terms">
             {t('home.terms')}
           </Link>
-          <Link className="link" to="/policies/health-data">
+          <Link className="home-link" to="/policies/health-data">
             {t('home.healthPolicy')}
           </Link>
         </nav>

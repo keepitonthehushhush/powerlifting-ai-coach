@@ -1533,18 +1533,63 @@ form > button.primary {
   color: var(--muted);
 }
 
+/* The footer is the one place on this page a hairline is right: it separates
+   a different KIND of content from the page, rather than one section from the
+   next. Sections above are separated by air, deliberately. */
 .home-footer {
-  max-width: 46ch;
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+/* Prose keeps its measure. The link row below does not, because it is not
+   prose and reading it across the full container is the point. */
+.home-fineprint {
+  /* 50ch, inside the 45-75 character range that is the usual readability
+     guidance. At 46 the English disclaimer broke to four lines and left
+     "training." alone on the last one; a one-word final line is the thing that
+     makes centred prose look like an accident. Measured, not guessed - but the
+     range is what is being honoured, not the exact break, which moves with the
+     translation anyway. */
+  max-width: 50ch;
   margin: 0 auto;
-  padding-top: var(--space-6);
+  color: var(--muted);
+  font-size: var(--text-caption);
+  line-height: 1.5;
 }
 
 .home-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-4);
+  align-items: center;
+  /* Row gap small because each link carries its own 44pt height; column gap
+     wide enough that four short labels read as four, not as a sentence. */
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  /* The HIG's hard floor, and what turns four text fragments into a row. */
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  text-decoration: none;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.home-link:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.home-link:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
 }
 
 @media (max-width: 24rem) {

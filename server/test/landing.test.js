@@ -126,8 +126,8 @@ describe('every claim is one the documents already make', () => {
   test('the clearance gate is described as the product behaves', () => {
     // It stops writing PROGRAMMES and keeps answering questions. Saying it
     // "stops" would be wrong in the direction that makes somebody not sign up.
-    assert.match(en.home.honestDoctor, /stops writing programmes until/i);
-    assert.match(faq, phrase('it stops writing you programmes until you confirm'));
+    assert.match(en.home.honestDoctor, /stops writing programs until/i);
+    assert.match(faq, phrase('it stops writing you programs until you confirm'));
   });
 
   test('and the health questions are described as optional, because they are', () => {

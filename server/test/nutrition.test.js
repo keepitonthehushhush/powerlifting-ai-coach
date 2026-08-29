@@ -139,10 +139,10 @@ describe('the fuelling directive', () => {
         cleared_to_train: false,
       },
     });
-    assert.doesNotMatch(gated, /FUELLING NUMBERS FOR THIS ATHLETE/);
+    assert.doesNotMatch(gated, /FUELING NUMBERS FOR THIS ATHLETE/);
 
     const clear = buildSystemPrompt({ profile: { ...profile, health_restrictions: '' } });
-    assert.match(clear, /FUELLING NUMBERS FOR THIS ATHLETE/);
+    assert.match(clear, /FUELING NUMBERS FOR THIS ATHLETE/);
   });
 });
 

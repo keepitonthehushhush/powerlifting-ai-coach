@@ -37,7 +37,7 @@ describe('describeRecoveryConcerns', () => {
   test('the directive bounds itself: once, no moralising, no conditions', () => {
     const directive = describeRecoveryConcerns({ sleep_hours_typical: 5 });
     assert.match(directive, /ONCE/);
-    assert.match(directive, /without moralising/i);
+    assert.match(directive, /without moralizing/i);
     assert.match(directive, /not[\s\S]*conditional/i);
     assert.match(directive, /[Dd]o not diagnose/);
   });

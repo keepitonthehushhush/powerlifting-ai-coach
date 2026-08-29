@@ -33,7 +33,7 @@ describe('the clinician page is pinned to the system, not to itself', () => {
    */
 
   test('the refusal to program while uncleared is real', () => {
-    assert.match(page, /refuses to write or\s+adjust a training programme until they confirm/);
+    assert.match(page, /refuses to write or\s+adjust a training program until they confirm/);
     assert.match(gatedPrompt, /MEDICAL CLEARANCE GATE IS ACTIVE/);
     assert.match(gatedPrompt, /write, adjust, or hand over a training program/);
   });
@@ -136,7 +136,7 @@ describe('it is usable by somebody who is not the patient', () => {
 
   test('it states its own limitations rather than only its guarantees', () => {
     assert.match(page, /self-reported and unverified/);
-    assert.match(page, /a sample of\s+behaviour rather than a guarantee of it/);
+    assert.match(page, /a sample of\s+behavior rather than a guarantee of it/);
   });
 
   test('it prints as something you can hand over', () => {

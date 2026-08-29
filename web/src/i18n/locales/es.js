@@ -69,6 +69,11 @@ export const es = {
 
     terms: 'Condiciones',
     healthPolicy: 'Datos de salud',
+
+    // Cortas y paralelas, como en inglés: en un pie de página se escanea.
+    footerNav: 'Enlaces del sitio',
+    footerFaq: 'Preguntas frecuentes',
+    footerClinicians: 'Para profesionales sanitarios',
   },
 
   auth: {

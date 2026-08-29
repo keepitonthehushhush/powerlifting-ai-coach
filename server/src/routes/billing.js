@@ -130,7 +130,10 @@ billingRouter.post('/checkout', async (req, res, next) => {
       // not attached to the events that arrive months later at renewal.
       client_reference_id: req.user.id,
       success_url: `${origin}/account?checkout=success`,
-      cancel_url: `${origin}/account?checkout=cancelled`,
+      // `canceled`, matching Stripe's own spelling and the rest of the product.
+      // BillingPanel still READS the old British spelling, because a session
+      // created before this deploy returns whatever this line said then.
+      cancel_url: `${origin}/account?checkout=canceled`,
 
       // Stated before the card is collected, which is what ROSCA requires of
       // a recurring charge: the terms, and that it renews until cancelled.

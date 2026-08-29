@@ -203,8 +203,8 @@ chatRouter.post('/', async (req, res, next) => {
         throw codedError(
           'payment_required',
           decision.reason === 'lapsed'
-            ? 'Your subscription has ended, so the coaching conversations are paused. Everything else - your logs, your charts, your programme - is still here and still free. You can restart the subscription from your account page.'
-            : 'Coaching conversations are part of the subscription. Your logs, charts, programme and the exercise library stay free. You can subscribe from your account page.',
+            ? 'Your subscription has ended, so the coaching conversations are paused. Everything else - your logs, your charts, your program - is still here and still free. You can restart the subscription from your account page.'
+            : 'Coaching conversations are part of the subscription. Your logs, charts, program and the exercise library stay free. You can subscribe from your account page.',
           { reason: decision.reason }
         );
       }

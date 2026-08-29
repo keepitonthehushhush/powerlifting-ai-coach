@@ -64,7 +64,7 @@ describe('rest between sets is computed, not left to the athlete to guess', () =
   });
 
   test('and holding the rack for four minutes is named as correct, not rude', () => {
-    assert.match(prompt, phrase('rather than something to apologise for'));
+    assert.match(prompt, phrase('rather than something to apologize for'));
   });
 });
 

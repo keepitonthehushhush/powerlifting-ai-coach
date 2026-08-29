@@ -45,7 +45,7 @@ export function LeaderboardPolicy() {
         <p>
           Your email address, your real name, your bodyweight, your age, your date of birth, your
           gender, your injuries or any other health information, your location, your gym, your
-          programme, your conversations with the coach, your achievements, and the sessions behind
+          program, your conversations with the coach, your achievements, and the sessions behind
           the numbers. None of these are published, and the table the leaderboard reads has no
           column any of them could be put in without a database migration.
         </p>
@@ -84,7 +84,7 @@ export function LeaderboardPolicy() {
           do both.
         </p>
         <p>
-          Your own records are untouched by leaving: your logged sessions, programme, charts and
+          Your own records are untouched by leaving: your logged sessions, program, charts and
           conversations are yours either way. Nothing about the leaderboard affects them.
         </p>
         <p>
@@ -95,7 +95,7 @@ export function LeaderboardPolicy() {
 
         <h2 className="h3">Agreeing is optional</h2>
         <p>
-          Nothing else changes if you never turn this on. Coaching, logging, your programme, your
+          Nothing else changes if you never turn this on. Coaching, logging, your program, your
           charts and the exercise library work identically. A permission that costs you something
           to refuse is not freely given, so refusing this costs nothing.
         </p>
