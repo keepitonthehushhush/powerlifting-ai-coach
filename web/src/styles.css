@@ -1711,12 +1711,6 @@ form > button.primary {
 .lift-plate-2 { stroke-width: 6; }
 .lift-plate-3 { stroke-width: 5; }
 .lift-collar  { stroke-width: 4; }
-/* Zero-length lines with a round cap: two dots on the shaft, which is the
-   whole of "there are hands on this bar". They are cyan because they belong
-   to the lifter, not to the bar - and that is the second reason the group
-   above carries `stroke` rather than a `.lift-bar line` rule: as a rule it
-   outranked this one and drew the hands in the bar's colour. */
-.lift-grip    { stroke-width: 8; stroke: var(--secondary); }
 
 .lift-floor {
   stroke: var(--muted);

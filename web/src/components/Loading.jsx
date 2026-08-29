@@ -109,8 +109,6 @@ export function Loading({ size = 120 }) {
                       marks for the hands. */}
                   <g className="lift-bar">
                     <line className="lift-shaft" x1="41" y1="104" x2="141" y2="104" />
-                    <line className="lift-grip" x1="80" y1="104" x2="80" y2="104" />
-                    <line className="lift-grip" x1="102" y1="104" x2="102" y2="104" />
 
                     <line className="lift-plate-1" x1="65" y1="85" x2="65" y2="123" />
                     <line className="lift-plate-2" x1="56" y1="91" x2="56" y2="117" />

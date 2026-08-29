@@ -402,6 +402,31 @@ describe('the deadlift figure', () => {
     }
   });
 
+  /**
+   * ── AS MANY HANDS AS ARMS ─────────────────────────────────────────────
+   *
+   * The bar carried two grip marks while the figure had one arm. Both halves
+   * were defensible on their own - the bar is drawn front-on, so it shows two
+   * hands, and the lifter is drawn side-on, so the near arm hides the far one
+   * - and together they were a contradiction anybody could see and no test
+   * could. The fix was to drop the marks; this keeps the two counts tied to
+   * each other so the next person to add a hand has to add the arm as well.
+   */
+  test('the figure has at least as many arms as the bar has hands', () => {
+    const armGroup = loading.slice(
+      loading.indexOf('className="lift-arm"'),
+      loading.indexOf('className="lift-bar"')
+    );
+    const arms = (armGroup.match(/<line/g) || []).length;
+    const hands = (loading.match(/className="lift-grip"/g) || []).length;
+    assert.ok(arms >= 1, 'the lifter has no arms at all');
+    assert.ok(
+      hands <= arms,
+      `${hands} hand mark(s) on the bar but ${arms} arm(s) on the lifter - ` +
+        `either draw the other arm or drop the mark`
+    );
+  });
+
   test('there are exactly three referees', () => {
     const lights = [...loading.matchAll(/className="lift-light"/g)];
     assert.equal(
