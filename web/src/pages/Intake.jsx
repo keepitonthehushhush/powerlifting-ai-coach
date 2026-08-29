@@ -6,6 +6,7 @@ import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ErrorSummary } from '../components/ErrorSummary.jsx';
 import { EMPTY, FIELD_LABELS, MEET_GOALS, toPayload } from '../lib/profileForm.js';
+import { Loading } from '../components/Loading.jsx';
 
 /**
  * The experience answers the form offers, in order of training age.
@@ -229,7 +230,7 @@ export function Intake() {
     ...(missing.some((m) => m.name === name) ? { 'aria-invalid': 'true' } : {}),
   });
 
-  if (loading) return <div className="centered muted">{t('common.loading')}</div>;
+  if (loading) return <div className="centered"><Loading /></div>;
 
   const reportedRestriction = form.health_restrictions.trim().length > 0;
 

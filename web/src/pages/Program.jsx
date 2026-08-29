@@ -4,6 +4,7 @@ import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
+import { Loading } from '../components/Loading.jsx';
 
 /**
  * The current training block, as a thing rather than as a message.
@@ -64,7 +65,7 @@ export function Program() {
         </header>
       </StickyHeader>
 
-      {state.status === 'loading' && <p className="muted">{t('common.loading')}</p>}
+      {state.status === 'loading' && <Loading size={72} />}
       {state.status === 'error' && <p className="error">{state.message}</p>}
 
       {state.status === 'ready' && !active && (

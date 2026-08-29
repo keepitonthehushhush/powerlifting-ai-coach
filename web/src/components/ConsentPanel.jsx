@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Link } from 'react-router-dom';
 import { policyPathFor } from '../lib/policyDocuments.js';
+import { Loading } from './Loading.jsx';
 
 /**
  * Granular consent, one decision at a time.
@@ -55,7 +56,7 @@ export function ConsentPanel({ onChange, showRequiredOnly = false }) {
   }
 
   if (error && !consents) return <p className="error">{error}</p>;
-  if (!consents) return <p className="muted">{t('common.loading')}</p>;
+  if (!consents) return <Loading size={72} />;
 
   const types = showRequiredOnly ? consents.required : Object.keys(consents.current_versions);
 

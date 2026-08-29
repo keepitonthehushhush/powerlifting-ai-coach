@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
+import { Loading } from '../components/Loading.jsx';
 
 /**
  * Where the link in the recovery email lands.
@@ -116,7 +117,7 @@ export function ResetPassword() {
         <h1 className="brand">{t('common.appName')}</h1>
         <h2 className="page-title">{t('auth.reset.setTitle')}</h2>
 
-        {recovery === 'checking' && <p className="muted">{t('common.loading')}</p>}
+        {recovery === 'checking' && <Loading size={72} />}
 
         {recovery === 'invalid' && (
           <>

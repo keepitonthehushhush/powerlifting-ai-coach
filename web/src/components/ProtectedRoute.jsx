@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useConsent } from '../context/ConsentContext.jsx';
-import { useI18n } from '../i18n/index.jsx';
+import { Loading } from './Loading.jsx';
 
 /**
  * Two gates, in order: is there a session, and has this person agreed to the
@@ -23,9 +23,8 @@ import { useI18n } from '../i18n/index.jsx';
 export function ProtectedRoute({ children, requireConsent = true }) {
   const { session, loading } = useAuth();
   const { status, gate } = useConsent();
-  const { t } = useI18n();
 
-  if (loading) return <div className="centered muted">{t('common.loading')}</div>;
+  if (loading) return <div className="centered"><Loading /></div>;
   if (!session) return <Navigate to="/login" replace />;
 
   if (requireConsent) {
@@ -43,7 +42,7 @@ export function ProtectedRoute({ children, requireConsent = true }) {
     // person already past the gate, and if it comes back withholding consent
     // the next render redirects them.
     if (status === 'idle' || status === 'loading') {
-      return <div className="centered muted">{t('common.loading')}</div>;
+      return <div className="centered"><Loading /></div>;
     }
     if (!gate.allowed && status !== 'refreshing') return <Navigate to="/consent" replace />;
   }

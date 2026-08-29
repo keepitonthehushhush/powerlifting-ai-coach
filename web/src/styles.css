@@ -1608,3 +1608,69 @@ form > button.primary {
    next rule anybody appended - a preview badge, in the event - a failure of a
    test about the landing page. Put new rules ABOVE this line only if they
    belong to that page. */
+
+/* --- loading ------------------------------------------------------------- */
+
+/* ── A STICK FIGURE CURLING THE BADGE ──────────────────────────────────────
+
+   Asked for in those words. What follows is the geometry, and there are three
+   things in it worth knowing before changing any number.
+
+   `transform-box: view-box` is the one that is not optional. Without it a CSS
+   transform-origin on an SVG child is resolved against that child's own
+   BOUNDING BOX, so `104px 112px` would mean "104 across from the left edge of
+   the forearm" - which is off the arm entirely, and the whole assembly swings
+   around a point in space instead of pivoting at the elbow. With it, the
+   coordinates mean what they say in the viewBox, and (104, 112) is the elbow
+   the upper arm ends at in Loading.jsx.
+
+   The timing is a curl and not a metronome: the lift is quicker than the
+   lower, and there is a beat at the top. `cubic-bezier` on the concentric and
+   a longer, flatter return is what separates "someone lifting something" from
+   "a windscreen wiper". A weight is heaviest at the top of a curl, so the
+   motion nearly stops there.
+
+   And -128deg rather than a round number: the forearm starts at 61 degrees
+   below the horizontal, so this finishes it at 67 above - the hand ending
+   just short of the shoulder, where a curl ends, rather than crashing through
+   the chest. */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.loading-figure {
+  overflow: visible;
+}
+
+.loading-arm {
+  transform-box: view-box;
+  transform-origin: 104px 112px;
+  animation: loading-curl 2.4s ease-in-out infinite;
+}
+
+@keyframes loading-curl {
+  0%   { transform: rotate(0deg); }
+  35%  { transform: rotate(-128deg); }
+  55%  { transform: rotate(-128deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Somebody who asked their operating system for less motion did not make an
+   exception for a loading screen, and a short repeating animation is among
+   the worst offenders for vestibular disorders. The figure holds the badge at
+   the top of the curl - a still pose rather than a blank space - and the word
+   underneath carries the whole meaning either way. */
+@media (prefers-reduced-motion: reduce) {
+  .loading-arm {
+    animation: none;
+    transform: rotate(-128deg);
+  }
+}
+
+.loading-word {
+  font-size: 0.9rem;
+}

@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
+import { Loading } from '../components/Loading.jsx';
 
 /**
  * The exercise library: cues, common faults, and a link to a demonstration.
@@ -61,7 +62,7 @@ export function Library() {
       </StickyHeader>
 
       {error && <p className="error">{error}</p>}
-      {!exercises && !error && <p className="muted">{t('common.loading')}</p>}
+      {!exercises && !error && <Loading size={72} />}
 
       {exercises?.length === 0 && <p className="muted">{t('library.empty')}</p>}
 

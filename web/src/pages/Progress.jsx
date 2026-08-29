@@ -6,6 +6,7 @@ import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { LiftChart } from '../components/LiftChart.jsx';
 import { topSetPerDay, trend } from '../lib/chartData.js';
+import { Loading } from '../components/Loading.jsx';
 
 /** The four lifts get charts. Accessory work is logged but not charted here. */
 const CHARTED = [
@@ -68,7 +69,7 @@ export function Progress() {
       </StickyHeader>
 
       {error && <p className="error">{error}</p>}
-      {!logs && !error && <p className="muted">{t('common.loading')}</p>}
+      {!logs && !error && <Loading size={72} />}
 
       {logs && series.length === 0 && (
         <div className="card">

@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { emptyExercise, prefillFrom, toSessionPayload, today } from '../lib/sessionDraft.js';
+import { Loading } from '../components/Loading.jsx';
 
 /**
  * Logging what was actually lifted.
@@ -86,7 +87,7 @@ export function LogSession() {
     }
   }
 
-  if (loading) return <div className="centered muted">{t('common.loading')}</div>;
+  if (loading) return <div className="centered"><Loading /></div>;
 
   return (
     <div className="page">

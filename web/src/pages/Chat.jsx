@@ -3,6 +3,7 @@ import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { api, errorText } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { Loading } from '../components/Loading.jsx';
 
 export function Chat() {
   const { t } = useI18n();
@@ -79,7 +80,7 @@ export function Chat() {
       </StickyHeader>
 
       <div className="transcript" role="log" aria-live="polite">
-        {loading && <p className="muted">{t('common.loading')}</p>}
+        {loading && <Loading size={72} />}
 
         {!loading && messages.length === 0 && (
           <div className="empty">
