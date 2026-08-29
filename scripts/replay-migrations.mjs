@@ -58,8 +58,12 @@ if (dryRun) {
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   console.error(
-    'DATABASE_URL is not set.\n' +
-      'Supabase gives it under Project settings -> Database -> Connection string (URI).\n' +
+    'DATABASE_URL is not set.\n\n' +
+      'Supabase gives it under Project settings -> Database -> Connection string.\n' +
+      'Take the SESSION POOLER URI, not the direct one: the direct host resolves to\n' +
+      'IPv6 only, and a machine without IPv6 fails at connect with ENETUNREACH before\n' +
+      'this script prints anything at all. scripts/run-sql-test.mjs has said so since\n' +
+      'it was written; this one did not, and the omission cost somebody the step.\n\n' +
       'Use the PREVIEW project, not production, and keep it out of the repository.'
   );
   process.exit(2);
@@ -84,7 +88,27 @@ try {
 }
 
 const client = new pg.default.Client({ connectionString });
-await client.connect();
+try {
+  await client.connect();
+} catch (error) {
+  /*
+   * The failure that produced no diagnosis. A direct Supabase connection host
+   * has an AAAA record and no A record, so on a network without IPv6 this
+   * throws ENETUNREACH before a single migration is attempted - and the
+   * database is left empty, which looks exactly like "the script did nothing".
+   * The session pooler is dual-stack and is the answer.
+   */
+  console.error(`Could not connect to ${hostOf(connectionString)}.\n`);
+  console.error(`  ${error.code ? `${error.code}: ` : ''}${error.message}\n`);
+  if (['ENETUNREACH', 'EHOSTUNREACH', 'ENOTFOUND', 'ETIMEDOUT'].includes(error.code)) {
+    console.error(
+      'That is the shape of the IPv6 problem: Supabase\'s DIRECT connection host is\n' +
+        'IPv6-only. Use the SESSION POOLER URI from the same dashboard page instead.\n' +
+        'It is dual-stack, and it is the one run-sql-test.mjs asks for.'
+    );
+  }
+  process.exit(1);
+}
 
 try {
   const { rows } = await client.query(
