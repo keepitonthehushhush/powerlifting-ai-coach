@@ -104,8 +104,18 @@ describe('the palette is readable, measured rather than asserted', () => {
     test(`${mode}: muted text is muted, not unreadable`, () => {
       // Secondary ink is still ink. It carries the explanations under every
       // field in the intake form.
+      //
+      // Both backgrounds, and the page one is not the easy case: in light mode
+      // --bg is slightly darker than --surface, so muted-on-bg is the tighter
+      // of the two and was the one going unchecked. The loading figure's word
+      // sits on exactly that - it is inside `.centered`, which is the page and
+      // not a card. Asserting only against surface was checking the softer
+      // background of the two.
       const muted = token('muted', mode) ?? token('muted', 'dark');
-      assert.ok(contrast(muted, surface()) >= AA_TEXT, `muted on surface is ${contrast(muted, surface()).toFixed(2)}:1`);
+      const onSurface = contrast(muted, surface());
+      const onBg = contrast(muted, bg());
+      assert.ok(onSurface >= AA_TEXT, `muted on surface is ${onSurface.toFixed(2)}:1, needs ${AA_TEXT}`);
+      assert.ok(onBg >= AA_TEXT, `muted on bg is ${onBg.toFixed(2)}:1, needs ${AA_TEXT}`);
     });
 
     test(`${mode}: link colour clears AA as body text`, () => {
