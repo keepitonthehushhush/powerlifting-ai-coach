@@ -898,6 +898,76 @@ first in production. And a diff catches drift; it does not catch two databases
 that are identically wrong.
 
 
+### ADR-19 · A content security policy, because every other defence assumes our code is the code running
+
+**Context.** Users asked whether their data is safe, and the honest answer had
+a hole in it. Checked against the live site rather than assumed: it served no
+security headers at all beyond the `Strict-Transport-Security` Vercel adds by
+itself. No CSP, no `nosniff`, no referrer policy, no framing rule.
+
+Everything protecting this data - row-level security, the consent trigger, the
+deny-by-default grants, the definer functions that accept no numbers - shares
+one assumption: that the code executing in the page is the code we shipped. A
+CSP is the only control that survives that assumption being false. It does not
+reduce the chance of an injection bug; it changes what an injection bug is
+able to do, which for a product holding injuries and medication answers is the
+difference that matters.
+
+**Decision.** A strict policy at the edge, in `vercel.json`.
+
+The part worth defending is `script-src 'self' https://challenges.cloudflare.com`
+with no `'unsafe-inline'` and no `'unsafe-eval'`. Most policies carry
+`'unsafe-inline'` and are decorative as a result: it permits precisely the
+thing the policy exists to stop. This one can afford to be strict because the
+built page has no inline script - verified by fetching the deployed HTML, which
+is one external module and one external stylesheet.
+
+`style-src` does keep `'unsafe-inline'`, and that concession is narrow and
+deliberate: ErrorBoundary styles its crash screen with inline style attributes,
+and the moment the page has already broken is the wrong moment to also break
+its last legible surface. Inline CSS is a far weaker vector than inline script.
+
+`connect-src` allows `https://*.supabase.co` rather than one project. Not
+laziness: the URL is a build-time variable and previews deliberately point at a
+different project than production (ADR-17), so a pinned origin would break the
+environment that exists to catch problems early. Which project a deployment may
+actually reach is enforced separately, and one-directionally, by
+`assertPreviewIsolation`.
+
+`Referrer-Policy: no-referrer` is a health-data decision rather than a habit.
+The app links out to third-party exercise demonstrations, and a referrer header
+tells those sites that the visitor came from a powerlifting app holding medical
+answers. That is an inference about a person, handed to somebody with no need
+for it, for no benefit to us.
+
+**And the policy is held to the code.** `vercel.json` is strict JSON and cannot
+carry a comment, so the reasoning lives in `server/test/securityHeaders.test.js`
+- which is better than a comment, because each directive is asserted rather than
+described. The load-bearing test reads every external origin out of `web/src`
+and requires each one to be either in the CSP or declared, with a reason, as
+something we only ever link to. A second test stops that declaration becoming a
+loophole by asserting a link-out host is never actually fetched or loaded as a
+script.
+
+A CSP written once is correct once. The failure mode is a later feature calling
+a new host, working in development where nothing is enforced, and being blocked
+in production - or being "fixed" by widening the policy without anybody
+deciding to. Reading the origins out of the source makes that a failing test at
+the moment the line is typed.
+
+**What this does not do.** It is not a substitute for the controls beneath it,
+and it does nothing about a compromised dependency that talks to an allowed
+origin. `npm audit --omit=dev --audit-level=high` already runs in CI; automated
+dependency updates are not configured, which remains open.
+
+**Also worth stating, because it is the question that was actually asked:**
+breached-password checking is a paid Supabase feature and this app already does
+it on the free plan, in `web/src/lib/pwnedPassword.js`, on both sign-up and
+password reset. It uses the k-anonymity range API, so only the first five
+characters of the password's SHA-1 ever leave the browser - the password itself
+is never sent anywhere, including to us.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
