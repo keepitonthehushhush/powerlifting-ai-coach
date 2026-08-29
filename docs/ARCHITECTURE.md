@@ -812,6 +812,92 @@ copy of production, so a bug that only appears against real rows still appears
 first in production.
 
 
+### ADR-18 · A second database is a way of asking whether the migrations are true
+
+**Context.** ADR-17 built the preview project to have somewhere safe to click.
+Filling it required running all 34 migration files, in order, into an empty
+database - something that had never been done. They had been applied one at a
+time, months apart, to a database that was never empty. Whether they could
+rebuild it was an open question nobody had asked.
+
+They could: 15 tables, RLS on all 15, 31 policies, the exercise library seeded.
+And then the second database turned out to be worth far more than the safe
+place to click.
+
+**Decision.** Treat the file-built database as the statement of what the schema
+should be, and diff the live one against it. Not once - after any change that
+touches `supabase/migrations/`.
+
+The diff is cheap: a hash per table of its columns, policies, grants,
+constraints and indexes, taken from the catalogue on both sides and compared.
+Fifteen rows against fifteen rows. Everything matched except one object, and
+that object was a broken legal obligation:
+
+**`delete_my_account` was in the wrong schema in production.** Migration 0007
+creates it in `public`. Production had it in `private`, with the same body and
+the same comment, put there by no migration in the directory. `supabase-js`
+resolves `.rpc('name')` against the client's schema, which is `public`, and
+PostgREST does not expose `private`. So every erasure request returned PGRST202
+and the athlete was told "Could not delete the account." That is GDPR Art. 17,
+promised in writing on a policy page, and it had never worked in production.
+
+Every test passed throughout, because the tests mock `rpc` - and a mock answers
+to any name. No amount of reading the repository could have found this, because
+**the repository was right**. Only the database was wrong, and only a second
+database made that visible.
+
+**Two more came out of the same exercise**, both of the house defect shape - a
+serious fault with no failure signal:
+
+*The retention sweep could not run.* `apply_retention()` set
+`cleared_to_train = null` on a column that has been `not null` since 0001.
+plpgsql does not plan a statement until it executes, so the function created
+cleanly, every check passed, and the nightly cron job reported success for as
+long as it had nothing to do. The first row to age past the health retention
+period would raise `23502` - and because all seven categories run in one
+function with no exception handling, the abort takes conversations, audit,
+usage, Stripe and error events with it. Reproduced against the preview database
+by seeding one profile with a ten-year-old injury note and running the sweep.
+Fixed in 0035; the same seed now returns all seven categories.
+
+*The consent gate had stopped covering most of the health fields.* Migration
+0033 replaced a trigger that compared `private.health_fingerprint()` with one
+that read two columns directly. Sleep, alcohol, nicotine, nutrition notes and
+gender became writable with no active consent, and the fingerprint sat in the
+database, correct and orphaned.
+
+**And the check that existed for it did not fire.** `check-db-invariants.mjs`
+asserts that every column documented as health data appears in the fingerprint.
+That stayed true. Nothing asserted that the trigger still *called* it. Right
+object, wrong question - the same shape as the RLS policy with no GRANT and the
+rate limiter that failed open, and the third time this project has shipped a
+check that was reading a real artefact and asking about the wrong property.
+
+Two tests had the same defect in a different form: they asserted things about
+`private.health_fingerprint` by reading migrations 0012 and 0024, the files that
+happened to define it when each test was written. A migration directory is
+append-only, so an assertion about an earlier file cannot be made to fail by a
+later one. Both went on passing while the live definition changed underneath
+them. `latestDefinition()` in the test helpers now reads the newest file that
+defines an object, which is the only one that describes it.
+
+**Consequences.** Three defects fixed, five new invariants that fail against the
+catalogue rather than against a file, and a standing instruction in the runbook
+to run the invariants against both projects after any schema change.
+
+The honest cost: the diff is run by hand, and by a person who has to hold two
+connection strings. That is not where it should end up. The version worth
+building goes through the Supabase management API with one token, which also
+removes the trap that made this take two attempts - the direct connection host
+is IPv6-only, and on a machine without IPv6 the replay fails at connect and
+leaves an empty database that looks exactly like a script that did nothing.
+
+**What this still does not solve.** The preview database is empty rather than a
+copy of production, so a bug that only appears against real rows still appears
+first in production. And a diff catches drift; it does not catch two databases
+that are identically wrong.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

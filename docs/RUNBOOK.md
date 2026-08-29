@@ -324,8 +324,14 @@ thing failing is a preview.
 2. Replay the schema into it:
 
    ```sh
-   DATABASE_URL='<the preview project's URI>' npm run db:replay
+   DATABASE_URL='<the preview project's SESSION POOLER URI>' npm run db:replay
    ```
+
+   **Take the session pooler URI, not the direct one.** Supabase's direct
+   connection host is IPv6-only. On a network without IPv6 the script fails at
+   connect with `ENETUNREACH` and leaves the database empty, which looks
+   exactly like "it did nothing" — and did, the first time this was attempted.
+   The script now names the pooler in both its error messages.
 
    It applies every file in `supabase/migrations/` in order, each in its own
    transaction, and refuses to run against the production project or against
@@ -336,14 +342,51 @@ thing failing is a preview.
 3. In the Vercel dashboard, add these scoped to **Preview** only:
    `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `VITE_SUPABASE_URL`,
    `VITE_SUPABASE_PUBLISHABLE_KEY`.
-4. In the new project's Auth settings, add the Vercel preview URL pattern to
-   the redirect allow-list, or sign-in bounces back to nothing.
+4. In the new project's Auth settings (Authentication → URL Configuration →
+   Redirect URLs), add the preview URL **patterns**. There is no preview URL to
+   copy until a branch has been pushed — Vercel mints one per deployment — so
+   this step is wildcards or nothing:
+
+   ```
+   https://powerlifting-ai-coach-git-*-keepitonthehushhush1.vercel.app/**
+   https://powerlifting-ai-coach-*-keepitonthehushhush1.vercel.app/**
+   ```
+
+   `*` matches within one host or path segment; `**` matches across them; the
+   separators are `.` and `/`. The first line covers branch URLs, the second
+   the per-commit ones. Without these, sign-in on a preview bounces to the Site
+   URL and appears to do nothing.
 5. Use Cloudflare's Turnstile **test keys** for the preview site key
    (`1x00000000000000000000AA` always passes). A real site key is bound to a
    hostname and every preview has a different one.
 6. Keep Stripe in test mode there, and point `STRIPE_WEBHOOK_SECRET` at a
    separate endpoint or leave billing unconfigured — `config.paywall` already
    refuses to gate anybody when billing is not configured.
+
+**What the first replay found.** Building the schema from the files and
+diffing it against production is the only thing that has ever asked whether the
+two agree. They did, everywhere except one object — and three defects fell out
+of the exercise, none of which had any failure signal:
+
+- `delete_my_account` was in the `private` schema in production and in `public`
+  in the files. `supabase.rpc()` resolves against `public` and PostgREST cannot
+  see `private`, so **account deletion was broken in production** while every
+  test passed — the tests mock `rpc`, and a mock answers to any name.
+- `apply_retention()` set `cleared_to_train = null` on a `not null` column.
+  plpgsql does not plan a statement until it runs, so the function created
+  cleanly and the nightly job reported success for as long as it had nothing to
+  do. The first row to age past the health retention period would have raised
+  `23502` and aborted every other category with it.
+- The consent trigger had stopped calling `private.health_fingerprint`, so
+  sleep, alcohol, nicotine, nutrition notes and gender were writable with no
+  active consent. The invariant that exists for exactly this checked the
+  fingerprint's contents and not whether anything called it.
+
+All three are fixed in migration `0035`, and each now has a catalogue invariant
+in `scripts/check-db-invariants.mjs` that fails against the database rather than
+against a file. Run the invariants against **both** projects after any schema
+change; a check that passes on one and fails on the other is drift, and drift
+is what this exercise is for.
 
 **A preview says so.** Every page carries a "Preview build — not
 coachdiaz.app" bar. Confusing a preview tab for the live site is the mistake a
