@@ -6,6 +6,7 @@ import { rankEntries, toKg, fromKg, BOARDS } from '../src/lib/leaderboard.js';
 import { canonicalLift } from '../src/lib/progression.js';
 
 const migration = readRaw(new URL('../../supabase/migrations/0026_leaderboard.sql', import.meta.url));
+const invariants = readRaw(new URL('../../scripts/check-db-invariants.mjs', import.meta.url));
 const route = readSource(new URL('../src/routes/leaderboard.js', import.meta.url));
 const progression = readRaw(new URL('../src/lib/progression.js', import.meta.url));
 
@@ -233,7 +234,46 @@ describe('the route stays inside ADR-1', () => {
 
   test('and it sends no identifier for anybody but the viewer', () => {
     assert.ok(!/user_id/.test(route), 'the route selects or returns user_id');
-    assert.match(route, /select\('display_name, best_squat, best_bench, best_deadlift, units, updated_at'\)/);
+
+    /**
+     * This used to pin the select string literally, including `updated_at`,
+     * and so refused the change that REMOVED it - the seventh assertion in
+     * this repository to pin call text and then block a correct edit.
+     *
+     * What it means is that the route asks for published columns and nothing
+     * else, so it is written that way. And since migration 0039 the database
+     * agrees: `authenticated` holds a column grant on exactly these five, so a
+     * route asking for a sixth no longer returns extra data - it 403s the
+     * whole request, which would take the leaderboard down rather than leak.
+     */
+    const asked = route.match(/\.from\('leaderboard_entries'\)\s*\.select\('([^']+)'\)/);
+    assert.ok(asked, 'could not find what the route selects from leaderboard_entries');
+
+    const PUBLISHED = ['display_name', 'best_squat', 'best_bench', 'best_deadlift', 'units'];
+    const extra = asked[1].split(',').map((c) => c.trim()).filter((c) => !PUBLISHED.includes(c));
+    assert.deepEqual(
+      extra,
+      [],
+      `the route selects ${extra.join(', ')}, which migration 0039 does not grant - ` +
+        'the request will fail entirely, and the leaderboard document says these are not published'
+    );
+  });
+
+  test('and the database grants exactly those five columns, not the table', () => {
+    // The privilege is the control, not the select list. A table-wide grant
+    // means the browser can ask PostgREST directly for user_id and updated_at
+    // whatever our route does - which it could, for three days.
+    const grants = readRaw(
+      new URL('../../supabase/migrations/0039_the_leaderboard_publishes_five_columns.sql', import.meta.url)
+    );
+    assert.match(grants, /revoke select on public\.leaderboard_entries from authenticated/);
+    assert.match(
+      grants,
+      /grant select \(display_name, best_squat, best_bench, best_deadlift, units\)/
+    );
+    // And the invariant that asks the live catalogue, since a later migration
+    // could re-grant the table and no migration file would look wrong.
+    assert.match(invariants, /AND CANNOT READ THE COLUMNS THE LEADERBOARD DOES NOT PUBLISH/);
   });
 });
 
