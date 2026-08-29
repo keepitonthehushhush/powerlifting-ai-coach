@@ -61,6 +61,22 @@ const CHECKS = [
                    'private.health_fingerprint(public.user_profile)'::regprocedure)) = 0`,
   },
   {
+    name: 'and every column the fingerprint reads is documented as health data',
+    why: 'The converse of the check above, and the half that was missing. That one finds columns documented as health data and left out of the fingerprint; this one finds columns in the fingerprint whose comment does not say so - which matters because the comment is what the first check searches on. Two columns were in that state until 0037: glp1_status, whose comment put HEALTH DATA in the middle of a sentence, and health_restrictions - the injury note, the column the whole consent mechanism was built around - whose comment opened with SENSITIVE: because it predates the convention. Both were gated in fact and invisible to the invariant that says so. Covered by luck and reported as covered by a check that was not reading them.',
+    sql: `select count(*) = 0 as ok
+            from information_schema.columns c
+           where c.table_schema = 'public' and c.table_name = 'user_profile'
+             -- Anchored on the \`p.<column>\` the fingerprint actually writes, not
+             -- on a bare substring. The loose version reported \`units\` as an
+             -- offender because \`alcohol_units_per_week\` contains it - the same
+             -- false positive the retention check above already documents, and
+             -- a check that cries wolf is a check somebody comments out.
+             and pg_get_functiondef('private.health_fingerprint(public.user_profile)'::regprocedure)
+                 ~ ('\\yp\\.' || c.column_name || '\\y')
+             and coalesce(col_description('public.user_profile'::regclass, c.ordinal_position), '')
+                 not like 'Health data.%'`,
+  },
+  {
     name: 'pronouns are NOT gated, deliberately',
     why: 'Being addressed correctly must not be something a person trades privacy for. See migration 0024.',
     sql: `select position('pronouns' in pg_get_functiondef(
