@@ -183,3 +183,72 @@ describe('the additions did not loosen anything that was tight', () => {
     }
   });
 });
+
+/**
+ * ── MUSIC, AND WHY IT IS A COACHING ANSWER RATHER THAN A FEATURE ───────────
+ *
+ * "Should we also add music suggestions that can help motivate the enduser?
+ * Also mention if its explicit or not?"
+ *
+ * The research pointed somewhere other than a recommendation engine. A scoping
+ * review of 32 studies found the benefit belongs to music the athlete CHOSE -
+ * the great majority of resistance-exercise studies improved on at least one
+ * outcome with self-selected music - and that the effects land on repetition
+ * volume, power output and perceived effort. Maximal strength, which is the
+ * entire point of powerlifting, is the outcome that barely moves.
+ *
+ * So a curated playlist would have been the weak version of the intervention,
+ * with a licensing surface attached and a track database to maintain. The
+ * strong version is one section of prompt telling the coach to send them to
+ * their own music and to be honest about where it does and does not help.
+ */
+describe('music is answered honestly rather than sold', () => {
+  const SECTION = COACH_ROLE.slice(
+    COACH_ROLE.indexOf('# MUSIC'),
+    COACH_ROLE.indexOf('# JUMPS, THROWS AND SPRINTS')
+  );
+
+  test('the section is there to read', () => {
+    // The floor. A slice that finds nothing passes everything below it.
+    assert.ok(SECTION.length > 600, 'the music section is missing or truncated');
+  });
+
+  test('THEIR OWN MUSIC, NOT A PLAYLIST WE PICKED', () => {
+    assert.match(SECTION, phrase('Music that the athlete CHOSE beats anything chosen for them'));
+    assert.match(SECTION, phrase('ask what they already like'));
+  });
+
+  test('AND IT IS NOT SOLD AS A STRENGTH AID', () => {
+    // The claim the evidence does not support, named explicitly so it cannot
+    // be reworded into the prompt later.
+    assert.match(SECTION, phrase('Maximal strength is the outcome'));
+    assert.match(SECTION, phrase('Do not promise somebody that a track will add weight'));
+  });
+
+  test('lifting in silence is not treated as a gap', () => {
+    assert.match(SECTION, phrase('Never prescribe music'));
+  });
+
+  test('EXPLICIT CONTENT IS FLAGGED, WHICH IS WHAT WAS ASKED FOR', () => {
+    assert.match(SECTION, phrase('SAY IF IT IS EXPLICIT'));
+  });
+
+  test('and nothing copyrighted is reproduced or linked', () => {
+    // The standing rule, which reaches lyrics as squarely as it reaches video.
+    assert.match(SECTION, phrase('never reproduce lyrics'));
+    assert.match(SECTION, phrase('Never link to anywhere a track can be downloaded'));
+  });
+
+  test('THE ONLY RULE CLAIM IT MAKES IS ONE THAT WAS CHECKED', () => {
+    /*
+     * The first draft of this section was going to say that federations do not
+     * allow headphones on the platform. The 2026 IPF technical rulebook does
+     * not mention headphones anywhere, so the prompt says that instead and
+     * sends the athlete to the meet director. An invented rule in a coaching
+     * product is worse than no rule, because it will be repeated.
+     */
+    assert.match(SECTION, phrase('does not mention headphones at all'));
+    assert.match(SECTION, phrase('ask the meet director'));
+    assert.doesNotMatch(SECTION, /federations (do not|don't) allow/i);
+  });
+});
