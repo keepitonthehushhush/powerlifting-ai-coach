@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { PolicyFooter } from '../components/PolicyFooter.jsx';
+import { InfoHeader } from '../components/InfoHeader.jsx';
 
 /**
  * A page an athlete can hand to their doctor or physiotherapist.
@@ -36,13 +38,10 @@ import { Link } from 'react-router-dom';
 export function ForYourClinician() {
   return (
     <div className="page prose-page">
-      <header className="page-header">
-        <h1>About Coach Diaz — information for your clinician</h1>
-        <p className="muted">
-          Written to be printed or shown to a doctor, physical therapist, or other healthcare
-          professional. Nothing on this page requires an account to read.
-        </p>
-      </header>
+      <InfoHeader
+        title="About Coach Diaz — information for your clinician"
+        detail="Written to be printed or shown to a doctor, physical therapist, or other healthcare professional. Nothing on this page requires an account to read."
+      />
 
       <div className="card prose">
         <h2 className="h3">What this is, in one sentence</h2>
@@ -174,9 +173,7 @@ export function ForYourClinician() {
         </p>
       </div>
 
-      <p className="muted small">
-        <Link to="/login">Back to Coach Diaz</Link>
-      </p>
+      <PolicyFooter fallback="/" offerConsentSettings={false} />
     </div>
   );
 }

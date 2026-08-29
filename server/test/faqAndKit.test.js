@@ -268,7 +268,27 @@ describe('the FAQ', () => {
     // visitor to lose - and this page is the one most likely to be reached
     // from a search rather than from the front door.
     assert.match(faqCode, /to="\/login\?mode=signup"/);
-    assert.match(faqCode, /to="\/"/, 'there is no way back to the landing page');
+    /*
+     * The way back to the landing page moved into InfoHeader, which is what
+     * gives this page the application's navigation when there IS a session and
+     * the wordmark link when there is not. Asserting `to="/"` here would now
+     * be asserting the absence of that fix.
+     */
+    assert.match(faqCode, /<InfoHeader/, 'the FAQ no longer shares the informational header');
+  });
+
+  test('AND SOMEBODY ALREADY SIGNED IN IS NOT ASKED TO SIGN UP', () => {
+    /*
+     * "FAQ loads into another page that acts or thinks you log out."
+     *
+     * Two things caused that and this is the second. The page rendered no
+     * navigation (fixed by InfoHeader) and then ended by offering "Create your
+     * account" and "Already have an account? Sign in" - the correct ending for
+     * a stranger, and read by somebody holding a session as proof they had
+     * been logged out.
+     */
+    assert.match(faqCode, /session \?/, 'the ending is not conditional on a session');
+    assert.match(faqCode, /to="\/coach"/, 'a signed-in reader is offered no way back');
   });
 
   test('it states that no equipment recommendation earns us anything', () => {

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { PolicyFooter } from '../components/PolicyFooter.jsx';
+import { InfoHeader } from '../components/InfoHeader.jsx';
 import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js';
 
 /**
@@ -40,10 +42,7 @@ import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js
 export function Terms() {
   return (
     <div className="page">
-      <header className="page-header">
-        <h1>Terms of Service</h1>
-        <p className="muted small">Version tos-2026-08-27b</p>
-      </header>
+      <InfoHeader title="Terms of Service" version="Version tos-2026-08-27b" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -211,11 +210,7 @@ export function Terms() {
         </p>
       </div>
 
-      <div className="row gap">
-        <Link className="link" to="/consent">
-          Back
-        </Link>
-      </div>
+      <PolicyFooter fallback="/faq" />
     </div>
   );
 }

@@ -13,6 +13,11 @@
 export const es = {
   common: {
     backToTop: 'Volver arriba',
+    // Dos formas de volver: al lugar de origen, o a la portada cuando no hay
+    // origen dentro de la aplicación. Ver components/BackLink.jsx.
+    back: 'Volver',
+    backHome: 'Volver a Coach Diaz',
+    editPrivacyChoices: 'Editar tus opciones de privacidad',
     appName: 'Coach Diaz',
     forYourClinician: 'Información para tu médico o fisioterapeuta',
     faq: 'Preguntas frecuentes',

@@ -9,6 +9,22 @@
 export const en = {
   common: {
     backToTop: 'Back to top',
+    /*
+     * Two ways back, because there are two situations.
+     *
+     * `back` returns the reader to wherever they came from. `backHome` is what
+     * they get instead when there is nowhere to return to - a shared link, a
+     * search result, a new tab - where a back button would throw them off the
+     * site rather than into the product. See components/BackLink.jsx.
+     */
+    back: 'Back',
+    backHome: 'Back to Coach Diaz',
+    /*
+     * Offered ALONGSIDE the way back, never instead of it. The health data
+     * policy used to end with this and nothing else, so a reader who arrived
+     * from the FAQ was sent to a settings screen they had never seen.
+     */
+    editPrivacyChoices: 'Edit your privacy choices',
     appName: 'Coach Diaz',
     forYourClinician: 'Information for your doctor or physical therapist',
     faq: 'Questions people ask',

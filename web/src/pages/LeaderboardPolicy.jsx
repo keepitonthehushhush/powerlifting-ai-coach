@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { PolicyFooter } from '../components/PolicyFooter.jsx';
+import { InfoHeader } from '../components/InfoHeader.jsx';
 
 /**
  * What joining the leaderboard actually publishes.
@@ -18,10 +20,7 @@ import { Link } from 'react-router-dom';
 export function LeaderboardPolicy() {
   return (
     <div className="page">
-      <header className="page-header">
-        <h1>Leaderboard</h1>
-        <p className="muted small">Version lbp-2026-08-28a</p>
-      </header>
+      <InfoHeader title="Leaderboard" version="Version lbp-2026-08-28a" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -100,11 +99,7 @@ export function LeaderboardPolicy() {
           to refuse is not freely given, so refusing this costs nothing.
         </p>
 
-        <p className="muted small">
-          <Link className="link" to="/faq">
-            Back to the FAQ
-          </Link>
-        </p>
+        <PolicyFooter fallback="/faq" />
       </div>
     </div>
   );

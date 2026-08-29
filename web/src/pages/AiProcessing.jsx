@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { PolicyFooter } from '../components/PolicyFooter.jsx';
+import { InfoHeader } from '../components/InfoHeader.jsx';
 
 /**
  * AI Processing disclosure.
@@ -31,10 +32,7 @@ import { Link } from 'react-router-dom';
 export function AiProcessing() {
   return (
     <div className="page">
-      <header className="page-header">
-        <h1>How Coach Diaz uses AI</h1>
-        <p className="muted small">Version aip-2026-08-28a</p>
-      </header>
+      <InfoHeader title="How Coach Diaz uses AI" version="Version aip-2026-08-28a" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -161,11 +159,7 @@ export function AiProcessing() {
         </p>
       </div>
 
-      <div className="row gap">
-        <Link className="link" to="/consent">
-          Back
-        </Link>
-      </div>
+      <PolicyFooter fallback="/faq" />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { PolicyFooter } from '../components/PolicyFooter.jsx';
+import { InfoHeader } from '../components/InfoHeader.jsx';
 
 /**
  * Consumer Health Data Privacy Policy.
@@ -20,10 +21,7 @@ import { Link } from 'react-router-dom';
 export function HealthDataPolicy() {
   return (
     <div className="page">
-      <header className="page-header">
-        <h1>Consumer Health Data Privacy Policy</h1>
-        <p className="muted small">Version chd-2026-08-28b</p>
-      </header>
+      <InfoHeader title="Consumer Health Data Privacy Policy" version="Version chd-2026-08-28b" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -212,9 +210,7 @@ export function HealthDataPolicy() {
         </p>
       </div>
 
-      <p>
-        <Link className="link" to="/consent">Back to your consent settings</Link>
-      </p>
+      <PolicyFooter fallback="/faq" />
     </div>
   );
 }

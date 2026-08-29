@@ -262,3 +262,149 @@ describe('the destinations row moves rather than teleporting', () => {
     assert.match(reduced, /\.nav-row,[\s\S]{0,200}transition: none/);
   });
 });
+
+/**
+ * ── THE SAME DEFECT, ONE RING FURTHER OUT ─────────────────────────────────
+ *
+ * The suite above records that Log session, Profile and Your data "felt like
+ * leaving the application: the route change was client-side all along, but the
+ * header went with it, so the destination looked like a different site."
+ *
+ * Those three were fixed. The PUBLIC pages were not - and `/faq` is one of the
+ * destinations in SiteNav, so the navigation itself was sending people to a
+ * page with no navigation on it. Checked against the live site rather than
+ * inferred: coachdiaz.app/faq reported zero nav elements, and the page ends by
+ * offering "Create your account".
+ *
+ * Reported as: "FAQ loads into another page that acts or thinks you log out."
+ */
+describe('the public pages are part of the application when you are in it', () => {
+  const INFORMATIONAL = [
+    ['Faq', code('../../web/src/pages/Faq.jsx')],
+    ['ForYourClinician', code('../../web/src/pages/ForYourClinician.jsx')],
+    ['Terms', code('../../web/src/pages/Terms.jsx')],
+    ['HealthDataPolicy', code('../../web/src/pages/HealthDataPolicy.jsx')],
+    ['AiProcessing', code('../../web/src/pages/AiProcessing.jsx')],
+    ['LeaderboardPolicy', code('../../web/src/pages/LeaderboardPolicy.jsx')],
+  ];
+  const infoHeader = code('../../web/src/components/InfoHeader.jsx');
+
+  test('EVERY ONE OF THEM USES THE SHARED INFORMATIONAL HEADER', () => {
+    for (const [name, page] of INFORMATIONAL) {
+      assert.match(page, /<InfoHeader/, `${name} renders its own header and loses the navigation`);
+    }
+  });
+
+  test('and none of them still hand-rolls a page header', () => {
+    // The floor under the assertion above: a page could import InfoHeader and
+    // keep its old header beside it.
+    for (const [name, page] of INFORMATIONAL) {
+      assert.doesNotMatch(page, /<header className="page-header"/, `${name} kept its own header`);
+    }
+  });
+
+  test('THAT HEADER SHOWS THE REAL NAVIGATION WHEN THERE IS A SESSION', () => {
+    assert.match(infoHeader, /const \{ session \} = useAuth\(\)/);
+    assert.match(infoHeader, /if \(session\)/);
+    assert.match(infoHeader, /<SiteNav \/>/);
+    assert.match(infoHeader, /<StickyHeader>/);
+  });
+
+  test('and does NOT when there is not, because these pages are public', () => {
+    /*
+     * The half that keeps the original decision intact: "the person with the
+     * most questions is the one who has not signed up yet." A signed-out
+     * visitor must not be shown a bar of destinations that all bounce to a
+     * password field, nor a sign-out button.
+     */
+    assert.match(infoHeader, /<p className="policy-link">/);
+    assert.match(infoHeader, /to="\/"/);
+  });
+
+  test('THE FAQ IS A NAVIGATION DESTINATION, WHICH IS WHY THIS MATTERS', () => {
+    // The pairing that made it a bug rather than an inconsistency. If /faq is
+    // ever removed from the nav this test should be reconsidered, not deleted.
+    assert.match(nav, /to: '\/faq'/);
+  });
+
+  test('and it does not ask somebody already signed in to create an account', () => {
+    const faq = code('../../web/src/pages/Faq.jsx');
+    assert.match(faq, /const \{ session \} = useAuth\(\)/);
+    assert.match(faq, /session \?/, 'the sign-up ending is shown to everybody');
+  });
+});
+
+/**
+ * ── "BACK" HAS TO MEAN BACK ───────────────────────────────────────────────
+ *
+ * "When you click on a link on FAQ and then back, it doesn't take you back
+ * from where you came from. It takes you to your privacy choices."
+ *
+ * Five pages, five hard-coded exits, no two alike - and two of them were
+ * labelled "Back" while going to /consent, which is not a mislabel but a
+ * statement about the button that was not true. A sixth pointed a signed-in
+ * reader at the sign-in screen.
+ */
+describe('a way back that goes where the reader came from', () => {
+  const backLink = code('../../web/src/components/BackLink.jsx');
+  const policyFooter = code('../../web/src/components/PolicyFooter.jsx');
+  const POLICY_PAGES = [
+    ['Terms', code('../../web/src/pages/Terms.jsx')],
+    ['HealthDataPolicy', code('../../web/src/pages/HealthDataPolicy.jsx')],
+    ['AiProcessing', code('../../web/src/pages/AiProcessing.jsx')],
+    ['LeaderboardPolicy', code('../../web/src/pages/LeaderboardPolicy.jsx')],
+    ['ForYourClinician', code('../../web/src/pages/ForYourClinician.jsx')],
+  ];
+
+  test('NO PAGE HARD-CODES AN EXIT ANY MORE', () => {
+    for (const [name, page] of POLICY_PAGES) {
+      assert.match(page, /<PolicyFooter/, `${name} does not use the shared ending`);
+      assert.doesNotMatch(
+        page,
+        /to="\/consent"/,
+        `${name} still sends the reader to the consent screen by hand`
+      );
+    }
+  });
+
+  test('and no control labelled "Back" points at a fixed destination', () => {
+    // The specific lie: a button that says Back and goes somewhere the reader
+    // has never been.
+    for (const [name, page] of POLICY_PAGES) {
+      assert.doesNotMatch(
+        page,
+        /<Link[^>]*to="\/[^"]*"[^>]*>\s*Back\b/,
+        `${name} has a "Back" link with a hard-coded target`
+      );
+    }
+  });
+
+  test('BACK USES THE READER\'S OWN HISTORY', () => {
+    assert.match(backLink, /navigate\(-1\)/);
+  });
+
+  test('with a fallback for anybody who arrived cold', () => {
+    /*
+     * navigate(-1) on the first entry of a session leaves the site - into a
+     * search results page, or nothing. React Router stamps that first entry
+     * with the key `default`, which is the only reliable way to tell "came
+     * from inside the app" from "opened this link directly".
+     */
+    assert.match(backLink, /location\.key !== 'default'/);
+    assert.match(backLink, /fallback/);
+  });
+
+  test('THE CONSENT SETTINGS ARE OFFERED AS WELL, NOT INSTEAD', () => {
+    // What was actually asked for: "can we give the users the option to go
+    // back and go to privacy choices to edit their choices?"
+    assert.match(policyFooter, /<BackLink/);
+    assert.match(policyFooter, /to="\/consent"/);
+    assert.match(policyFooter, /editPrivacyChoices/);
+  });
+
+  test('and only to somebody who can actually reach that screen', () => {
+    // /consent is behind ProtectedRoute. Offering it signed-out is the same
+    // trap the clinician page fell into by linking to /login.
+    assert.match(policyFooter, /session && offerConsentSettings/);
+  });
+});

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { InfoHeader } from '../components/InfoHeader.jsx';
 import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js';
 
 /**
@@ -29,23 +31,22 @@ import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js
  * on the list.
  */
 export function Faq() {
+  // Which ending this page gets. A stranger is asked to sign up; somebody who
+  // is already signed in is offered the way back into the application, because
+  // being invited to "create your account" while holding one is the clearest
+  // possible signal that you have been logged out - which is precisely what it
+  // was read as.
+  const { session } = useAuth();
   return (
     <div className="page">
-      <header className="page-header">
-        {/* A way back to the front door. This page is the one most likely to
-            be found by a search or a shared link, and until the landing page
-            existed there was nowhere to go back TO. */}
-        <p className="policy-link">
-          <Link className="link" to="/">
-            Coach Diaz
-          </Link>
-        </p>
-        <h1>Questions people ask</h1>
-        <p className="muted header-detail">
-          Short answers, no jargon. If something here is unclear, that is our fault and worth
-          telling us about.
-        </p>
-      </header>
+      {/* Signed in, this is a tab and keeps the application's navigation.
+          Signed out, it is a public document with a way back to the front
+          door. It used to be only the second, which is why a signed-in reader
+          tapping the FAQ tab believed they had been logged out. */}
+      <InfoHeader
+        title="Questions people ask"
+        detail="Short answers, no jargon. If something here is unclear, that is our fault and worth telling us about."
+      />
 
       <div className="card prose faq">
         <h2 className="h3">What is this, exactly?</h2>
@@ -311,22 +312,39 @@ export function Faq() {
 
           It offers the same two doors as the landing page and in the same
           order, because a person arriving here from a search has not seen
-          that page and should not have to. */}
-      <div className="card stack">
-        <h2 className="h3">Ready to try it?</h2>
-        <p className="muted">
-          It is free while it is being built and tested, every health question is optional, and you
-          can delete the account and everything in it from inside the app.
-        </p>
-        <div className="row-actions">
-          <Link className="cta" to="/login?mode=signup">
-            Create your account
-          </Link>
-          <Link className="link strong" to="/login">
-            Already have an account? Sign in
-          </Link>
+          that page and should not have to.
+
+          And it is shown ONLY to somebody who is not signed in. */}
+      {session ? (
+        <div className="card stack">
+          <h2 className="h3">Anything else?</h2>
+          <p className="muted">
+            If something here is unclear or looks wrong, tell us — that is worth more to us than
+            you might think. Otherwise, your coach is where you left it.
+          </p>
+          <div className="row-actions">
+            <Link className="cta" to="/coach">
+              Back to your coach
+            </Link>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="card stack">
+          <h2 className="h3">Ready to try it?</h2>
+          <p className="muted">
+            It is free while it is being built and tested, every health question is optional, and
+            you can delete the account and everything in it from inside the app.
+          </p>
+          <div className="row-actions">
+            <Link className="cta" to="/login?mode=signup">
+              Create your account
+            </Link>
+            <Link className="link strong" to="/login">
+              Already have an account? Sign in
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="card stack">
         <p className="fineprint">
