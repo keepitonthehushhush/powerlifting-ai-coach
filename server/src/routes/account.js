@@ -69,7 +69,7 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription] = await Promise.all([
+    const [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       req.supabase.from('workout_programs').select('*').order('created_at'),
       req.supabase.from('workout_sessions').select('*').order('date'),
@@ -85,9 +85,27 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       // request. It is a mirror of what Stripe holds; Stripe's own copy is
       // requestable from Stripe, and `not_included` says so.
       req.supabase.from('subscriptions').select('*').maybeSingle(),
+      /**
+       * The audit trail. It was browsable at GET /api/account/activity and
+       * absent from here, which is the wrong way round: the endpoint shows the
+       * most recent hundred rows in a page, and an access request is for
+       * everything, in a file the subject keeps.
+       *
+       * It matters more since migration 0041, which records every assertion
+       * that a professional cleared the athlete to train. That is the trail
+       * answering "I never told it a doctor had cleared me", and a record used
+       * to answer somebody must be a record that somebody can read.
+       */
+      req.supabase.from('audit_events').select('*').order('seq'),
+      /**
+       * The published leaderboard row, through a definer function rather than a
+       * select, because 0039 revoked user_id from `authenticated` so this query
+       * can no longer filter on it. See migration 0042.
+       */
+      req.supabase.rpc('my_leaderboard_entry'),
     ]);
 
-    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription]) {
+    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board]) {
       if (result.error) throw codedError('storage_unavailable', 'Could not assemble your data export.');
     }
 
@@ -108,6 +126,9 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         usage_events: usage.data ?? [],
         error_events: errors.data ?? [],
         subscription: subscription.data ?? null,
+        audit_events: activity.data ?? [],
+        // Zero rows when they never joined; one row when they did.
+        leaderboard_entry: (board.data ?? [])[0] ?? null,
       },
       not_included: [
         'Authentication records held by Supabase Auth (email, password hash, sign-in timestamps) — request these from the auth provider.',
@@ -118,7 +139,8 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
 
     const totalRows =
       (programs.data?.length ?? 0) + (sessions.data?.length ?? 0) + (logs.data?.length ?? 0) +
-      (consents.data?.length ?? 0) + (usage.data?.length ?? 0) + (errors.data?.length ?? 0);
+      (consents.data?.length ?? 0) + (usage.data?.length ?? 0) + (errors.data?.length ?? 0) +
+      (activity.data?.length ?? 0);
 
     // Logged as a count, never as content.
     logger.info('account.exported', {

@@ -234,6 +234,23 @@ const CHECKS = [
              and has_function_privilege('authenticated', p.oid, 'EXECUTE')`,
   },
   {
+    name: 'THE EXPORT CAN STILL REACH THE CALLER\'S OWN LEADERBOARD ROW',
+    why: '0039 revoked user_id from authenticated, so the export cannot filter leaderboard_entries and goes through my_leaderboard_entry() instead (0042). Asserted in public, definer, and executable - the same three properties, for the same reason, as delete_my_account(): that one spent a release in the private schema where PostgREST cannot see it, so the erasure endpoint failed in production while every mocked test passed. A function the API cannot call is a subject access request missing a table.',
+    sql: `select count(*) = 1 as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where p.proname = 'my_leaderboard_entry'
+             and n.nspname = 'public'
+             and p.prosecdef
+             and p.proargtypes = ''::oidvector
+             and has_function_privilege('authenticated', p.oid, 'EXECUTE')`,
+  },
+  {
+    name: 'and it is scoped to auth.uid(), not to an argument',
+    why: 'A function taking a user id can be given the wrong one. This one takes none and writes the scope inside itself, which is why the assertion above also pins its argument list to empty.',
+    sql: `select position('auth.uid()' in pg_get_functiondef(
+            'public.my_leaderboard_entry()'::regprocedure)) > 0 as ok`,
+  },
+  {
     name: 'and there is exactly one of it',
     why: 'Two functions with one name and one comment in two schemas is how somebody fixes the wrong one.',
     sql: `select count(*) = 1 as ok

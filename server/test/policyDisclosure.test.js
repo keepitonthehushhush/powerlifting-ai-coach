@@ -280,18 +280,68 @@ describe('the export contains everything, which is what it says it contains', ()
     rate_limit_counters: 'holds a request count and a timestamp, and is listed in not_included',
   };
 
+  /**
+   * Tables the export reaches through a function instead of a select, with the
+   * call that proves it. Not an exemption - the table must still be in the
+   * document - only a different spelling of how it gets there.
+   *
+   * leaderboard_entries is here because 0039 revoked user_id from
+   * `authenticated`, so the export cannot filter on it and goes through
+   * my_leaderboard_entry() instead (0042).
+   */
+  const EXCLUDED_BY_RPC = {
+    leaderboard_entries: "rpc\\('my_leaderboard_entry'\\)",
+  };
+
+  /**
+   * The export document only, not the whole route file.
+   *
+   * ── WHY THAT DISTINCTION IS THE WHOLE TEST ────────────────────────────────
+   *
+   * This used to match `from('<table>')` anywhere in account.js, and account.js
+   * also holds GET /api/account/activity, which reads audit_events. So the
+   * assertion "the export includes audit_events" was satisfied by a completely
+   * different endpoint reading it for a completely different purpose, and
+   * audit_events was absent from the export for as long as both existed.
+   *
+   * A test that accepts any mention of a name in a file is asking whether the
+   * word appears, not whether the export contains the table.
+   */
+  const exportHandler = account.slice(
+    account.indexOf("accountRouter.get('/export'"),
+    account.indexOf('const DeleteRequest')
+  );
+
   test('every user-scoped table is either exported or explicitly excused', () => {
+    /**
+     * `if not exists` is optional in the DDL and was not optional in this
+     * regex, so three tables were invisible: audit_events, error_events and
+     * leaderboard_entries. Two of them were fine by luck. leaderboard_entries
+     * was not - somebody's published handle and lifts were absent from their
+     * own subject access request, and this test reported the export complete.
+     *
+     * Second time a checker in this repository has looked at the right artifact
+     * and asked a question narrower than the thing it was guarding; the health
+     * data column comments were the first, three days ago.
+     */
     const tables = new Set(
-      [...migrations.matchAll(/create table public\.([a-z_]+)\s*\(([\s\S]*?)\n\);/g)]
+      [...migrations.matchAll(/create table (?:if not exists )?public\.([a-z_]+)\s*\(([\s\S]*?)\n\);/g)]
         .filter(([, , body]) => /user_id/.test(body))
         .map(([, name]) => name)
     );
-    assert.ok(tables.size >= 7, `only found ${tables.size} user-scoped tables - the parser has drifted`);
+    assert.ok(tables.size >= 11, `only found ${tables.size} user-scoped tables - the parser has drifted`);
+
+    // The ones the old regex could not see, named individually. If the parser
+    // is ever loosened again, a generic count will not notice losing these.
+    for (const table of ['audit_events', 'error_events', 'leaderboard_entries']) {
+      assert.ok(tables.has(table), `the parser stopped seeing ${table}`);
+    }
+
     for (const table of tables) {
       if (table in EXCLUDED) continue;
       assert.match(
-        account,
-        new RegExp(`from\\('${table}'\\)`),
+        exportHandler,
+        new RegExp(`from\\('${table}'\\)|${EXCLUDED_BY_RPC[table] ?? '\\0'}`),
         `${table} holds user rows and the data export does not include it`
       );
     }
