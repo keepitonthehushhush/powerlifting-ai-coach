@@ -64,6 +64,21 @@ const BRITISH = [
   [/\blabelled/i, 'labelled', 'labeled'],
   [/\bmodelling/i, 'modelling', 'modeling'],
   [/\bjudgement/i, 'judgement', 'judgment'],
+  /*
+   * Found in docs/SECURITY.md on 2026-08-29, in a sentence about TOTP that had
+   * been there for weeks. The single-l forms are the British ones and none of
+   * the doubled American spellings collide with anything: there is no word
+   * where "enrolment" or "instalment" is correct here.
+   */
+  [/\benrolment/i, 'enrolment', 'enrollment'],
+  [/\binstalment/i, 'instalment', 'installment'],
+  [/\bfulfil\b/i, 'fulfil', 'fulfill'],
+  [/\bskilful/i, 'skilful', 'skillful'],
+  /*
+   * "artefact" is the British form and it appears naturally in engineering
+   * prose about build outputs, which is exactly where it slipped in twice.
+   */
+  [/\bartefact/i, 'artefact', 'artifact'],
   [/\bageing/i, 'ageing', 'aging'],
   [/\bsceptic/i, 'sceptic', 'skeptic'],
   [/\bcoeliac/i, 'coeliac', 'celiac'],

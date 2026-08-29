@@ -400,7 +400,7 @@ PASS - no server-side secrets found in the browser bundle.
 ```
 
 The "the Anthropic key never reaches the browser" claim is now checked against
-the artefact that actually ships, on a real build, rather than argued from
+the artifact that actually ships, on a real build, rather than argued from
 which variables carry a `VITE_` prefix.
 
 ---
@@ -946,7 +946,7 @@ recorded as having given it, and health data could still be written.
 
 For an audit ledger of a health-privacy consent that is close to the worst
 available outcome: the record says the user agreed when they did not. And it
-was not only a test artefact — any request recording two decisions together,
+was not only a test artifact — any request recording two decisions together,
 such as "withdraw health data, keep terms", hits the same tie.
 
 Migration `0010` adds a monotonic identity column and orders by that, and
@@ -1025,7 +1025,7 @@ in tests. Any route added later inherits it.
 The deployment was `READY`, the API answered, and the site rendered as a solid
 black rectangle. No error, no message, nothing in the UI.
 
-**Diagnosis, by comparing build artefacts:**
+**Diagnosis, by comparing build artifacts:**
 
 | Asset | Local build | Deployed build |
 |---|---|---|
@@ -1109,10 +1109,10 @@ inputs genuinely had not changed — the missing variable stayed missing.
 |---|---|
 | A rejected `env add` scrolls past in a long session, and nothing else reports the absence | `scripts/set-vercel-env.sh` — one reviewable, re-runnable definition of the whole environment, visibility included |
 | `env ls` prints `Hidden` for sensitive variables, so a correct secret and a build-invisible one look identical | `docs/DEPLOYMENT.md` §1 — the table says which variable needs which visibility, and why |
-| `npm run verify:bundle` passed throughout, because the local build was genuinely fine | `scripts/verify-deployment.mjs` — checks the artefact the public downloads |
+| `npm run verify:bundle` passed throughout, because the local build was genuinely fine | `scripts/verify-deployment.mjs` — checks the artifact the public downloads |
 
 The last one is the general lesson, and it is the same one that produced the
-RLS test suite and the asset-hash comparison in D.2: **a local artefact is not
+RLS test suite and the asset-hash comparison in D.2: **a local artifact is not
 evidence about a remote one.** Every prior verification step in this project
 asked a question about this machine.
 
@@ -1139,7 +1139,7 @@ That is a defensible platform decision — secrets are the common case, and a
 default that leaks is worse than one that breaks. But it means the correct
 command for a public build-time variable contains a flag that reads like it
 does nothing, and the failure it prevents is invisible: a build that ran
-without its environment produces a valid artefact, a green deployment, and a
+without its environment produces a valid artifact, a green deployment, and a
 blank page.
 
 Two changes, neither of them the obvious one:
@@ -1318,7 +1318,7 @@ Twelve rather than eight, because length buys more than variety does. The
 classes are there mainly so that a twelve-character minimum does not become
 twelve lowercase letters.
 
-**Still open:** MFA (Supabase supports TOTP; it needs enrolment UI, a challenge
+**Still open:** MFA (Supabase supports TOTP; it needs enrollment UI, a challenge
 at sign-in, and recovery) and leaked-password protection, which requires a paid
 plan. Both recorded in `docs/SECURITY.md` §2b.
 
@@ -2093,7 +2093,7 @@ a screenshot. Same argument as `progression.js`, applied to pixels.
 **Small multiples, not four lines on one axis.** A deadlift at 405 and a press
 at 95 do not share a y-scale usefully — together, the press is a flat line
 along the bottom. The alternative, a second y-axis, is the single most
-misleading thing a chart can do: where the two lines cross is an artefact of
+misleading thing a chart can do: where the two lines cross is an artifact of
 where you put the axes, not a fact about the training.
 
 **The colors were computed, not chosen.** The obvious pairing — the app's

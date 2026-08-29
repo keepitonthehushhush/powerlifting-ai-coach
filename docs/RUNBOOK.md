@@ -283,7 +283,7 @@ after six months, and rows whose account was deleted already carry no user id.
 ### Before a deploy that changes an API shape
 
 1. `npm run lint`, `npm test`, `npm run check:docs`, `npm run check:lockfile`.
-2. `npm run build`, then grep the artefact for anything that has to be in it -
+2. `npm run build`, then grep the artifact for anything that has to be in it -
    this is how a missing `VITE_` variable gets caught, and it has been caught
    this way once already.
 3. `npm run check:mounts` - loads the build you just made in headless Chrome

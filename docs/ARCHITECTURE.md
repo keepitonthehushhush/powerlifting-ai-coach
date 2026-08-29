@@ -624,7 +624,7 @@ eleven checks. `vite build` succeeded - the code is valid JavaScript, `form` is
 simply not bound at the moment that object is evaluated. `node --check` passed.
 The secret scanner read the bundle as text and found no secret. The unit suite
 never imports a page component. `check:docs`, `check:lockfile`, `verify:deps`,
-`check:db` were all looking at other artefacts. CI was green and the deploy was
+`check:db` were all looking at other artifacts. CI was green and the deploy was
 green and the site was white.
 
 The common property is that every one of those checks *reads a file*. None of
@@ -871,7 +871,7 @@ asserts that every column documented as health data appears in the fingerprint.
 That stayed true. Nothing asserted that the trigger still *called* it. Right
 object, wrong question - the same shape as the RLS policy with no GRANT and the
 rate limiter that failed open, and the third time this project has shipped a
-check that was reading a real artefact and asking about the wrong property.
+check that was reading a real artifact and asking about the wrong property.
 
 Two tests had the same defect in a different form: they asserted things about
 `private.health_fingerprint` by reading migrations 0012 and 0024, the files that
