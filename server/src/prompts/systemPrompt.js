@@ -33,7 +33,7 @@
 import { asData, asDataDeep, FENCE_TAG } from './sanitize.js';
 import { prescribeAll } from '../lib/progression.js';
 import { warmupPlan } from '../lib/warmup.js';
-import { ageInYears } from '../lib/ageGate.js';
+import { ageInYears, MINIMUM_AGE } from '../lib/ageGate.js';
 import { barbellAccess, gymNotes } from '../lib/gyms.js';
 import { restBetweenSets } from '../lib/rest.js';
 import { beltWorthMentioning } from '../lib/equipment.js';
@@ -1273,6 +1273,128 @@ export function describeFuelling(profile) {
 }
 
 /**
+ * What changes when the athlete is thirteen.
+ *
+ * ── WHY THIS IS COMPUTED AND HANDED OVER, NOT LEFT TO THE AGE FIELD ───────
+ *
+ * The prompt already carries `age: 15` and a section telling the coach to let
+ * age inform the programming. That is the right instruction for a 45-year-old
+ * and nowhere near enough here, for the same reason the clearance gate is not
+ * left to "be careful about injuries": a model handed a number will weigh it
+ * however it likes, and the thing being weighed is whether a fifteen-year-old
+ * is told to attempt a maximal single alone in a garage. ADR-2 - computed, not
+ * prompted - exists for exactly this class of decision.
+ *
+ * ── KEYED ON THE AGE, NOT ON THE FEATURE FLAG ─────────────────────────────
+ *
+ * Deliberately. While MINORS_ENABLED is off the gate refuses every minor and
+ * this directive never appears, so keying it on the flag would be equivalent
+ * today - but the two failure modes are not equal. This directive appearing
+ * for somebody who should not have got this far is harmless. It failing to
+ * appear for a minor who did is the one outcome worth engineering against, so
+ * it keys on the only fact that actually matters.
+ *
+ * ── THE TENSION IT HAS TO RESOLVE ─────────────────────────────────────────
+ *
+ * Powerlifting is the sport of the one-repetition maximum. The NSCA's youth
+ * guidance is 1-3 sets of 6-15 reps. Those genuinely conflict, and the
+ * resolution is not to pretend otherwise or to hand a teenager a quieter
+ * version of the adult product.
+ *
+ * The reason for refusing maximal singles is also not the obvious one, and
+ * getting it wrong would leave the coach unable to answer a parent who has
+ * read the position statement. The NSCA does NOT say maximal testing harms
+ * youth; it says it can be done safely "provided that youth participate in an
+ * habituation period before testing... and qualified professionals closely
+ * supervise and administer each test." That condition is one this product
+ * cannot meet, by construction - it writes a program and the athlete goes and
+ * trains alone. So the honest position is that the condition is missing, not
+ * that the lift is dangerous, and the coach is told to say so in those terms.
+ *
+ * ── AND THE NEGATIVE SPACE ────────────────────────────────────────────────
+ *
+ * A prohibition alone is half a specification, and this file has been bitten
+ * by that before: told only that an athlete is a woman, a model reaches for
+ * lighter loads and unrequested talk about body composition. "This athlete is
+ * fifteen" invites the same drift in a different direction - a timid coach who
+ * hedges everything, moralizes, brings the age up every other message, or
+ * quietly declines to coach at all. The athlete came for barbell coaching. So
+ * what NOT to do with the fact is written down at the same length as what to
+ * do with it.
+ */
+export function describeYouthProgramming(profile, asOf = new Date()) {
+  const age = ageInYears(profile?.date_of_birth, asOf);
+
+  /*
+   * Anyone under 18 with a readable date, INCLUDING under-13s who cannot be
+   * accepted at all. The first draft excluded them, which quietly contradicted
+   * the paragraph above: if the argument for keying on age rather than on the
+   * feature flag is that the directive must not be missing for a minor who got
+   * through, then it must not be missing for the youngest one either. A
+   * twelve-year-old should never reach this function. If one ever does, the
+   * coach reads the youth rules rather than the adult ones.
+   */
+  if (age === null || age >= MINIMUM_AGE) return null;
+
+  return `- THIS ATHLETE IS A MINOR. They are ${age}. Coach them, and coach them differently -
+  not a softer version of the adult product, a different emphasis. "Do not treat youth as
+  miniature adults" is the actual guidance, and it cuts both ways: do not hand them an
+  adult peaking block, and do not hand them a watered-down one either.
+
+  WHAT YOU PROGRAM:
+    * Submaximal work with a technical focus. Strength work in the range of 1-3 sets of
+      6-15 repetitions; power work, where it is appropriate at all, 1-3 sets of 3-6.
+    * Progress load gradually, on the order of 5-10% when the current weight is genuinely
+      comfortable for the prescribed reps.
+    * Technique is the objective in a way it is not for an adult with ten years under the
+      bar. A 13-year-old who leaves this year moving well has had a good year, whatever
+      the numbers did.
+
+  WHAT YOU DO NOT PROGRAM:
+    * Maximal singles. Do not write them, do not suggest testing a one-rep max, and do not
+      set a target that only a maximal attempt could confirm.
+    * If they ask why - and a well-read athlete or parent may push back, correctly, that
+      supervised 1RM testing in youth is considered safe - GIVE THE REAL REASON. It is not
+      that maximal lifting damages teenagers. It is that the safety of it rests on close
+      supervision by a qualified professional and a habituation period, and this product
+      is unsupervised by definition: it writes a program and you are not there. The
+      condition is missing, so the lift is off the table HERE. That is an honest answer
+      and it is also the true one. Do not invent a physiological reason you cannot defend.
+    * If they compete, the meet is the meet - a coach at a meet, a judge, and their people
+      are all present, which is exactly the supervision that is absent in a garage on a
+      Tuesday. Training does not have to rehearse a maximal attempt weekly to prepare for
+      one.
+
+  IF THE GROWTH PLATE QUESTION COMES UP, and it will, from them or from a parent:
+    answer it plainly and without hedging. Properly designed and supervised resistance
+    training is relatively safe for young people, and injury to growth cartilage has not
+    been reported in any prospective study of youth resistance training. Do not soften
+    that into a non-answer. It is one of the most useful true things you can tell a
+    worried parent, and hedging it helps nobody.
+
+  SUPERVISION, SAID ONCE:
+    a responsible adult should know they are training and be around for it. Say that once,
+    early, in a sentence. Then coach. Repeating it every session is nagging, it will be
+    tuned out, and it makes you useless for the thing they actually came here for.
+
+  BODY COMPOSITION - STRICTER HERE THAN ANYWHERE ELSE:
+    never raise body weight, body composition, cutting, leanness, or weight classes with a
+    minor. Not as an aside, not as a training variable, not as a competition consideration.
+    If THEY raise it, keep it to what they need to train well - eating enough to recover
+    and to grow - and do not help them lose weight, plan a cut, or make a class. If they
+    press, tell them that is a conversation for a parent and a doctor who can see them,
+    and mean it. The adult rules about disordered eating are a floor; this is well above it.
+
+  WHAT NOT TO DO WITH THIS:
+    * Do not become timid. They came for barbell coaching and they should get it.
+    * Do not moralize, and do not lecture them about their age.
+    * Do not bring it up every message. Like the AGE section says, mention it when it
+      changes what you are prescribing and otherwise coach the athlete in front of you.
+    * Do not refuse to coach. Refusing is not the cautious option here; it is the option
+      where a teenager programs themselves off the internet instead.`;
+}
+
+/**
  * The computed sanity checks on the entered maxes, as a directive.
  *
  * Same pattern as the clearance gate and the prescriptions: the judgement is
@@ -1746,6 +1868,20 @@ function buildSystemParts({
   // telling them to see a doctor.
   const addressing = describeAddressing(profile);
   if (addressing) directives.push(addressing);
+
+  /*
+   * Before the phase and the prescriptions, for the same reason the phase
+   * directive sits before them: the coach has to know what KIND of training it
+   * is allowed to write before it is told what to load. A rep-range constraint
+   * arriving after the prescriptions is a correction rather than a brief.
+   *
+   * NEVER suppressed by the clearance gate, like the addressing directive.
+   * Being fifteen is not a programming variable that a gate can switch off -
+   * the body-composition rule and the supervision line apply to every sentence
+   * the coach writes, including the one telling them to see a doctor.
+   */
+  const youth = describeYouthProgramming(profile);
+  if (youth) directives.push(youth);
 
   // Before the prescriptions, so the coach knows what KIND of block it is
   // writing before it is told what to load. Suppressed under the clearance
