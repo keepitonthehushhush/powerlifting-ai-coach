@@ -33,8 +33,23 @@
  * actually attaches - and it makes the boundary explicit rather than implied.
  */
 
-/** Minimum age, until a parental-consent path exists. */
+/** Minimum age to be coached on nobody's authority but your own. */
 export const MINIMUM_AGE = 18;
+
+/**
+ * The hard floor. Below this there is no consent that helps.
+ *
+ * COPPA's amended Rule reaches any operator with actual knowledge that it
+ * collects personal information from a child under 13, and brings with it
+ * verifiable parental consent in an FTC-approved form, a written information
+ * security program with designated personnel and annual testing, a written
+ * retention policy where indefinite retention is prohibited, and DISTINCT
+ * consent for third-party disclosure. Penalties run to $53,088 per violation.
+ *
+ * That is a different product with a compliance function attached. 13 is a
+ * floor, not a dial.
+ */
+export const ABSOLUTE_MINIMUM_AGE = 13;
 
 /**
  * Whole years elapsed, calendar-correct.
@@ -123,11 +138,68 @@ export function evaluateAgeGate(dateOfBirth, asOf = new Date()) {
  * FAILS CLOSED on a missing date, like every other gate here: the intake form
  * requires one, so an absent date means somebody went around the form.
  *
+ * ── THE THREE-OUTCOME VERSION ─────────────────────────────────────────────
+ *
+ * The comment at the top of this file promised that when a parental consent
+ * path existed there would be EXACTLY ONE EDIT. This is it. The rule now has
+ * four bands rather than two:
+ *
+ *   under 13        refused, permanently, whatever anybody consents to
+ *   13-17, no consent   refused, but with a route rather than a dead end
+ *   13-17, consented    allowed, and marked as a minor
+ *   18 and over     allowed
+ *
+ * `isMinor` is COMPUTED and never stored. A stored flag is correct until the
+ * morning of somebody's eighteenth birthday and silently wrong afterwards,
+ * which is the same class of bug as a cached age - and this one would keep a
+ * legal adult under a guardian's authority. The date of birth is the fact;
+ * everything else is derived from it on the spot.
+ *
+ * ── OFF UNTIL SOMEBODY TURNS IT ON ────────────────────────────────────────
+ *
+ * `minorsEnabled` defaults to FALSE, and while it is false this function
+ * behaves exactly as it did before any of this was written: 18 and over, no
+ * exceptions, one reason code. Writing the code is not the decision to ship
+ * it - the policy documents still say this service is for adults, and they and
+ * the code disagreeing is the exact failure that produced this gate in the
+ * first place. See docs/UNDER_18.md.
+ *
  * @param {object|null} profile
- * @param {Date} [asOf]
- * @returns {{allowed: boolean, reason: 'ok'|'unknown'|'too_young'|'implausible'}}
+ * @param {object} [options]
+ * @param {Date}    [options.asOf]            Injectable so tests are not time-dependent.
+ * @param {boolean} [options.minorsEnabled]   The deliberate switch. Off by default.
+ * @param {boolean} [options.guardianConsent] Whether an active, current guardian
+ *   consent exists. Decided by the consent ledger, not by this function.
+ * @returns {{allowed: boolean, isMinor: boolean,
+ *            reason: 'ok'|'unknown'|'too_young'|'implausible'|'guardian_consent_required'}}
  */
-export function adultGateDecision(profile, asOf = new Date()) {
-  const { allowed, reason } = evaluateAgeGate(profile?.date_of_birth, asOf);
-  return { allowed, reason };
+export function adultGateDecision(profile, options = {}) {
+  const {
+    asOf = new Date(),
+    minorsEnabled = false,
+    guardianConsent = false,
+  } = options instanceof Date ? { asOf: options } : options;
+
+  const { age, reason } = evaluateAgeGate(profile?.date_of_birth, asOf);
+
+  // Unreadable, absent, or impossible: refused, and the age is not a number we
+  // can reason about. Unchanged.
+  if (reason === 'unknown' || reason === 'implausible') {
+    return { allowed: false, isMinor: false, reason };
+  }
+
+  if (age >= MINIMUM_AGE) return { allowed: true, isMinor: false, reason: 'ok' };
+
+  // Below the floor there is no consent that helps, and no route to offer.
+  if (age < ABSOLUTE_MINIMUM_AGE) {
+    return { allowed: false, isMinor: true, reason: 'too_young' };
+  }
+
+  // 13 to 17. Until the switch is thrown this is indistinguishable from the
+  // old behaviour, deliberately: same refusal, same reason code.
+  if (!minorsEnabled) return { allowed: false, isMinor: true, reason: 'too_young' };
+
+  return guardianConsent
+    ? { allowed: true, isMinor: true, reason: 'ok' }
+    : { allowed: false, isMinor: true, reason: 'guardian_consent_required' };
 }
