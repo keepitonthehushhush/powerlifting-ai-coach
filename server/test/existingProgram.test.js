@@ -248,3 +248,83 @@ describe('THE SAFETY QUESTION SURVIVED THE REWRITE', () => {
     assert.match(evalSource, /already running is continued, not replaced/);
   });
 });
+
+/**
+ * ── AND THE THIRD COMPLAINT, WHICH WAS THE SAME GAP ONE STEP LATER ──────────
+ *
+ * "Seems that my inputs to the ai are still broken on my account - it doesnt
+ * respond when I say I mis logged information."
+ *
+ * There was no rule anywhere in the prompt for an athlete CORRECTING something
+ * already recorded. It fell between every section, and the nearest match was
+ * "take their program as the starting point... your next block continues their
+ * progression" - which points a model at rewriting the week because one load
+ * moved.
+ *
+ * A reply that restates a whole program in prose and then repeats it as JSON
+ * is how a 4,096-token ceiling gets reached, and the error database recorded
+ * exactly that: stop_reason max_tokens, no text, CD-001. So from the athlete's
+ * side the coach went silent on being told it had something wrong - the worst
+ * possible moment to say nothing, and the one that teaches somebody to stop
+ * correcting it.
+ */
+describe('a correction is a data fix, not a re-plan', () => {
+  const SECTION = COACH_ROLE.slice(
+    COACH_ROLE.indexOf('# WHEN THEY CORRECT SOMETHING THEY ALREADY TOLD YOU'),
+    COACH_ROLE.indexOf('# FORM GUIDANCE')
+  );
+
+  test('the section exists at all, which is the whole fix', () => {
+    // A floor assertion: a slice that found nothing passes every assertion
+    // below it, and this file has been bitten by that shape before.
+    assert.ok(SECTION.length > 800, 'the correction section is missing or truncated');
+  });
+
+  test('IT IS TOLD NOT TO REWRITE THE PROGRAM', () => {
+    assert.match(SECTION, phrase('DO NOT REWRITE THE PROGRAM'));
+    assert.match(SECTION, phrase('A corrected number is not a new athlete'));
+  });
+
+  test('AND NOT TO RE-EMIT A PROGRAM BLOCK, WHICH IS WHAT BLEW THE BUDGET', () => {
+    assert.match(SECTION, phrase('Do not re-emit a program block'));
+    assert.match(SECTION, phrase('Only write a program if they ask for one'));
+  });
+
+  test('the athlete is believed, without being cross-examined', () => {
+    // "Are you sure?" about somebody's own session is how you teach them to
+    // stop correcting you, which costs far more than one wrong number.
+    assert.match(SECTION, phrase('They were there and you were not'));
+    assert.match(SECTION, phrase('never say "are you sure?" about their own session'));
+  });
+
+  test('and a correction downward is not treated as a character flaw', () => {
+    assert.match(SECTION, phrase('Do not treat a correction downward as a failure'));
+    assert.match(SECTION, phrase('a reason to talk about effort, consistency or motivation'));
+    assert.match(SECTION, phrase('A typo is a typo'));
+  });
+
+  test('THE SAFETY EXCEPTION SURVIVES: A CORRECTED INJURY IS NOT A TYPO', () => {
+    // The one case where "acknowledge it in a line and move on" is wrong. A
+    // retracted clearance has to re-enter the gate, or the correction quietly
+    // makes the coaching less safe - the same failure shape as 0031's expiry.
+    assert.match(SECTION, phrase('that is not a data fix'));
+    assert.match(SECTION, phrase('the clearance rules above apply in full'));
+    assert.match(SECTION, phrase('follow the gate'));
+  });
+
+  test('and it does not re-open intake', () => {
+    assert.match(SECTION, phrase('Do not re-open intake'));
+  });
+
+  test('THE EXAMPLES CARRY NO LOADS, BECAUSE THIS BLOCK IS CACHED AND SHARED', () => {
+    /*
+     * Written in plates on purpose. The cached prefix is one string sent for
+     * every athlete, and promptCaching.test.js asserts that no number that
+     * looks like somebody's lift appears in it. An invented example weight is
+     * indistinguishable from a leaked one - which is the correct behaviour for
+     * that check, and it caught this section's first draft.
+     */
+    assert.match(SECTION, phrase('two plates, not two and a quarter'));
+    assert.doesNotMatch(SECTION, /\b\d{3}\s*(lb|kg)?\b/, 'a three-digit load is in the cached prefix');
+  });
+});

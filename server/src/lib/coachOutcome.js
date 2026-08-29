@@ -69,6 +69,36 @@ export function describeCoachReply(reply) {
     };
   }
 
+  /*
+   * ORDER MATTERS HERE, AND IT WAS WRONG.
+   *
+   * The empty check used to come first, so `max_tokens` with no text fell into
+   * `coach_empty` - whose entire advice is "sending it again usually works".
+   * It cannot work. The request that exhausted the budget will exhaust it
+   * again, in the same place, and `coach_empty` is marked retryable so the
+   * route spent a second call discovering that.
+   *
+   * That happened in production on 2026-08-29: one event, stop_reason
+   * max_tokens, no text. The same mistake this file was written to stop
+   * happening to `refusal` - advice that cannot work, given confidently.
+   */
+  if (TRUNCATING.has(stopReason)) {
+    if (!text) {
+      return {
+        ok: false,
+        code: 'coach_cut_short',
+        retry: false,
+        truncated: false,
+        message:
+          'That reply ran out of room before the coach had written anything. Ask for a smaller piece of it - one training day rather than a whole block - and it will fit.',
+        log,
+      };
+    }
+    // Deliverable. The athlete gets the words and is told they stop early,
+    // which is the honest version of a reply that ends mid-set.
+    return { ok: true, code: 'coach_truncated', retry: false, truncated: true, log };
+  }
+
   if (!text) {
     // end_turn, or anything unrecognised, with nothing in it. The one case
     // where sending the same request again is reasonable advice.
@@ -82,18 +112,32 @@ export function describeCoachReply(reply) {
     };
   }
 
-  if (TRUNCATING.has(stopReason)) {
-    // Deliverable. The athlete gets the words and is told they stop early,
-    // which is the honest version of a reply that ends mid-set.
-    return { ok: true, code: 'coach_truncated', retry: false, truncated: true, log };
-  }
-
   return { ok: true, code: null, retry: false, truncated: false, log };
 }
 
-/** The error to throw for an outcome that is not ok. Never called when it is. */
+/**
+ * The error to throw for an outcome that is not ok. Never called when it is.
+ *
+ * ── WHY THE WHOLE LOG, AND NOT ONE FIELD OF IT ────────────────────────────
+ *
+ * This used to pass `{ stopReason }` alone. describeCoachReply had already
+ * assembled four facts - stop reason, stop category, the block types that came
+ * back, and whether there was any text - and three of them were dropped one
+ * line before the only place they were going to be read.
+ *
+ * The cost was exact and immediate. The first failure this system ever
+ * recorded, on 2026-08-29, stored `{"stopReason":"max_tokens"}` and nothing
+ * else. `blockTypes` is precisely what separates "the model said nothing" from
+ * "the model produced only blocks we do not read", and it was the missing
+ * field. RECORDABLE_DETAIL_KEYS had allowed all four the whole time.
+ *
+ * A record that exists but does not carry the diagnosis is this project's
+ * recurring defect in a new place: the check ran, and it asked for the wrong
+ * thing. The whitelist in errorRecord.js is what decides what is safe to
+ * store; this passes everything and lets that decide.
+ */
 export function coachError(outcome) {
-  return codedError(outcome.code, outcome.message, { stopReason: outcome.log.stopReason });
+  return codedError(outcome.code, outcome.message, outcome.log);
 }
 
 /**
@@ -128,7 +172,7 @@ export function coachApiError(err) {
   if (timedOut) {
     return codedError(
       'coach_timeout',
-      'The coach took too long to answer. A full programme can take a minute or two - try again, or ask for a smaller piece of it.',
+      'The coach took too long to answer. A full program can take a minute or two - try again, or ask for a smaller piece of it.',
       { upstreamStatus: status }
     );
   }

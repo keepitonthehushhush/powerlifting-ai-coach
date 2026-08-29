@@ -86,6 +86,17 @@ describe('nothing about an athlete is in the shared cache entry', () => {
   });
 
   test('no lifted weight, bodyweight or birth date reaches the cached block', () => {
+    /*
+     * This caught a real one, and not the kind it was written for: a new
+     * prompt section illustrated a correction with "that was 225, not 275" and
+     * put 275 into the cached prefix. Invented, not leaked - and the check
+     * cannot tell the difference, which is the correct behaviour for it and
+     * the reason the prompt now writes its examples in plates.
+     *
+     * The one number that IS allowed through is the weight in the
+     * <program_data> example, which has to be a number for the JSON to be
+     * valid. Keep the fixture values below away from it.
+     */
     const [role] = buildSystemBlocks(context());
     for (const value of ['181', '275', '185', '315', '1995-04-02']) {
       assert.ok(!role.text.includes(value), `${value} is in the cached prefix`);

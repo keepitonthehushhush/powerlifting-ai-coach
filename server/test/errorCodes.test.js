@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { ERROR_CODES, ERROR_CODE_KEYS, RETIRED_IDS, codedError, displayCode } from '../src/lib/errorCodes.js';
 import { describeCoachReply, coachError, TRUNCATION_NOTICE } from '../src/lib/coachOutcome.js';
+import { RECORDABLE_DETAIL_KEYS } from '../src/lib/errorRecord.js';
 import { readSource, readRaw, phrase } from './helpers/source.js';
 
 /**
@@ -174,12 +175,60 @@ describe('what the coach actually did', () => {
     }
   });
 
-  test('and truncation with nothing to deliver is treated as blank', () => {
-    // The tokens went somewhere other than text. There is nothing to show, so
-    // the retryable path is the right one.
+  test('AND TRUNCATION WITH NOTHING TO DELIVER IS NOT "TRY AGAIN"', () => {
+    /*
+     * This test used to assert the opposite, and the reasoning written above
+     * it was: "there is nothing to show, so the retryable path is the right
+     * one." The first half is true and the second does not follow. The
+     * retryable path's whole content is the sentence "sending it again usually
+     * works", and it cannot: the request that exhausted the token budget will
+     * exhaust it again, in the same place, for the same money.
+     *
+     * It happened on 2026-08-29 - the first failure this error database ever
+     * recorded. stop_reason max_tokens, no text, classified coach_empty,
+     * retried once, and the athlete was told to try again. From their side the
+     * coach went silent, twice, on being told it had logged something wrong.
+     *
+     * It is the same mistake this module was written to stop making about
+     * `refusal`: confident advice that cannot work. Advice that CAN work is to
+     * ask for less.
+     */
     const outcome = describeCoachReply({ text: '', stopReason: 'max_tokens', blockTypes: ['thinking'] });
+    assert.equal(outcome.code, 'coach_cut_short');
+    assert.equal(outcome.retry, false, 'retrying a request that blew the budget blows it again');
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.truncated, false, 'there is nothing to mark as truncated');
+    assert.match(outcome.message, /smaller piece/, 'the message must name something that works');
+    assert.doesNotMatch(outcome.message, /again/i, 'trying again is exactly what does not work here');
+  });
+
+  test('and a genuine blank is still the one case where trying again is fair', () => {
+    // end_turn with nothing in it. The distinction the reorder had to keep.
+    const outcome = describeCoachReply({ text: '', stopReason: 'end_turn' });
     assert.equal(outcome.code, 'coach_empty');
     assert.equal(outcome.retry, true);
+  });
+
+  test('THE THROWN ERROR CARRIES THE WHOLE DIAGNOSIS, NOT ONE FIELD OF IT', () => {
+    /*
+     * describeCoachReply assembles four facts and coachError used to forward
+     * exactly one of them, one line before the only place they get read. The
+     * production record for the incident above reads
+     * `{"stopReason":"max_tokens"}` and nothing else - and `blockTypes` is
+     * precisely the field that separates "the model said nothing" from "the
+     * model produced only blocks we do not read".
+     *
+     * RECORDABLE_DETAIL_KEYS had allowed all four the whole time. The record
+     * existed and asked for the wrong thing.
+     */
+    const outcome = describeCoachReply({ text: '', stopReason: 'max_tokens', blockTypes: ['thinking'] });
+    const err = coachError(outcome);
+    assert.equal(err.details.stopReason, 'max_tokens');
+    assert.deepEqual(err.details.blockTypes, ['thinking']);
+    assert.equal(err.details.hadText, false);
+    for (const key of ['stopReason', 'stopCategory', 'blockTypes', 'hadText']) {
+      assert.ok(RECORDABLE_DETAIL_KEYS.includes(key), `${key} would be dropped before storage`);
+    }
   });
 
   test('an unrecognised stop reason with text still works', () => {

@@ -186,7 +186,24 @@ export function buildConfig(env) {
       // Deliberately configuration, not a constant. Changing coaching models is
       // then a deploy-time variable rather than a code change and a review.
       model: optional(env, 'ANTHROPIC_MODEL', 'claude-sonnet-5'),
-      maxTokens: Number(optional(env, 'ANTHROPIC_MAX_TOKENS', '4096')),
+      /*
+       * 8192, raised from 4096 after a reply hit the ceiling in production and
+       * came back with nothing in it at all.
+       *
+       * This is a CEILING, not a spend: output tokens are billed as generated,
+       * so a cap that is never reached costs nothing. What it does buy is a
+       * program that runs to the end of the week instead of stopping on
+       * Thursday. Claude Sonnet 5 permits up to 128K output tokens, so the
+       * limit here is ours and it is about latency, not capability - a reply
+       * the athlete waits three minutes for is its own failure, and the client
+       * abort is sized for the current one.
+       *
+       * Raising it does not fix a reply that produced NO text; it makes the
+       * truncation rarer. coachOutcome.js handles the case where it still
+       * happens, and the prompt no longer asks for a whole program when an
+       * athlete corrects a single number.
+       */
+      maxTokens: Number(optional(env, 'ANTHROPIC_MAX_TOKENS', '8192')),
     },
 
     supabase: {

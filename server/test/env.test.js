@@ -92,7 +92,10 @@ describe('buildConfig', () => {
   test('applies documented defaults', () => {
     const config = buildConfig(VALID);
     assert.equal(config.anthropic.model, 'claude-sonnet-5');
-    assert.equal(config.anthropic.maxTokens, 4096);
+    // Raised from 4,096 after a reply hit the ceiling and came back with no
+    // text at all - CD-021. A ceiling is not a spend; output tokens are billed
+    // as generated. Sonnet 5 allows 128K, so this bound is about latency.
+    assert.equal(config.anthropic.maxTokens, 8192);
     assert.equal(config.chat.historyWindow, 30);
     // Raised from 4,000 after a real user hit it mid-sentence and got
     // "Invalid request." See server/test/messageLimit.test.js.

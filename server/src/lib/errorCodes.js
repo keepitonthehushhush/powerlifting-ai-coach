@@ -56,6 +56,19 @@ export const ERROR_CODES = Object.freeze({
    */
   coach_refused: { id: 2, status: 502, retryable: false },
   /**
+   * `max_tokens` with NOTHING to show for it.
+   *
+   * The budget was spent and no text block came back, so there is nothing to
+   * deliver and nothing to truncate. It is not `coach_empty`: that one's whole
+   * advice is "send it again", and sending the same request again hits the
+   * same ceiling in the same place. Recorded in production on 2026-08-29,
+   * classified as coach_empty, retried once at full cost, and the athlete was
+   * told to try again - which could not have worked.
+   *
+   * The advice that CAN work is to ask for less, so it has its own message.
+   */
+  coach_cut_short: { id: 21, status: 502, retryable: false },
+  /**
    * Not an error. `max_tokens` or `model_context_window_exceeded`: there IS a
    * reply and it stops mid-sentence. Status null because the athlete gets the
    * text - hiding a truncated program behind an error would be worse than
