@@ -210,7 +210,7 @@ export function HealthDataPolicy() {
         </p>
       </div>
 
-      <PolicyFooter fallback="/faq" />
+      <PolicyFooter />
     </div>
   );
 }

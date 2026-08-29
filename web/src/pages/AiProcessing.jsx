@@ -159,7 +159,7 @@ export function AiProcessing() {
         </p>
       </div>
 
-      <PolicyFooter fallback="/faq" />
+      <PolicyFooter />
     </div>
   );
 }

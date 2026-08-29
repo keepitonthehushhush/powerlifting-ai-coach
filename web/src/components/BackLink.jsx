@@ -39,6 +39,19 @@ import { useI18n } from '../i18n/index.jsx';
  * styles a button and an anchor identically.
  */
 export function BackLink({ fallback = '/', fallbackLabel }) {
+  /*
+   * The label and the destination must agree, and they did not.
+   *
+   * Four policy pages passed `fallback="/faq"` and took the default label,
+   * which reads "Back to Coach Diaz" - so somebody arriving cold on the Terms
+   * page was offered a control whose words said the front door and whose href
+   * said the FAQ. That is precisely the defect this component was written to
+   * remove, reintroduced by its own default, and it was caught by loading the
+   * page rather than by reading it.
+   *
+   * The default destination is now the front door, matching the default label.
+   * A caller wanting somewhere else has to supply the words for it.
+   */
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();

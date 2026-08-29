@@ -99,7 +99,7 @@ export function LeaderboardPolicy() {
           to refuse is not freely given, so refusing this costs nothing.
         </p>
 
-        <PolicyFooter fallback="/faq" />
+        <PolicyFooter />
       </div>
     </div>
   );

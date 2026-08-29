@@ -408,3 +408,60 @@ describe('a way back that goes where the reader came from', () => {
     assert.match(policyFooter, /session && offerConsentSettings/);
   });
 });
+
+/**
+ * ── THE FIX REINTRODUCED THE BUG THROUGH ITS OWN DEFAULT ───────────────────
+ *
+ * Found on the preview, by loading a policy page cold rather than reading it.
+ * Four pages passed `fallback="/faq"` and took BackLink's default label, which
+ * reads "Back to Coach Diaz". So a stranger arriving on the Terms page from a
+ * search result was handed a control whose words said the front door and whose
+ * href said the FAQ.
+ *
+ * That is the same defect the component was written to remove - a control that
+ * says one thing and does another - shipped inside the component that removes
+ * it. It is small, and it is exactly the kind of small that this project's
+ * whole approach exists to catch: nothing failed, every test passed, and the
+ * page looked fine.
+ */
+describe('a fallback destination and its label cannot disagree', () => {
+  const PAGES_WITH_FOOTERS = [
+    ['Terms', code('../../web/src/pages/Terms.jsx')],
+    ['HealthDataPolicy', code('../../web/src/pages/HealthDataPolicy.jsx')],
+    ['AiProcessing', code('../../web/src/pages/AiProcessing.jsx')],
+    ['LeaderboardPolicy', code('../../web/src/pages/LeaderboardPolicy.jsx')],
+    ['ForYourClinician', code('../../web/src/pages/ForYourClinician.jsx')],
+  ];
+
+  test('ANY PAGE CHOOSING ITS OWN FALLBACK MUST ALSO SUPPLY THE WORDS', () => {
+    for (const [name, page] of PAGES_WITH_FOOTERS) {
+      /*
+       * `[^>]*` and not `[^/>]*`. The first version of this excluded the
+       * slash, so it stopped inside `fallback="/faq"` and never saw the value
+       * - the check passed on a planted violation. A scanner that cannot find
+       * the thing it is looking for is worse than no scanner, and the only
+       * reason this was caught is that the planted-failure step is part of
+       * writing the check rather than an afterthought.
+       */
+      for (const match of page.matchAll(/<PolicyFooter\b([^>]*?)\/?>/g)) {
+        const props = match[1];
+        const fallback = /fallback="([^"]*)"/.exec(props)?.[1];
+        if (fallback && fallback !== '/') {
+          assert.match(
+            props,
+            /fallbackLabel=/,
+            `${name} sends a cold arrival to ${fallback} while the label still says the front door`
+          );
+        }
+      }
+    }
+  });
+
+  test('and the default destination matches the default label', () => {
+    // "Back to Coach Diaz" -> "/". If either moves, the other has to.
+    const backLink = code('../../web/src/components/BackLink.jsx');
+    assert.match(backLink, /fallback = '\/'/);
+    assert.match(backLink, /t\('common\.backHome'\)/);
+    assert.match(en, /backHome: 'Back to Coach Diaz'/);
+  });
+});

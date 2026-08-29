@@ -210,7 +210,7 @@ export function Terms() {
         </p>
       </div>
 
-      <PolicyFooter fallback="/faq" />
+      <PolicyFooter />
     </div>
   );
 }
