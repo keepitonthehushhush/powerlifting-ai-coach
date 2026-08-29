@@ -411,7 +411,7 @@ contradictory answers look equally authoritative. The suite had been catching a
 real specification defect all along without being able to name it.
 
 **Consequences.** Three times a judged assertion has then been corrected for
-being too broad, each time failing behaviour the prompt explicitly permits. The
+being too broad, each time failing behavior the prompt explicitly permits. The
 generalisation: a judged criterion states a prohibition, the judge fills the
 unstated space around it expansively, and a prohibition alone is half a
 specification — the negative space has to be written down too.
@@ -532,7 +532,7 @@ pay. A paywall checked first would show a minor a subscribe button, which is
 the one response this product must never give. Asserted by source position,
 because position is what the ordering is.
 
-**What stays free.** Logging, charts, the exercise library, the programme
+**What stays free.** Logging, charts, the exercise library, the program
 record, export, and every policy page — enforced by `requiresSubscription()`,
 which returns true for exactly one feature. Reading an existing conversation is
 free too: only sending a message is gated, so somebody whose subscription
@@ -578,7 +578,7 @@ card is entered, not in a policy document.
 **Everybody who signed up under the promise keeps coaching free, permanently.**
 `user_profile.free_forever` (migration 0032) marks them, and `entitlement()`
 checks it FIRST — before status, before dates. Position is load-bearing: lower
-down, a grandfathered athlete who once subscribed and later cancelled would fall
+down, a grandfathered athlete who once subscribed and later canceled would fall
 through to `lapsed` and lose access that was promised permanently.
 
 **Rejected: comparing `auth.users.created_at` to a cutoff date.** One line, and
@@ -686,10 +686,10 @@ constant where `form` does not exist. That is `no-undef`. The same object
 already declared `glp1_status`, so it is also `no-dupe-keys`. The site went
 blank on every route. Separately, `auth` declared `password` twice in the
 locale catalogue - a string and then an object - and the sign-in field was
-labelled `auth.password` in production. `no-dupe-keys` again.
+labeled `auth.password` in production. `no-dupe-keys` again.
 
 Both are valid JavaScript. `vite build` succeeded, `node --check` passed, the
-bundle parsed, and thirteen checks read the code without analysing it. A linter
+bundle parsed, and thirteen checks read the code without analyzing it. A linter
 is the one tool in the standard toolbox that would have said something, at the
 moment of typing, for free.
 
@@ -707,7 +707,7 @@ speaks.
 reason - `no-unused-vars` works from scope analysis, and ESLint's analyser does
 not treat a JSXIdentifier as a reference, so `import { Foo }` used as `<Foo />`
 reads as unused and every page reports false positives. That is a hundred rules
-and a release cadence to track for one behaviour. The behaviour is fifteen
+and a release cadence to track for one behavior. The behavior is fifteen
 lines, written inline in `eslint.config.js` as a local plugin: mark the
 identifier at the head of each JSX element as used, ignoring lowercase names,
 which are host elements rather than variables.
@@ -732,7 +732,7 @@ Two of the plugin's thirty rules are enabled, registered by hand.
 memoisation, immutability, static components - which is a commitment to a style
 of writing React rather than a bug detector, and is not a decision this project
 has made. `rules-of-hooks` is the other one: a hook called conditionally is
-always a bug, with no judgement attached.
+always a bug, with no judgment attached.
 
 **`__BUILD_ID__` is declared as a browser global.** Vite replaces it at build
 time, so it exists in the bundle and nowhere else. Undeclared, `no-undef`
@@ -898,7 +898,7 @@ first in production. And a diff catches drift; it does not catch two databases
 that are identically wrong.
 
 
-### ADR-19 · A content security policy, because every other defence assumes our code is the code running
+### ADR-19 · A content security policy, because every other defense assumes our code is the code running
 
 **Context.** Users asked whether their data is safe, and the honest answer had
 a hole in it. Checked against the live site rather than assumed: it served no
@@ -1010,12 +1010,12 @@ first thing to address before entering one.
 
 Everything Phase 2 named has since been built — the logging screen, the
 progress charts, the seeded exercise library — along with the progression
-engine, warm-up computation, the fuelling boundary, and programs as stored
+engine, warm-up computation, the fueling boundary, and programs as stored
 records. What remains:
 
 | Item | Phase | Note |
 |---|---|---|
-| Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working programme |
+| Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working program |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
 | Stripe subscriptions | 1 | Checkout (with a 14-day trial), portal, webhook and account UI are built and tested. Paywall wired behind `PAYWALL_ENABLED`, which ships **off** and now also refuses to activate on test keys in production. Waiting on real usage, not on code — see ADR-14 |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |

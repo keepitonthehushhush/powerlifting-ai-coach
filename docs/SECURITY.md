@@ -19,7 +19,7 @@ The key is server-side only and reaches the browser through no path.
 - It is read exclusively by `server/src/lib/anthropic.js`, which nothing under
   `web/` imports or can import.
 - It is not prefixed `VITE_`, so Vite never compiles it into the bundle. This
-  is the mechanism that actually keeps it out — everything below is defence in
+  is the mechanism that actually keeps it out — everything below is defense in
   depth against someone renaming it.
 - `server/src/config.js` calls `assertNoLeakedSecrets()` at module load and
   **refuses to boot** if any `VITE_`-prefixed variable matches
@@ -135,7 +135,7 @@ from the browser to Supabase directly, and the API server is not in that path.
 This distinction is the whole of it. Sign-up is a direct call to Supabase using
 the publishable key, which is public by design and printed in the browser
 bundle. Anyone can call `/auth/v1/signup` without ever loading the form, so a
-check that lives only in React is a courtesy, not a defence. It is worth having
+check that lives only in React is a courtesy, not a defense. It is worth having
 for the same reason a good error message is worth having — it just must not be
 mistaken for the thing doing the work.
 
@@ -226,7 +226,7 @@ reports.
 
 Mapped against the [OWASP Top 10 for LLM Applications
 (2026)](https://www.invicti.com/blog/web-security/owasp-llm-top-10-2026-whats-new),
-whose central instruction is the one this section is organised around:
+whose central instruction is the one this section is organized around:
 
 > Stop trying to build a model that cannot be fooled. Build the system around
 > it, so that when the model is fooled, and it will be, nothing important

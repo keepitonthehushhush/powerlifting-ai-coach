@@ -50,7 +50,7 @@ Three findings matter for this project:
 
 1. **Pennsylvania had no AI-specific law.** Regulators applied an existing
    professional licensure statute. Every state has one. Assuming "there's no
-   law about AI coaching yet" is not a defence.
+   law about AI coaching yet" is not a defense.
 2. **The company had prominent disclaimers in every chat, and it did not
    protect them.** Regulators "examined the actual user experience rather than
    relying on boilerplate warnings."
@@ -121,7 +121,7 @@ constraint rather than a stylistic preference.
 
 | Requirement | Status |
 |---|---|
-| Data minimisation | Only fields the coach actually uses |
+| Data minimization | Only fields the coach actually uses |
 | Access control | RLS, verified against 11 attacks (`SECURITY.md`) |
 | Not sent to third parties | Health data goes to Anthropic for coaching only; nothing else |
 | Not in logs or error tracking | Centralised redaction (`lib/logger.js`, `lib/monitoring.js`) |
@@ -189,7 +189,7 @@ it does.** No disclaimer achieves that. What these controls do is make the
 position defensible on the thing that is actually tested: COPPA and the state
 analogues turn on **actual knowledge**, so what matters is that the product
 does not knowingly collect from minors, that a date was asked for and acted
-on, and that a report is honoured when one arrives. A takedown route that is
+on, and that a report is honored when one arrives. A takedown route that is
 used is worth more than any wording that is not.
 
 **The gap that remains** is narrower than it was. The address exists in the
@@ -213,7 +213,7 @@ for everyone. Recorded here so the decision is visible rather than assumed.
 ### Affiliate revenue on equipment: considered and declined
 
 **Decided 2026-08-27: not doing it.** Raised as a second revenue stream — earn a
-commission on the belts and sleeves the coach recommends — analysed, and
+commission on the belts and sleeves the coach recommends — analyzed, and
 dropped. The reasoning is kept in full below rather than deleted, because the
 idea is an obvious one that will occur to somebody again, and the numbers are
 most of the argument against it.
@@ -238,7 +238,7 @@ being spent, and it is the same asset the subscription is sold on.
 **It contradicts a promise already made and consented to.** The consumer health
 data policy says, in terms, that no advertising or analytics scripts run on any
 page of this site. Affiliate links carry click tracking and cookies by
-construction; the standard programmes require it. Adding them means editing
+construction; the standard programs require it. Adding them means editing
 that sentence, bumping `chd`, and asking every existing user to consent again —
 to a weaker promise than the one they originally agreed to.
 
@@ -256,7 +256,7 @@ different payment model.
 
 **If it is ever revisited**, the shape that would survive the above:
 
-- a separate, clearly labelled gear page, never inside a coaching reply;
+- a separate, clearly labeled gear page, never inside a coaching reply;
 - the coach may mention that the page exists, once, and never links a specific
   product to a specific athlete's situation;
 - disclosure at the top of that page and beside every link;
@@ -357,15 +357,15 @@ enforceability and whether to restrict operation in specific states.
 Every one of these is already built, and each is a defensive argument:
 
 - The clearance gate is **computed in code**, not left to model judgment, so
-  its behaviour is deterministic and testable.
+  its behavior is deterministic and testable.
 - It is **enforced in the UI as well as the conversation** — the intake form
   shows the requirement at the point of data entry.
-- Its behaviour is covered by **unit tests and a live adversarial eval**, with
+- Its behavior is covered by **unit tests and a live adversarial eval**, with
   results recorded in `docs/BUILD_LOG.md`.
 - The prompt forbids diagnosis and programming around undiagnosed pain, and
   the eval checks that it holds under pressure.
 
-Being able to show that safety behaviour was specified, implemented,
+Being able to show that safety behavior was specified, implemented,
 adversarially tested, and version-controlled is materially better than
 asserting the product "has a disclaimer".
 
@@ -397,7 +397,7 @@ per-user legal branching is the wrong implementation, for three reasons:
 
 ---
 
-## 5. Recommended behaviour when an injury is reported
+## 5. Recommended behavior when an injury is reported
 
 The design goal — stay useful rather than shutting the conversation down — is
 achievable, and is compatible with the constraints above. What Coach must not
@@ -406,7 +406,7 @@ do is act on the injury.
 **Coach may, with an unresolved injury:**
 
 - keep talking, and answer general training questions
-- explain what a physiotherapy or doctor's appointment usually involves, and
+- explain what a physical therapy or doctor's appointment usually involves, and
   help the athlete prepare what to describe — when it started, what movement
   provokes it, whether it radiates
 - explain training concepts in general terms — bracing, RPE, why progression
@@ -466,7 +466,7 @@ will make it feel better" is treatment.
    **Is that reading right, and does it hold for non-targeted advertising
    that touches no health data?**
 10. The clinician page (`/about`) describes the product's capabilities for a
-   doctor or physiotherapist to read. **Does addressing a clinician change the
+   doctor or physical therapist to read. **Does addressing a clinician change the
    product's regulatory posture** — does it read as marketing to a healthcare
    professional, and does that pull it any closer to a device claim?
 11. Disclosure drift: consents are invalidated by a version bump, and every

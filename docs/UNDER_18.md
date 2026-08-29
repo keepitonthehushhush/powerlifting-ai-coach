@@ -64,7 +64,7 @@ a program and the person goes and does it alone. For an adult that is their
 call; for a 15-year-old it is the parent's, and the consent has to say so in
 those words rather than in a paragraph nobody reads.
 
-### The tension at the centre of the product
+### The tension at the center of the product
 
 The recommended youth protocol is **1–3 sets of 6–15 repetitions** for strength
 and **1–3 sets of 3–6** for power, with load increased **5–10%** as strength
@@ -110,7 +110,7 @@ on day one without new machinery.
 What the record needs beyond the existing columns is the guardian's email, so
 there is something to notify and something to withdraw from. That is a new
 column and it is personal data about a **third party** who never signed up,
-which means it gets the same treatment as everything else here: minimised, not
+which means it gets the same treatment as everything else here: minimized, not
 logged, covered by RLS, in the export, and in the retention sweep.
 
 ### 3. What "verifiable" means when COPPA does not apply

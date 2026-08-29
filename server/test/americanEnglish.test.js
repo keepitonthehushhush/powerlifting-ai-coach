@@ -32,8 +32,17 @@ import { stripComments } from './helpers/source.js';
  */
 
 const BRITISH = [
-  // The one that was asked for, and by far the most common here.
-  [/\bprogramme/i, 'programme', 'program'],
+  /*
+   * The one that was asked for, and by far the most common here.
+   *
+   * The trailing `(s)?\b` is load-bearing. Written as /\bprogramme/i this also
+   * matches "programmed" - which is correct American English and appears all
+   * over the coaching prompt - so the check would have started failing on good
+   * copy the first time somebody wrote "a programmed single". A check with
+   * false positives is a check somebody turns off, which is the whole reason
+   * the -ise list below is enumerated rather than expressed as one pattern.
+   */
+  [/\bprogramme(s)?\b/i, 'programme', 'program'],
   // Usage, which matters more than spelling on a product that talks to
   // clinicians. This one was in a footer link and in the medical disclaimer.
   [/\bphysiotherap/i, 'physiotherapist', 'physical therapist'],
@@ -158,10 +167,47 @@ function pageCopy() {
     .join('\n');
 }
 
+/**
+ * The documents, minus anything in backticks.
+ *
+ * ── WHY THE DOCS ARE SCANNED TOO ──────────────────────────────────────────
+ *
+ * "Remember we are currently located in the United States of America so we
+ * need American wording and spelling."
+ *
+ * Said twice, because the first sweep covered the product's copy and stopped
+ * there - and then the very next document written by hand came back with
+ * "centre", "minimised" and a British rhythm. The docs are read by anybody
+ * evaluating this codebase, which makes them part of the product's voice
+ * whether or not they render in a browser.
+ *
+ * Code spans are excluded rather than converted. `normaliseRoute`,
+ * `fuellingRanges` and `checkoutCancelled` are identifiers being quoted, and a
+ * check that demanded they change would be satisfied by renaming things
+ * instead of by writing better prose - the same trap this file's header warns
+ * about for the source surfaces.
+ */
+function docsCopy() {
+  const dir = new URL('../../docs/', import.meta.url);
+  return readdirSync(dir)
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => {
+      const raw = readFileSync(new URL(name, dir), 'utf8');
+      // Split on fenced blocks and inline code; keep only the prose between.
+      const prose = raw
+        .split(/(```[\s\S]*?```|`[^`\n]*`)/)
+        .filter((_, index) => index % 2 === 0)
+        .join(' ');
+      return `${name}: ${prose}`;
+    })
+    .join('\n');
+}
+
 const SURFACES = [
   ['the UI copy catalogue', localeCopy],
   ['the coach prompt', promptCopy],
   ['the page text', pageCopy],
+  ['the documents', docsCopy],
 ];
 
 describe('the copy is American English', () => {

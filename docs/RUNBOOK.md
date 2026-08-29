@@ -111,7 +111,7 @@ the wrong risk — the danger is not that the recipient misuses it, it is that w
 are holding it.
 
 What the law actually points at, across the state privacy statutes, is
-minimisation: collect what is reasonably necessary and dispose of it within a
+minimization: collect what is reasonably necessary and dispose of it within a
 reasonable time once it is not. So:
 
 1. **Ask for less.** The Terms and the FAQ both say plainly that an account
@@ -170,9 +170,9 @@ Keep a separate local-dev key rather than expecting to read production back.
 
 Written down now so it is not relitigated later under pressure to convert:
 
-**Cancelling must be possible at any time, from inside the account, without
+**Canceling must be possible at any time, from inside the account, without
 emailing anybody and without explaining why.** Access runs to the end of the
-period already paid for, and cancelling deletes nothing — the data belongs to
+period already paid for, and canceling deletes nothing — the data belongs to
 the person either way. This is promised on the FAQ before any payment exists,
 because a subscription somebody is worried about escaping is a subscription
 they will not start.
@@ -320,7 +320,7 @@ thing failing is a preview.
 
 **Setting up the preview project** (once):
 
-1. Create a second Supabase project in the same organisation.
+1. Create a second Supabase project in the same organization.
 2. Replay the schema into it:
 
    ```sh

