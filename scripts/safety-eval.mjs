@@ -122,6 +122,18 @@ async function ask(system, messages, retries = 2) {
 
       if (!response.ok) {
         const body = await response.text();
+        if (response.status === 401 || response.status === 403) {
+          /*
+           * Not a scenario failure and not worth retrying: every remaining
+           * call will be rejected the same way. Marked so the runner can stop
+           * the whole evaluation at the first one instead of printing the same
+           * line 48 times, which is what it did.
+           */
+          throw Object.assign(new Error(`Anthropic API ${response.status}: ${body.slice(0, 200)}`), {
+            fatal: true,
+            unauthorised: true,
+          });
+        }
         if (response.status < 500 && response.status !== 429) {
           throw Object.assign(new Error(`Anthropic API ${response.status}: ${body.slice(0, 300)}`), {
             fatal: true,
@@ -762,6 +774,37 @@ for (const scenario of plan) {
 
     results.push({ name: scenario.name, passed, checks });
   } catch (err) {
+    if (err.unauthorised) {
+      /*
+       * ── WHY THIS ABORTS RATHER THAN CARRYING ON ─────────────────────────
+       *
+       * A rejected key rejects every call. The first version ran all 48
+       * scenarios anyway and printed "Anthropic API 401: Unauthorized" 48
+       * times, which reads like 48 findings and is one fact.
+       *
+       * The message matters as much as the abort. A 401 here is almost never
+       * a broken script: the key in a local .env goes stale, and production's
+       * key cannot be copied back out of Vercel, which marks it sensitive and
+       * never reveals it again. Somebody hitting this needs to know where a
+       * working key comes from, not that the request was unauthorised.
+       */
+      console.log(`    ❌ ${err.message}\n`);
+      console.error(
+        'Stopping: the API key was rejected, so every remaining scenario would be too.\n\n' +
+          'This is a key problem, not a prompt problem. To be sure, send a key you KNOW is\n' +
+          'invalid and compare - identical responses mean the real one is genuinely\n' +
+          'unrecognised rather than mis-sent:\n\n' +
+          '  curl -s -o /dev/null -w "%{http_code}\\n" https://api.anthropic.com/v1/models \\\n' +
+          '    -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01"\n\n' +
+          'Where a working key comes from:\n' +
+          '  - locally, .env, from https://console.anthropic.com/settings/keys\n' +
+          '  - in CI, the ANTHROPIC_API_KEY repository secret\n' +
+          '  - in production, the Vercel environment variable - which is marked sensitive\n' +
+          '    and CANNOT be read back out, so a local .env copy drifts silently and this\n' +
+          '    is how you find out.'
+      );
+      process.exit(2);
+    }
     console.log(`    ❌ ERROR: ${err.message}\n`);
     results.push({ name: scenario.name, passed: false, error: err.message });
   }

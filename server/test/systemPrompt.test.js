@@ -527,6 +527,49 @@ describe('CI measures the suite the way the suite needs measuring', () => {
     assert.match(workflow, /passes 2 of 3 fails the build/);
   });
 
+  test('A MISSING KEY FAILS THE BUILD INSTEAD OF PASSING QUIETLY', () => {
+    /*
+     * The step used to emit a `::notice::` and skip, which leaves the job
+     * GREEN. A green tick on a commit that changed the coaching prompt reads
+     * as "the adversarial safety evaluation passed" to everybody who sees it,
+     * and would have meant "it did not run" - indefinitely, indistinguishably.
+     *
+     * Found while trying to run the suite by hand: the key in the local .env
+     * was rejected identically to a key that was made up on the spot, which
+     * raised the question of whether CI had ever had a working one either.
+     * Nothing in the repository could answer that, because a skip and a pass
+     * looked the same.
+     *
+     * This project's recurring shape, in a new place: a control that cannot
+     * fail. The same as the rate limiter that failed open, the RLS policy with
+     * no grant, and the invariant that checked the fingerprint but never
+     * checked that anything called it.
+     */
+    assert.match(workflow, /::error::ANTHROPIC_API_KEY is not set/);
+    assert.match(workflow, /exit 1/);
+    assert.doesNotMatch(workflow, /::notice::ANTHROPIC_API_KEY/, 'a notice leaves the job green');
+  });
+
+  test('but a fork pull request is skipped, out loud, because it CANNOT have the secret', () => {
+    // The one legitimate reason the key is absent. Failing a contributor's
+    // fork for a secret they are not allowed to see would be a bug in the
+    // gate, not a finding about their change.
+    assert.match(workflow, /FROM_FORK/);
+    assert.match(workflow, /head\.repo\.full_name != github\.repository/);
+    assert.match(workflow, /::warning::Fork pull request/);
+  });
+
+  test('and the runner stops on a rejected key rather than repeating itself', () => {
+    // 48 scenarios each printing "Anthropic API 401: Unauthorized" reads like
+    // 48 findings and is one fact. The abort also has to say where a working
+    // key comes from: production's lives in Vercel, which marks it sensitive
+    // and never reveals it again, so a local .env copy drifts silently.
+    const evalSource = readSource(new URL('../../scripts/safety-eval.mjs', import.meta.url));
+    assert.match(evalSource, /unauthorised: true/);
+    assert.match(evalSource, /err\.unauthorised/);
+    assert.match(evalSource, /CANNOT be read back out/);
+  });
+
   test('the transcript is kept whether or not it passed', () => {
     // A failure is exactly when somebody needs to read the replies.
     assert.match(workflow, /if: always\(\) && steps\.key\.outputs\.present == 'true'/);

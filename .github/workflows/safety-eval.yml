@@ -89,14 +89,35 @@ jobs:
         id: key
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        # Emits a boolean, never the value. A fork or a clone without the
-        # secret skips the job rather than failing it.
+          # True only for a pull request opened from a fork, which cannot see
+          # this repository's secrets and must not be failed for it. A push to
+          # this repository is never a fork.
+          FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        # ── WHY A MISSING KEY IS NOW A FAILURE ────────────────────────────
+        #
+        # This step used to emit a `::notice::` and skip. A notice is not a
+        # failure, so the whole job went green - and a green tick on a commit
+        # that changed the coaching prompt means "the adversarial safety
+        # evaluation passed" to everybody who reads it. It would have meant
+        # "the safety evaluation did not run", indefinitely, with no way to
+        # tell the two apart from the outside.
+        #
+        # That is this project's recurring defect exactly: a control that
+        # cannot fail. The rate limiter that failed open, the RLS policy with
+        # no grant, the retention promise nothing kept, the invariant that
+        # checked the fingerprint but not whether anything called it.
+        #
+        # A fork PR genuinely cannot have the secret and is still skipped, out
+        # loud. Everything else stops the build and says what to add.
         run: |
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$FROM_FORK" = "true" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::ANTHROPIC_API_KEY is not set for this repository; skipping the safety evaluation."
+            echo "::warning::Fork pull request: repository secrets are not available, so the adversarial safety evaluation did not run. It must pass on this branch before merge."
+          else
+            echo "::error::ANTHROPIC_API_KEY is not set for this repository, so the adversarial safety evaluation cannot run. This job gates changes to the coaching prompt; passing it without running it would be worse than not having it. Add the secret under Settings -> Secrets and variables -> Actions."
+            exit 1
           fi
 
       - name: Run the adversarial scenarios

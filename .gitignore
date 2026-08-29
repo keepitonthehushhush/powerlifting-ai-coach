@@ -40,3 +40,8 @@ coverage/
 safety-eval-results.txt
 .vercel
 .env*
+
+# Delivery bundles. These arrive in the repo root from the file bridge and
+# must never be committed - a tarball of source is a second copy of the
+# repository that drifts from the first.
+*.tar.gz
