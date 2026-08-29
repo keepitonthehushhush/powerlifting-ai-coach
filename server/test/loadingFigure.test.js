@@ -35,6 +35,34 @@ const cssCode = stripComments(css);
 
 const JOINTS = ['shin', 'thigh', 'torso', 'arm'];
 
+/**
+ * Where the hands (and therefore the bar) are, at any point in the pull.
+ *
+ * The forward kinematics, reimplemented from the geometry in the two source
+ * files: t=1 is the braced bottom, t=0 is lockout. Each segment's ABSOLUTE
+ * angle is the sum of its own rotation and every rotation above it, because
+ * the groups are nested - that is the whole point of the structure, and it is
+ * what this has to model to be checking anything real.
+ *
+ * The arm counter-rotates to hang vertically, so its net transform is a pure
+ * translation and the hand simply keeps its offset from the shoulder.
+ */
+function handAt(t) {
+  const seg = segments();
+  const rad = (d) => (d * Math.PI) / 180;
+  const len = (s) => Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
+  const bottoms = JOINTS.map((n) => styleFor(n).bottom);
+
+  let abs = 0;
+  let p = seg.shin.from;
+  for (let i = 0; i < 3; i++) {
+    abs += bottoms[i] * t;
+    const L = len(seg[JOINTS[i]]);
+    p = [p[0] + L * Math.sin(rad(abs)), p[1] - L * Math.cos(rad(abs))];
+  }
+  return [p[0] + (seg.arm.to[0] - seg.arm.from[0]), p[1] + (seg.arm.to[1] - seg.arm.from[1])];
+}
+
 /** The rest-pose drawing: each group's own first line, as the JSX declares it. */
 function segments() {
   const out = {};
@@ -237,28 +265,6 @@ describe('the deadlift figure', () => {
    * files and follows the hands.
    */
   test('the bar goes up and back, never forward', () => {
-    const seg = segments();
-    const rad = (d) => (d * Math.PI) / 180;
-    const len = (s) => Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
-
-    // Absolute angle of each segment = the sum of its own rotation and every
-    // rotation above it, because the groups are nested.
-    const bottoms = JOINTS.map((n) => styleFor(n).bottom);
-    const armDx = seg.arm.to[0] - seg.arm.from[0];
-
-    const handAt = (t) => {
-      let abs = 0;
-      let p = seg.shin.from;
-      for (let i = 0; i < 3; i++) {
-        abs += bottoms[i] * t;
-        const L = len(seg[JOINTS[i]]);
-        p = [p[0] + L * Math.sin(rad(abs)), p[1] - L * Math.cos(rad(abs))];
-      }
-      // The arm counter-rotates to hang vertically, so its net transform is a
-      // pure translation: the hand keeps its offset from the shoulder.
-      return [p[0] + armDx, p[1] + (seg.arm.to[1] - seg.arm.from[1])];
-    };
-
     const path = [];
     for (let i = 0; i <= 20; i++) path.push(handAt(1 - i / 20));
 
@@ -279,25 +285,160 @@ describe('the deadlift figure', () => {
     assert.ok(rise > 40, `the bar only travels ${rise.toFixed(1)} units - that is not a lift`);
   });
 
-  /** The hands hold the MIDDLE of the bar. */
-  test('the bar is centered on the hands', () => {
+  /** The hands hold the MIDDLE of the bar, and the load is even. */
+  test('the bar is balanced in the hands', () => {
     const seg = segments();
     const bar = loading.slice(loading.indexOf('className="lift-bar"'));
-    const line = bar.match(/<line[^>]*x1="([-\d.]+)"[^>]*x2="([-\d.]+)"/);
-    const plates = [...bar.matchAll(/<circle cx="([-\d.]+)" cy="([-\d.]+)" r="([\d.]+)"/g)];
-    assert.equal(plates.length, 2, 'a barbell has two plates');
-
     const hand = seg.arm.to;
-    assert.equal((+line[1] + +line[2]) / 2, hand[0], 'the lifter is gripping the bar off-center');
-    assert.equal(
-      (+plates[0][1] + +plates[1][1]) / 2,
-      hand[0],
-      'the plates are not balanced about the hands'
+
+    const shaft = bar.match(/className="lift-shaft"[^/]*x1="([-\d.]+)"[^/]*x2="([-\d.]+)"/);
+    assert.ok(shaft, 'the bar has no shaft');
+    assert.equal((+shaft[1] + +shaft[2]) / 2, hand[0], 'the lifter is gripping the bar off-centre');
+
+    for (const part of ['lift-plate-1', 'lift-plate-2', 'lift-plate-3', 'lift-collar']) {
+      const xs = [...bar.matchAll(new RegExp(`className="${part}" x1="([-\\d.]+)"`, 'g'))].map((m) => +m[1]);
+      assert.equal(xs.length, 2, `${part} should appear twice - a barbell is loaded on both ends`);
+      assert.equal(
+        (xs[0] + xs[1]) / 2,
+        hand[0],
+        `${part} is not balanced about the hands - one side is loaded heavier than the other`
+      );
+    }
+  });
+
+  /**
+   * ── THE BAR HAS TO LAND ON THE PLATFORM ───────────────────────────────
+   *
+   * A competition bar sits 225mm off the floor for one reason: the largest
+   * plate is 450mm across. Here that same fact is spread over two files - the
+   * plate's height is in the JSX, its thickness is a stroke-width in the CSS,
+   * and the pose that decides where the bar stops is a third set of numbers
+   * again. Change any one of them and the bar quietly floats above the
+   * platform or sinks through it. It renders; it is just wrong.
+   */
+  test('the loaded bar comes to rest exactly on the platform', () => {
+    const plate = loading.match(/className="lift-plate-1" x1="[-\d.]+" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)"/);
+    assert.ok(plate, 'no tallest plate found');
+    const [top, bottom] = [+plate[1], +plate[2]];
+    const halfHeight = (bottom - top) / 2;
+
+    const width = ALWAYS.find((r) => r.selectors.includes('.lift-plate-1'));
+    assert.ok(width, 'the tallest plate has no rule of its own');
+    const stroke = width.body.match(/stroke-width:\s*([\d.]+)/);
+    assert.ok(stroke, '.lift-plate-1 declares no stroke-width');
+
+    // The plate is a round-capped line, so it reaches half a stroke past its end.
+    const reach = halfHeight + +stroke[1] / 2;
+
+    const floor = loading.match(/className="lift-floor"[^/]*y1="([-\d.]+)"/);
+    assert.ok(floor, 'there is no platform');
+
+    const barAtBottom = handAt(1)[1];
+    const rest = barAtBottom + reach;
+    const off = rest - +floor[1];
+
+    // Half a viewBox unit. At the 120px size that is under a third of a screen
+    // pixel - invisible - while a real mistake (a plate a unit taller, a
+    // stroke a unit thicker, a joint moved) shifts it by several units. The
+    // tolerance exists because the pose comes out of accumulated trig, not
+    // because the fit is approximate.
+    assert.ok(
+      Math.abs(off) < 0.5,
+      `the loaded bar rests at ${rest.toFixed(2)} but the platform is at ${floor[1]} - ` +
+        `the plates are ${off > 0 ? 'sunk into' : 'floating above'} it by ${Math.abs(off).toFixed(2)} units`
     );
-    const barY = +bar.match(/<line[^>]*y1="([-\d.]+)"/)[1];
-    assert.equal(barY, hand[1], 'the bar is not at hand height');
-    for (const [, , cy] of plates) {
-      assert.equal(+cy, hand[1], 'a plate is not threaded onto the bar');
+  });
+
+  /** A plate stack only reads as a stack if the plates differ. */
+  test('the plates descend outward the way a bar is actually loaded', () => {
+    const widths = ['lift-plate-1', 'lift-plate-2', 'lift-plate-3', 'lift-collar'].map((c) => {
+      const rule = ALWAYS.find((r) => r.selectors.includes(`.${c}`));
+      assert.ok(rule, `no rule for .${c}`);
+      const w = rule.body.match(/stroke-width:\s*([\d.]+)/);
+      assert.ok(w, `.${c} declares no stroke-width`);
+      return +w[1];
+    });
+    for (let i = 1; i < widths.length; i++) {
+      assert.ok(
+        widths[i] < widths[i - 1],
+        `the plates do not get thinner outboard (${widths}) - a stack of identical ` +
+          `strokes is one thick plate, which is what made the first bar read as a wheel`
+      );
+    }
+  });
+
+  /**
+   * ── THE BUG THAT COST TWO ROUNDS ──────────────────────────────────────
+   *
+   * The shared stroke defaults were first written as `.lift-body line`, which
+   * is ONE CLASS PLUS ONE TYPE and therefore outranks every `.lift-plate-N`
+   * and `.lift-belt` exception, which are one class each. All four plate
+   * widths were silently discarded, and the belt drew in the lifter's own
+   * colour at the lifter's own width - a very good way to make a belt
+   * invisible. The stylesheet was valid and nothing warned.
+   *
+   * The fix is to put the defaults on the GROUP and let SVG inheritance carry
+   * them, because an inherited value loses to any directly-applied declaration
+   * whatever its specificity. This asserts the arrangement rather than the
+   * instance: no descendant selector may set these properties.
+   */
+  test('the stroke defaults are inherited from the group, not imposed by a descendant rule', () => {
+    const INHERITED = ['stroke', 'stroke-width', 'stroke-linecap', 'fill'];
+    for (const rule of ALWAYS) {
+      for (const selector of rule.selectors) {
+        if (!selector.startsWith('.lift')) continue;
+        // A descendant combinator ending in a bare element type - `.lift-x line`.
+        if (!/^\.[\w-]+\s+[a-z]+$/.test(selector)) continue;
+        for (const prop of INHERITED) {
+          assert.ok(
+            !new RegExp(`(^|;|\\s)${prop}:`).test(rule.body),
+            `\`${selector}\` sets ${prop}. That selector outranks every single-class ` +
+              `rule below it, so any per-part override is silently discarded. Put the ` +
+              `default on the group (it is an inherited SVG property) and let the ` +
+              `exceptions apply directly.`
+          );
+        }
+      }
+    }
+  });
+
+  test('there are exactly three referees', () => {
+    const lights = [...loading.matchAll(/className="lift-light"/g)];
+    assert.equal(
+      lights.length,
+      3,
+      'powerlifting is judged by three referees and a lift stands on a majority of two'
+    );
+    assert.equal(
+      [...loading.matchAll(/className="lift-lamp"/g)].length,
+      3,
+      'every referee needs a light'
+    );
+  });
+
+  /**
+   * The lights mean "good lift", so they belong to the lockout and nothing
+   * else. On before the bar is up is a decision nobody made yet.
+   */
+  test('the lights come on at lockout and not before', () => {
+    const at = cssCode.indexOf('@keyframes lift-lamp');
+    assert.ok(at !== -1, 'the lights do not animate');
+    const lamp = blockAt(cssCode, at).body;
+
+    const lit = [...lamp.matchAll(/([\d.]+)%[^{]*\{[^}]*opacity:\s*1/g)].map((m) => +m[1]);
+    assert.ok(lit.length > 0, 'the lights never come on');
+
+    // The lockout hold, taken from the lift itself rather than restated here.
+    const hold = styleFor('shin').keyframes.match(/([\d.]+)%,\s*([\d.]+)%\s*\{\s*transform:\s*rotate\(0deg\)/);
+    assert.ok(hold, 'cannot find the lockout hold in the lift keyframes');
+    const [lockedAt, releasedAt] = [+hold[1], +hold[2]];
+
+    for (const on of lit) {
+      assert.ok(
+        on >= lockedAt && on <= releasedAt,
+        `a light reaches full at ${on}% but the lift is only locked out between ` +
+          `${lockedAt}% and ${releasedAt}% - the referees are calling a lift that has not happened`
+      );
     }
   });
 

@@ -1611,12 +1611,12 @@ form > button.primary {
 
 /* --- loading ------------------------------------------------------------- */
 
-/* ── A LIFTER PULLING A HEAVY DEADLIFT ─────────────────────────────────────
+/* ── A JUDGED DEADLIFT ─────────────────────────────────────────────────────
 
-   The figure is a kinematic chain rooted at the ankle - see Loading.jsx for
-   the structure and where the pose came from. Four rotations drive the whole
-   lift, and everything below a joint stays put, which is what keeps the feet
-   on the floor.
+   The lifter is a kinematic chain rooted at the ankle - see Loading.jsx for
+   the structure, the bar's geometry and where the pose came from. Four
+   rotations drive the whole lift, and everything below a joint stays put,
+   which is what keeps the feet on the floor.
 
    THREE THINGS HERE ARE LOAD-BEARING.
 
@@ -1627,29 +1627,26 @@ form > button.primary {
    the ankle. Valid CSS, no warning, a figure that comes apart.
 
    Every transform-origin below is the joint's position in the REST drawing.
-   The rest pose is lockout, standing straight, so the origins run straight up
-   the same x: ankle 168, knee 132, hip 98, shoulder 52. Move a joint in the
-   JSX and its origin here has to move with it.
+   The rest pose is lockout, standing straight, so the origins run up the same
+   x: ankle 168, knee 132, hip 98, shoulder 52. Move a joint in the JSX and its
+   origin here has to move with it.
 
    And the timing is a heavy single: a brace at the bottom, a slow grinding
-   pull, a held lockout, then a controlled descent.
+   pull, a held lockout while the referees decide, then a controlled descent.
 
    BOTH EASING CURVES ARE ACCELERATING, WHICH LOOKS WRONG AND IS NOT.
 
    A rotation is not a bar height. Near lockout, tens of degrees of hip and
    knee extension move the bar almost not at all, and near the floor a few
-   degrees move it a long way - so the geometry ALREADY decelerates hard at
-   the top, in both directions. The obvious ease-in-out compounds that: 90% of
-   the pull finished by 34% of the cycle, leaving the figure motionless for
-   most of a second while the animation was still nominally lifting, and the
-   descent did not start moving until a third of a second after the lockout
-   hold had ended. Both were measured, not guessed - by sampling the rendered
-   bar position across the cycle and asking when it was actually moving.
-
-   These two curves put 90% of the pull at 46% of the cycle and start the
-   descent within a frame or two of the hold ending. The residual unevenness
-   is wanted: slow off the floor, quickest at the top is what a heavy pull
-   looks like. */
+   degrees move it a long way - so the geometry ALREADY decelerates hard at the
+   top, in both directions. The obvious ease-in-out compounds that: 90% of the
+   pull finished by 34% of the cycle, leaving the figure motionless for most of
+   a second while the animation was still nominally lifting, and the descent
+   not starting until a third of a second after the lockout hold had ended.
+   Both were measured, not guessed - by sampling the rendered bar position
+   across the cycle and asking when it was actually moving. The residual
+   unevenness is wanted: slow off the floor, quickest at the top is what a
+   heavy pull looks like. */
 
 .loading {
   display: flex;
@@ -1662,8 +1659,24 @@ form > button.primary {
   overflow: visible;
 }
 
-.lift-body line,
-.lift-body circle {
+/* ── THE DEFAULTS GO ON THE PARENT, DELIBERATELY ───────────────────────────
+
+   `fill`, `stroke`, `stroke-width` and `stroke-linecap` are INHERITED SVG
+   presentation properties, so setting them once on the group cascades to every
+   line and circle inside it. That is not a tidiness preference - it is what
+   lets each exception below be a plain one-class rule.
+
+   The first version wrote `.lift-body line { stroke-width: 7 }` instead, and
+   every one of the exceptions silently lost: `.lift-body line` is one class
+   plus one type, `.lift-plate-1` is one class, so the general rule outranked
+   all four plate widths AND the belt's colour. The plates came out a uniform
+   thickness and the belt drew in the lifter's own cyan at the lifter's own
+   width, which is a very good way to make a belt invisible. Nothing errored;
+   the stylesheet was valid and the widths were simply never used.
+
+   An INHERITED value loses to any directly-applied declaration whatever its
+   specificity, so this arrangement has no specificity contest in it at all. */
+.lift-body {
   fill: none;
   stroke: var(--secondary);
   stroke-width: 7;
@@ -1674,15 +1687,36 @@ form > button.primary {
   fill: var(--secondary);
 }
 
-/* The bar is the other half of the color pair, and the only part of the
-   drawing that is not the lifter. Plates are drawn as outlines rather than
-   filled discs: at lockout the bar sits across the thighs, and a filled plate
-   would swallow the figure at the exact moment the lift is finished. */
-.lift-bar line,
-.lift-bar circle {
+/* A lifting belt: the only equipment the figure wears, and the one place the
+   two colours meet on the body. It sits at the waist rather than the hip
+   because at lockout the bar is AT the hip, and two parallel magenta strokes
+   nine units apart read as one thick bar rather than as a belt. */
+.lift-belt {
   stroke: var(--accent);
   stroke-width: 5.5;
 }
+
+/* ── THE BAR ───────────────────────────────────────────────────────────────
+   Plates are drawn EDGE-ON as vertical bars rather than as discs, which is
+   both how the Coach Diaz mark draws a barbell and the only way a loaded bar
+   reads as a loaded bar rather than as a wheel. Their widths are the strokes
+   below; their heights are in the JSX, and the tallest one is what sets the
+   bar's height off the floor. Change one without the other and the bar either
+   floats or sinks into the platform. */
+.lift-bar {
+  stroke: var(--accent);
+}
+.lift-shaft   { stroke-width: 3.5; }
+.lift-plate-1 { stroke-width: 9; }
+.lift-plate-2 { stroke-width: 6; }
+.lift-plate-3 { stroke-width: 5; }
+.lift-collar  { stroke-width: 4; }
+/* Zero-length lines with a round cap: two dots on the shaft, which is the
+   whole of "there are hands on this bar". They are cyan because they belong
+   to the lifter, not to the bar - and that is the second reason the group
+   above carries `stroke` rather than a `.lift-bar line` rule: as a rule it
+   outranked this one and drew the hands in the bar's colour. */
+.lift-grip    { stroke-width: 8; stroke: var(--secondary); }
 
 .lift-floor {
   stroke: var(--muted);
@@ -1708,7 +1742,7 @@ form > button.primary {
 
    0-12%   braced at the floor
    12-50%  the pull
-   50-64%  lockout, held
+   50-64%  lockout, held while the referees decide
    64-88%  lowered under control
    88-100% back on the floor */
 @keyframes lift-shin {
@@ -1717,19 +1751,46 @@ form > button.primary {
   88%, 100% { transform: rotate(15deg); }
 }
 @keyframes lift-thigh {
-  0%, 12%   { transform: rotate(-92deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  0%, 12%   { transform: rotate(-87deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
   50%, 64%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0, 0, .4, 1); }
-  88%, 100% { transform: rotate(-92deg); }
+  88%, 100% { transform: rotate(-87deg); }
 }
 @keyframes lift-torso {
-  0%, 12%   { transform: rotate(141.1deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  0%, 12%   { transform: rotate(133.8deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
   50%, 64%  { transform: rotate(0deg);     animation-timing-function: cubic-bezier(0, 0, .4, 1); }
-  88%, 100% { transform: rotate(141.1deg); }
+  88%, 100% { transform: rotate(133.8deg); }
 }
 @keyframes lift-arm {
-  0%, 12%   { transform: rotate(-64.1deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  0%, 12%   { transform: rotate(-61.8deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
   50%, 64%  { transform: rotate(0deg);     animation-timing-function: cubic-bezier(0, 0, .4, 1); }
-  88%, 100% { transform: rotate(-64.1deg); }
+  88%, 100% { transform: rotate(-61.8deg); }
+}
+
+/* ── THE REFEREES ──────────────────────────────────────────────────────────
+   Three lights, white for a good lift, and the lift stands on a majority of
+   two. They come on just after lockout is reached and go out as the bar comes
+   down. The stagger is a phase offset on the same loop rather than three
+   different keyframe blocks - three people pressing three buttons do not press
+   them together, and the delay makes each light lag by that much forever. */
+.lift-lamp {
+  fill: var(--secondary);
+  opacity: 0;
+  animation: lift-lamp 3.2s infinite;
+}
+.lift-light:nth-child(2) .lift-lamp { animation-delay: 0.07s; }
+.lift-light:nth-child(3) .lift-lamp { animation-delay: 0.14s; }
+
+.lift-light-ring {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  opacity: 0.4;
+}
+
+@keyframes lift-lamp {
+  0%, 47%   { opacity: 0; }
+  50%, 64%  { opacity: 1; }
+  67%, 100% { opacity: 0; }
 }
 
 /* Somebody who asked their operating system for less motion did not make an
@@ -1739,12 +1800,14 @@ form > button.primary {
    It holds at the BOTTOM rather than at lockout, which is the opposite of what
    you would guess. Lockout is a straight vertical line - a stick figure with
    every joint extended is barely a figure at all. The braced position over the
-   bar is the pose that still reads as a person about to lift something. */
+   bar is the pose that still reads as a person about to lift something. The
+   lights stay dark, because the lift has not been judged yet. */
 @media (prefers-reduced-motion: reduce) {
   .lift-shin  { animation: none; transform: rotate(15deg); }
-  .lift-thigh { animation: none; transform: rotate(-92deg); }
-  .lift-torso { animation: none; transform: rotate(141.1deg); }
-  .lift-arm   { animation: none; transform: rotate(-64.1deg); }
+  .lift-thigh { animation: none; transform: rotate(-87deg); }
+  .lift-torso { animation: none; transform: rotate(133.8deg); }
+  .lift-arm   { animation: none; transform: rotate(-61.8deg); }
+  .lift-lamp  { animation: none; opacity: 0; }
 }
 
 .loading-word {
