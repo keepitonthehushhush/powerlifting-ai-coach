@@ -384,9 +384,19 @@ of the exercise, none of which had any failure signal:
 
 All three are fixed in migration `0035`, and each now has a catalogue invariant
 in `scripts/check-db-invariants.mjs` that fails against the database rather than
-against a file. Run the invariants against **both** projects after any schema
-change; a check that passes on one and fails on the other is drift, and drift
-is what this exercise is for.
+against a file.
+
+**Comparing the two databases.** `scripts/schema-fingerprint.sql` reduces a
+whole schema — columns, policies, grants, constraints, indexes, triggers and
+function bodies — to one hash. Paste it into the SQL editor of both projects
+and compare. Equal means the live schema is exactly what these files build.
+After 0035, both read `cf6ada787700693ebe40ecc3de6a26f8` across 330 objects.
+
+Run it after any change to `supabase/migrations/`, and after anything applied
+through a dashboard — which is where drift comes from. Note that it compares
+function *logic*: three functions in production are missing their comments,
+because they were applied through a path that stripped them, and a check that
+reports the same three every time is a check somebody stops reading.
 
 **A preview says so.** Every page carries a "Preview build — not
 coachdiaz.app" bar. Confusing a preview tab for the live site is the mistake a
