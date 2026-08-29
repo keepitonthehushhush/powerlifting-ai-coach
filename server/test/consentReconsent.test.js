@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
-import { readSource, readRaw, phrase } from './helpers/source.js';
+import { readSource, readRaw, phrase, latestDefinition } from './helpers/source.js';
 import { POLICY_VERSIONS, CONSENT_TYPES } from '../src/lib/policyVersions.js';
 
 /**
@@ -132,10 +132,25 @@ describe('the database agrees with the screen', () => {
   test('and the consent_type CHECK constraint knows every type', () => {
     // The constraint enumerates them, so a type added in JavaScript alone
     // fails at INSERT with a constraint violation the user sees as a 502.
-    const constraint = readRaw(new URL('../../supabase/migrations/0028_leaderboard_consent.sql', import.meta.url));
+    //
+    // ── IT READ ONE FROZEN FILE, AND SO COULD NEVER FAIL ────────────────
+    //
+    // This used to open 0028 by name - the migration that happened to define
+    // the constraint when it was written. A migration directory is append-only,
+    // so a later file redefining the constraint cannot make an assertion about
+    // an earlier one fail: the test would keep passing while the live
+    // definition changed underneath it. 0036 redefines exactly this constraint.
+    //
+    // The same defect as the two tests that read 0012 and 0024 for the health
+    // fingerprint, which is why `latestDefinition` exists. Read the newest file
+    // that defines the object; it is the only one that describes it.
+    const { file, body } = latestDefinition('constraint consent_records_consent_type_check');
     for (const type of CONSENT_TYPES) {
-      assert.ok(constraint.includes(`'${type}'`), `the CHECK constraint omits ${type}`);
+      assert.ok(body.includes(`'${type}'`), `the CHECK constraint in ${file} omits ${type}`);
     }
+    // And the type that is deliberately NOT athlete-facing still has to be
+    // accepted by the database, because the ledger stores it.
+    assert.ok(body.includes("'guardian_consent'"), `${file} does not allow guardian_consent`);
   });
 
   test('and an invariant checks it against the deployed database, not the file', () => {

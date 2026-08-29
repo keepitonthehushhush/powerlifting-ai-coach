@@ -340,7 +340,7 @@ describe('the terms describe the age rule the code actually enforces', () => {
     // not in the code. This asserts the opposite direction: that the promise
     // on the page is backed by the route.
     assert.match(termsPage, phrase('that check runs on our server, not in', 'i'));
-    assert.match(chat, /adultGateDecision\(context\.profile\)/);
+    assert.match(chat, /adultGateDecision\(context\.profile/);
     assert.match(chat, /adult_gate_/);
   });
 

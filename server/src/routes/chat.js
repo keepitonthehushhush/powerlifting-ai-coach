@@ -4,7 +4,7 @@ import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
-import { adultGateDecision, MINIMUM_AGE } from '../lib/ageGate.js';
+import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
 import { prescribeAll } from '../lib/progression.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
@@ -19,6 +19,7 @@ import { entitlement, requiresSubscription, PAID_FEATURE } from '../lib/entitlem
 import { loadSubscription } from '../lib/subscriptions.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
+import { GUARDIAN_CONSENT_VERSION } from '../lib/policyVersions.js';
 
 export const chatRouter = Router();
 
@@ -56,6 +57,68 @@ async function loadCoachingContext(supabase) {
     activeProgram: program.data,
     exerciseLibrary: library.data ?? [],
   };
+}
+
+/**
+ * Is there an active, current guardian consent for this athlete?
+ *
+ * ── WHY IT READS THE LEDGER RATHER THAN CALLING has_active_consent() ──────
+ *
+ * The database has that function and it is version-aware, but reaching it
+ * means `.rpc()`, and `.rpc()` resolves against the client's schema while the
+ * tests mock rpc with something that answers to any name. A gate that decides
+ * whether a child is coached should not be verified by a mock that cannot tell
+ * which function it was asked for. `delete_my_account` sat in the wrong schema
+ * in production for exactly that reason.
+ *
+ * So it reads the rows directly, ordered the way the ledger has to be ordered,
+ * and compares the policy version itself. Version-awareness is the point: a
+ * guardian who agreed to last quarter's terms has not agreed to these.
+ *
+ * FAILS CLOSED. A read error returns false, which refuses coaching rather than
+ * granting it, like every other gate here.
+ */
+async function loadGuardianConsent(supabase) {
+  const { data, error } = await supabase
+    .from('consent_records')
+    .select('consent_type, granted, policy_version, created_at, seq')
+    .eq('consent_type', 'guardian_consent')
+    .order('seq', { ascending: false });
+
+  if (error) return false;
+
+  // Newest first, so the first row is the current decision. `seq` and not
+  // `created_at`: now() is transaction start time, so two decisions written in
+  // one transaction carry the same timestamp and sort arbitrarily - the bug
+  // that once made a withdrawal read as a grant.
+  const latest = (data ?? [])[0];
+  if (!latest || latest.granted !== true) return false;
+
+  // Version-aware, checked here rather than by deriveCurrentConsents because
+  // guardian_consent is deliberately not in the athlete-facing versions map
+  // until it has a document. A guardian who agreed to a superseded policy has
+  // not agreed to this one.
+  return latest.policy_version === GUARDIAN_CONSENT_VERSION;
+}
+
+/**
+ * What an athlete is told when the age gate refuses them.
+ *
+ * Pulled out of the route because the gate now has three refusals rather than
+ * two, and a nested ternary deciding what to tell a child is the wrong shape
+ * for something a person actually reads.
+ */
+function refusalMessage(reason) {
+  if (reason === 'guardian_consent_required') {
+    return `Coach Diaz can coach you at your age, but only once a parent or guardian has agreed to it. `
+      + `Ask them to give us their email address on your profile page and we will send them what they need to read. `
+      + `Nothing you have entered has been deleted.`;
+  }
+  if (reason === 'too_young') {
+    return `Coach Diaz is only for people aged ${ABSOLUTE_MINIMUM_AGE} and over, and under ${MINIMUM_AGE} `
+      + `we also need a parent or guardian to agree. Nothing you have entered has been deleted.`;
+  }
+  return 'Please add your date of birth on the profile page before talking to Coach.';
 }
 
 /** Fetch the caller's active conversation, or start one. */
@@ -143,9 +206,12 @@ chatRouter.post('/', async (req, res, next) => {
      * The subscription read is skipped entirely when the paywall is off, which
      * is the state this ships in.
      */
-    const [context, subscription] = await Promise.all([
+    const [context, subscription, guardianConsent] = await Promise.all([
       loadCoachingContext(req.supabase),
       config.paywall.active ? loadSubscription(req.supabase) : Promise.resolve(null),
+      // Skipped entirely while minors are disabled, like the subscription read
+      // above: it answers a question the gate will not ask.
+      config.minors.enabled ? loadGuardianConsent(req.supabase) : Promise.resolve(false),
     ]);
 
     /**
@@ -162,27 +228,42 @@ chatRouter.post('/', async (req, res, next) => {
      * Fails closed on a missing date. The intake form requires one, so its
      * absence means somebody went around the form.
      */
-    const adult = adultGateDecision(context.profile);
+    const adult = adultGateDecision(context.profile, {
+      minorsEnabled: config.minors.enabled,
+      guardianConsent,
+    });
     if (!adult.allowed) {
       // Never log the date or the computed age. The reason code is what makes
       // this diagnosable, and it is all anybody needs.
       logger.warn('chat.refused_not_adult', { userId: req.user.id, reason: adult.reason });
       throw codedError(
         'age_restricted',
-        adult.reason === 'too_young'
-          ? `Coach Diaz is only for people aged ${MINIMUM_AGE} and over. We have not built a way for a parent or guardian to consent on a younger person's behalf, and until we have, we are not going to coach anyone under ${MINIMUM_AGE}. Nothing you have entered has been deleted.`
-          : 'Please add your date of birth on the profile page before talking to Coach.',
+        refusalMessage(adult.reason),
         { code: `adult_gate_${adult.reason}` }
       );
     }
 
     /**
-     * THE PAYWALL, AFTER THE ADULT GATE AND NEVER BEFORE IT.
+     * THE PAYWALL, AFTER THE ADULT GATE AND NEVER BEFORE IT - AND NEVER FOR
+     * A MINOR AT ALL.
      *
      * The order is not stylistic. If somebody under 18 reaches this route,
      * the answer is that we do not coach them - not an invitation to pay. A
      * paywall checked first would show a minor a subscribe button, which is
      * the one response this product must never give them.
+     *
+     * ORDERING USED TO BE ENOUGH AND NO LONGER IS. It protected minors only
+     * because every minor was refused, so none of them ever reached this line.
+     * A 15-year-old with a guardian's consent is now ALLOWED, walks straight
+     * past a gate that said yes, and would arrive here - where the next thing
+     * that happens is a subscribe button in front of a child. The gate having
+     * a new outcome quietly removed a property that the gate itself was
+     * providing.
+     *
+     * So it is explicit: `!adult.isMinor`. A consented minor is coached and is
+     * never asked to pay. That is a decision with a cost, and it is the right
+     * way round - taking payment details from a minor is a worse problem than
+     * giving away the coaching.
      *
      * `config.paywall.active` is a deliberate switch, not a consequence of
      * Stripe keys existing (see lib/env.js). While it is off, every branch
@@ -192,7 +273,7 @@ chatRouter.post('/', async (req, res, next) => {
      * still counts, a cancelled subscription inside its paid period still
      * counts, and this route does not get an opinion about any of it.
      */
-    if (config.paywall.active && requiresSubscription(PAID_FEATURE)) {
+    if (config.paywall.active && !adult.isMinor && requiresSubscription(PAID_FEATURE)) {
       const decision = entitlement(subscription, {
         // Loaded with the profile that the adult gate already used, so this
         // costs no extra query.

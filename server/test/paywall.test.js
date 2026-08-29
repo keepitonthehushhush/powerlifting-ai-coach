@@ -91,13 +91,51 @@ describe('the order of the gates', () => {
     // If a minor reaches this route the answer is that we do not coach them,
     // never an invitation to subscribe. Asserted by position, because that is
     // what the ordering IS - there is no other artefact to point at.
-    const adultGate = chat.indexOf('adultGateDecision(context.profile)');
-    const paywallGate = chat.indexOf('config.paywall.active && requiresSubscription');
+    const adultGate = chat.indexOf('adultGateDecision(context.profile');
+    // `if (config.paywall.active` and not `config.paywall.active`: the bare
+    // string also matches the SUBSCRIPTION READ higher up the function, which
+    // is not a gate. Broadening it to survive an edit made it match that line
+    // instead and report the gates in the wrong order - a matcher finding the
+    // wrong thing and failing confidently, which is worse than not matching.
+    const paywallGate = chat.indexOf('if (config.paywall.active');
     assert.ok(adultGate !== -1 && paywallGate !== -1, 'one of the two gates is missing');
     assert.ok(
       adultGate < paywallGate,
       'the paywall is checked before the adult gate: a minor would be shown a subscribe button',
     );
+  });
+
+  /**
+   * ── ORDERING USED TO BE ENOUGH AND NO LONGER IS ───────────────────────
+   *
+   * The test above protected minors only because every minor was refused, so
+   * none of them ever reached the paywall. A 13-17 year old with a guardian's
+   * consent is now ALLOWED: they walk past a gate that said yes and arrive at
+   * the next thing in the function, which is a subscribe button in front of a
+   * child.
+   *
+   * Giving the gate a new outcome silently removed a property the gate itself
+   * had been providing. Nothing failed - the ordering assertion above still
+   * passes, because the order did not change. So the property is now asserted
+   * directly instead of being inferred from position.
+   */
+  test('AND A MINOR NEVER REACHES THE PAYWALL AT ALL, EVEN AN ALLOWED ONE', () => {
+    const guard = chat.match(/if \(config\.paywall\.active[^)]*\)/);
+    assert.ok(guard, 'the paywall condition has moved and this test cannot see it');
+    assert.match(
+      guard[0],
+      /!adult\.isMinor/,
+      'the paywall is entered without checking whether the athlete is a minor. Once a '
+        + 'guardian consent can allow a 13-17 year old through the age gate, ordering '
+        + 'alone stops protecting them and they are shown a subscribe button.',
+    );
+  });
+
+  test('and paying is not what unlocks coaching for a minor', () => {
+    // The consented minor is coached for free. That is a decision with a cost
+    // and it is the right way round: taking payment details from a child is a
+    // worse problem than giving away the coaching.
+    assert.match(chatRaw, phrase('A consented minor is coached and is never asked to pay'));
   });
 
   test('and the reason it matters is written down, not just implemented', () => {

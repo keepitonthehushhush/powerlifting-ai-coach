@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { codedError } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
 import {
-  CONSENT_TYPES,
+  SELF_SERVICE_CONSENT_TYPES,
   POLICY_VERSIONS,
   REQUIRED_CONSENTS,
   deriveCurrentConsents,
@@ -27,7 +27,13 @@ export const consentRouter = Router();
  */
 
 const ConsentRequest = z.object({
-  consent_type: z.enum(CONSENT_TYPES),
+  /*
+   * SELF_SERVICE, not every type on the ledger. A guardian consent is about
+   * the person holding this session, so accepting one here would let a
+   * fifteen-year-old record that their parent agreed. It arrives from the
+   * guardian's own link and from nowhere else.
+   */
+  consent_type: z.enum(SELF_SERVICE_CONSENT_TYPES),
   granted: z.boolean(),
 });
 

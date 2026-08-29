@@ -25,6 +25,52 @@ export const POLICY_VERSIONS = Object.freeze({
 export const CONSENT_TYPES = Object.freeze(Object.keys(POLICY_VERSIONS));
 
 /**
+ * A guardian agreeing that somebody aged 13 to 17 may be coached here.
+ *
+ * ── WHY IT IS NOT IN THE MAP ABOVE ────────────────────────────────────────
+ *
+ * It is a real consent on the same append-only ledger, version-aware, withdrawn
+ * the same way. Putting it in POLICY_VERSIONS was the obvious move and five
+ * separate guards refused it, which is the codebase saying the abstraction does
+ * not fit. That map is not "every consent that exists" - it is the consents an
+ * athlete SEES, manages on their consent screen, and has a page to read before
+ * agreeing. A guardian consent has a different audience and, today, no document
+ * at all: `policyDocuments.test.js` said so in as many words - "users would be
+ * agreeing to nothing".
+ *
+ * It moves into the map on the day it has a page, and not before. Until then a
+ * separate constant records the version, so the ledger stays version-aware
+ * without the product claiming there is something to read.
+ *
+ * Must match the version seeded by migration 0036; a test holds the two
+ * together.
+ */
+export const GUARDIAN_CONSENT_VERSION = 'gc-2026-08-29a';
+
+/**
+ * The consents a signed-in athlete may record FOR THEMSELVES.
+ *
+ * ── WHY THIS IS NOT JUST CONSENT_TYPES ────────────────────────────────────
+ *
+ * Everything on the ledger used to be self-service, so the POST endpoint took
+ * `z.enum(CONSENT_TYPES)` and that was right. A guardian consent breaks the
+ * assumption underneath it: the person it protects is the person holding the
+ * session, and letting them grant it is letting a fifteen-year-old tick a box
+ * that says their parent agreed.
+ *
+ * That is not a hypothetical slip - adding `guardian_consent` to the versions
+ * map above is enough to cause it, because the endpoint derives its enum from
+ * that map. So the endpoint reads THIS list instead, and the exclusion is
+ * asserted rather than assumed.
+ *
+ * A guardian consent is recorded by the guardian following a link sent to
+ * their own address, and by nothing else.
+ */
+export const SELF_SERVICE_CONSENT_TYPES = Object.freeze(
+  CONSENT_TYPES.filter((type) => type !== 'guardian_consent')
+);
+
+/**
  * Consents without which the product cannot function at all.
  *
  * Deliberately short. MHMDA requires consent to be freely given, and a consent

@@ -223,7 +223,10 @@ describe('the adult gate', () => {
   test('THE REFUSAL IS IN THE API, NOT ONLY IN THE BROWSER', () => {
     // A client-side check is a courtesy. The browser is not ours, and getting
     // past one takes a single open tab.
-    assert.match(chat, /const adult = adultGateDecision\(context\.profile\)/);
+    // Not `\(context\.profile\)` with a closing paren: the gate takes options now,
+    // and pinning the argument list is how a correct change gets blocked by a test
+    // that was never about the argument list. Assert that the gate is called.
+    assert.match(chat, /const adult = adultGateDecision\(context\.profile/);
     assert.match(chat, /if \(!adult\.allowed\)/);
     assert.match(chat, /throw codedError\(\s*'age_restricted'/);
     assert.equal(ERROR_CODES.age_restricted.status, 403);
@@ -232,7 +235,7 @@ describe('the adult gate', () => {
   test('it costs no extra query', () => {
     // The profile is already loaded a few lines above. A second read to answer
     // a question we hold the data for would be a cost on every message.
-    assert.ok(chat.indexOf('loadCoachingContext(req.supabase)') < chat.indexOf('adultGateDecision(context.profile)'));
+    assert.ok(chat.indexOf('loadCoachingContext(req.supabase)') < chat.indexOf('adultGateDecision(context.profile'));
   });
 
   test('the date and the age are never logged', () => {
@@ -242,7 +245,15 @@ describe('the adult gate', () => {
   });
 
   test('the refusal says what it is and does not threaten their data', () => {
-    const block = chat.slice(chat.indexOf('const adult ='), chat.indexOf('const history'));
-    assert.match(block, phrase('Nothing you have entered has been deleted'));
+    // The messages moved into refusalMessage() when the gate gained a third
+    // refusal - a nested ternary deciding what to tell a child was the wrong
+    // shape for something a person reads. Every refusal still has to carry it.
+    const fn = chat.slice(chat.indexOf('function refusalMessage'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    const returns = [...body.matchAll(/return\s+`([\s\S]*?)`;/g)].map((m) => m[1]);
+    assert.ok(returns.length >= 2, 'refusalMessage has no message bodies to check');
+    for (const message of returns) {
+      assert.match(message, phrase('Nothing you have entered has been deleted'));
+    }
   });
 });

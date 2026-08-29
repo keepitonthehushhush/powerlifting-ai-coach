@@ -174,7 +174,8 @@ export function readProfileApi({ raw = false } = {}) {
  * file that describes it.
  *
  * @param {string} declaration - the text that opens the definition, without the
- *   `create [or replace]` prefix, e.g. `function private.health_fingerprint`.
+ *   `create [or replace]` or `add` prefix - e.g. `function
+ *   private.health_fingerprint`, or `constraint consent_records_type_check`.
  * @returns {{file: string, body: string}} the newest migration defining it, and
  *   the definition from that point to the end of the statement.
  */
@@ -186,9 +187,22 @@ export function latestDefinition(declaration) {
     const sql = readFileSync(new URL(file, dir), 'utf8');
     const at = Math.max(
       sql.lastIndexOf(`create or replace ${declaration}`),
-      sql.lastIndexOf(`create ${declaration}`)
+      sql.lastIndexOf(`create ${declaration}`),
+      // Constraints are not created, they are added - and they are re-added by
+      // a later migration exactly as functions are replaced by one, so they
+      // have the same append-only trap. Second shape, same helper: the
+      // alternative was a second hand-rolled scan in the one test that needed
+      // it, which is how the first version of this problem started.
+      sql.lastIndexOf(`add ${declaration}`)
     );
     if (at === -1) continue;
+
+    // A constraint ends at the semicolon; there is no dollar-quoted body to
+    // find, and looking for one would run to the end of the file.
+    if (sql.startsWith('add ', at) || sql.slice(at).startsWith('add ')) {
+      const semi = sql.indexOf(';', at);
+      return { file, body: semi === -1 ? sql.slice(at) : sql.slice(at, semi + 1) };
+    }
 
     // To the end of the dollar-quoted body, which is where every definition in
     // this directory ends. Falls back to the end of the file.

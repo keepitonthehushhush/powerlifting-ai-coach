@@ -145,6 +145,33 @@ export function buildConfig(env) {
    * refusing to boot would turn a billing mistake into a total outage, and the
    * coaching is the part that matters.
    */
+  /**
+   * Coaching 13 to 17 year olds, with a guardian's consent. Off by default.
+   *
+   * ── WHY THIS IS A SWITCH AND NOT A DEPLOY ─────────────────────────────
+   *
+   * The same reasoning as the paywall. Writing the code is not the decision to
+   * ship it, and here the decision has a prerequisite that no amount of code
+   * satisfies: the Terms and the health-data policy both still say this
+   * service is for adults. Turning this on while they say that puts the
+   * documents and the code back into disagreement, which is the exact failure
+   * that produced the adult gate in the first place. See docs/UNDER_18.md.
+   *
+   * While it is off, `adultGateDecision` behaves exactly as it did before any
+   * of this existed - 18 and over, one reason code - so the flag is the only
+   * thing standing between the two behaviours and it is testable in both
+   * positions.
+   *
+   * There is no misconfiguration branch of the paywall's kind, because the
+   * failure mode is not symmetrical: turning this on before the guardian
+   * consent flow exists refuses a minor with `guardian_consent_required`
+   * instead of `too_young`, which is a better message for a refusal that
+   * still happens. Nobody is let in by mistake.
+   */
+  const minors = {
+    enabled: optional(env, 'MINORS_ENABLED', 'false').trim().toLowerCase() === 'true',
+  };
+
   const paywall = (() => {
     const requested = optional(env, 'PAYWALL_ENABLED', 'false').trim().toLowerCase() === 'true';
 
@@ -244,5 +271,6 @@ export function buildConfig(env) {
 
     stripe,
     paywall,
+    minors,
   };
 }
