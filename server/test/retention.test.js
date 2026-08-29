@@ -209,9 +209,36 @@ describe('the periods in the policy and the periods in the database agree', () =
 
 describe('the policy version moved, so people are asked again', () => {
   test('retention is a term somebody consents to', () => {
-    assert.match(POLICY_VERSIONS.health_data_collection, /^chd-2026-08-28[a-z]$/);
+    /**
+     * This used to read /^chd-2026-08-28[a-z]$/, and it failed the next time
+     * the document changed for an unrelated reason - the Turnstile disclosure
+     * in chd-2026-08-29a. That is the SIXTH assertion in this suite to pin a
+     * literal and then refuse a correct change, so it is written as what it
+     * means instead: retention was a change to the terms, so the version had
+     * to move PAST the one that predated it, and it must never move back.
+     *
+     * These versions are `chd-YYYY-MM-DD<letter>`, which sorts lexically, so a
+     * string comparison is a date comparison. chd-2026-08-27b is the last
+     * version that did not describe retention.
+     */
+    const beforeRetention = 'chd-2026-08-27b';
+    assert.ok(
+      POLICY_VERSIONS.health_data_collection > beforeRetention,
+      `health_data_collection is ${POLICY_VERSIONS.health_data_collection}, which is not later ` +
+        `than ${beforeRetention} - the version that predated retention. Retention is a term ` +
+        'people consent to, so it cannot be described by a document nobody re-agreed to.'
+    );
+    assert.match(POLICY_VERSIONS.health_data_collection, /^chd-\d{4}-\d{2}-\d{2}[a-z]$/);
+
+    // The page must print the version the server records, or the consent names
+    // a document the reader never saw.
     assert.ok(policy.includes(POLICY_VERSIONS.health_data_collection));
     assert.match(policy, phrase('we are asking you to agree again'));
+
+    // And the retention entry must still be in the changelog. Moving the
+    // version forward past it is only honest if the page still says what it
+    // moved for.
+    assert.match(policy, phrase('Retention periods are now set rather than'));
   });
 
   test('and the database was updated to match', () => {
