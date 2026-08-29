@@ -197,10 +197,17 @@ h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
   border-top: 1px solid var(--border);
 }
 /* A link is a target as much as a button is, and these are the two people
-   reach for on a phone when the password did not work. */
+   reach for on a phone when the password did not work.
+
+   The TARGET is min-height and padding. The first version also pushed the type
+   to 1rem, which is 16px against the 13.12px of the prompt directly above it
+   and the fine print directly below - a 22% jump, on the only two links on the
+   screen. Reported as the bottom of the login page looking "zoomed in a bit" on
+   a phone, and measurement agreed: 16px surrounded by 13.12px, with no
+   horizontal overflow anywhere, so nothing was actually zoomed.
+   Font size was never what made the target big enough; 44px of height is. */
 .auth-alternative .link {
   min-height: 44px;
-  font-size: 1rem;
   padding: 0 0.5rem;
 }
 
@@ -1012,10 +1019,31 @@ form > button.primary {
 
 /* The destinations scroll sideways when they do not fit. Without a fade the
    last item is simply sliced in half, which looks like a rendering fault
-   rather than an invitation to scroll. */
-.nav-places {
+   rather than an invitation to scroll.
+
+   ONLY WHEN THERE IS SOMETHING TO SCROLL TO, and only on the side that has it.
+   The first version faded the last 18px unconditionally, and between about 820
+   and 860 pixels of window width the FAQ tab - the last one - sits inside that
+   band while the row does not overflow at all. A fully visible tab was being
+   dimmed with nothing to scroll to, which reads as the tab disappearing behind
+   something. Selecting it made it plainer, because a selection highlight fades
+   under a mask like anything else.
+
+   `data-fade` is set by measuring the element, not by a breakpoint: where this
+   row overflows depends on how many destinations there are and how long their
+   translated labels are, so any width chosen here would be right in one
+   language. See useEdgeFade in SiteNav.jsx. */
+.nav-places[data-fade='end'] {
   -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
   mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+}
+.nav-places[data-fade='start'] {
+  -webkit-mask-image: linear-gradient(to left, #000 0, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to left, #000 0, #000 calc(100% - 18px), transparent 100%);
+}
+.nav-places[data-fade='both'] {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
 }
 
 /* On a phone the two groups stop competing for one row and become two.
