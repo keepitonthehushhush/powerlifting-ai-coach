@@ -1,120 +1,108 @@
-import { Logo } from './Logo.jsx';
 import { useI18n } from '../i18n/index.jsx';
 
 /**
- * Something to watch while the app is waiting.
+ * Something to watch while the app is waiting: a lifter pulling a heavy
+ * deadlift.
  *
- * ── WHAT IT IS ────────────────────────────────────────────────────────────
+ * ── HOW IT IS BUILT, AND WHY THAT MATTERS ─────────────────────────────────
  *
- * A stick figure curling the Coach Diaz badge, asked for in those words. The
- * badge is the real `Logo` component rather than a copy of it, so if the mark
- * changes the animation changes with it - a second hand-drawn version would
- * drift from the first within a month.
+ * The figure is a KINEMATIC CHAIN rooted at the ankle. Each segment is a `<g>`
+ * nested inside the one below it, rotating about its own joint:
  *
- * ── WHERE IT IS AND IS NOT USED ───────────────────────────────────────────
+ *     shin (pivots at the ankle)
+ *       └── thigh (pivots at the knee)
+ *             └── torso (pivots at the hip)
+ *                   └── arms (pivot at the shoulder)
+ *                         └── the barbell, held in the hands
  *
- * It replaces the word "Loading…" in the places that were already waiting on
- * something real: the session check, a profile fetch, a program fetch. It is
- * NOT an interstitial between pages.
+ * That nesting is the whole design, and it buys one property that is hard to
+ * get any other way: THE FEET STAY ON THE FLOOR. Rotating a joint carries
+ * everything above it along, and nothing below it moves. Animate the figure
+ * the obvious way instead - one group per limb, all siblings, each with its
+ * own keyframes - and the segments come apart at the joints the moment two
+ * of them disagree, because nothing structurally connects them.
  *
- * That distinction is the whole design. Every route in this application is in
- * one bundle, so moving between pages involves no network at all - React swaps
- * the tree in a frame. Putting an animation in front of that would not cover a
- * wait, it would MANUFACTURE one, and the product would get slower in exchange
- * for looking busier. A spinner in front of an instant transition is the
- * clearest way to make a fast application feel slow.
+ * It also means the animation is four numbers. Everything is drawn ONCE, in
+ * the lockout pose, standing straight; the bottom position is that same
+ * drawing with four rotations applied. There is no second set of coordinates
+ * to keep in step with the first.
  *
- * So it appears exactly where there was already something to wait for.
+ * ── WHERE THE POSE CAME FROM ──────────────────────────────────────────────
  *
- * ── AND IT HOLDS STILL FOR ANYBODY WHO ASKED IT TO ────────────────────────
+ * Not from taste. The bottom position is solved: the shin and thigh angles
+ * are chosen for the look (shins slightly forward, hips above the knees), and
+ * the torso angle is then whatever puts the hands exactly on a bar resting on
+ * the floor - which lands at 26 degrees above horizontal, right for a
+ * conventional pull. Hand-tuning the third angle instead gives a figure whose
+ * arms end somewhere near the bar, and "near" reads as broken.
  *
- * Under `prefers-reduced-motion` the arm does not move. Somebody who asked
- * their operating system for less motion did not make an exception for a
- * loading screen, and a repeating animation is among the worst offenders for
- * vestibular disorders. The figure and the word remain, which is all the
- * information the animation was carrying anyway.
+ * The bar path was checked rather than assumed. CSS interpolates the four
+ * rotations linearly, and there is no reason in principle for that to move
+ * the hands in a straight line - a bar that swings out and away would look
+ * wrong to anybody who lifts. Sampled across the pull it travels upward and
+ * slightly BACK toward the body, monotonically, which is what a real bar path
+ * does.
+ *
+ * ── AND WHERE IT IS NOT USED ──────────────────────────────────────────────
+ *
+ * Not as an interstitial between pages. Every route in this application is in
+ * one bundle, so moving between pages involves no network - React swaps the
+ * tree in a frame. Putting an animation in front of that would not cover a
+ * wait, it would MANUFACTURE one, and the product would get slower in
+ * exchange for looking busier. It appears only where something was already
+ * being waited for.
  */
-/**
- * How wide the badge is inside the figure, as a fraction of the whole figure.
- *
- * The badge is drawn 64 units wide in a 200-unit viewBox, so it always renders
- * at 32% of whatever `size` the caller asks for. That number is written down
- * here because the component has to hand it to `Logo`; see below.
- */
-const BADGE_SHARE = 64 / 200;
-
 export function Loading({ size = 120 }) {
   const { t } = useI18n();
   const label = t('common.loading');
 
-  /*
-   * ── THE BADGE HAS TO BE TOLD HOW BIG IT REALLY IS ───────────────────────
-   *
-   * `Logo` switches to a simplified mark below 32px, because the full one
-   * carries five barbell elements whose inner sleeves merge into a single
-   * smear at small sizes. It decides that from its `size` prop.
-   *
-   * Inside an SVG, that prop is in USER UNITS, not pixels. Passing a flat 64
-   * meant Logo believed it was 64px tall and drew the full mark - while the
-   * viewBox scaled it down to 32% of the figure. At the 120px figure that is
-   * 38px and fine. At the 72px figure used in the page-level waits it is 23px,
-   * and the mark rendered as mud. Nothing errored. The build was green. It was
-   * found by rendering the two sizes side by side and looking at them.
-   *
-   * So Logo is handed the size it will ACTUALLY occupy on screen, and the
-   * group scales the result back up to the 64 units the layout is built
-   * around. The variant is now chosen on the truth.
-   */
-  const badgePixels = Math.round(size * BADGE_SHARE);
-  const backToUserUnits = 64 / badgePixels;
-
   return (
     <span className="loading" role="status">
       {/*
-        * aria-hidden, and the text below carries the meaning. A screen reader
-        * announcing "stick figure curling a badge" would be describing the
-        * decoration instead of saying that something is loading.
+        * aria-hidden, and the word below carries the meaning. A screen reader
+        * describing a stick figure would be reading the decoration out loud
+        * instead of saying that something is loading.
         */}
       <svg
-        className="loading-figure"
+        className="lift"
         width={size}
         height={size}
         viewBox="0 0 200 200"
         aria-hidden="true"
         focusable="false"
       >
-        <g
-          stroke="var(--text)"
-          strokeWidth="9"
-          strokeLinecap="round"
-          fill="none"
-        >
-          {/* Head, torso, legs: the half that stays still. */}
-          <circle cx="64" cy="44" r="15" />
-          <line x1="64" y1="59" x2="64" y2="118" />
-          <line x1="64" y1="118" x2="46" y2="172" />
-          <line x1="64" y1="118" x2="82" y2="172" />
-          {/* Upper arm. Fixed, because the elbow is what a curl pivots on. */}
-          <line x1="64" y1="72" x2="104" y2="112" />
-        </g>
+        {/* The ground. Everything else is measured from it. */}
+        <line className="lift-floor" x1="38" y1="176.5" x2="162" y2="176.5" />
 
-        {/*
-          * Forearm and badge together, rotating about the elbow at (104, 112).
-          * The badge turns with the hand rather than staying level, which is
-          * what a weight actually does through a curl.
-          */}
-        <g className="loading-arm">
-          <line
-            x1="104"
-            y1="112"
-            x2="126"
-            y2="152"
-            stroke="var(--text)"
-            strokeWidth="9"
-            strokeLinecap="round"
-          />
-          <g transform={`translate(94, 120) scale(${backToUserUnits})`}>
-            <Logo size={badgePixels} title={label} />
+        <g className="lift-body">
+          {/* The foot is outside the chain on purpose: it is the one part of
+              a deadlift that does not move. */}
+          <line className="lift-foot" x1="76" y1="173" x2="112" y2="173" />
+
+          <g className="lift-shin">
+            <line x1="84" y1="168" x2="84" y2="132" />
+
+            <g className="lift-thigh">
+              <line x1="84" y1="132" x2="84" y2="98" />
+
+              <g className="lift-torso">
+                <line x1="84" y1="98" x2="84" y2="52" />
+                <circle className="lift-head" cx="84" cy="36" r="10" />
+
+                {/* The arm hangs 7 units in front of the body rather than
+                    straight down the middle. Without that offset the arm and
+                    the torso are the same line at lockout, and the figure
+                    loses its arms at exactly the moment the lift finishes. */}
+                <g className="lift-arm">
+                  <line x1="84" y1="52" x2="91" y2="104" />
+                  <g className="lift-bar">
+                    <line x1="51" y1="104" x2="131" y2="104" />
+                    <circle cx="64" cy="104" r="19" />
+                    <circle cx="118" cy="104" r="19" />
+                  </g>
+                </g>
+              </g>
+            </g>
           </g>
         </g>
       </svg>

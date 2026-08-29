@@ -8,212 +8,341 @@ import { es } from '../../web/src/i18n/locales/es.js';
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const code = (p) => readSource(new URL(p, import.meta.url));
 
-const loadingCode = code('../../web/src/components/Loading.jsx');
+const loading = code('../../web/src/components/Loading.jsx');
 const app = code('../../web/src/App.jsx');
 const css = read('../../web/src/styles.css');
 const cssCode = stripComments(css);
 
 /**
- * A stick figure curling the Coach Diaz badge.
+ * A lifter pulling a heavy deadlift.
  *
  * ── WHY A WHOLE TEST FILE FOR A LOADING SPINNER ───────────────────────────
  *
- * Because every way this can be wrong is silent. A pivot around the wrong
- * point renders a valid document. A badge drawn below the size its own mark
- * survives renders a valid document. An animation with no reduced-motion
- * escape renders a valid document. Nothing throws, nothing warns, the build is
- * green, and the only signal is a person looking at the page.
+ * Because every way this can be wrong is silent. The figure is a kinematic
+ * chain: four nested groups, each rotating about a joint whose position is
+ * written down TWICE - once in the JSX as the end of a line, and once in the
+ * stylesheet as a transform-origin. Nothing connects the two copies.
  *
- * Two of the assertions below exist because that is exactly what happened:
- * they were written after rendering the component in a real browser and
- * finding a defect that the entire suite, the linter and the build had all
- * agreed was fine.
+ * Move a joint in one file and the other still parses, still builds, still
+ * renders. The result is not an error. It is a leg that detaches from its own
+ * knee and swings around a point in mid-air, and the only thing that would
+ * ever tell you is a person looking at the page.
+ *
+ * So these assertions read the geometry out of both files and hold them to
+ * each other, and then reimplement the forward kinematics to check that the
+ * bar still travels the way a barbell does.
  */
 
-describe('the loading figure', () => {
+const JOINTS = ['shin', 'thigh', 'torso', 'arm'];
+
+/** The rest-pose drawing: each group's own first line, as the JSX declares it. */
+function segments() {
+  const out = {};
+  for (const name of JOINTS) {
+    const at = loading.indexOf(`className="lift-${name}"`);
+    assert.ok(at > 0, `Loading.jsx has no .lift-${name} group`);
+    const line = loading
+      .slice(at)
+      .match(/<line[^>]*?x1="([-\d.]+)"\s*y1="([-\d.]+)"\s*x2="([-\d.]+)"\s*y2="([-\d.]+)"/);
+    assert.ok(line, `.lift-${name} contains no line`);
+    out[name] = { from: [+line[1], +line[2]], to: [+line[3], +line[4]] };
+  }
+  return out;
+}
+
+/**
+ * The loading block of the stylesheet, split into the rules that always apply
+ * and the rules inside its own reduced-motion block.
+ *
+ * ── WHY THIS IS A PARSER AND NOT A REGEX ──────────────────────────────────
+ *
+ * Two attempts to do this with regexes both found the WRONG text, and both
+ * failed by reporting a defect that did not exist - the most expensive kind,
+ * because you go and look for it.
+ *
+ *   - `/\.lift-arm\s*\{/` matched the grouped `transform-box` selector rather
+ *     than the arm's own rule, and reported that the arm had no pivot.
+ *   - Slicing at the first `@media (prefers-reduced-motion: reduce)` cut the
+ *     file above the loading block entirely, because this stylesheet has five
+ *     earlier ones. Every assertion then failed for want of any rule at all.
+ *
+ * A stylesheet has structure - nested blocks, grouped selectors - and matching
+ * a selector by hand throws it away. So: find the matching brace, and read
+ * selectors as the list they are.
+ */
+function blockAt(text, from) {
+  const open = text.indexOf('{', from);
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}' && --depth === 0) return { body: text.slice(open + 1, i), end: i };
+  }
+  throw new Error('unbalanced braces in styles.css');
+}
+
+/** Flat rules in a chunk of CSS, ignoring anything with a nested block. */
+function rules(text) {
+  const out = [];
+  let i = 0;
+  while (i < text.length) {
+    const open = text.indexOf('{', i);
+    if (open === -1) break;
+    const selectors = text.slice(i, open);
+    if (/@/.test(selectors)) {
+      i = blockAt(text, open).end + 1;   // skip @media / @keyframes wholesale
+      continue;
+    }
+    const { body, end } = blockAt(text, open);
+    out.push({ selectors: selectors.split(',').map((x) => x.trim()).filter(Boolean), body });
+    i = end + 1;
+  }
+  return out;
+}
+
+const LOADING_CSS = cssCode.slice(cssCode.indexOf('.loading {'));
+const REDUCED = (() => {
+  // The block that stops THIS animation, not the five earlier ones in the file.
+  let at = -1;
+  const needle = '@media (prefers-reduced-motion: reduce)';
+  for (let i = LOADING_CSS.indexOf(needle); i !== -1; i = LOADING_CSS.indexOf(needle, i + 1)) {
+    if (blockAt(LOADING_CSS, i).body.includes('.lift-')) { at = i; break; }
+  }
+  return at === -1 ? null : blockAt(LOADING_CSS, at).body;
+})();
+const ALWAYS = rules(REDUCED === null ? LOADING_CSS : LOADING_CSS.replace(REDUCED, ''));
+
+/** What the stylesheet says each joint pivots about, and how far it rotates. */
+function styleFor(name) {
+  const applicable = ALWAYS.filter((r) => r.selectors.includes(`.lift-${name}`));
+  assert.ok(applicable.length > 0, `no rule in styles.css targets .lift-${name}`);
+
+  const originRule = applicable.find((r) => /transform-origin:/.test(r.body));
+  assert.ok(originRule, `.lift-${name} declares no transform-origin`);
+  const origin = originRule.body.match(/transform-origin:\s*([-\d.]+)px\s+([-\d.]+)px/);
+  assert.ok(origin, `.lift-${name} has an unparseable transform-origin`);
+
+  const at = cssCode.indexOf(`@keyframes lift-${name}`);
+  assert.ok(at !== -1, `no @keyframes lift-${name}`);
+  const keyframes = blockAt(cssCode, at).body;
+  const angle = keyframes.match(/rotate\((-?[\d.]+)deg\)/);
+  assert.ok(angle, `@keyframes lift-${name} rotates nothing`);
+
+  const animation = applicable.map((r) => r.body).join(' ').match(/animation:[^;]*?([\d.]+m?s)/);
+  return {
+    origin: [+origin[1], +origin[2]],
+    bottom: +angle[1],
+    keyframes,
+    duration: animation && animation[1],
+    boxed: applicable.some((r) => /transform-box:\s*view-box/.test(r.body)),
+  };
+}
+
+describe('the deadlift figure', () => {
   /**
    * ── THE ASSERTION THIS FILE EXISTS FOR ────────────────────────────────
    *
-   * The elbow is written down twice: once in Loading.jsx, as the point the
-   * upper arm ends at and the forearm begins at, and once in styles.css, as
-   * the transform-origin the arm rotates about. Two files, one number, and
-   * nothing connecting them.
-   *
-   * Move the figure - lengthen the torso, widen the stance, redraw the arm -
-   * and the JSX is self-consistent while the CSS still pivots about where the
-   * elbow used to be. The result is not a crash. It is a stick figure whose
-   * forearm detaches from its arm and swings through the air beside it, which
-   * ships, because the build is green and the page renders.
+   * A segment pivots about the joint it HANGS FROM, which is the point its own
+   * line starts at. Get that wrong and the limb detaches: it still animates,
+   * it just orbits somewhere it is not attached to.
    */
-  test('the CSS pivots about the elbow the JSX actually draws', () => {
-    const upperArm = loadingCode.match(/<line x1="64" y1="72" x2="(\d+)" y2="(\d+)"/);
-    assert.ok(upperArm, 'cannot find the upper arm in Loading.jsx');
-    const [, elbowX, elbowY] = upperArm;
+  test('every joint pivots about the point its own segment starts at', () => {
+    const seg = segments();
+    for (const name of JOINTS) {
+      const { origin } = styleFor(name);
+      assert.deepEqual(
+        origin,
+        seg[name].from,
+        `.lift-${name} rotates about (${origin}) but its segment begins at ` +
+          `(${seg[name].from}) - the limb is hinged to a point it is not joined to. ` +
+          `Nothing errors; it comes apart on screen.`
+      );
+    }
+  });
 
-    const origin = cssCode.match(/\.loading-arm\s*\{[^}]*transform-origin:\s*(\d+)px\s+(\d+)px/);
-    assert.ok(origin, '.loading-arm declares no transform-origin');
+  /** And the chain has to be a chain: each segment starts where the last ended. */
+  test('the segments actually join up in the rest pose', () => {
+    const seg = segments();
+    for (let i = 0; i < JOINTS.length - 1; i++) {
+      const [a, b] = [JOINTS[i], JOINTS[i + 1]];
+      assert.deepEqual(
+        seg[b].from,
+        seg[a].to,
+        `the ${b} starts at (${seg[b].from}) but the ${a} ends at (${seg[a].to}) - ` +
+          `there is a gap in the skeleton`
+      );
+    }
+  });
 
-    assert.equal(
-      `${origin[1]},${origin[2]}`,
-      `${elbowX},${elbowY}`,
-      'the arm rotates about a point that is not the elbow, so the forearm ' +
-        'detaches from the upper arm. Nothing errors; it just looks broken.'
-    );
-
-    // And the forearm has to START at that elbow, or it pivots about a point
-    // it is not attached to.
-    const forearm = loadingCode.match(/<line\s+x1="(\d+)"\s+y1="(\d+)"/g) || [];
-    assert.ok(
-      forearm.some((l) => l.includes(`x1="${elbowX}"`) && l.includes(`y1="${elbowY}"`)),
-      'no line begins at the elbow, so nothing is hinged there'
-    );
+  /** Nesting is what keeps the feet on the floor. Siblings would not. */
+  test('the groups are nested, not siblings', () => {
+    for (let i = 0; i < JOINTS.length - 1; i++) {
+      const outer = loading.indexOf(`className="lift-${JOINTS[i]}"`);
+      const inner = loading.indexOf(`className="lift-${JOINTS[i + 1]}"`);
+      const closes = loading.indexOf('</g>', outer);
+      assert.ok(
+        inner > outer && inner < closes,
+        `.lift-${JOINTS[i + 1]} is not inside .lift-${JOINTS[i]} - rotating a joint ` +
+          `would stop carrying the limbs above it, and the figure would come apart`
+      );
+    }
   });
 
   /**
-   * `transform-box` is the other silent one, and it is worse because the
-   * default is wrong rather than absent. Without it, `transform-origin:
-   * 104px 112px` on an SVG child is resolved against that CHILD's bounding
-   * box - 104 across from the left edge of the forearm, which is off the arm
-   * entirely - and the assembly orbits a point in space.
+   * The same trap as the pivot, one level up: without transform-box the
+   * coordinates are read against each group's own bounding box instead of the
+   * viewBox, so every origin above means something else entirely.
    */
-  test('the pivot is measured in the viewBox and not in the arm\'s own box', () => {
-    assert.match(
-      cssCode,
-      /\.loading-arm\s*\{[^}]*transform-box:\s*view-box/,
-      '.loading-arm has a transform-origin but no transform-box: view-box, so ' +
-        'the coordinates are read against the forearm\'s bounding box instead ' +
-        'of the viewBox and the pivot is somewhere else entirely'
-    );
+  test('the pivots are measured in the viewBox and not in each limb\'s own box', () => {
+    for (const name of JOINTS) {
+      assert.ok(
+        styleFor(name).boxed,
+        `.lift-${name} has a transform-origin but nothing sets transform-box: view-box, ` +
+          `so the coordinates are read against that limb's own bounding box instead of ` +
+          `the viewBox and every pivot is somewhere else entirely`
+      );
+    }
   });
 
-  test('it holds still for anybody who asked their system for less motion', () => {
-    const reduced = cssCode.split('@media (prefers-reduced-motion: reduce)').slice(1);
-    assert.ok(
-      reduced.some((block) => /\.loading-arm\s*\{[^}]*animation:\s*none/.test(block)),
-      'a short repeating animation with no reduced-motion escape'
+  /**
+   * Four joints, one lift. If one of them runs to a different schedule the
+   * limbs arrive at different times, which is a figure tearing itself apart.
+   */
+  test('every joint runs to the same schedule', () => {
+    const shape = (kf) =>
+      kf.replace(/rotate\(-?[\d.]+deg\)/g, 'rotate(X)').replace(/\s+/g, ' ').trim();
+    const reference = shape(styleFor('shin').keyframes);
+    for (const name of JOINTS.slice(1)) {
+      assert.equal(
+        shape(styleFor(name).keyframes),
+        reference,
+        `@keyframes lift-${name} keeps different time from lift-shin - the limbs ` +
+          `would reach the bottom and the top at different moments`
+      );
+    }
+
+    const durations = JOINTS.map((name) => styleFor(name).duration);
+    assert.equal(new Set(durations).size, 1, `the joints animate over different durations: ${durations}`);
+  });
+
+  /**
+   * ── THE BAR HAS TO TRAVEL LIKE A BARBELL ──────────────────────────────
+   *
+   * CSS interpolates the four rotations linearly, and there is no reason in
+   * principle for that to move the hands sensibly. A deadlift bar goes UP and
+   * slightly BACK toward the lifter. A bar that swings out away from the shins
+   * on the way up is the single most recognisable thing a lifter would call
+   * wrong, and no test of the CSS itself would notice.
+   *
+   * So this reimplements the forward kinematics from the numbers in the two
+   * files and follows the hands.
+   */
+  test('the bar goes up and back, never forward', () => {
+    const seg = segments();
+    const rad = (d) => (d * Math.PI) / 180;
+    const len = (s) => Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
+
+    // Absolute angle of each segment = the sum of its own rotation and every
+    // rotation above it, because the groups are nested.
+    const bottoms = JOINTS.map((n) => styleFor(n).bottom);
+    const armDx = seg.arm.to[0] - seg.arm.from[0];
+
+    const handAt = (t) => {
+      let abs = 0;
+      let p = seg.shin.from;
+      for (let i = 0; i < 3; i++) {
+        abs += bottoms[i] * t;
+        const L = len(seg[JOINTS[i]]);
+        p = [p[0] + L * Math.sin(rad(abs)), p[1] - L * Math.cos(rad(abs))];
+      }
+      // The arm counter-rotates to hang vertically, so its net transform is a
+      // pure translation: the hand keeps its offset from the shoulder.
+      return [p[0] + armDx, p[1] + (seg.arm.to[1] - seg.arm.from[1])];
+    };
+
+    const path = [];
+    for (let i = 0; i <= 20; i++) path.push(handAt(1 - i / 20));
+
+    for (let i = 1; i < path.length; i++) {
+      assert.ok(
+        path[i][1] <= path[i - 1][1] + 1e-6,
+        `the bar drops during the pull, between samples ${i - 1} and ${i}`
+      );
+      assert.ok(
+        path[i][0] <= path[i - 1][0] + 1e-6,
+        `the bar swings FORWARD during the pull (x ${path[i - 1][0].toFixed(1)} -> ` +
+          `${path[i][0].toFixed(1)}). A bar path that moves away from the lifter is ` +
+          `the first thing anybody who lifts would call wrong.`
+      );
+    }
+
+    const rise = path[0][1] - path[path.length - 1][1];
+    assert.ok(rise > 40, `the bar only travels ${rise.toFixed(1)} units - that is not a lift`);
+  });
+
+  /** The hands hold the MIDDLE of the bar. */
+  test('the bar is centered on the hands', () => {
+    const seg = segments();
+    const bar = loading.slice(loading.indexOf('className="lift-bar"'));
+    const line = bar.match(/<line[^>]*x1="([-\d.]+)"[^>]*x2="([-\d.]+)"/);
+    const plates = [...bar.matchAll(/<circle cx="([-\d.]+)" cy="([-\d.]+)" r="([\d.]+)"/g)];
+    assert.equal(plates.length, 2, 'a barbell has two plates');
+
+    const hand = seg.arm.to;
+    assert.equal((+line[1] + +line[2]) / 2, hand[0], 'the lifter is gripping the bar off-center');
+    assert.equal(
+      (+plates[0][1] + +plates[1][1]) / 2,
+      hand[0],
+      'the plates are not balanced about the hands'
     );
+    const barY = +bar.match(/<line[^>]*y1="([-\d.]+)"/)[1];
+    assert.equal(barY, hand[1], 'the bar is not at hand height');
+    for (const [, , cy] of plates) {
+      assert.equal(+cy, hand[1], 'a plate is not threaded onto the bar');
+    }
+  });
+
+  test('the whole figure holds still for anybody who asked for less motion', () => {
+    assert.ok(REDUCED !== null, 'a repeating animation with no reduced-motion escape at all');
+    const inside = rules(REDUCED);
+    for (const name of JOINTS) {
+      const stopped = inside.some(
+        (r) => r.selectors.includes(`.lift-${name}`) && /animation:\s*none/.test(r.body)
+      );
+      assert.ok(
+        stopped,
+        `.lift-${name} keeps animating under prefers-reduced-motion - stopping only ` +
+          `some of the joints does not calm the figure down, it dismembers it`
+      );
+    }
   });
 
   test('the animation is declared after the landing page block', () => {
-    // server/test/landing.test.js reads every rule from `.home {` to the END
-    // OF THE LANDING PAGE BLOCK marker and requires each selector to be
-    // `home-` prefixed. A rule added above the marker is a failure of a test
-    // about a page it has nothing to do with.
+    // landing.test.js reads every rule from `.home {` to the END OF THE
+    // LANDING PAGE BLOCK marker and requires each selector to be home-
+    // prefixed. A rule added above it fails a test about an unrelated page.
     const marker = css.indexOf('END OF THE LANDING PAGE BLOCK');
     assert.ok(marker !== -1, 'the landing page block marker is gone');
-    assert.ok(
-      css.indexOf('.loading-arm') > marker,
-      'the loading rules were appended inside the landing page block'
-    );
+    assert.ok(css.indexOf('.lift-shin') > marker, 'the loading rules landed inside the landing page block');
   });
 
   test('the decoration is hidden and the word is what gets announced', () => {
-    assert.match(loadingCode, /role="status"/, 'nothing announces that a wait is happening');
-    assert.match(
-      loadingCode,
-      /<svg[\s\S]*?aria-hidden="true"/,
-      'a screen reader would describe a stick figure instead of saying "loading"'
-    );
-    assert.match(
-      loadingCode,
-      /t\('common\.loading'\)/,
-      'the word beside the figure has to come from the locale, not from English'
-    );
+    assert.match(loading, /role="status"/, 'nothing announces that a wait is happening');
+    assert.match(loading, /<svg[\s\S]*?aria-hidden="true"/, 'a screen reader would narrate a stick figure');
+    assert.match(loading, /t\('common\.loading'\)/, 'the word has to come from the locale');
     for (const [name, locale] of [['en', en], ['es', es]]) {
       assert.equal(typeof locale.common.loading, 'string', `${name} has no common.loading`);
     }
   });
 
   /**
-   * ── THE BADGE HAS TO KNOW HOW BIG IT REALLY IS ────────────────────────
-   *
-   * Logo draws a simplified mark below 32px because the full one smears at
-   * small sizes, and it decides that from its `size` prop. Inside an SVG that
-   * prop is in USER UNITS: the badge occupies 64 of the figure's 200, so it
-   * renders at 32% of the figure. Handing Logo a flat 64 told it that it was
-   * 64px when at the 72px figure it was 23px, and the mark came out as mud.
-   *
-   * Green build, no error, no console warning. Found by rendering the two
-   * sizes beside each other. This is the assertion that would have found it.
-   */
-  test('every place the figure is used renders a legible badge', () => {
-    const minimum = Number(
-      code('../../web/src/components/Logo.jsx').match(/FULL_MARK_MINIMUM = (\d+)/)[1]
-    );
-    const share = 64 / 200;
-    const sites = loadingCallSites();
-    assert.ok(sites.length > 0, 'nothing uses the loading figure');
-
-    // Logo must be told the size it will occupy, and the group must scale the
-    // result back to the 64 units the figure is laid out around - the forearm
-    // ends at the badge's centre, so changing its size moves the hand.
-    assert.match(
-      loadingCode,
-      /<Logo size=\{badgePixels\}/,
-      'Logo is given a constant instead of the size it will actually render at'
-    );
-    assert.match(
-      loadingCode,
-      /scale\(\$\{backToUserUnits\}\)/,
-      'nothing scales the badge back to the 64 units the figure is laid out around'
-    );
-    assert.match(
-      loadingCode,
-      /const backToUserUnits = 64 \/ badgePixels;/,
-      'the scale does not undo the size, so the badge is the wrong size on screen'
-    );
-
-    // THE POINT: at least one real call site draws the badge below Logo's own
-    // legibility floor. That is what made the old constant a bug rather than a
-    // tidiness question, and if it ever stops being true this assertion says
-    // so rather than quietly passing for the wrong reason.
-    const belowFloor = sites.filter(([, size]) => Math.round(size * share) < minimum);
-    assert.ok(
-      belowFloor.length > 0,
-      'no call site is small enough for the variant choice to matter any more - ' +
-        'either a size changed or the floor did, and the computed size in ' +
-        'Loading.jsx should be re-justified rather than left as decoration'
-    );
-  });
-
-  test('the figure is never asked for at a size the mark cannot survive', () => {
-    // 100px is where the badge reaches Logo's own 32px floor. Below it the
-    // compact mark is doing the work, and below about 25px even that stops
-    // being a mark and becomes a shape.
-    const sizes = loadingCallSites();
-    assert.ok(sizes.length > 0, 'nothing uses the loading figure');
-    for (const [file, size] of sizes) {
-      assert.ok(size >= 48, `${file} renders the figure at ${size}px, which is a smudge`);
-    }
-  });
-
-  test('it reuses the real mark rather than a second copy of it', () => {
-    assert.match(
-      loadingCode,
-      /import \{ Logo \}/,
-      'a hand-drawn second badge drifts from the first the next time the mark changes'
-    );
-  });
-
-  /**
-   * ── WHERE IT IS *NOT* ─────────────────────────────────────────────────
-   *
-   * Every route in this application is in one bundle, so a route change
-   * involves no network: React swaps the tree in a frame. An animation in
-   * front of that does not cover a wait, it MANUFACTURES one. This asserts
-   * the figure never becomes an interstitial wrapped around the router.
+   * Every route is in one bundle, so a page change involves no network. An
+   * animation in front of that would not cover a wait, it would create one.
    */
   test('it is not an interstitial in front of the router', () => {
-    assert.doesNotMatch(
-      app,
-      /<Loading/,
-      'App.jsx renders the loading figure, which would put an animation in ' +
-        'front of transitions that are already instant'
-    );
+    assert.doesNotMatch(app, /<Loading/, 'App.jsx puts a loading animation in front of instant transitions');
   });
 
   test('no page still renders the bare word where the figure belongs', () => {
-    const dir = new URL('../../web/src/', import.meta.url);
     const offenders = [];
     const walk = (at, prefix = '') => {
       for (const entry of readdirSync(at, { withFileTypes: true })) {
@@ -221,44 +350,13 @@ describe('the loading figure', () => {
           walk(new URL(`${entry.name}/`, at), `${prefix}${entry.name}/`);
           continue;
         }
-        if (!entry.name.endsWith('.jsx')) continue;
-        if (entry.name === 'Loading.jsx') continue;
-        const src = readSource(new URL(entry.name, at));
-        if (/t\('common\.loading'\)/.test(src)) offenders.push(prefix + entry.name);
+        if (!entry.name.endsWith('.jsx') || entry.name === 'Loading.jsx') continue;
+        if (/t\('common\.loading'\)/.test(readSource(new URL(entry.name, at)))) {
+          offenders.push(prefix + entry.name);
+        }
       }
     };
-    walk(dir);
-    assert.deepEqual(
-      offenders,
-      [],
-      `these still print the word instead of showing the figure: ${offenders.join(', ')}`
-    );
+    walk(new URL('../../web/src/', import.meta.url));
+    assert.deepEqual(offenders, [], `these print the word instead of showing the figure: ${offenders}`);
   });
 });
-/**
- * Every size the application actually asks the loading figure for.
- *
- * Read from the call sites rather than assumed, because the defect this file
- * exists for was invisible at the default size and only appeared at the
- * smaller one a handful of pages pass.
- */
-function loadingCallSites() {
-  const found = [];
-  const dir = new URL('../../web/src/', import.meta.url);
-  const walk = (at, prefix = '') => {
-    for (const entry of readdirSync(at, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        walk(new URL(`${entry.name}/`, at), `${prefix}${entry.name}/`);
-        continue;
-      }
-      if (!entry.name.endsWith('.jsx') || entry.name === 'Loading.jsx') continue;
-      const src = readSource(new URL(entry.name, at));
-      for (const m of src.matchAll(/<Loading(\s[^/>]*)?\/>/g)) {
-        const size = (m[1] || '').match(/size=\{(\d+)\}/);
-        found.push([prefix + entry.name, size ? Number(size[1]) : 120]);
-      }
-    }
-  };
-  walk(dir);
-  return found;
-}

@@ -1611,29 +1611,45 @@ form > button.primary {
 
 /* --- loading ------------------------------------------------------------- */
 
-/* ── A STICK FIGURE CURLING THE BADGE ──────────────────────────────────────
+/* ── A LIFTER PULLING A HEAVY DEADLIFT ─────────────────────────────────────
 
-   Asked for in those words. What follows is the geometry, and there are three
-   things in it worth knowing before changing any number.
+   The figure is a kinematic chain rooted at the ankle - see Loading.jsx for
+   the structure and where the pose came from. Four rotations drive the whole
+   lift, and everything below a joint stays put, which is what keeps the feet
+   on the floor.
 
-   `transform-box: view-box` is the one that is not optional. Without it a CSS
-   transform-origin on an SVG child is resolved against that child's own
-   BOUNDING BOX, so `104px 112px` would mean "104 across from the left edge of
-   the forearm" - which is off the arm entirely, and the whole assembly swings
-   around a point in space instead of pivoting at the elbow. With it, the
-   coordinates mean what they say in the viewBox, and (104, 112) is the elbow
-   the upper arm ends at in Loading.jsx.
+   THREE THINGS HERE ARE LOAD-BEARING.
 
-   The timing is a curl and not a metronome: the lift is quicker than the
-   lower, and there is a beat at the top. `cubic-bezier` on the concentric and
-   a longer, flatter return is what separates "someone lifting something" from
-   "a windscreen wiper". A weight is heaviest at the top of a curl, so the
-   motion nearly stops there.
+   `transform-box: view-box` is not optional. Without it a transform-origin on
+   an SVG child resolves against that CHILD's own bounding box, so "84px 168px"
+   would mean 84 across from the left edge of the shin - off the shin entirely
+   - and the leg would swing around a point in mid-air instead of pivoting at
+   the ankle. Valid CSS, no warning, a figure that comes apart.
 
-   And -128deg rather than a round number: the forearm starts at 61 degrees
-   below the horizontal, so this finishes it at 67 above - the hand ending
-   just short of the shoulder, where a curl ends, rather than crashing through
-   the chest. */
+   Every transform-origin below is the joint's position in the REST drawing.
+   The rest pose is lockout, standing straight, so the origins run straight up
+   the same x: ankle 168, knee 132, hip 98, shoulder 52. Move a joint in the
+   JSX and its origin here has to move with it.
+
+   And the timing is a heavy single: a brace at the bottom, a slow grinding
+   pull, a held lockout, then a controlled descent.
+
+   BOTH EASING CURVES ARE ACCELERATING, WHICH LOOKS WRONG AND IS NOT.
+
+   A rotation is not a bar height. Near lockout, tens of degrees of hip and
+   knee extension move the bar almost not at all, and near the floor a few
+   degrees move it a long way - so the geometry ALREADY decelerates hard at
+   the top, in both directions. The obvious ease-in-out compounds that: 90% of
+   the pull finished by 34% of the cycle, leaving the figure motionless for
+   most of a second while the animation was still nominally lifting, and the
+   descent did not start moving until a third of a second after the lockout
+   hold had ended. Both were measured, not guessed - by sampling the rendered
+   bar position across the cycle and asking when it was actually moving.
+
+   These two curves put 90% of the pull at 46% of the cycle and start the
+   descent within a frame or two of the hold ending. The residual unevenness
+   is wanted: slow off the floor, quickest at the top is what a heavy pull
+   looks like. */
 
 .loading {
   display: flex;
@@ -1642,33 +1658,93 @@ form > button.primary {
   gap: var(--space-2);
 }
 
-.loading-figure {
+.lift {
   overflow: visible;
 }
 
-.loading-arm {
-  transform-box: view-box;
-  transform-origin: 104px 112px;
-  animation: loading-curl 2.4s ease-in-out infinite;
+.lift-body line,
+.lift-body circle {
+  fill: none;
+  stroke: var(--secondary);
+  stroke-width: 7;
+  stroke-linecap: round;
 }
 
-@keyframes loading-curl {
-  0%   { transform: rotate(0deg); }
-  35%  { transform: rotate(-128deg); }
-  55%  { transform: rotate(-128deg); }
-  100% { transform: rotate(0deg); }
+.lift-head {
+  fill: var(--secondary);
+}
+
+/* The bar is the other half of the color pair, and the only part of the
+   drawing that is not the lifter. Plates are drawn as outlines rather than
+   filled discs: at lockout the bar sits across the thighs, and a filled plate
+   would swallow the figure at the exact moment the lift is finished. */
+.lift-bar line,
+.lift-bar circle {
+  stroke: var(--accent);
+  stroke-width: 5.5;
+}
+
+.lift-floor {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  opacity: 0.35;
+}
+
+.lift-shin,
+.lift-thigh,
+.lift-torso,
+.lift-arm {
+  transform-box: view-box;
+}
+
+.lift-shin  { transform-origin: 84px 168px; animation: lift-shin  3.2s infinite; }
+.lift-thigh { transform-origin: 84px 132px; animation: lift-thigh 3.2s infinite; }
+.lift-torso { transform-origin: 84px  98px; animation: lift-torso 3.2s infinite; }
+.lift-arm   { transform-origin: 84px  52px; animation: lift-arm   3.2s infinite; }
+
+/* One block per joint, and they must stay in step: the percentages and the
+   easing are identical everywhere, only the angle differs. A joint given a
+   different schedule from its neighbours is a limb that detaches.
+
+   0-12%   braced at the floor
+   12-50%  the pull
+   50-64%  lockout, held
+   64-88%  lowered under control
+   88-100% back on the floor */
+@keyframes lift-shin {
+  0%, 12%   { transform: rotate(15deg);  animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  50%, 64%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0, 0, .4, 1); }
+  88%, 100% { transform: rotate(15deg); }
+}
+@keyframes lift-thigh {
+  0%, 12%   { transform: rotate(-92deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  50%, 64%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0, 0, .4, 1); }
+  88%, 100% { transform: rotate(-92deg); }
+}
+@keyframes lift-torso {
+  0%, 12%   { transform: rotate(141.1deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  50%, 64%  { transform: rotate(0deg);     animation-timing-function: cubic-bezier(0, 0, .4, 1); }
+  88%, 100% { transform: rotate(141.1deg); }
+}
+@keyframes lift-arm {
+  0%, 12%   { transform: rotate(-64.1deg); animation-timing-function: cubic-bezier(.55, 0, .85, .55); }
+  50%, 64%  { transform: rotate(0deg);     animation-timing-function: cubic-bezier(0, 0, .4, 1); }
+  88%, 100% { transform: rotate(-64.1deg); }
 }
 
 /* Somebody who asked their operating system for less motion did not make an
-   exception for a loading screen, and a short repeating animation is among
-   the worst offenders for vestibular disorders. The figure holds the badge at
-   the top of the curl - a still pose rather than a blank space - and the word
-   underneath carries the whole meaning either way. */
+   exception for a loading screen, and a short repeating animation is among the
+   worst offenders for vestibular disorders.
+
+   It holds at the BOTTOM rather than at lockout, which is the opposite of what
+   you would guess. Lockout is a straight vertical line - a stick figure with
+   every joint extended is barely a figure at all. The braced position over the
+   bar is the pose that still reads as a person about to lift something. */
 @media (prefers-reduced-motion: reduce) {
-  .loading-arm {
-    animation: none;
-    transform: rotate(-128deg);
-  }
+  .lift-shin  { animation: none; transform: rotate(15deg); }
+  .lift-thigh { animation: none; transform: rotate(-92deg); }
+  .lift-torso { animation: none; transform: rotate(141.1deg); }
+  .lift-arm   { animation: none; transform: rotate(-64.1deg); }
 }
 
 .loading-word {
