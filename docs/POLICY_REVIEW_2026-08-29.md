@@ -33,9 +33,9 @@ output is quoted. Where it says "believed," it is reasoning and should be treate
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
 | A1 | Withdrawing health-data consent erased **nothing** for anybody who answered the gender or GLP-1 question | Critical | **Fixed** in `91af2e15`, needs deploy |
-| A2 | "One other outbound request exists anywhere in this product" — there are two; Cloudflare Turnstile is the other | High | Needs a document edit + version bump |
+| A2 | "One other outbound request exists anywhere in this product" — there are two; Cloudflare Turnstile is the other | High | **Fixed** in `110a08b3`; version bumped to `chd-2026-08-29a` |
 | A3 | "Health information is never written to application logs" — `gender` was not in the redaction list | Medium | **Fixed** in `91af2e15` |
-| A4 | Leaderboard publishes seven columns to signed-in users, not the four the document lists | Medium | Fix proposed below, not applied |
+| A4 | Leaderboard publishes seven columns to signed-in users, not the four the document lists | Medium | **Fixed** in `7ed6136b` (migration 0039, column grant) |
 | A5 | Retention section discloses four expiring categories; the database has eight | Low | Document edit |
 | A6 | HIBP "around a thousand candidates" — the implementation says roughly 800 | Low | Document edit |
 | A7 | "Nothing is kept back for our own records" — anonymized audit rows survive deletion | Low | Document edit |
@@ -98,11 +98,26 @@ comments and from the live fingerprint definition rather than restating a list, 
 test naming the six that were cleared would have agreed with the code for four months.
 Confirmed to fail correctly by removing the gender lines again and watching it name them.
 
+**Nobody was affected.** Queried against production before writing the cleanup:
+
+```
+profiles_total                            4
+latest_decision_is_withdrawal             0
+withdrawn_but_still_holding_health_data   0
+```
+
+No user has ever withdrawn health-data consent, so no data was stranded. Migration 0040
+reconciles the state anyway — it is idempotent, the gap between writing and deploying is not
+zero, and the same state can exist outside production — and the property becomes a standing
+invariant asked of the rows rather than of the code: *a withdrawn health consent means no
+health data is still stored*. Verified end to end on preview by manufacturing the stranded
+state first, watching the invariant fail naming one profile, running the migration body, and
+watching it pass.
+
 **For counsel.** The document text was correct; the code was wrong, so **no version bump and
-no re-consent is needed** for this one. The questions that remain are whether users affected
-between the introduction of gender (migration 0024) and this fix need to be told, and whether
-the affected rows should be swept now rather than waiting for those users to try withdrawing
-again. Note that Washington's MHMDA carries a private right of action.
+no re-consent is needed** for this one, and there is no notification question because there is
+no affected user. Worth knowing anyway that Washington's MHMDA carries a private right of
+action, and that this would have been a live exposure had anyone exercised the right.
 
 ## A2 — High. "One other outbound request" is two.
 
@@ -128,10 +143,13 @@ and that it runs on the sign-in page rather than on the pages where health infor
 entered. Cloudflare's own documentation on what Turnstile collects should be read before the
 sentence is written rather than after.
 
-**This one does need a version bump** (`chd-2026-08-29a`) and therefore re-consent, on the
-precedent this project already set twice: when `chd-2026-08-27` and `aip-2026-08-27` found the
-documents under-describing what the product does, both were bumped and users were asked again.
-**That is a product decision with user-visible cost, so it is flagged here rather than made.**
+**Done** in `110a08b3`. The page now names Turnstile, says what Cloudflare receives — IP
+address, TLS fingerprint, user-agent header, and our site key with its origin, per Cloudflare's
+own Turnstile Privacy Addendum, which was read before the paragraph was written — and states
+that it is neither analytics nor advertising and runs on the sign-in page rather than where
+health information is entered. Version bumped to `chd-2026-08-29a`, so every existing
+health-data consent goes stale and users are asked again, on the precedent set by
+`chd-2026-08-27` and `aip-2026-08-27`.
 
 ## A3 — Medium. `gender` was not redacted from logs.
 
@@ -190,20 +208,14 @@ What is additionally readable:
 - **`updated_at`** — when that athlete's best lift last changed, which is an activity signal
   about a person. It is selected by our API and **never used** by anything.
 
-**Recommended fix, not applied** (it changes a live production grant and should be a
-deliberate deploy, not the tail end of a review):
-
-```sql
--- 0038
-revoke select on public.leaderboard_entries from authenticated;
-grant  select (display_name, best_squat, best_bench, best_deadlift, units)
-  on public.leaderboard_entries to authenticated;
-```
-
-plus dropping `, updated_at` from the select in `server/src/routes/leaderboard.js:24`. The
-writers are `SECURITY DEFINER` and unaffected; the consent invariant runs as owner and is
-unaffected. After that the document's sentence becomes true at the database boundary, which
-is where it claims to be true.
+**Fixed** in `7ed6136b`. Migration 0039 replaces the table-wide grant with a column grant on
+the five published columns, and `updated_at` is dropped from the route select where it was
+used by nothing. Verified against the preview database: `user_id`, `updated_at` and
+`select *` all return *permission denied for table leaderboard_entries*, while joining,
+reading the board back and leaving all still work — the writers are `SECURITY DEFINER` and
+unaffected by a revoke on `authenticated`. Two invariants now ask the catalogue rather than
+the migration text, since a later `grant select on` would undo this and no file would look
+wrong; both were confirmed to fail beforehand, naming `user_id` and `updated_at` exactly.
 
 ## A5 — Low. Four retention categories disclosed; eight exist.
 
@@ -425,5 +437,21 @@ bridge):
 
 `npm test` — 1606 passing, 0 failing. `npm run lint` — clean.
 
-**Not applied, deliberately:** the A2 document edit and version bump (user-visible
-re-consent), and the A4 leaderboard grant change (a live production grant).
+All six commits, in order:
+
+| Commit | What |
+|---|---|
+| `84e706fe` | migration 0037 — the two health columns the invariant could not see |
+| `91af2e15` | **A1 + A3** — withdrawal erased nothing; `gender` unredacted |
+| `0a6c1cc1` | this review |
+| `110a08b3` | **A2** — Turnstile disclosed, `chd-2026-08-29a` |
+| `7ed6136b` | **A4** — migration 0039, leaderboard column grant |
+| `8ea213c3` | **A1 cleanup** — migration 0040 and the standing invariant |
+
+`npm test` — 1612 passing, 0 failing. `npm run lint` — clean. Four new database invariants,
+all four confirmed to fail against the pre-fix state and pass after.
+
+Everything in sections **C** and **D** is untouched and is the actual attorney work. **C1** (no
+general privacy policy), **C2** (no payment terms behind a wired Stripe integration), **C12**
+(guardian consent with a version and no document) and **C13** (three documents that go false
+the day the minors flag flips) are the four that block something.

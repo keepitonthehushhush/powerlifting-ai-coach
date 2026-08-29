@@ -14,7 +14,7 @@
 --
 -- Nothing changed about the product. Turnstile has been there since sign-in was
 -- built, it runs nowhere near the pages where health information is entered, and
--- it is neither analytics nor advertising - so the neighbouring sentence about
+-- it is neither analytics nor advertising - so the neighboring sentence about
 -- analytics and advertising scripts stayed true throughout. What was wrong was
 -- the count, in a document whose entire value is being exact about facts of
 -- exactly that size.
@@ -30,7 +30,7 @@
 -- so it gets the same answer.
 --
 -- has_active_consent() reads this table, so the moment this lands every existing
--- health_data_collection grant stops authorising writes and the consent panel
+-- health_data_collection grant stops authorizing writes and the consent panel
 -- shows the box unticked. That is the mechanism working, not a regression.
 --
 -- Must match POLICY_VERSIONS in server/src/lib/policyVersions.js;
