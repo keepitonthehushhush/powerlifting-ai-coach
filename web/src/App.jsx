@@ -23,6 +23,8 @@ import { Progress } from './pages/Progress.jsx';
 import { Program } from './pages/Program.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
+import { GuardianConsent } from './pages/GuardianConsent.jsx';
+import { GuardianDecision } from './pages/GuardianDecision.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { ForYourClinician } from './pages/ForYourClinician.jsx';
 import { Faq } from './pages/Faq.jsx';
@@ -163,6 +165,11 @@ export function App() {
               <Route path="/policies/ai-processing" element={<AiProcessing />} />
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />
               <Route path="/policies/leaderboard" element={<LeaderboardPolicy />} />
+              {/* Readable by anybody, like the other four. A guardian arrives
+                  here from a link and is not signed in. */}
+              <Route path="/policies/guardian-consent" element={<GuardianConsent />} />
+              {/* The document plus the buttons. Public for the same reason. */}
+              <Route path="/guardian/consent" element={<GuardianDecision />} />
               {/* The old path, kept so links already in the wild still land. */}
               <Route path="/privacy/health-data" element={<Navigate to="/policies/health-data" replace />} />
               <Route

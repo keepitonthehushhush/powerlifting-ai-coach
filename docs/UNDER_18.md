@@ -124,11 +124,28 @@ position the age gate already takes about self-reported birth dates:
 > It is not identity verification. A self-reported birth date is trivially
 > falsified, and no age gate anywhere solves that.
 
-The proposed flow: the minor enters a guardian email; the guardian receives a
-message describing what the product does, what it collects, that it is
-unsupervised, and that they can withdraw at any time; consent is recorded when
-they follow the link. Supabase's free plan includes custom SMTP, so this needs
-no paid tier.
+The flow, built in migration 0041 and no longer proposed: the athlete enters a
+guardian email; the guardian receives a plain-text message describing what the
+product does, that it is unsupervised, and that they can withdraw at any time;
+consent is recorded when they follow the link and answer. Plain SMTP, so the
+same credentials Supabase's own custom SMTP setting takes — no paid tier.
+
+Three details of that build worth keeping here rather than only in the
+migration:
+
+- **The token is never stored.** Only its SHA-256. It exists in the guardian's
+  inbox and in server memory for as long as it takes to hash it, so a dump of
+  the table yields no working links.
+- **It can always say no; it can only say yes once.** Granting is single-use and
+  expires. Withdrawing works forever — on a decided request, on an expired one,
+  and repeatedly. Without that asymmetry "withdraw at any time" is a promise
+  with no mechanism, and the direction that REMOVES access is never the one
+  worth defending against.
+- **The guardian's half is public and the athlete's is not**, mounted on either
+  side of `requireAuth` so the exception is visible at the mount rather than
+  conditional inside the guard. The redeeming function is granted to `anon`;
+  the requesting one is explicitly not, or this becomes an endpoint that makes
+  our server send mail to any address a stranger names.
 
 ### 4. What the coach is told
 
@@ -164,7 +181,13 @@ gate and the rest of the computed-not-prompted rules (ADR-2):
 - **The policy documents.** Terms and the health-data policy both currently say
   this service is for adults. They stop being true the day this ships, and the
   documents and the code disagreeing is the exact failure that produced the
-  adult gate in the first place.
+  adult gate in the first place. **Still outstanding — this is the blocker for
+  `MINORS_ENABLED`, not the code.**
+
+  The guardian's own document is done: `web/src/pages/GuardianConsent.jsx`,
+  version `gc-2026-08-29a`, routed at `/policies/guardian-consent`. It leads
+  with the unsupervised problem under its own heading rather than burying it,
+  which is what the section above asks for in those words.
 
 ## What this does not do
 

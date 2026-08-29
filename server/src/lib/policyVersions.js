@@ -38,9 +38,28 @@ export const CONSENT_TYPES = Object.freeze(Object.keys(POLICY_VERSIONS));
  * at all: `policyDocuments.test.js` said so in as many words - "users would be
  * agreeing to nothing".
  *
- * It moves into the map on the day it has a page, and not before. Until then a
- * separate constant records the version, so the ledger stays version-aware
- * without the product claiming there is something to read.
+ * ── IT NOW HAS A PAGE, AND IT STILL DOES NOT MOVE ────────────────────────
+ *
+ * This used to end "it moves into the map on the day it has a page, and not
+ * before." The page exists - web/src/pages/GuardianConsent.jsx, routed at
+ * /policies/guardian-consent - and moving it in would still be wrong, which is
+ * the definition three lines above being read properly rather than the last
+ * sentence being read on its own.
+ *
+ * That definition names THREE conditions: the consents an athlete sees,
+ * MANAGES ON THEIR CONSENT SCREEN, and has a page to read. The page satisfies
+ * one. The other two are not a matter of time, they are the point: this map
+ * drives CONSENT_TYPES, which drives what the consent panel renders, so adding
+ * it puts a "your guardian agreed" checkbox in front of the fifteen-year-old
+ * whose guardian is supposed to be ticking it. The POST endpoint would then
+ * refuse them - SELF_SERVICE_CONSENT_TYPES exists for exactly that - and a
+ * control that errors when used is an invitation to try it.
+ *
+ * So the version stays in its own constant, and the DOCUMENT requirement is met
+ * where it belongs instead: POLICY_DOCUMENTS maps guardian_consent to its page,
+ * and guardianRoundTrip.test.js asserts the page carries this version and that
+ * migration 0036 seeds the same one. The rule "no consent without something to
+ * read" is enforced; the rule "the athlete manages it" is not pretended.
  *
  * Must match the version seeded by migration 0036; a test holds the two
  * together.

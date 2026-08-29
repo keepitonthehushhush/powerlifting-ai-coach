@@ -118,6 +118,26 @@ export const ERROR_CODES = Object.freeze({
    */
   consent_required: { id: 19, status: 403, retryable: false },
   /**
+   * A feature exists in the code and is switched off by configuration. Not an
+   * error the caller can fix and not a bug: MINORS_ENABLED is false, so the
+   * guardian consent flow is closed. A 404 would be the tidier HTTP answer and
+   * the wrong one - it says "no such thing" about something that will exist the
+   * day somebody flips a variable, and it would send the next person debugging
+   * this to the router instead of to the configuration.
+   */
+  not_available: { id: 22, status: 403, retryable: false },
+  /**
+   * The guardian consent request was stored and the email did not go.
+   *
+   * It has its own code because the alternative is the failure this product
+   * most wants to avoid: telling somebody a message was sent when it was not.
+   * The athlete then waits for a link that will never arrive, with nothing to
+   * retry and nothing to report. 503 and retryable, because the usual causes -
+   * unconfigured SMTP, a provider outage - are both transient from the
+   * caller's side.
+   */
+  email_unavailable: { id: 23, status: 503, retryable: true },
+  /**
    * The worst one in the list, and the reason it has a code of its own: a
    * consent withdrawal was recorded and the health data it governed was NOT
    * removed. Somebody exercised a right and the system half-honoured it. If

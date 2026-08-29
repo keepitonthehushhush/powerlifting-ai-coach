@@ -234,6 +234,24 @@ const CHECKS = [
              and has_function_privilege('authenticated', p.oid, 'EXECUTE')`,
   },
   {
+    name: 'ONLY THE REDEEMING HALF OF THE GUARDIAN FLOW IS REACHABLE BY anon',
+    why: 'record_guardian_consent is granted to anon deliberately - a guardian has no account and the token is what authorizes the write. request_guardian_consent must NOT be, or an anonymous caller could make this server send mail to any address it likes, which is a mail relay wearing a different hat. Asked of the catalogue because a later `grant execute ... to anon` would undo it and no migration file would look wrong.',
+    sql: `select
+            has_function_privilege('anon', 'public.record_guardian_consent(text, boolean)', 'EXECUTE')
+            and not has_function_privilege('anon', 'public.request_guardian_consent(text, text, int)', 'EXECUTE')
+            as ok`,
+  },
+  {
+    name: 'and a guardian token hash is not readable by any signed-in user',
+    why: 'The hash is the one column in guardian_consent_requests with no business leaving the server. RLS scopes the rows to the athlete, but a policy narrows a privilege and does not create one - a table-wide grant would hand the browser its own token hash. Same failure shape as the leaderboard grant in 0039.',
+    sql: `select count(*) = 0 as ok
+            from pg_attribute a
+           where a.attrelid = 'public.guardian_consent_requests'::regclass
+             and a.attname = 'token_hash'
+             and (has_column_privilege('authenticated', a.attrelid, a.attname, 'SELECT')
+               or has_column_privilege('anon', a.attrelid, a.attname, 'SELECT'))`,
+  },
+  {
     name: 'and there is exactly one of it',
     why: 'Two functions with one name and one comment in two schemas is how somebody fixes the wrong one.',
     sql: `select count(*) = 1 as ok

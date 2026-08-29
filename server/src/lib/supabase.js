@@ -47,3 +47,32 @@ export function createUserScopedClient(accessToken) {
     },
   });
 }
+
+/**
+ * A client with no user attached, executing as the `anon` role.
+ *
+ * ── THE ONE THING IT IS FOR ───────────────────────────────────────────────
+ *
+ * A guardian answering a consent link. They have no account and should not
+ * need one: requiring a parent to sign up to a service they are being asked to
+ * PERMIT rather than use is both hostile and worse for privacy, since it would
+ * create a second account holding a second address.
+ *
+ * ── AND WHY IT IS NOT THE SERVICE ROLE ────────────────────────────────────
+ *
+ * That was the obvious alternative and it is refused. ADR-12 makes the Stripe
+ * webhook the single service-role path in this product so the exception stays
+ * countable; a second one turns a documented exception into a habit. This key
+ * is the same publishable key the browser holds, so this client can do exactly
+ * what an anonymous browser can do - which is almost nothing, by design.
+ *
+ * What it CAN do is call `record_guardian_consent`, a SECURITY DEFINER function
+ * granted to `anon` that takes a token and no user id (migration 0041). The
+ * privilege is scoped to one function rather than to a role that bypasses RLS,
+ * and the token is what authorizes the write.
+ */
+export function createAnonymousClient() {
+  return createClient(config.supabase.url, config.supabase.publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}

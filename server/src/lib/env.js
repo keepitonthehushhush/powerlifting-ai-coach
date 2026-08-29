@@ -4,7 +4,7 @@
  * Every function here takes the environment as an argument and returns a value
  * or throws. Nothing runs at import time. `config.js` is the module that
  * actually applies these to `process.env` at load, which is where the
- * fail-fast behaviour lives.
+ * fail-fast behavior lives.
  *
  * Splitting it this way is what makes the validation testable at all: before,
  * a test that wanted to check "does this throw when ANTHROPIC_API_KEY is
@@ -159,7 +159,7 @@ export function buildConfig(env) {
    *
    * While it is off, `adultGateDecision` behaves exactly as it did before any
    * of this existed - 18 and over, one reason code - so the flag is the only
-   * thing standing between the two behaviours and it is testable in both
+   * thing standing between the two behaviors and it is testable in both
    * positions.
    *
    * There is no misconfiguration branch of the paywall's kind, because the
@@ -171,6 +171,43 @@ export function buildConfig(env) {
   const minors = {
     enabled: optional(env, 'MINORS_ENABLED', 'false').trim().toLowerCase() === 'true',
   };
+
+  /**
+   * SMTP, for the one message this product sends.
+   *
+   * Optional, and its absence is a normal state rather than an error: local
+   * development and every test run have no SMTP, and the rest of the product
+   * does not need it. What it must NOT do is fail quietly - see mailer.js.
+   * If the guardian mail cannot go, the athlete is left waiting for something
+   * that will never arrive, so the route reports it instead of pretending.
+   *
+   * `from` falls back to the user, because most providers reject a From that
+   * is not the authenticated mailbox and the resulting bounce is opaque.
+   */
+  const smtp = (() => {
+    const host = optional(env, 'SMTP_HOST', '').trim();
+    const user = optional(env, 'SMTP_USER', '').trim();
+    const pass = optional(env, 'SMTP_PASSWORD', '');
+    const port = Number.parseInt(optional(env, 'SMTP_PORT', '587'), 10);
+    return {
+      host,
+      user,
+      pass,
+      port: Number.isFinite(port) ? port : 587,
+      from: optional(env, 'SMTP_FROM', '').trim() || user,
+      configured: Boolean(host && user && pass),
+    };
+  })();
+
+  /**
+   * Where a guardian consent link points.
+   *
+   * It goes in an email, so it cannot be a relative path and it cannot be
+   * guessed from the request - the request that creates it comes from the
+   * ATHLETE'S browser, and Host is attacker-controllable in general. An
+   * explicit origin is one variable and no ambiguity.
+   */
+  const publicOrigin = optional(env, 'PUBLIC_ORIGIN', 'https://coachdiaz.app').trim().replace(/\/+$/, '');
 
   const paywall = (() => {
     const requested = optional(env, 'PAYWALL_ENABLED', 'false').trim().toLowerCase() === 'true';
@@ -272,5 +309,7 @@ export function buildConfig(env) {
     stripe,
     paywall,
     minors,
+    smtp,
+    publicOrigin,
   };
 }

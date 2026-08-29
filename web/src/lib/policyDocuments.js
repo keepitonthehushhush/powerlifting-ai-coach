@@ -17,6 +17,14 @@ export const POLICY_DOCUMENTS = Object.freeze({
   ai_processing: '/policies/ai-processing',
   health_data_collection: '/policies/health-data',
   leaderboard_publication: '/policies/leaderboard',
+  /**
+   * Not a consent the athlete manages, and deliberately not in POLICY_VERSIONS
+   * - see the note beside GUARDIAN_CONSENT_VERSION. It is here because this map
+   * answers "where do I read what I am agreeing to", and a guardian needs that
+   * answer more than anybody: they arrive from an email, signed out, having
+   * never seen this product.
+   */
+  guardian_consent: '/policies/guardian-consent',
 });
 
 export function policyPathFor(consentType) {

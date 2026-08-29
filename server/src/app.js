@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 
 import { requireAuth } from './middleware/requireAuth.js';
+import { guardianRouter, guardianPublicRouter } from './routes/guardian.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { chatRouter } from './routes/chat.js';
@@ -122,6 +123,25 @@ export function createApp() {
 
   app.use(express.json({ limit: '256kb' }));
 
+  /**
+   * THE GUARDIAN DECISION MOUNTS ABOVE requireAuth. The rest of /api/guardian
+   * does not.
+   *
+   * A guardian answering a consent link has no account and should not need
+   * one. What replaces the session is the token: 32 bytes of CSPRNG, sent to an
+   * address the athlete named, stored only as a SHA-256 hash, and redeemed
+   * through a SECURITY DEFINER function that takes no user id (migration 0041).
+   *
+   * It is here, above the line, for the same reason the Stripe webhook is:
+   * "everything under /api is authenticated unless it is visibly, explicitly,
+   * above this line" is a property worth being able to check by reading, and
+   * punching a conditional exception into requireAuth would destroy it.
+   *
+   * AFTER express.json(), unlike the webhook - there is no signature over raw
+   * bytes here, only a token in a normal JSON body.
+   */
+  app.use('/api/guardian', guardianPublicRouter);
+
   // In production the frontend is served from the same Vercel origin, so no
   // cross-origin request occurs at all. CORS exists purely so the Vite dev
   // server on :5173 can talk to the API on :3001, and is scoped accordingly.
@@ -183,6 +203,8 @@ export function createApp() {
   // Not rate limited as a write: a user must always be able to withdraw
   // consent, and MHMDA requires withdrawal to be no harder than granting.
   app.use('/api/consent', consentRouter);
+  // The athlete's half; the guardian's half mounted above, before requireAuth.
+  app.use('/api/guardian', guardianRouter);
 
   app.use(notFound);
   app.use(errorHandler);
