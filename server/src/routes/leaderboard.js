@@ -21,7 +21,11 @@ leaderboardRouter.get('/', async (req, res, next) => {
   try {
     const { data, error } = await req.supabase
       .from('leaderboard_entries')
-      .select('display_name, best_squat, best_bench, best_deadlift, units, updated_at');
+      // The five published columns, and only those. `updated_at` used to be
+      // here, was used by nothing, and is no longer readable by this JWT at
+      // all - migration 0039 revoked the table-wide grant in favour of a
+      // column grant, so asking for it now fails the whole request.
+      .select('display_name, best_squat, best_bench, best_deadlift, units');
     if (error) throw codedError('storage_unavailable', 'Could not load the leaderboard.', { cause: error.code });
 
     const { data: profile } = await req.supabase

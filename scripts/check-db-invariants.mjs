@@ -246,6 +246,22 @@ const CHECKS = [
            )`,
   },
   {
+    name: 'AND CANNOT READ THE COLUMNS THE LEADERBOARD DOES NOT PUBLISH',
+    why: 'The leaderboard document promises that exactly four things are visible to other signed-in users. 0026 granted SELECT table-wide, and the RLS policy is `using (true)` because cross-user reading is the feature - so user_id and updated_at were readable by any browser talking to PostgREST directly, which is the same reasoning the write check below is built on and nobody had applied to reads. user_id is a persistent unique identifier; updated_at says when somebody last hit a best lift. 0039 replaced the table grant with a column grant. Asked of has_column_privilege rather than of the migration text, because a later `grant select on` would silently undo it.',
+    sql: `select count(*) = 0 as ok
+            from pg_attribute a
+           where a.attrelid = 'public.leaderboard_entries'::regclass
+             and a.attnum > 0 and not a.attisdropped
+             and a.attname not in ('display_name','best_squat','best_bench','best_deadlift','units')
+             and has_column_privilege('authenticated', a.attrelid, a.attname, 'SELECT')`,
+  },
+  {
+    name: 'and it can still read the five that ARE published',
+    why: 'The converse. A revoke with no matching grant would leave the board empty for everybody and the failure would look like a data problem rather than a privilege one - which is how the RLS policy with no GRANT in 0021 presented.',
+    sql: `select bool_and(has_column_privilege('authenticated', 'public.leaderboard_entries', c, 'SELECT')) as ok
+            from unnest(array['display_name','best_squat','best_bench','best_deadlift','units']) as c`,
+  },
+  {
     name: 'AUTHENTICATED CANNOT WRITE THE LEADERBOARD',
     why: 'The whole integrity property. The browser holds a real JWT and can reach PostgREST directly, so an insert or update privilege here would let anybody set their own squat to 9999 - and RLS would allow it, because it is their row. Numbers must come only from the definer function that recomputes them from logs.',
     sql: `select count(*) = 0 as ok
