@@ -44,6 +44,20 @@ const SENSITIVE_KEYS = [
   // it. Whether somebody takes a prescription drug is health data by any
   // reading, and naming it explicitly is cheaper than being clever.
   'glp1', 'glp_1', 'semaglutide', 'tirzepatide', 'ozempic', 'wegovy', 'mounjaro', 'zepbound',
+  // Added 2026-08-29, auditing the policy documents against the code. Migration
+  // 0024 declares gender health data ("Health data. woman | man | nonbinary |
+  // self_described | prefer_not_to_say"), the consumer health data policy lists
+  // it as consumer health data, and this list did not have it - so the page's
+  // promise that "health information is never written to application logs" was
+  // held up by nothing but the accident that no call site passes a profile.
+  // That is the same accident that covered sleep, alcohol, nicotine and
+  // nutrition until 2026-08-27, which is twice, and the substring match means
+  // gender_self_described - the free-text one - is covered by the same entry.
+  //
+  // `pronouns` stays OFF this list, deliberately and for the same reason it is
+  // outside private.health_fingerprint(): being addressed correctly must not be
+  // something a person trades privacy for. See migration 0024.
+  'gender',
   'date_of_birth', 'dateofbirth',
   'password', 'access_token', 'refresh_token', 'authorization',
   'apikey', 'api_key',
