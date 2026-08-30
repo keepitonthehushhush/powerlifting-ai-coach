@@ -88,7 +88,7 @@ test('the document does not contradict the schema', async (t) => {
       [/\*\*No audit log\.\*\*/, 'audit_events exists (migration 0030)'],
       [/\*\*No automated retention policy\.\*\*/, 'apply_retention runs nightly (0031)'],
       [/no terms of service/i, 'tos-2026-08-27b exists and is consented to'],
-      [/counters are never swept/i, 'migration 0043 schedules it nightly'],
+      [/counters are never swept/i, 'migration 0044 schedules it nightly'],
       [/password policy is whatever Supabase/i, 'a 12-character policy and a breach check exist'],
     ]) {
       assert.ok(!claim.test(gaps), `Known gaps still says: ${why}`);

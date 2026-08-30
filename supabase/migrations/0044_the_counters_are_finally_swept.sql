@@ -1,5 +1,5 @@
 -- =============================================================================
--- 0043_the_counters_are_finally_swept.sql
+-- 0044_the_counters_are_finally_swept.sql
 --
 -- The last thing in this schema with a stated policy and nothing that keeps it.
 --
@@ -66,7 +66,7 @@ end;
 $fn$;
 
 comment on function private.sweep_rate_limit_counters() is
-  'Removes rate limit windows old enough that they cannot still be enforcing a limit. Scheduled nightly; see migration 0043 for why this is not a retention_periods category.';
+  'Removes rate limit windows old enough that they cannot still be enforcing a limit. Scheduled nightly; see migration 0044 for why this is not a retention_periods category.';
 
 revoke all on function private.sweep_rate_limit_counters() from public, anon, authenticated;
 

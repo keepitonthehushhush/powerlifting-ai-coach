@@ -711,7 +711,7 @@ nothing about whether anything gets fixed.
 - **No automated retention policy** — `0031`, running nightly since.
 - **Weak password policy** — 12 characters plus a browser-side breach check.
 - **No terms of service** — `tos-2026-08-27b`, drafted and consented to.
-- **Rate limit counters never swept** — `0043`, nightly at `41 4 * * *`. The
+- **Rate limit counters never swept** — `0044`, nightly at `41 4 * * *`. The
   `DELETE` had been sitting in a comment in migration `0006` since before
   launch, under the words "belongs in a scheduled job (pg_cron) before launch".
   It is deliberately NOT a `retention_periods` category: that table holds the
