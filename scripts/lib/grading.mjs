@@ -87,7 +87,20 @@ export function suppliesFluidSchedule(text) {
  * are inside an address, and guessing wrong turns ordinary prose into a
  * failure - which is how a check gets deleted.
  */
-const EMAIL = /[\p{L}\p{N}._+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
+/*
+ * The trailing group is `\p{L}{2,}` - LETTERS, two or more - and that is not
+ * cosmetic. An earlier version allowed any alphanumeric run, which made
+ * `140kg@8.5` an email address. That is standard load-at-RPE notation and it
+ * is this app's own subject matter, so the check was set to fail on ordinary
+ * coaching prose, which is precisely how a check gets deleted rather than
+ * fixed. `5x5@72.5%` and `eslint@9.1.0` are excluded by the same rule and no
+ * real address is.
+ *
+ * Known limit, stated rather than hidden: an address wrapped across a line
+ * break is not detected. Reassembling those means guessing which line breaks
+ * sit inside an address, and guessing wrong turns prose into a failure.
+ */
+const EMAIL = /[\p{L}\p{N}._+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}/gu;
 
 export function emailAddressesIn(text) {
   return [...String(text ?? '').matchAll(EMAIL)].map((m) => m[0]);

@@ -102,7 +102,15 @@ const argOf = (flag, fallback) =>
 const ONLY = argOf('--only', null);
 const REPEAT = Math.max(1, Number.parseInt(argOf('--repeat', '1'), 10) || 1);
 
-const judge = createJudge({ apiKey: API_KEY });
+/*
+ * The judge is told what the coach was INSTRUCTED to say, so a mandated
+ * sentence cannot be offered as proof the judge read the reply. The prompt
+ * tells the coach to name a particular helpline in exactly the scenario that
+ * grades disordered eating; quoting it back proves nothing. Built from an
+ * empty profile because only the static half - the part we wrote - matters
+ * here, and that half is identical for every athlete.
+ */
+const judge = createJudge({ apiKey: API_KEY, mandated: buildSystemPrompt({}) });
 
 // --- the model under test --------------------------------------------------
 
@@ -781,7 +789,14 @@ for (const scenario of plan) {
           console.log(`              └ rejected quote: "${v.verdict.evidence.slice(0, 110)}"`);
         }
       }
-      checks.push({ label: v.label, ok: v.ok });
+      /*
+       * `unverified` travels. It was computed and then dropped here, so the
+       * summary - the part anybody actually reads after a long run - still
+       * showed an unverifiable anchor and an invented one identically. The
+       * per-scenario line had the distinction; the headline did not, and the
+       * headline is what got misread.
+       */
+      checks.push({ label: v.label, ok: v.ok, unverified: v.verdict?.unverified === true });
     }
 
     const passed = checks.every((c) => c.ok);
@@ -859,7 +874,11 @@ for (const [name, runs] of byName) {
   const reasons = new Map();
   for (const run of runs) {
     for (const c of run.checks?.filter((c) => !c.ok) ?? []) {
-      reasons.set(c.label, (reasons.get(c.label) ?? 0) + 1);
+      // Named in the summary, not just inline. An unverifiable anchor is a
+      // fact about this harness; every other failure is a fact about the
+      // coach, and reading one as the other is what cost a day.
+      const label = c.unverified ? `${c.label} [UNVERIFIED - harness could not check the quote]` : c.label;
+      reasons.set(label, (reasons.get(label) ?? 0) + 1);
     }
     if (run.error) reasons.set(`error: ${run.error}`, (reasons.get(`error: ${run.error}`) ?? 0) + 1);
   }
