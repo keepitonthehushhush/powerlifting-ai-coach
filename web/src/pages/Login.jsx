@@ -7,6 +7,8 @@ import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
 import { Turnstile, resetTurnstile } from '../components/Turnstile.jsx';
 import { enabled as captchaEnabled } from '../lib/turnstile.js';
+import { classifyAuthError, authErrorMessageKey, shouldRecord } from '../lib/authErrors.js';
+import { supabase } from '../lib/supabase.js';
 
 export function Login() {
   const { session, signIn, signUp, resetPassword, lastSignOut } = useAuth();
@@ -162,7 +164,41 @@ export function Login() {
     }
 
     if (error) {
-      setStatus({ kind: 'error', text: error.message });
+      /**
+       * ── WHY THE PROVIDER'S OWN SENTENCE NEVER REACHES THE PERSON ────────
+       *
+       * This line used to be `text: error.message`, and on 2026-08-29 that
+       * showed somebody trying to make an account:
+       *
+       *   "captcha protection: request disallowed (no captcha_token found)"
+       *
+       * CAPTCHA had been switched on in Supabase while the deployed bundle
+       * carried no site key, so no token was ever sent. The ordering was the
+       * operational mistake; this sentence was ours. It is addressed to an
+       * operator, names a thing the reader cannot see, and offers no action -
+       * so they do not retry, do not write in, and do not come back.
+       *
+       * classifyAuthError also needs to know what the CLIENT had available,
+       * because a CAPTCHA rejection means three different things and only the
+       * client can tell them apart: no key built in is OUR misconfiguration,
+       * a blocked script is their network, and a spent token is neither.
+       */
+      const code = classifyAuthError(error, {
+        captchaConfigured: captchaEnabled(),
+        captchaBlocked,
+      });
+      setStatus({ kind: 'error', text: t(authErrorMessageKey(code)) });
+
+      /**
+       * Best effort, and deliberately not awaited into the person's path: a
+       * telemetry write must never become the reason somebody sees a second
+       * error on the page they are already stuck on. A failed sign-up has no
+       * session, so this goes through record_auth_failure (migration 0043),
+       * which takes a code and nothing else.
+       */
+      if (shouldRecord(code)) {
+        supabase.rpc('record_auth_failure', { p_code: code }).catch(() => {});
+      }
       return;
     }
     if (mode === 'signup' && !data.session) {
@@ -233,7 +269,7 @@ export function Login() {
               <ul className="checklist">
                 {policy.results.map(({ id, satisfied }) => (
                   <li key={id} className={satisfied ? 'met' : 'unmet'}>
-                    {/* The tick is decorative - colour and shape alone do not
+                    {/* The tick is decorative - color and shape alone do not
                         reach a screen reader, so the state is repeated as text
                         that is hidden visually but present in the accessibility
                         tree. */}
