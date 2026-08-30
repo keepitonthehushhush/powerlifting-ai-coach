@@ -131,9 +131,16 @@ describe('the chat composer', () => {
     // and the textarea collapsed to 24px on a 390px screen.
     const form = chat.slice(chat.indexOf('<form className="composer"'));
     const rowAt = form.indexOf('<div className="composer-row">');
-    const buttonAt = form.indexOf('<button type="submit"');
+    // Whitespace-tolerant, because a line break between `<button` and its
+    // attributes once made this search return -1. The comparison below then
+    // failed for the right reason by luck rather than by design: the guard
+    // could not find the button at all, which is not the same finding as the
+    // button having moved, and the two must not be reported as one.
+    const button = form.match(/<button\s[^>]*type="submit"/);
     const rowEndAt = form.indexOf('</div>');
     assert.ok(rowAt !== -1, 'the controls are no longer wrapped');
+    assert.ok(button, 'the submit button could not be found - this check did not run');
+    const buttonAt = button.index;
     assert.ok(rowAt < buttonAt && buttonAt < rowEndAt, 'the button escaped the row');
   });
 

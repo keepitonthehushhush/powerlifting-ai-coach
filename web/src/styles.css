@@ -1807,3 +1807,74 @@ form > button.primary {
 .loading-word {
   font-size: 0.9rem;
 }
+
+/* --- a coach reply, as typography ----------------------------------------
+   The transcript used to render replies with `white-space: pre-wrap`, which
+   put the model's markdown on screen literally: a training week arrived as
+   `**Day A**` above `- Squat: 3x5 @ 95lb`. These rules style the elements
+   CoachMessage produces from the parsed reply.
+
+   `pre-wrap` is deliberately turned OFF here. The parser has already decided
+   where the paragraphs and list items are, so preserving the source's own
+   newlines on top of that doubles every gap. The athlete's own bubble keeps
+   pre-wrap, because nothing parses what they typed. */
+.bubble .content.coach-copy { white-space: normal; }
+.coach-copy > * { margin: 0 0 0.7rem; }
+.coach-copy > *:last-child { margin-bottom: 0; }
+.coach-copy p { line-height: 1.55; }
+
+/* A heading inside a bubble is a label for the block under it, not a page
+   title, so it stays close to the text it introduces and is separated by
+   weight and spacing rather than by size. */
+.coach-heading {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  margin: 1.1rem 0 0.45rem;
+}
+.coach-copy > .coach-heading:first-child { margin-top: 0; }
+
+.coach-list { margin: 0 0 0.7rem; padding-left: 1.35rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.coach-list li { line-height: 1.5; }
+.coach-list li::marker { color: var(--muted); }
+
+.coach-copy code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05em 0.32em;
+}
+
+/* A meet-prep block is five columns wide and a phone is not. The table
+   scrolls inside its own box; the page never scrolls sideways. */
+.coach-table-scroll { overflow-x: auto; margin: 0 0 0.7rem; }
+.coach-table { border-collapse: collapse; font-size: 0.9rem; min-width: 100%; }
+.coach-table th,
+.coach-table td { text-align: left; padding: 0.4rem 0.9rem 0.4rem 0; white-space: nowrap; }
+.coach-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.coach-table td { border-bottom: 1px solid var(--border); }
+.coach-table tr:last-child td { border-bottom: none; }
+
+/* --- the undo window ------------------------------------------------------
+   Sits where the reply will appear, so the eye is already there. Right
+   aligned with the athlete's own bubble, because it is still their turn. */
+.holding {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.2rem 0;
+}
+.holding .link { font-size: 0.85rem; }
+
+.notice { margin: 0.2rem 0 0; }

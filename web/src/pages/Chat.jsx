@@ -4,6 +4,31 @@ import { SiteNav } from '../components/SiteNav.jsx';
 import { api, errorText } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
+import { CoachMessage } from '../components/CoachMessage.jsx';
+
+/**
+ * ── THE PAUSE BEFORE A MESSAGE IS ACTUALLY SENT ───────────────────────────
+ *
+ * There was no way to take a message back. You noticed the typo the instant
+ * the button moved, and the only options were to watch a wrong question get
+ * answered or to explain the typo in the next message - which is then also in
+ * the history, replayed and paid for on every subsequent turn.
+ *
+ * Aborting mid-flight would not have fixed it. The server saves the reply
+ * before it answers, so a cancelled request still produces a reply, still
+ * costs money, and still shows up on the next page load. A "stop" button whose
+ * effect is only to stop LOOKING is a lie told by a control.
+ *
+ * So the pause goes before dispatch, where cancelling is real: within this
+ * window nothing has been sent, nothing has been billed, and pressing Undo
+ * returns the text to the box for editing. Five seconds is long enough to
+ * catch a typo you can already see and short enough to disappear next to a
+ * reply that takes thirty.
+ */
+const UNDO_WINDOW_MS = 5_000;
+
+/** After this long, the wait stops being ordinary and the copy says so. */
+const LONG_WAIT_SECONDS = 25;
 
 export function Chat() {
   const { t } = useI18n();
@@ -16,7 +41,14 @@ export function Chat() {
   // Null until the server tells us. Not defaulted to a number, because a
   // guessed limit that disagrees with the server is the bug being fixed.
   const [maxLength, setMaxLength] = useState(null);
+  // Seconds left before an undoable message is actually dispatched; null when
+  // nothing is held. Distinct from `busy`, which means the request has gone.
+  const [holding, setHolding] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [notice, setNotice] = useState(null);
   const endRef = useRef(null);
+  const inputRef = useRef(null);
+  const holdRef = useRef(null);
 
   useEffect(() => {
     api
@@ -35,19 +67,34 @@ export function Chat() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, busy]);
+  }, [messages, busy, holding]);
 
-  async function send(event) {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text || busy) return;
+  /*
+   * A counter, not a progress bar and not a countdown.
+   *
+   * We do not know how long a reply will take - it depends on how much the
+   * coach decides to write, and a full training week has run to six thousand
+   * tokens. A countdown would have to invent a duration, and a countdown that
+   * reaches zero while the athlete is still waiting is worse than no countdown
+   * at all: it is a confident answer from something that never looked. Elapsed
+   * time is a fact, it visibly moves, and a moving number is what separates
+   * "working" from "broken" for the person holding the phone.
+   */
+  useEffect(() => {
+    if (!busy) return undefined;
+    setElapsed(0);
+    const started = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [busy]);
 
-    // Optimistic render so the message appears instantly. If the request fails
-    // the optimistic entry is rolled back and the draft restored, rather than
-    // leaving a message on screen that the server never received.
-    const optimistic = { role: 'user', content: text, at: new Date().toISOString() };
-    setMessages((prev) => [...prev, optimistic]);
-    setDraft('');
+  // Anything still held when the page unmounts is abandoned rather than fired
+  // into a component that is no longer listening for the answer.
+  useEffect(() => () => clearTimeout(holdRef.current), []);
+
+  /** Actually dispatch. Only ever called once the undo window has elapsed. */
+  async function dispatch(text, optimistic) {
+    setHolding(null);
     setBusy(true);
     setError(null);
 
@@ -67,6 +114,52 @@ export function Chat() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function send(event) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text || busy || holding !== null) return;
+
+    // Optimistic render so the message appears instantly. If the send is
+    // undone, or the request fails, the optimistic entry is rolled back and
+    // the draft restored, rather than leaving a message on screen that the
+    // server never received.
+    const optimistic = { role: 'user', content: text, at: new Date().toISOString() };
+    setMessages((prev) => [...prev, optimistic]);
+    setDraft('');
+    setError(null);
+    setNotice(null);
+
+    const deadline = Date.now() + UNDO_WINDOW_MS;
+    setHolding({ text, optimistic, secondsLeft: Math.ceil(UNDO_WINDOW_MS / 1000) });
+
+    const tick = () => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        dispatch(text, optimistic);
+        return;
+      }
+      setHolding({ text, optimistic, secondsLeft: Math.ceil(remaining / 1000) });
+      holdRef.current = setTimeout(tick, 250);
+    };
+    holdRef.current = setTimeout(tick, 250);
+  }
+
+  /**
+   * Take it back. Nothing was sent, so there is nothing to apologise for and
+   * nothing on the server to reconcile - the message returns to the box with
+   * the cursor in it, which is where somebody who spotted a typo wants to be.
+   */
+  function undoSend() {
+    clearTimeout(holdRef.current);
+    const held = holding;
+    setHolding(null);
+    if (!held) return;
+    setMessages((prev) => prev.filter((m) => m !== held.optimistic));
+    setDraft(held.text);
+    setNotice(t('chat.undone'));
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   return (
@@ -92,14 +185,35 @@ export function Chat() {
         {messages.map((message, index) => (
           <article key={index} className={`bubble ${message.role}`}>
             <div className="who">{message.role === 'user' ? t('chat.you') : t('chat.coach')}</div>
-            <div className="content">{message.content}</div>
+            {/* The coach writes markdown and gets typography. The athlete
+                typed what they meant, so their asterisks stay asterisks -
+                reformatting somebody's own words back at them is editing. */}
+            {message.role === 'user' ? (
+              <div className="content">{message.content}</div>
+            ) : (
+              <CoachMessage text={message.content} />
+            )}
           </article>
         ))}
+
+        {holding !== null && (
+          <div className="holding" role="status">
+            <span className="muted">{t('chat.sendingUndo', { seconds: holding.secondsLeft })}</span>
+            <button type="button" className="link" onClick={undoSend}>
+              {t('chat.undo')}
+            </button>
+          </div>
+        )}
 
         {busy && (
           <article className="bubble assistant pending">
             <div className="who">{t('chat.coach')}</div>
-            <div className="content muted">{t('chat.thinking')}</div>
+            <div className="content muted">
+              {elapsed === 0 ? t('chat.thinking') : t('chat.thinkingElapsed', { seconds: elapsed })}
+            </div>
+            {elapsed >= LONG_WAIT_SECONDS && (
+              <p className="fineprint muted">{t('chat.thinkingLong')}</p>
+            )}
           </article>
         )}
 
@@ -107,6 +221,7 @@ export function Chat() {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {notice && !error && <p className="notice small muted">{notice}</p>}
 
       {/* The input and the button are wrapped, and the counter is not in the
           wrapper. Both halves of that matter - see the .composer note in
@@ -119,6 +234,7 @@ export function Chat() {
       <form className="composer" onSubmit={send}>
         <div className="composer-row">
           <textarea
+            ref={inputRef}
             rows={2}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -130,7 +246,7 @@ export function Chat() {
             aria-label={t('chat.inputLabel')}
             {...(maxLength ? { maxLength } : {})}
           />
-          <button type="submit" className="primary" disabled={busy || !draft.trim()}>
+          <button type="submit" className="primary" disabled={busy || holding || !draft.trim()}>
             {t('chat.send')}
           </button>
         </div>
