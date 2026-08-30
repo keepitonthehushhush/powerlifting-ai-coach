@@ -24,7 +24,7 @@ const decisionPage = readSource(new URL('../../web/src/pages/GuardianDecision.js
 const migration = latestDefinition('function public.record_guardian_consent').body;
 const requestFn = latestDefinition('function public.request_guardian_consent').body;
 const migrationRaw = readRaw(
-  new URL('../../supabase/migrations/0041_guardian_consent_round_trip.sql', import.meta.url)
+  new URL('../../supabase/migrations/0044_guardian_consent_round_trip.sql', import.meta.url)
 );
 
 test('the token', async (t) => {

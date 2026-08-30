@@ -27,7 +27,7 @@ import { createAnonymousClient } from '../lib/supabase.js';
  *                                 permit rather than use.
  *
  * What authorizes the second is the token: 32 bytes of CSPRNG, delivered to an
- * address the athlete named, stored only as a SHA-256 hash. See migration 0041
+ * address the athlete named, stored only as a SHA-256 hash. See migration 0044
  * for why the token is never written down and why saying no always works.
  */
 /** The athlete's half. Mounted BELOW requireAuth. */

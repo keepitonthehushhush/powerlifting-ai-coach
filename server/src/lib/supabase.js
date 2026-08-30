@@ -67,7 +67,7 @@ export function createUserScopedClient(accessToken) {
  * what an anonymous browser can do - which is almost nothing, by design.
  *
  * What it CAN do is call `record_guardian_consent`, a SECURITY DEFINER function
- * granted to `anon` that takes a token and no user id (migration 0041). The
+ * granted to `anon` that takes a token and no user id (migration 0044). The
  * privilege is scoped to one function rather than to a role that bypasses RLS,
  * and the token is what authorizes the write.
  */
