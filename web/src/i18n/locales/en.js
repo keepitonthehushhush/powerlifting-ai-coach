@@ -408,6 +408,21 @@ export const en = {
     rateLimited: 'You have sent a lot of messages recently. Try again shortly.',
   },
 
+  chatSettings: {
+    heading: 'How the coach conversation behaves',
+    intro: 'These are saved on this device only, so you can have one answer on your phone and another on your laptop.',
+    sendKeyLegend: 'Sending a message',
+    sendKey: {
+      enter: 'Enter sends',
+      modifier: 'Enter adds a line, Cmd or Ctrl + Enter sends',
+    },
+    sendKeyHint: 'Shift + Enter always adds a line, either way.',
+    undoLegend: 'Hold messages before sending',
+    undoOff: 'Off — send right away',
+    undoSeconds: '{seconds} seconds to take it back',
+    undoHint: 'A short pause before the message goes, so a typo can be pulled back and edited. Nothing is sent or charged until the pause ends.',
+  },
+
   consent: {
     title: 'Your privacy choices',
     subtitle:

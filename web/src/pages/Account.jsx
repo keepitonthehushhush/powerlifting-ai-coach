@@ -7,6 +7,7 @@ import { BillingPanel } from '../components/BillingPanel.jsx';
 import { ActivityLog } from '../components/ActivityLog.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
+import { ChatSettings } from '../components/ChatSettings.jsx';
 
 /**
  * Data subject rights, exposed as an actual screen rather than a policy page.
@@ -82,6 +83,8 @@ export function Account() {
         <p className="muted small">{t('consent.withdrawAnytime')}</p>
         <ConsentPanel />
       </section>
+
+      <ChatSettings />
 
       <section className="card stack">
         <h2 className="h3">{t('account.exportHeading')}</h2>

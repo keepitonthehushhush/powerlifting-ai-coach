@@ -369,6 +369,21 @@ export const es = {
     rateLimited: 'Has enviado muchos mensajes recientemente. Inténtalo de nuevo en un momento.',
   },
 
+  chatSettings: {
+    heading: 'Cómo se comporta la conversación con el coach',
+    intro: 'Se guardan solo en este dispositivo, así puedes tener una configuración en el teléfono y otra en la computadora.',
+    sendKeyLegend: 'Enviar un mensaje',
+    sendKey: {
+      enter: 'Enter envía',
+      modifier: 'Enter agrega una línea; Cmd o Ctrl + Enter envía',
+    },
+    sendKeyHint: 'Shift + Enter siempre agrega una línea, en cualquier caso.',
+    undoLegend: 'Retener los mensajes antes de enviarlos',
+    undoOff: 'Desactivado: enviar de inmediato',
+    undoSeconds: '{seconds} segundos para deshacer',
+    undoHint: 'Una pausa breve antes de que salga el mensaje, para poder recuperar y corregir un error. No se envía ni se cobra nada hasta que termina la pausa.',
+  },
+
   consent: {
     title: 'Tus opciones de privacidad',
     subtitle:

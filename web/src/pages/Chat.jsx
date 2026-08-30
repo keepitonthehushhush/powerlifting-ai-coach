@@ -5,9 +5,10 @@ import { api, errorText } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
 import { CoachMessage } from '../components/CoachMessage.jsx';
+import { readChatSettings, isSendKey } from '../lib/chatSettings.js';
 
 /**
- * ── THE PAUSE BEFORE A MESSAGE IS ACTUALLY SENT ───────────────────────────
+ * ── THE PAUSE BEFORE A MESSAGE IS ACTUALLY SENT, WHEN IT IS TURNED ON ─────
  *
  * There was no way to take a message back. You noticed the typo the instant
  * the button moved, and the only options were to watch a wrong question get
@@ -24,8 +25,12 @@ import { CoachMessage } from '../components/CoachMessage.jsx';
  * returns the text to the box for editing. Five seconds is long enough to
  * catch a typo you can already see and short enough to disappear next to a
  * reply that takes thirty.
+ *
+ * It is OFF by default, and that is a correction. It shipped on, and the first
+ * person to use it said the cure was worse than the disease - a delay paid by
+ * everybody on every message to serve the occasional typo. Somebody who wants
+ * it turns it on in Settings; see lib/chatSettings.js.
  */
-const UNDO_WINDOW_MS = 5_000;
 
 /** After this long, the wait stops being ordinary and the copy says so. */
 const LONG_WAIT_SECONDS = 25;
@@ -44,6 +49,10 @@ export function Chat() {
   // Seconds left before an undoable message is actually dispatched; null when
   // nothing is held. Distinct from `busy`, which means the request has gone.
   const [holding, setHolding] = useState(null);
+  // Read once at mount. Changing a setting on the account page and expecting a
+  // conversation already on screen to adopt it mid-message is a race nobody
+  // asked for; the next visit picks it up.
+  const [settings] = useState(readChatSettings);
   const [elapsed, setElapsed] = useState(0);
   const [notice, setNotice] = useState(null);
   const endRef = useRef(null);
@@ -131,8 +140,14 @@ export function Chat() {
     setError(null);
     setNotice(null);
 
-    const deadline = Date.now() + UNDO_WINDOW_MS;
-    setHolding({ text, optimistic, secondsLeft: Math.ceil(UNDO_WINDOW_MS / 1000) });
+    const windowMs = settings.undoWindowSeconds * 1000;
+    if (windowMs <= 0) {
+      dispatch(text, optimistic);
+      return;
+    }
+
+    const deadline = Date.now() + windowMs;
+    setHolding({ text, optimistic, secondsLeft: settings.undoWindowSeconds });
 
     const tick = () => {
       const remaining = deadline - Date.now();
@@ -239,7 +254,7 @@ export function Chat() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) send(e);
+              if (isSendKey(e, settings.sendKey)) send(e);
             }}
             placeholder={t('chat.placeholder')}
             disabled={busy}

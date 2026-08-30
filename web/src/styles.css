@@ -1878,3 +1878,20 @@ form > button.primary {
 .holding .link { font-size: 0.85rem; }
 
 .notice { margin: 0.2rem 0 0; }
+
+/* --- chat settings -------------------------------------------------------
+   Radio groups rather than selects: there are two and three options, every
+   one is worth reading before choosing, and a select hides the alternatives
+   behind a tap. Borderless fieldset because the card already draws the box. */
+.setting-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.setting-group legend {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0;
+  margin-bottom: 0.2rem;
+}
+.setting-choice { display: flex; align-items: baseline; gap: 0.6rem; cursor: pointer; line-height: 1.4; }
+.setting-choice input { margin: 0; flex: none; }
+.setting-group .small { margin: 0.15rem 0 0; }
