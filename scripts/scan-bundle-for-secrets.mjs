@@ -3,7 +3,7 @@
  * Verify that no server-side secret reached the browser bundle.
  *
  * The constraint "the Anthropic key must never reach the browser" is only
- * worth anything if it is checked against the artefact that actually ships.
+ * worth anything if it is checked against the artifact that actually ships.
  * Reasoning about which variables have a VITE_ prefix is how people convince
  * themselves a bundle is clean; reading the compiled output is how they find
  * out. This script does the second one.
@@ -15,14 +15,34 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import 'dotenv/config';
 // Shared with scripts/verify-deployment.mjs, which asks the same question of
-// the deployed artefact. One list, so the two cannot drift apart.
+// the deployed artifact. One list, so the two cannot drift apart.
 import { findSecrets } from './lib/secretPatterns.mjs';
 
 const BUNDLE_DIR = new URL('../web/dist/', import.meta.url).pathname;
 
-// The literal value from the environment, if present - catches a key that does
-// not match the shape patterns above.
-const literalSecrets = ['ANTHROPIC_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']
+/**
+ * The literal value from the environment, if present - catches a key that does
+ * not match the shape patterns above.
+ *
+ * SMTP_PASSWORD joined the list on 2026-08-30, the day before the credential
+ * first existed rather than the day after it leaked. It holds a Postmark server
+ * token, which is a bare UUID: there is no shape pattern that could catch it
+ * without matching every React key in the bundle, so the literal value is the
+ * only thing that can. A credential whose only protection is that nobody has
+ * prefixed it VITE_ yet is one refactor from the browser.
+ */
+const literalSecrets = [
+  'ANTHROPIC_API_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'SMTP_PASSWORD',
+  // Found by the test below on the day SMTP_PASSWORD was added: Stripe's secret
+  // key has been in the environment since billing was built and was never
+  // scanned for. `sk_live_` has a recognizable shape, but the shape patterns
+  // live in secretPatterns.mjs and did not have it either - so nothing looked.
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+]
   .map((name) => ({ name, value: process.env[name] }))
   .filter((s) => s.value && s.value.length >= 12);
 
