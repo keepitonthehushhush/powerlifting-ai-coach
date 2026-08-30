@@ -398,6 +398,47 @@ function *logic*: three functions in production are missing their comments,
 because they were applied through a path that stripped them, and a check that
 reports the same three every time is a check somebody stops reading.
 
+**The migration ledger does not record itself.** Migrations reach production
+through the Supabase SQL editor, pasted in by hand — `db:replay` refuses the
+production project by ref on purpose. A statement pasted into that editor runs,
+and nothing writes a row into `supabase_migrations.schema_migrations`. So on
+2026-08-30 the ledger read `0035` while the database was at `0044`, and nothing
+complained: the ledger answered a question it had never looked at, which is the
+same shape as the deployment probe that read a proxy `403` as "captcha not
+required".
+
+Nothing was broken by the gap itself. What it endangers is the next thing to
+trust it — a `supabase db push`, a replay against a restored snapshot, a person
+reading the list to see what shipped — which would conclude that eight applied
+migrations were outstanding and re-run them. `0038` alone bumps the health-data
+policy version, which forces every user on the service to consent again.
+
+**So after applying a migration by hand, record it.** In the same SQL editor
+session, immediately after the migration itself:
+
+```sql
+insert into supabase_migrations.schema_migrations (version, name)
+values ('20260829020044', '0044_the_counters_are_finally_swept')
+on conflict (version) do nothing;
+```
+
+The `version` is the ledger's ordering key and nothing else reads it. Use a
+timestamp that sorts after the last recorded one; the backfill of `0037`–`0044`
+used `2026082902{NNNN}`, which keeps the migration number visible in the key.
+The `name` must be the filename stem, because that is what the check below
+reads.
+
+**The check.** `scripts/check-db-invariants.mjs` now asserts that every
+numbered file in `supabase/migrations/` appears in the ledger, and names the
+ones that do not. It compares only from the lowest number the ledger records
+under a numbered filename — migrations before `0034` were recorded under bare
+names (`audit_events`, `free_forever`), and `0033` under two of them, so their
+numbers cannot be recovered and demanding them would make the check cry wolf
+about thirty-three migrations that are demonstrably applied. An unreadable or
+empty migrations directory reports "could not run", never "fine";
+`server/test/migrationLedger.test.js` pins that, and the guard was broken on
+purpose to confirm each assertion fails with the message it claims.
+
 **A preview says so.** Every page carries a "Preview build — not
 coachdiaz.app" bar. Confusing a preview tab for the live site is the mistake a
 preview environment makes possible, and it is made by looking at a page that is

@@ -29,6 +29,8 @@
  */
 
 
+import { migrationLedgerCheck } from './lib/migrationLedger.mjs';
+
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -351,6 +353,10 @@ const CHECKS = [
   },
 ];
 
+// The ledger check lives in its own module so a test can build it against a
+// fixture directory and prove it reports "could not run" rather than "fine".
+CHECKS.push(migrationLedgerCheck());
+
 /**
  * Runs one assertion through the `exec_sql` RPC if it exists, falling back to
  * PostgREST's own introspection where it does not.
@@ -360,6 +366,10 @@ const CHECKS = [
  * its own failure modes.
  */
 async function run(check) {
+  // A check that could not be built is a check that did not run. It must
+  // never fall through to the reassuring answer.
+  if (check.unavailable) return { ok: null, detail: check.unavailable };
+
   const response = await fetch(`${url}/rest/v1/rpc/exec_sql`, {
     method: 'POST',
     headers: {
