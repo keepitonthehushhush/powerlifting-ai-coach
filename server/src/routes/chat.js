@@ -316,14 +316,44 @@ chatRouter.post('/', async (req, res, next) => {
 
     // Token counts and ids only. The message bodies are not logged: they
     // routinely contain the athlete's injury history.
+    /*
+     * ── WHY THE PROMPT'S OWN SIZES ARE LOGGED ─────────────────────────────
+     *
+     * The first unit-economics measurement, on 2026-08-30, put uncached input
+     * at 46% of what a reply costs - the single largest component, ahead of
+     * the output. It could not be accounted for. The cached block measures
+     * ~12,300 tokens and matches `cache_creation_input_tokens` exactly; the
+     * athlete-state block measures under 2,000 even loaded with five sessions,
+     * sixty logs and an active program; the exercise library is four rows. Yet
+     * production reports 11,000-13,000 UNCACHED input tokens on turn one of a
+     * conversation, when the only uncached content is that block plus a single
+     * user message.
+     *
+     * Roughly eight thousand tokens a reply are therefore unexplained, and
+     * they are the most expensive thing in the product. Every serious defect
+     * in this project has been found by measuring where the fact lives rather
+     * than reasoning about it from a file, so these are integers taken from
+     * the exact strings that were sent.
+     *
+     * Character counts, never content. The athlete-state block is dense with
+     * health information - injuries, restrictions, GLP-1 status, every logged
+     * set - and its LENGTH is a number about our prompt, not about them. The
+     * message bodies remain unlogged for the reason the comment below already
+     * gave.
+     */
     logger.info('chat.completed', {
       userId: req.user.id,
       conversationId: conversation.id,
       model: reply.model,
       inputTokens: reply.usage?.input_tokens,
       outputTokens: reply.usage?.output_tokens,
+      cacheReadTokens: reply.usage?.cache_read_input_tokens,
+      cacheWriteTokens: reply.usage?.cache_creation_input_tokens,
       costMicrodollars,
       historyReplayed: window.length,
+      cachedBlockChars: system[0]?.text?.length ?? 0,
+      athleteStateChars: system[1]?.text?.length ?? 0,
+      messagesChars: apiMessages.reduce((n, m) => n + (m.content?.length ?? 0), 0),
     });
 
     // ── AWAITED, AND THAT IS A CORRECTION ────────────────────────────────
