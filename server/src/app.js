@@ -153,7 +153,33 @@ export function createApp() {
    * target, and a deployment id is not a secret.
    */
   app.get('/api/health', (_req, res) =>
-    res.json({ status: 'ok', deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev' }));
+    res.json({
+      status: 'ok',
+      deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev',
+      /*
+       * ── WHY THE OUTPUT BUDGET IS PUBLISHED HERE ───────────────────────────
+       *
+       * On 2026-08-30 the safety evaluation was found to be running at
+       * max_tokens 2048 while production ran on ANTHROPIC_MAX_TOKENS. Five of
+       * its sixteen scenarios failed as a result, one of them on a real
+       * assertion, because replies were being cut off before they reached the
+       * part the assertion was about. Reading the same variable fixed it and
+       * the suite went to 48/48.
+       *
+       * That fix is only half of one. The eval reads the budget from the
+       * developer's .env; production reads it from the Vercel project. Nothing
+       * compares the two, so the suite can go green against a budget the
+       * deployed coach does not have - which is the same defect wearing a
+       * different hat.
+       *
+       * A token ceiling is an operational number, not a secret: it says how
+       * long a reply may be. It reveals nothing about the prompt, the key or
+       * any athlete, and deploymentId - already here - is the same kind of
+       * fact. scripts/verify-deployment.mjs reads this and compares it against
+       * the local value, so the two can no longer drift in silence.
+       */
+      maxOutputTokens: config.anthropic.maxTokens,
+    }));
 
   // Everything past this line requires a verified session. Applying requireAuth
   // to the whole /api surface at once, rather than route by route, means a new

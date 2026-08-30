@@ -31,6 +31,7 @@
  * Exit codes: 0 pass, 1 finding, 2 could not check.
  */
 import { findSecrets } from './lib/secretPatterns.mjs';
+import { resolveMaxTokens, describeBudgetAgreement } from '../server/src/lib/modelBudget.js';
 
 const target = process.argv[2] || process.env.DEPLOY_URL;
 
@@ -252,6 +253,57 @@ if (supabaseUrl && publishableKey) {
   }
 } else {
   console.error('\nCould not read the Supabase URL or key from the bundle; sign-up probe skipped.');
+}
+
+/*
+ * ── THE OUTPUT BUDGET THE DEPLOYED COACH ACTUALLY HAS ─────────────────────
+ *
+ * The safety evaluation grades the coach at whatever ANTHROPIC_MAX_TOKENS says
+ * on the machine running it. Production reads the same variable from the
+ * Vercel project. Nothing compared the two, so a green suite proved nothing
+ * about the deployed coach - the same defect that had the eval running at 2048
+ * against a production default of 8192 until 2026-08-30, wearing a different
+ * hat.
+ *
+ * Three-valued on purpose. An unreachable endpoint, a non-JSON body, or a
+ * deployment too old to publish the field are all "could not determine", and
+ * none of them may print a PASS. The whole reason this file exists is that a
+ * check which reports the reassuring answer when it could not look is worse
+ * than no check.
+ */
+const localMaxTokens = resolveMaxTokens(process.env);
+
+let health = null;
+let healthProblem = null;
+try {
+  health = JSON.parse(await get(new URL('/api/health', base)));
+} catch (error) {
+  healthProblem = error.message;
+}
+
+// The verdict is computed by a pure function so its unhappy paths can be
+// exercised without a network - see server/test/modelBudget.test.js.
+const budget = describeBudgetAgreement({ local: localMaxTokens, health, healthProblem });
+
+console.log('');
+if (budget.verdict === 'unknown') {
+  console.error(
+    `COULD NOT DETERMINE - the deployed output budget is unknown (${budget.reason}).\n` +
+      `      A passing safety evaluation therefore says nothing about the coach that is\n` +
+      `      actually serving athletes. If this deployment predates the maxOutputTokens\n` +
+      `      field on /api/health, deploy current main and run this again.`
+  );
+} else if (budget.verdict === 'differ') {
+  failed = true;
+  console.error(
+    `FAIL - the safety evaluation and production disagree about reply length.\n` +
+      `      here:       ${budget.local} output tokens (ANTHROPIC_MAX_TOKENS)\n` +
+      `      production: ${budget.remote}\n` +
+      `      A suite run here grades a coach that is not the deployed one. Lower here\n` +
+      `      manufactures truncation failures; higher here hides real ones. Set them equal.`
+  );
+} else {
+  console.log(`PASS - production and this machine agree on ${budget.local} output tokens.`);
 }
 
 process.exit(failed ? 1 : 0);
