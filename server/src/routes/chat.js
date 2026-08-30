@@ -251,6 +251,13 @@ chatRouter.post('/', async (req, res, next) => {
       }
     };
 
+    /*
+     * Timed because the athlete complained about the wait before anything
+     * measured it, and because the client gives up at 150 seconds. A reply of
+     * 6,405 output tokens - one is already in production - takes most of that
+     * budget, so how close this runs to the ceiling is not a curiosity.
+     */
+    const startedAt = Date.now();
     let reply = await ask();
     let outcome = describeCoachReply(reply);
 
@@ -351,6 +358,7 @@ chatRouter.post('/', async (req, res, next) => {
       cacheWriteTokens: reply.usage?.cache_creation_input_tokens,
       costMicrodollars,
       historyReplayed: window.length,
+      durationMs: Date.now() - startedAt,
       cachedBlockChars: system[0]?.text?.length ?? 0,
       athleteStateChars: system[1]?.text?.length ?? 0,
       messagesChars: apiMessages.reduce((n, m) => n + (m.content?.length ?? 0), 0),
