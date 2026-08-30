@@ -5,6 +5,7 @@ import { api, errorText } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
 import { CoachMessage } from '../components/CoachMessage.jsx';
+import { Link } from 'react-router-dom';
 import { readChatSettings, isSendKey } from '../lib/chatSettings.js';
 
 /**
@@ -55,6 +56,14 @@ export function Chat() {
   const [settings] = useState(readChatSettings);
   const [elapsed, setElapsed] = useState(0);
   const [notice, setNotice] = useState(null);
+  /*
+   * Set only when the server says a row landed. The coach's prose sometimes
+   * claims the program was saved, and the coach has no way to know - the write
+   * happens after it has finished speaking. This is the app stating a fact it
+   * actually holds, and it is cleared on the next send so it can never
+   * describe an older turn.
+   */
+  const [savedProgram, setSavedProgram] = useState(null);
   const endRef = useRef(null);
   const inputRef = useRef(null);
   const holdRef = useRef(null);
@@ -111,6 +120,7 @@ export function Chat() {
       const result = await api.sendMessage(text, conversationId ?? undefined);
       setConversationId(result.conversationId);
       setMessages(result.messages);
+      setSavedProgram(result.savedProgram ?? null);
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m !== optimistic));
       setDraft(text);
@@ -139,6 +149,7 @@ export function Chat() {
     setDraft('');
     setError(null);
     setNotice(null);
+    setSavedProgram(null);
 
     const windowMs = settings.undoWindowSeconds * 1000;
     if (windowMs <= 0) {
@@ -210,6 +221,20 @@ export function Chat() {
             )}
           </article>
         ))}
+
+        {savedProgram && (
+          <div className="program-saved" role="status">
+            <span>
+              {t('chat.programSaved', {
+                week: savedProgram.week,
+                days: savedProgram.days,
+              })}
+            </span>
+            <Link className="link" to="/program">
+              {t('chat.programSavedLink')}
+            </Link>
+          </div>
+        )}
 
         {holding !== null && (
           <div className="holding" role="status">

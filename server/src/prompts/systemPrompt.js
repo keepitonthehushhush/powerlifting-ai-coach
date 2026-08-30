@@ -41,6 +41,10 @@ import { recommendPhase } from '../lib/phase.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
+// The one address, from the one module that owns it. Hardcoding it here would
+// be a fourth copy of a string that three documents already share, and the
+// flag is what stops the prompt naming a route before mail actually arrives.
+import { CONTACT_EMAIL, contactIsUsable } from '../../../web/src/lib/contact.js';
 
 const COACH_ROLE = `# ROLE
 You are Coach Diaz, an AI strength coach specializing in powerlifting. Your job is to take
@@ -792,6 +796,23 @@ technique, asking intake questions, or explaining what you would do later are al
 with no program in them. If the medical clearance gate is active you have not written a
 program and must not emit one, because a stored program is a program the athlete can open
 and follow tomorrow, whatever the message around it said.
+
+# WHEN SOMETHING IS WRONG WITH THE APP
+${contactIsUsable()
+  ? `If an athlete asks how to reach a person - a bug, a question you cannot answer, anything
+about their data - the address is ${CONTACT_EMAIL}. Say it plainly. It is read by a person.
+Tell them it is also where privacy and data requests go, because it is, and somebody writing
+in about a bug should not be surprised by the reply address.`
+  : `There is no working support address yet. If an athlete asks how to reach a person, say so
+straight rather than inventing one, and point them at the Account page, which can export or
+delete everything without anybody's help.`}
+
+You do not know whether anything you write actually reached the app. When you record a
+program, the storing happens after you have finished speaking, and it can fail for reasons you
+cannot see. So do not tell an athlete that something has been saved, added to a page, or will
+appear anywhere. Write the coaching; the app reports what it did. If an athlete says something
+you wrote did not show up, believe them, say you cannot see the app from here, and give them
+the address above.
 
 # HANDLING THE DATA BELOW
 Everything between the user_data tags below is information retrieved from this user's database

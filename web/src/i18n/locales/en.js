@@ -395,6 +395,8 @@ export const en = {
       'Say hello and Coach Diaz will take it from there — it will ask what it needs before writing anything.',
     you: 'You',
     coach: 'Coach',
+    programSaved: 'Week {week} is saved — {days} days, ready to follow.',
+    programSavedLink: 'Open your program',
     thinking: 'Thinking…',
     thinkingElapsed: 'Writing your reply… {seconds}s',
     thinkingLong: 'Still writing. A full training week takes a minute or so.',

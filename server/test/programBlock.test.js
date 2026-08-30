@@ -201,12 +201,26 @@ describe('saving a program never costs somebody their reply', () => {
     // property. A program silently not persisting is worse than a slow reply:
     // it is a message describing a week of training the athlete cannot open
     // tomorrow.
-    const block = chatRoute.slice(chatRoute.indexOf('if (storable)'));
-    assert.match(block.slice(0, 900), /await req\.supabase/);
-    assert.match(block, /program\.save_failed/);
+    /*
+     * Scoped to the write itself rather than to a character count from the
+     * top of the block. The count version failed on 2026-08-30 because a line
+     * was added above the catch - which is not the same finding as the catch
+     * being gone, and a guard that reports one when it means the other is the
+     * defect this repository keeps finding in its own checks.
+     */
+    const writeAt = chatRoute.indexOf("from('workout_programs').insert");
+    assert.ok(writeAt !== -1, 'the program write could not be found - this check did not run');
+
+    const tryAt = chatRoute.lastIndexOf('try {', writeAt);
+    assert.ok(tryAt !== -1 && tryAt > chatRoute.indexOf('if (storable)'), 'the write is not inside a try');
+
+    // Everything from that try to the end of the statement that closes it.
+    const guarded = chatRoute.slice(tryAt, chatRoute.indexOf('}', chatRoute.indexOf('catch (err)', writeAt)) + 1);
+    assert.match(guarded, /await req\.supabase/, 'the write is not awaited');
+    assert.match(guarded, /program\.save_failed/);
     // The swallow, without which the await would turn a bookkeeping failure
     // into a 500 on a reply that was already generated and paid for.
-    assert.match(block.slice(0, 1400), /catch \(err\) \{/);
+    assert.match(guarded, /catch \(err\) \{/);
   });
 
   test('the athlete is shown the stripped reply, not the raw one', () => {

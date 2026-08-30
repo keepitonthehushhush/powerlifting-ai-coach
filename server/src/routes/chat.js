@@ -329,6 +329,32 @@ chatRouter.post('/', async (req, res, next) => {
      */
     const programOutcome = program ? (storable ? 'storable' : 'gated') : problem ? 'unusable' : 'absent';
 
+    /**
+     * ── THE COACH CANNOT KNOW WHETHER THE PROGRAM WAS SAVED ───────────────
+     *
+     * On 2026-08-30 the coach told an athlete it had added his program to the
+     * Program page. It had - the first program this product has ever stored.
+     * But the coach had no way to know that. It writes a block into its reply
+     * and the block leaves its hands; whether the row landed depends on the
+     * clearance gate, on the schema accepting it, and on a database write, all
+     * of which happen after the model has finished speaking.
+     *
+     * It was right by luck. Had the write been refused, or the block failed
+     * validation, or the athlete been behind the medical gate, the coach would
+     * have said exactly the same sentence. The athlete noticed the tension and
+     * the coach, to its credit, said it might be wrong and to report it - but
+     * a system whose remedy is "the model warns you it might be lying" has put
+     * the model somewhere it should not be.
+     *
+     * So the route reports what actually happened, and the interface says it.
+     * The app knows; the coach does not have to guess.
+     *
+     * Week and phase only. Not the movements, not the weights - the Program
+     * page fetches those itself under the athlete's own token, and a chat
+     * response is not the place to widen what travels.
+     */
+    let savedProgram = null;
+
     const now = new Date().toISOString();
     const updated = [
       ...history,
@@ -469,7 +495,10 @@ chatRouter.post('/', async (req, res, next) => {
           is_active: true,
         });
         if (error) logger.warn('program.save_failed', { userId: req.user.id, message: error.message });
-        else logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+        else {
+          logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+          savedProgram = { week: storable.week, phase: storable.phase, days: storable.days.length };
+        }
       } catch (err) {
         logger.warn('program.save_failed', { userId: req.user.id, message: err.message });
       }
@@ -495,6 +524,8 @@ chatRouter.post('/', async (req, res, next) => {
       conversationId: conversation.id,
       reply: replyText,
       messages: updated.slice(-config.chat.historyWindow),
+      // null unless a row actually landed. Never "probably".
+      savedProgram,
     });
   } catch (err) {
     next(err);

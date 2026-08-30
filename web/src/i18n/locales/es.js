@@ -356,6 +356,8 @@ export const es = {
       'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',
     you: 'Tú',
     coach: 'Coach',
+    programSaved: 'La semana {week} está guardada: {days} días, lista para seguir.',
+    programSavedLink: 'Abrir tu programa',
     thinking: 'Pensando…',
     thinkingElapsed: 'Escribiendo tu respuesta… {seconds} s',
     thinkingLong: 'Todavía escribiendo. Una semana completa de entrenamiento tarda alrededor de un minuto.',

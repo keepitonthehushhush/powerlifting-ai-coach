@@ -1895,3 +1895,22 @@ form > button.primary {
 .setting-choice { display: flex; align-items: baseline; gap: 0.6rem; cursor: pointer; line-height: 1.4; }
 .setting-choice input { margin: 0; flex: none; }
 .setting-group .small { margin: 0.15rem 0 0; }
+
+/* --- the program confirmation -------------------------------------------
+   The app saying what the app knows. It sits with the coach's bubble rather
+   than with the athlete's, because it belongs to the reply - but it is not a
+   bubble, because it is not something the coach said. */
+.program-saved {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.8rem;
+  font-size: 0.88rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--secondary);
+  border-radius: var(--radius);
+  background: var(--surface);
+  max-width: 90%;
+}
