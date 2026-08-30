@@ -11,7 +11,7 @@
  * Supabase client threw before React mounted, and the page rendered as an
  * empty body.
  *
- * The lesson is narrow and worth keeping: a local artefact is not evidence
+ * The lesson is narrow and worth keeping: a local artifact is not evidence
  * about a remote one. This script asks the only question that matters after a
  * deploy - what is the public actually downloading? - and answers it by
  * downloading it.
@@ -119,6 +119,139 @@ if (missing.length) {
   );
 } else {
   console.log('PASS - required public configuration is present in the served JavaScript.');
+}
+
+/**
+ * ── THE SIGN-UP PROBE ───────────────────────────────────────────────────────
+ *
+ * On 2026-08-29 a real person could not create an account. CAPTCHA protection
+ * had been switched on in the Supabase dashboard while the deployed bundle
+ * carried no VITE_TURNSTILE_SITE_KEY, so the browser sent no token and every
+ * attempt came back 400 captcha_failed. Nothing in the build was wrong; nothing
+ * in the dashboard was wrong; the two disagreed, and no check could see it
+ * because each half only ever looked at itself.
+ *
+ * Checking that the site key is in the bundle would not have caught it either -
+ * the key is OPTIONAL by design, and a build without one is correct whenever
+ * CAPTCHA is off. The thing that is never correct is the DISAGREEMENT.
+ *
+ * So this asks the actual question, end to end: does the server demand a token
+ * the deployed client cannot produce?
+ *
+ * ── WHY SIGN-IN AND NOT SIGN-UP ─────────────────────────────────────────────
+ *
+ * A sign-up probe that succeeded would create a real account, and a check with
+ * a side effect is a check somebody eventually disables. Sign-in with junk
+ * credentials creates nothing and distinguishes the two states exactly, because
+ * Supabase evaluates CAPTCHA before credentials:
+ *
+ *     captcha required, no token   -> 400 captcha_failed
+ *     captcha not required         -> 400 invalid_credentials
+ *
+ * Both were observed in the production logs during the incident, which is what
+ * makes this probe trustworthy rather than assumed.
+ *
+ * It needs no secrets: the URL and the publishable key are read out of the
+ * bundle that was just downloaded, which is the point - this can run against a
+ * preview URL from CI without being trusted with anything.
+ */
+const TURNSTILE_SITE_KEY = /0x4[A-Za-z0-9_-]{20,}/;
+
+const supabaseUrl = allScript.match(/https:\/\/[a-z0-9]{16,}\.supabase\.co/)?.[0];
+const publishableKey = allScript.match(/sb_publishable_[A-Za-z0-9_-]{16,}/)?.[0];
+const bundleHasSiteKey = TURNSTILE_SITE_KEY.test(allScript);
+
+if (supabaseUrl && publishableKey) {
+  /**
+   * ── THE FALSE PASS THIS ALMOST SHIPPED WITH ───────────────────────────────
+   *
+   * The first version of this probe was `serverWantsCaptcha = /captcha/i.test(
+   * body)`, and the first time it ran the sandbox returned:
+   *
+   *     403  "Host not in allowlist: <project>.supabase.co"
+   *
+   * No "captcha" in that string, so the probe concluded CAPTCHA was not
+   * required and printed a PASS. A check written to catch "nobody can sign up"
+   * would have reported everything fine while talking to a proxy instead of to
+   * Supabase.
+   *
+   * That is the same defect as every other one this repository has found the
+   * hard way: the check ran, produced a green result, and had not looked at the
+   * thing it was named for.
+   *
+   * So the answer is now THREE-valued, and only a response that is recognizably
+   * GoTrue's counts as an answer at all. Anything else - a proxy, a 404, a
+   * captive portal, an HTML error page - is `null`, which is reported and never
+   * treated as a pass.
+   */
+  let serverWantsCaptcha = null;
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: publishableKey },
+      // An address that cannot exist, and a password that could not be right.
+      body: JSON.stringify({
+        email: 'deployment-probe@verify.invalid',
+        password: 'not-a-real-password-and-never-will-be',
+      }),
+    });
+    const body = await res.text();
+
+    let parsed = null;
+    try { parsed = JSON.parse(body); } catch { /* not JSON: not GoTrue */ }
+
+    // GoTrue always answers a rejected grant with error_code or msg. Requiring
+    // one of those is what separates "Supabase said no" from "something else
+    // answered".
+    const isAuthResponse =
+      parsed !== null && typeof parsed === 'object' &&
+      (typeof parsed.error_code === 'string' || typeof parsed.msg === 'string'
+        || typeof parsed.error === 'string');
+
+    if (!isAuthResponse) {
+      console.error(
+        `\nCould not reach Supabase Auth - HTTP ${res.status}, and the body was not an auth ` +
+        `response:\n  ${body.slice(0, 200)}\n` +
+        'Something between here and Supabase answered instead. The sign-up check did NOT run.'
+      );
+    } else {
+      serverWantsCaptcha = /captcha/i.test(`${parsed.error_code ?? ''} ${parsed.msg ?? ''} ${parsed.error ?? ''}`);
+    }
+  } catch (err) {
+    console.error(`\nCould not probe the auth endpoint: ${err.message}`);
+    console.error('The sign-up check did NOT run. This is not a pass.');
+  }
+
+  if (serverWantsCaptcha === true && !bundleHasSiteKey) {
+    failed = true;
+    console.error('\nFAIL - NOBODY CAN CREATE AN ACCOUNT.');
+    console.error(
+      'Supabase is enforcing CAPTCHA on sign-in and sign-up, and the deployed bundle\n' +
+        'carries no Turnstile site key - so the browser sends no token and every attempt\n' +
+        'is refused with "captcha protection: request disallowed (no captcha_token found)".\n' +
+        '\n' +
+        'This is the 2026-08-29 incident. Fix it in this order, which is the only one\n' +
+        'that never locks anybody out:\n' +
+        '  1. Set VITE_TURNSTILE_SITE_KEY in the host and REBUILD - build-time values are\n' +
+        '     read once, so setting it without a rebuild changes nothing.\n' +
+        '  2. Re-run this check and confirm it passes.\n' +
+        '  3. Only then leave CAPTCHA enabled in Supabase.\n' +
+        '\n' +
+        'To unblock sign-ups immediately instead, turn CAPTCHA off in Supabase\n' +
+        '(Authentication > Attack Protection). The site key is public; the SECRET key\n' +
+        'belongs only in the Supabase dashboard and must never enter the repository.'
+    );
+  } else if (serverWantsCaptcha === true) {
+    console.log('PASS - Supabase requires CAPTCHA and the bundle carries a site key.');
+  } else if (serverWantsCaptcha === false) {
+    console.log(
+      bundleHasSiteKey
+        ? 'PASS - the bundle carries a site key; Supabase is not enforcing CAPTCHA yet (safe order).'
+        : 'PASS - CAPTCHA is off on both sides.'
+    );
+  }
+} else {
+  console.error('\nCould not read the Supabase URL or key from the bundle; sign-up probe skipped.');
 }
 
 process.exit(failed ? 1 : 0);

@@ -92,6 +92,28 @@ export const es = {
     newHerePrompt: '¿Eres nuevo aquí?',
     haveAccountPrompt: '¿Ya tienes una cuenta?',
     confirmEmail: 'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
+    errors: {
+      captcha_misconfigured:
+        'Lo sentimos: el acceso a las cuentas no está disponible temporalmente por un problema nuestro, no tuyo. Ya nos han avisado. Vuelve a intentarlo en un rato.',
+      captcha_unavailable:
+        'No se pudo cargar la comprobación antibots, así que no pudimos confirmar que eres una persona. Puede que un bloqueador de anuncios, una extensión de privacidad o un filtro de red esté bloqueando challenges.cloudflare.com. Permite esa dirección, o prueba con otro navegador u otra red.',
+      captcha_rejected:
+        'La comprobación antibots caducó antes de que enviaras el formulario. Inténtalo una vez más: ya se ha cargado una nueva.',
+      invalid_credentials:
+        'Ese correo y esa contraseña no coinciden con ninguna cuenta. Revisa ambos, o restablece la contraseña si no estás seguro.',
+      email_already_registered:
+        'Ya existe una cuenta con ese correo electrónico. Prueba a iniciar sesión, o restablece la contraseña.',
+      password_rejected:
+        'Esa contraseña fue rechazada. Elige una que cumpla los requisitos indicados arriba.',
+      auth_rate_limited:
+        'Demasiados intentos en poco tiempo. Espera unos minutos y vuelve a intentarlo: tu cuenta no tiene ningún problema.',
+      email_rejected:
+        'No se aceptó esa dirección de correo. Compruébala por si hay algún error, o prueba con otra.',
+      session_expired:
+        'Se cerró tu sesión. Vuelve a iniciar sesión.',
+      auth_unexpected:
+        'Algo falló por nuestra parte y no pudimos completar la operación. Ya nos han avisado. Vuelve a intentarlo en un rato.',
+    },
     captcha: {
       why: 'Una comprobación rápida de que no eres un bot. Normalmente se resuelve sola.',
       blocked:

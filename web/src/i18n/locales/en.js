@@ -127,6 +127,32 @@ export const en = {
     newHerePrompt: 'New here?',
     haveAccountPrompt: 'Already have an account?',
     confirmEmail: 'Check your email to confirm your account, then sign in.',
+    errors: {
+      /* Ours, not theirs. The build and the dashboard disagree and no action
+         by the reader can fix it, so this apologizes rather than instructs -
+         and says we know, because "try again later" with no acknowledgement
+         reads as being brushed off. */
+      captcha_misconfigured:
+        'Sorry — account sign-in is temporarily unavailable because of a problem on our end, not yours. We have been notified. Please try again in a little while.',
+      captcha_unavailable:
+        'The bot check could not load, so we could not confirm you are a person. An ad blocker, a privacy extension or a network filter may be blocking challenges.cloudflare.com. Allow that address, or try a different browser or network.',
+      captcha_rejected:
+        'The bot check expired before you submitted. Please try once more — a fresh check has already loaded.',
+      invalid_credentials:
+        'That email and password do not match an account. Check both, or reset your password if you are not sure.',
+      email_already_registered:
+        'There is already an account with that email address. Try signing in instead, or reset the password.',
+      password_rejected:
+        'That password was refused. Please choose one that meets the requirements listed above.',
+      auth_rate_limited:
+        'Too many attempts in a short time. Please wait a few minutes and try again — nothing is wrong with your account.',
+      email_rejected:
+        'That email address was not accepted. Please check it for typos, or try a different address.',
+      session_expired:
+        'You were signed out. Please sign in again.',
+      auth_unexpected:
+        'Something went wrong on our end and we could not complete that. We have been notified. Please try again in a little while.',
+    },
     captcha: {
       why: 'A quick check that you are not a bot. It usually resolves on its own.',
       blocked:
