@@ -443,3 +443,55 @@ describe('every policy page dates its own change', () => {
     }
   });
 });
+
+test('one unreachable source does not destroy the whole export', async (t) => {
+  /**
+   * ── THE OUTAGE THIS PREVENTS ──────────────────────────────────────────
+   *
+   * On 2026-08-30 the export gained a call to my_leaderboard_entry()
+   * (migration 0042). The code was merged and deployed; the migration was not
+   * applied to production. A function that does not exist errors like anything
+   * else, and the export threw on the first error - so every subject access
+   * request returned 500. Profile, programs, sessions, every logged lift,
+   * withheld because one optional row could not be read.
+   *
+   * The deploy order was the mistake. This is the fragility that turned it
+   * into an outage, and it is the kind an export should never have: this is
+   * the one endpoint where "most of your data, plus an honest note about the
+   * rest" beats "nothing".
+   */
+  const account = readSource(new URL('../src/routes/account.js', import.meta.url));
+  const handler = account.slice(
+    account.indexOf("accountRouter.get('/export'"),
+    account.indexOf('const DeleteRequest')
+  );
+
+  await t.test('it no longer throws on the first failing source', () => {
+    assert.ok(
+      !/for \(const result of \[profile[^\]]*\]\)\s*\{\s*if \(result\.error\) throw/.test(handler),
+      'the export still fails entirely when any one source errors'
+    );
+  });
+
+  await t.test('but a missing profile is still fatal', () => {
+    // An export with no profile is not a partial export, it is a different
+    // document, and returning one would misrepresent what we hold.
+    assert.match(handler, /if \(profile\.error\)/);
+    assert.match(handler, /throw codedError\('storage_unavailable'/);
+  });
+
+  await t.test('and anything unreadable is NAMED in the document', () => {
+    /**
+     * The property that makes degrading acceptable. A subject access request
+     * that silently omits a table is worse than one that fails, because the
+     * person cannot tell which they got.
+     */
+    assert.match(handler, /could_not_be_included/);
+    assert.match(handler, /couldNotInclude/);
+    assert.match(handler, phrase('Nothing has been deleted'));
+  });
+
+  await t.test('and it is logged, so we find out rather than the user', () => {
+    assert.match(handler, /account\.export_incomplete/);
+  });
+});

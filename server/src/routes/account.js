@@ -105,8 +105,62 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       req.supabase.rpc('my_leaderboard_entry'),
     ]);
 
-    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board]) {
-      if (result.error) throw codedError('storage_unavailable', 'Could not assemble your data export.');
+    /**
+     * ── WHY ONE UNREACHABLE SOURCE NO LONGER DESTROYS THE WHOLE EXPORT ──
+     *
+     * This used to throw on the first error, so any single failing source
+     * returned 500 and the person got nothing.
+     *
+     * That went from theoretical to live on 2026-08-30. The export gained a
+     * call to my_leaderboard_entry() (migration 0042); the code was merged and
+     * deployed; the migration was not applied to production. A function that
+     * does not exist is an error like any other, so the entire subject access
+     * request - profile, programs, sessions, every logged lift - failed because
+     * one optional row could not be read.
+     *
+     * The deploy order was the mistake and is fixed separately. This is the
+     * fragility that turned it into an outage: an export is the one endpoint
+     * where "most of your data plus an honest note" beats "nothing".
+     *
+     * ── AND WHY IT IS NOT SILENT ────────────────────────────────────────
+     *
+     * A subject access request that quietly omits a table is worse than one
+     * that fails, because the person cannot tell. So anything unreadable is
+     * NAMED in the document itself, under `could_not_be_included`, and logged
+     * as an error on our side. They get what we could assemble, they are told
+     * exactly what is missing, and we find out.
+     *
+     * The profile is the exception: an export with no profile is not a partial
+     * export, it is a different document, and returning one would misrepresent
+     * what we hold.
+     */
+    if (profile.error) {
+      logger.error('account.export_failed', { userId: req.user.id, code: profile.error.code });
+      throw codedError('storage_unavailable', 'Could not assemble your data export.');
+    }
+
+    const sources = {
+      workout_programs: programs,
+      workout_sessions: sessions,
+      progress_logs: logs,
+      conversations,
+      consent_records: consents,
+      usage_events: usage,
+      error_events: errors,
+      subscription,
+      audit_events: activity,
+      leaderboard_entry: board,
+    };
+
+    const couldNotInclude = Object.entries(sources)
+      .filter(([, result]) => result.error)
+      .map(([name]) => name);
+
+    if (couldNotInclude.length > 0) {
+      logger.error('account.export_incomplete', {
+        userId: req.user.id,
+        missing: couldNotInclude,
+      });
     }
 
     const exportDocument = {
@@ -130,6 +184,17 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         // Zero rows when they never joined; one row when they did.
         leaderboard_entry: (board.data ?? [])[0] ?? null,
       },
+      /**
+       * Empty on a healthy export. Named rather than omitted, because a
+       * subject access request the person cannot tell is incomplete is worse
+       * than one that failed outright.
+       */
+      could_not_be_included: couldNotInclude.length === 0 ? [] : couldNotInclude.map((name) => ({
+        source: name,
+        note:
+          'This could not be read when your export was assembled, so it is not included above. ' +
+          'Nothing has been deleted. Please request your export again, and contact us if it keeps happening.',
+      })),
       not_included: [
         'Authentication records held by Supabase Auth (email, password hash, sign-in timestamps) — request these from the auth provider.',
         'Rate limiting counters, which hold only a request count and a timestamp.',
