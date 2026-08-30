@@ -654,10 +654,8 @@ document look maintained while pointing at the wrong things.
    injury history. Password *policy* is no longer a gap: 12 characters with
    mixed classes enforced by Supabase, and a browser-side HaveIBeenPwned check
    covering the paid feature this plan does not include.
-2. **Rate limit counters are never swept.** Expired windows accumulate. The
-   `DELETE` has been written since migration `0006` and still has no schedule —
-   the only category with a policy and no sweep, now that `apply_retention()`
-   covers the rest.
+2. **No per-IP rate limiting.** See the next item; this slot is kept so the
+   numbering below does not shift.
 3. **Rate limiting is per-user, not per-IP.** It bounds cost from authenticated
    abuse. Turnstile now covers the sign-up flood it could never see, but there
    is still no per-IP limit on the API itself.
@@ -713,3 +711,9 @@ nothing about whether anything gets fixed.
 - **No automated retention policy** — `0031`, running nightly since.
 - **Weak password policy** — 12 characters plus a browser-side breach check.
 - **No terms of service** — `tos-2026-08-27b`, drafted and consented to.
+- **Rate limit counters never swept** — `0044`, nightly at `41 4 * * *`. The
+  `DELETE` had been sitting in a comment in migration `0006` since before
+  launch, under the words "belongs in a scheduled job (pg_cron) before launch".
+  It is deliberately NOT a `retention_periods` category: that table holds the
+  retention promises the health-data policy publishes to users, in months, and
+  a two-day operational counter is not one of them.

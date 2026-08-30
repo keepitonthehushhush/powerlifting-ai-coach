@@ -171,6 +171,22 @@ const CHECKS = [
            where n.nspname = 'public' and p.proname = 'record_error_event'`,
   },
   {
+    name: 'THE RATE LIMIT COUNTERS ARE SWEPT, AND THE SWEEP IS SCHEDULED',
+    why: 'Migration 0006 ended with a comment saying the sweep "belongs in a scheduled job (pg_cron) before launch". Launch happened; the job did not, and SECURITY.md carried it as a known gap for months. A DELETE written in a comment is not a sweep. Asked of cron.job rather than of the migration text, for the same reason as apply-retention: a schedule can be unscheduled by hand and no file would look wrong.',
+    sql: `select count(*) = 1 as ok
+            from cron.job
+           where jobname = 'sweep-rate-limit-counters' and active`,
+  },
+  {
+    name: 'and the sweep is definer, and reachable by nobody who is not cron',
+    why: 'It deletes from a table in the private schema, so it must carry owner rights - and it must not be callable by a signed-in user, who could otherwise clear their own counters and with them their own rate limit. That is the 0006 defect in a different costume: the limited party must not be able to edit the limit.',
+    sql: `select bool_and(p.prosecdef
+                 and not has_function_privilege('authenticated', p.oid, 'EXECUTE')
+                 and not has_function_privilege('anon', p.oid, 'EXECUTE')) as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'private' and p.proname = 'sweep_rate_limit_counters'`,
+  },
+  {
     name: 'AND EVERY RETENTION CATEGORY IS ACTUALLY SWEPT',
     why: 'apply_retention() reads the months from retention_periods but the DELETE for each category is written out by hand, so adding a row prunes nothing. A published retention promise that nothing keeps is the same shape as the RLS policy with no GRANT in 0021 - correct on paper, inert in fact.',
     sql: `select bool_and(position(rp.category in pg_get_functiondef(

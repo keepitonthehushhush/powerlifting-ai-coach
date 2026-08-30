@@ -52,6 +52,11 @@ test('the document does not contradict the schema', async (t) => {
     if (/cron\.schedule\('apply-retention'/.test(sql)) {
       assert.match(doc, /apply-retention/, 'a scheduled sweep exists and the document never mentions it');
     }
+    // Same rule for the counter sweep: a job that exists and is undocumented
+    // is how the gaps list drifted in the first place.
+    if (/cron\.schedule\(\s*'sweep-rate-limit-counters'/.test(sql)) {
+      assert.match(doc, /41 4 \* \* \*/, 'the counter sweep is scheduled and the document never mentions it');
+    }
   });
 
   await t.test('every retention category it tabulates is one the database has', () => {
@@ -83,6 +88,7 @@ test('the document does not contradict the schema', async (t) => {
       [/\*\*No audit log\.\*\*/, 'audit_events exists (migration 0030)'],
       [/\*\*No automated retention policy\.\*\*/, 'apply_retention runs nightly (0031)'],
       [/no terms of service/i, 'tos-2026-08-27b exists and is consented to'],
+      [/counters are never swept/i, 'migration 0044 schedules it nightly'],
       [/password policy is whatever Supabase/i, 'a 12-character policy and a breach check exist'],
     ]) {
       assert.ok(!claim.test(gaps), `Known gaps still says: ${why}`);
