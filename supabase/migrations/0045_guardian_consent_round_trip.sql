@@ -1,5 +1,5 @@
 -- =============================================================================
--- 0044_guardian_consent_round_trip.sql
+-- 0045_guardian_consent_round_trip.sql
 --
 -- 0036 built the storage for a guardian consent. It did not build the way one
 -- is actually obtained, and docs/UNDER_18.md describes the flow as proposed:
@@ -68,7 +68,7 @@ create table if not exists public.guardian_consent_requests (
 );
 
 comment on table public.guardian_consent_requests is
-  'Outstanding and answered guardian consent links. Holds the SHA-256 of the token, never the token. Written only by the security-definer functions below: the athlete may read their own row to see whether a guardian has answered, and may read no token hash. See migration 0044.';
+  'Outstanding and answered guardian consent links. Holds the SHA-256 of the token, never the token. Written only by the security-definer functions below: the athlete may read their own row to see whether a guardian has answered, and may read no token hash. See migration 0045.';
 
 create index if not exists guardian_consent_requests_user_idx
   on public.guardian_consent_requests (user_id, created_at desc);

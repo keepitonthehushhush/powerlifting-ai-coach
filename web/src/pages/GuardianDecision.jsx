@@ -32,7 +32,7 @@ import { GuardianConsent } from './GuardianConsent.jsx';
  * ── WHY BOTH BUTTONS ARE ALWAYS OFFERED ───────────────────────────────────
  *
  * Including after an answer, and including once the link has expired. The
- * document promises "you can withdraw at any time", and migration 0044 makes
+ * document promises "you can withdraw at any time", and migration 0045 makes
  * that true - saying no always works, is idempotent, and needs no fresh link.
  * A page that hid the button after the first answer would be the interface
  * quietly contradicting the promise.

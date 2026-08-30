@@ -124,7 +124,7 @@ position the age gate already takes about self-reported birth dates:
 > It is not identity verification. A self-reported birth date is trivially
 > falsified, and no age gate anywhere solves that.
 
-The flow, built in migration 0044 and no longer proposed: the athlete enters a
+The flow, built in migration 0045 and no longer proposed: the athlete enters a
 guardian email; the guardian receives a plain-text message describing what the
 product does, that it is unsupervised, and that they can withdraw at any time;
 consent is recorded when they follow the link and answer. Plain SMTP, so the

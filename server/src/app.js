@@ -130,7 +130,7 @@ export function createApp() {
    * A guardian answering a consent link has no account and should not need
    * one. What replaces the session is the token: 32 bytes of CSPRNG, sent to an
    * address the athlete named, stored only as a SHA-256 hash, and redeemed
-   * through a SECURITY DEFINER function that takes no user id (migration 0044).
+   * through a SECURITY DEFINER function that takes no user id (migration 0045).
    *
    * It is here, above the line, for the same reason the Stripe webhook is:
    * "everything under /api is authenticated unless it is visibly, explicitly,

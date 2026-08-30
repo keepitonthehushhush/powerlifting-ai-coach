@@ -26,7 +26,7 @@ const decisionPage = readSource(new URL('../../web/src/pages/GuardianDecision.js
 const migration = latestDefinition('function public.record_guardian_consent').body;
 const requestFn = latestDefinition('function public.request_guardian_consent').body;
 const migrationRaw = readRaw(
-  new URL('../../supabase/migrations/0044_guardian_consent_round_trip.sql', import.meta.url)
+  new URL('../../supabase/migrations/0045_guardian_consent_round_trip.sql', import.meta.url)
 );
 
 test('the token', async (t) => {
@@ -245,7 +245,7 @@ test('the athlete can actually start the flow', async (t) => {
   /**
    * ── WHY THIS TEST EXISTS ──────────────────────────────────────────────
    *
-   * Migration 0044 built the token, both endpoints and the guardian's page,
+   * Migration 0045 built the token, both endpoints and the guardian's page,
    * and NOTHING in the application called POST /api/guardian/request. The
    * refusal told a thirteen-year-old to "ask them to give us their email
    * address on your profile page" and there was no field on the profile page.
@@ -296,7 +296,7 @@ test('the athlete can actually start the flow', async (t) => {
   });
 
   await t.test('it never asks for the token hash', () => {
-    // 0044 does not grant that column, so selecting it fails the whole request
+    // 0045 does not grant that column, so selecting it fails the whole request
     // rather than omitting the column - the leaderboard lesson from 0039.
     const select = route.slice(route.indexOf("from('guardian_consent_requests')"));
     assert.ok(!/token_hash/.test(select.slice(0, 400)), 'the status route selects token_hash');

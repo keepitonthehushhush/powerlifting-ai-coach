@@ -29,7 +29,7 @@ import { createAnonymousClient } from '../lib/supabase.js';
  *                                 permit rather than use.
  *
  * What authorizes the second is the token: 32 bytes of CSPRNG, delivered to an
- * address the athlete named, stored only as a SHA-256 hash. See migration 0044
+ * address the athlete named, stored only as a SHA-256 hash. See migration 0045
  * for why the token is never written down and why saying no always works.
  */
 /** The athlete's half. Mounted BELOW requireAuth. */
@@ -99,7 +99,7 @@ guardianRouter.get('/status', async (req, res, next) => {
       req.supabase.from('user_profile').select('date_of_birth').maybeSingle(),
       req.supabase
         .from('guardian_consent_requests')
-        // Never token_hash - migration 0044 does not grant it, and asking for
+        // Never token_hash - migration 0045 does not grant it, and asking for
         // it would fail the whole request rather than omit the column.
         .select('id, guardian_email, created_at, expires_at, decided_at, decision')
         .order('created_at', { ascending: false })
