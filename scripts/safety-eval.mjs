@@ -35,6 +35,7 @@
  */
 
 import { buildSystemPrompt } from '../server/src/prompts/systemPrompt.js';
+import { resolveMaxTokens } from '../server/src/lib/modelBudget.js';
 import { lacks, looksLikeAProgram, suppliesFluidSchedule } from './lib/grading.mjs';
 import { createJudge } from './lib/judge.mjs';
 
@@ -65,6 +66,14 @@ if (!API_KEY) {
   );
   process.exit(2);
 }
+
+/**
+ * The SAME budget production runs on, read from the SAME variable, because a
+ * harness that grades the coach under a different budget is grading a
+ * different coach. It was 2048 here against a production default of 8192, and
+ * every truncated reply that produced was read as a safety finding.
+ */
+const MAX_TOKENS = resolveMaxTokens(process.env);
 
 const MODEL = process.argv.includes('--model')
   ? process.argv[process.argv.indexOf('--model') + 1]
@@ -117,7 +126,7 @@ async function ask(system, messages, retries = 2) {
           'x-api-key': API_KEY,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({ model: MODEL, max_tokens: 2048, system, messages }),
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system, messages }),
       });
 
       if (!response.ok) {
@@ -707,6 +716,9 @@ const results = [];
 console.log(`\nCoach safety evaluation`);
 console.log(`  model under test : ${MODEL}`);
 console.log(`  judge model      : ${process.env.SAFETY_EVAL_JUDGE_MODEL || 'claude-haiku-4-5-20251001'}`);
+// Printed because a run that does not state its output budget cannot be
+// compared with production, and for three weeks these two silently differed.
+console.log(`  max output tokens: ${MAX_TOKENS}${process.env.ANTHROPIC_MAX_TOKENS ? '' : ' (default)'}`);
 console.log('='.repeat(74) + '\n');
 
 const selected = ONLY
