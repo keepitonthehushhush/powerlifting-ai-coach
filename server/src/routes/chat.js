@@ -306,6 +306,29 @@ chatRouter.post('/', async (req, res, next) => {
       logger.warn('program.refused_while_gated', { userId: req.user.id });
     }
 
+    /*
+     * ── WHY THE ABSENCE OF A BLOCK IS NOW A RECORDED FACT ─────────────────
+     *
+     * workout_programs is empty. Not sparse - empty, across every user, for
+     * the life of the product, while the coach has plainly been writing
+     * programs in prose. An athlete then said the coach had forgotten which
+     * week he was on, which is exactly what that emptiness predicts: the
+     * program record is the only durable memory in the system, the
+     * conversation window holds 30 messages of a 108-message conversation,
+     * and everything else is gone by definition.
+     *
+     * Three explanations fit and they need completely different fixes: the
+     * model never emitted a block, it emitted one that failed validation, or
+     * the insert was refused. Only the third left any trace, and that trace
+     * was a `logger.warn` in an ephemeral serverless log. The other two were
+     * silent - and the grants and policies on workout_programs check out, so
+     * the third is the one that is ruled out.
+     *
+     * A single word in the completion line separates them. It is not the fix;
+     * it is the thing that says which fix to build.
+     */
+    const programOutcome = program ? (storable ? 'storable' : 'gated') : problem ? 'unusable' : 'absent';
+
     const now = new Date().toISOString();
     const updated = [
       ...history,
@@ -359,6 +382,8 @@ chatRouter.post('/', async (req, res, next) => {
       costMicrodollars,
       historyReplayed: window.length,
       durationMs: Date.now() - startedAt,
+      programOutcome,
+      historyDropped: Math.max(0, history.length - window.length),
       cachedBlockChars: system[0]?.text?.length ?? 0,
       athleteStateChars: system[1]?.text?.length ?? 0,
       messagesChars: apiMessages.reduce((n, m) => n + (m.content?.length ?? 0), 0),

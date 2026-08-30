@@ -351,6 +351,24 @@ const CHECKS = [
            where g.grantee = 'anon' and g.table_schema = 'public'
              and g.table_name <> 'exercise_library'`,
   },
+  {
+    name: 'a coach that has written this much has stored at least one program',
+    why: 'workout_programs is the only durable memory in the product. The conversation window replays 30 messages; everything older is gone. If the coach has been writing programs in prose and none have been recorded, athletes are being told which week they are on by a system that will not remember it - which is exactly what an athlete reported on 2026-08-30, with 54 assistant messages on file and zero program rows.',
+    sql: `with volume as (
+             select coalesce(sum((select count(*) from jsonb_array_elements(c.messages) m
+                                   where m->>'role' = 'assistant')), 0) as coached
+               from public.conversations c
+           )
+           select case
+                    -- Not enough traffic to conclude anything. A brand new
+                    -- database has no programs for the honest reason, and a
+                    -- check that fires on day one is a check somebody mutes.
+                    when (select coached from volume) < 20 then true
+                    else (select count(*) from public.workout_programs) > 0
+                  end as ok,
+                  (select coached from volume) as assistant_messages,
+                  (select count(*) from public.workout_programs) as programs_stored`,
+  },
 ];
 
 // The ledger check lives in its own module so a test can build it against a
