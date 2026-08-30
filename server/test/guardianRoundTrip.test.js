@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { readSource, readRaw, phrase, latestDefinition } from './helpers/source.js';
 import { POLICY_VERSIONS, GUARDIAN_CONSENT_VERSION, SELF_SERVICE_CONSENT_TYPES } from '../src/lib/policyVersions.js';
+import { en } from '../../web/src/i18n/locales/en.js';
+import { es } from '../../web/src/i18n/locales/es.js';
 import { POLICY_DOCUMENTS } from '../../web/src/lib/policyDocuments.js';
 
 /**
@@ -236,5 +238,99 @@ test('the document exists, and is reachable', async (t) => {
      */
     assert.ok(!('guardian_consent' in POLICY_VERSIONS), 'guardian_consent is in POLICY_VERSIONS');
     assert.ok(!SELF_SERVICE_CONSENT_TYPES.includes('guardian_consent'));
+  });
+});
+
+test('the athlete can actually start the flow', async (t) => {
+  /**
+   * ── WHY THIS TEST EXISTS ──────────────────────────────────────────────
+   *
+   * Migration 0044 built the token, both endpoints and the guardian's page,
+   * and NOTHING in the application called POST /api/guardian/request. The
+   * refusal told a thirteen-year-old to "ask them to give us their email
+   * address on your profile page" and there was no field on the profile page.
+   *
+   * A half-reachable flow is worse than an unbuilt one: it looks finished from
+   * every angle except the one that matters. So the assertion is not that the
+   * component exists, it is that the chain from the refusal message to the
+   * request endpoint is unbroken.
+   */
+  const panel = readSource(new URL('../../web/src/components/GuardianPanel.jsx', import.meta.url));
+  const intake = readSource(new URL('../../web/src/pages/Intake.jsx', import.meta.url));
+  const apiClient = readSource(new URL('../../web/src/lib/api.js', import.meta.url));
+  const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
+
+  await t.test('the refusal names a page that carries the form', () => {
+    // The message says "on your profile page". SiteNav maps nav.profile to
+    // /intake, so that page is where the panel has to be.
+    assert.match(chat, phrase('on your profile page'));
+    assert.match(intake, /<GuardianPanel \/>/);
+    assert.match(intake, /import \{ GuardianPanel \}/);
+  });
+
+  await t.test('and the form reaches the endpoint', () => {
+    assert.match(panel, /api\.requestGuardianConsent\(/);
+    assert.match(apiClient, /requestGuardianConsent:/);
+    assert.match(apiClient, /'\/guardian\/request'/);
+    assert.match(apiClient, /getGuardianStatus:/);
+  });
+
+  await t.test('the panel renders NOTHING when it does not apply', () => {
+    /**
+     * Not a disabled section and not an explanation - nothing. An adult has no
+     * business seeing a guardian form on their own profile, and a greyed-out
+     * one still asks them to work out whether it is about them.
+     */
+    assert.match(panel, /if \(!state\?\.applicable\) return null;/);
+  });
+
+  await t.test('and the server decides whether it applies, not the page', () => {
+    // Two implementations of an age band is how somebody sees a form that then
+    // refuses them. The copy that decides is the one in the database.
+    assert.match(route, /guardianRouter\.get\('\/status'/);
+    assert.match(route, /adultGateDecision/);
+    assert.ok(
+      !/date_of_birth/.test(panel),
+      'the panel is recomputing the age band instead of asking the server'
+    );
+  });
+
+  await t.test('it never asks for the token hash', () => {
+    // 0044 does not grant that column, so selecting it fails the whole request
+    // rather than omitting the column - the leaderboard lesson from 0039.
+    const select = route.slice(route.indexOf("from('guardian_consent_requests')"));
+    assert.ok(!/token_hash/.test(select.slice(0, 400)), 'the status route selects token_hash');
+  });
+
+  await t.test('the granted state offers no way for the athlete to undo it', () => {
+    /**
+     * Withdrawal belongs to the guardian, through their own link. A control
+     * here would let the person the consent protects remove it - the same
+     * reasoning that keeps guardian_consent out of SELF_SERVICE_CONSENT_TYPES.
+     */
+    const granted = panel.slice(panel.indexOf('state.active ?'), panel.indexOf(') : ('));
+    assert.ok(!/withdraw|revoke/i.test(granted), 'the athlete can withdraw their own guardian consent');
+  });
+
+  await t.test('every string it renders exists in both catalogues', () => {
+    // t() returns the key itself on a miss, so a typo renders as raw dotted
+    // text on the page. This caught the block being nested under `auth`.
+    const keys = [...panel.matchAll(/t\('([a-z][A-Za-z.]+)'\)/g)].map(([, k]) => k);
+    assert.ok(keys.length >= 10, `only found ${keys.length} keys in the panel`);
+    for (const key of keys) {
+      for (const [lang, cat] of [['en', en], ['es', es]]) {
+        const value = key.split('.').reduce((o, part) => (o ?? {})[part], cat);
+        assert.equal(typeof value, 'string', `${lang} is missing ${key}`);
+      }
+    }
+  });
+
+  await t.test('and it sits below the sticky header, not inside it', () => {
+    // Placed inside <StickyHeader> it renders as part of the pinned chrome,
+    // which is where the first attempt put it.
+    const closer = intake.indexOf('</StickyHeader>');
+    const panelAt = intake.indexOf('<GuardianPanel />');
+    assert.ok(closer > 0 && panelAt > closer, 'GuardianPanel is inside the sticky header');
+    assert.ok(panelAt < intake.indexOf('<form'), 'GuardianPanel is below the form');
   });
 });

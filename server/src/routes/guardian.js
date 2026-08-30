@@ -7,6 +7,8 @@ import { logger } from '../lib/logger.js';
 import { codedError } from '../lib/errorCodes.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { sendGuardianConsentEmail } from '../lib/mailer.js';
+import { adultGateDecision } from '../lib/ageGate.js';
+import { GUARDIAN_CONSENT_VERSION } from '../lib/policyVersions.js';
 import { createAnonymousClient } from '../lib/supabase.js';
 
 /**
@@ -64,6 +66,87 @@ const RequestBody = z.object({
 const DecisionBody = z.object({
   token: z.string().min(1).max(512),
   granted: z.boolean(),
+});
+
+/**
+ * GET /api/guardian/status
+ *
+ * What the athlete needs to see: does this apply to me, has anybody been
+ * asked, and did they answer.
+ *
+ * ── WHY THE SERVER DECIDES `applicable` ───────────────────────────────────
+ *
+ * The page could compute the age band from the date of birth it already has,
+ * and that would be one fewer request. It would also be a second
+ * implementation of the rule, in a language where it is easy to get the leap
+ * year wrong, sitting next to the one in the database that actually decides.
+ * Two implementations of an age gate is how a fifteen-year-old sees a form
+ * that then refuses them, or worse, does not see one they need.
+ *
+ * ── AND WHY IT RETURNS THE ADDRESS ────────────────────────────────────────
+ *
+ * The athlete typed it. Showing it back is how they notice they sent it to
+ * dad@gmail.con, which is otherwise a silent failure that looks exactly like a
+ * guardian who has not got round to it yet.
+ */
+guardianRouter.get('/status', async (req, res, next) => {
+  try {
+    if (!config.minors.enabled) {
+      return res.json({ applicable: false, reason: 'feature_off' });
+    }
+
+    const [{ data: profile }, { data: requests }, { data: consents }] = await Promise.all([
+      req.supabase.from('user_profile').select('date_of_birth').maybeSingle(),
+      req.supabase
+        .from('guardian_consent_requests')
+        // Never token_hash - migration 0044 does not grant it, and asking for
+        // it would fail the whole request rather than omit the column.
+        .select('id, guardian_email, created_at, expires_at, decided_at, decision')
+        .order('created_at', { ascending: false })
+        .limit(1),
+      req.supabase
+        .from('consent_records')
+        .select('granted, policy_version, created_at')
+        .eq('consent_type', 'guardian_consent')
+        .order('seq', { ascending: false })
+        .limit(1),
+    ]);
+
+    const gate = adultGateDecision(profile ?? {}, { minorsEnabled: true });
+    if (!gate.isMinor || gate.reason === 'too_young') {
+      return res.json({ applicable: false, reason: gate.reason === 'too_young' ? 'too_young' : 'adult' });
+    }
+
+    const latest = requests?.[0] ?? null;
+    const consent = consents?.[0] ?? null;
+
+    /**
+     * `active` is the only field the coach's own gate agrees with, so it is
+     * computed the same way: the latest decision must be a grant AND against
+     * the current version. A stale grant is not an active consent, and saying
+     * otherwise here would put a green tick above a coach that still refuses.
+     */
+    const active = Boolean(
+      consent?.granted && consent.policy_version === GUARDIAN_CONSENT_VERSION
+    );
+
+    res.json({
+      applicable: true,
+      active,
+      request: latest && {
+        guardian_email: latest.guardian_email,
+        sent_at: latest.created_at,
+        expires_at: latest.expires_at,
+        decided_at: latest.decided_at,
+        decision: latest.decision,
+      },
+      // A grant against a superseded version. The guardian has to be asked
+      // again, and the athlete should be told that rather than left wondering.
+      stale: Boolean(consent?.granted && !active),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**

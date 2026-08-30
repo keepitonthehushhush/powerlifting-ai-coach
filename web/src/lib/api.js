@@ -173,6 +173,13 @@ export const api = {
   openBillingPortal: () => request('/billing/portal', { method: 'POST' }),
 
   // The leaderboard and the badge shelf.
+  getGuardianStatus: () => request('/guardian/status'),
+  requestGuardianConsent: (guardianEmail) =>
+    request('/guardian/request', {
+      method: 'POST',
+      body: JSON.stringify({ guardian_email: guardianEmail }),
+    }),
+
   getLeaderboard: () => request('/leaderboard'),
   setLeaderboardOptIn: (optIn) =>
     request('/leaderboard/opt-in', { method: 'PUT', body: JSON.stringify({ optIn }) }),

@@ -203,15 +203,54 @@ function docsCopy() {
     .join('\n');
 }
 
+/**
+ * The eval scenario names, which are prose and are printed in every report.
+ *
+ * Added 2026-08-30: safety-eval-results.txt carried "recognised" and
+ * "moralising" because scripts/ was never a surface here. A file somebody
+ * pastes into an issue is copy whether or not it renders in a browser.
+ */
+function scriptCopy() {
+  const raw = readFileSync(new URL('../../scripts/safety-eval.mjs', import.meta.url), 'utf8');
+
+  /**
+   * SCENARIO NAMES ONLY, and the narrowness is the point.
+   *
+   * The first version took every string literal in the file and immediately
+   * reported "physiotherapists" and "programme" - both inside SIMULATED USER
+   * MESSAGES, which are deliberately whatever an adversarial person might type
+   * and are the test's input rather than our copy. Rewriting those would
+   * change what the scenarios test in order to satisfy a spelling check.
+   *
+   * Same trap the header warns about for code spans: a check that demands the
+   * wrong thing gets satisfied the wrong way. The names are ours, they are
+   * printed in every report and pasted into every issue, and they are where
+   * "recognised" and "moralising" actually appeared.
+   */
+  return [...raw.matchAll(/^\s*name: '((?:[^'\\]|\\.)*)'/gm)].map(([, name]) => name).join('\n');
+}
+
 const SURFACES = [
   ['the UI copy catalogue', localeCopy],
   ['the coach prompt', promptCopy],
   ['the page text', pageCopy],
   ['the documents', docsCopy],
+  /**
+   * A floor of its own, because this surface is legitimately small: fourteen
+   * scenario names, around a thousand characters. The shared 4000 is sized for
+   * the catalogues and the documents, and applying it here would have forced a
+   * choice between deleting the vacuity check and widening the reader to
+   * swallow the simulated user messages - which is how a check ends up
+   * demanding the wrong thing.
+   *
+   * The floor still has to be REAL. Fourteen names is what the file has today,
+   * so twelve is a number a broken reader cannot reach by accident.
+   */
+  ['the eval scenarios', scriptCopy, 700],
 ];
 
 describe('the copy is American English', () => {
-  for (const [name, read] of SURFACES) {
+  for (const [name, read, floor = 4000] of SURFACES) {
     describe(name, () => {
       const copy = read();
 
@@ -220,7 +259,7 @@ describe('the copy is American English', () => {
         // this repository has shipped that shape more than once - a secret
         // scanner that could not find a secret, a slice that matched nothing.
         // The floor is checked against reality rather than guessed.
-        assert.ok(copy.length > 4000, `only ${copy.length} characters found - the reader is broken`);
+        assert.ok(copy.length > floor, `only ${copy.length} characters found - the reader is broken`);
         assert.match(copy, /\bprogram\b/i, 'the word this was all about is absent, so the reader is wrong');
       });
 

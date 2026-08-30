@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { GuardianPanel } from '../components/GuardianPanel.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ErrorSummary } from '../components/ErrorSummary.jsx';
@@ -253,6 +254,14 @@ export function Intake() {
           <p className="muted header-detail">{t('intake.subtitle')}</p>
         </header>
       </StickyHeader>
+
+      {/* Directly under the header and above the form, on purpose: an athlete
+          who cannot be coached yet should learn why before filling anything
+          in, not after. It renders nothing at all for an adult - see the
+          component; a greyed-out section still asks the reader to work out
+          whether it is about them. */}
+      <GuardianPanel />
+
 
       <form onSubmit={handleSubmit} className="stack" noValidate>
         {/* Four groups, not one column of eighteen inputs.
