@@ -54,23 +54,68 @@ const domain = email.split('@')[1];
 console.log(`Contact address: ${email}`);
 console.log(`Documents print it: ${live ? 'yes' : 'no (CONTACT_LIVE is false)'}\n`);
 
+/**
+ * ── "NO MX RECORD" AND "COULD NOT ASK" ARE NOT THE SAME ANSWER ────────────
+ *
+ * This script used to treat every DNS error as proof the address was dead, and
+ * printed "Mail to the address in the Terms is going nowhere" with a
+ * recommendation to set CONTACT_LIVE to false.
+ *
+ * Run on 2026-08-30 from a sandbox with no DNS egress it said exactly that,
+ * for a domain whose MX records were live and correct - verified from another
+ * machine seconds later:
+ *
+ *     ECONNREFUSED  ->  "FAIL - no usable MX record for coachdiaz.app"
+ *
+ * Acting on that would have removed a WORKING contact route from the Terms,
+ * which is the opposite of the harm this check exists to prevent - and it
+ * would have been done on the authority of a check that never reached a
+ * resolver.
+ *
+ * Third time in one day a check here has answered confidently without looking:
+ * the deployment probe read a proxy error as "captcha not required", the export
+ * completeness test matched a different endpoint, and this. So the answer is
+ * three-valued, like the others.
+ *
+ * ENOTFOUND and ENODATA are real answers from a resolver that looked: the
+ * domain has no MX. Everything else - refused, timed out, SERVFAIL, EAI_AGAIN -
+ * means the question was never asked, and the honest output is "unknown".
+ */
+const ANSWERED = new Set(['ENOTFOUND', 'ENODATA']);
+
 let failed = false;
+let unknown = false;
 
 try {
   const mx = await resolveMx(domain);
-  if (mx.length === 0) throw new Error('no MX records');
+  if (mx.length === 0) {
+    const empty = new Error('the domain resolves but advertises no MX');
+    empty.code = 'ENODATA';
+    throw empty;
+  }
   mx.sort((a, b) => a.priority - b.priority);
   console.log('MX records:');
   for (const r of mx) console.log(`  ${String(r.priority).padStart(3)}  ${r.exchange}`);
   console.log('\nPASS - the domain still advertises somewhere to deliver mail.');
 } catch (error) {
-  failed = true;
-  console.error(`FAIL - no usable MX record for ${domain}: ${error.message}`);
-  console.error(
-    '\nMail to the address in the Terms is going nowhere. Either fix the DNS, or set\n' +
-      'CONTACT_LIVE to false in web/src/lib/contact.js and deploy - the documents will\n' +
-      'fall back to the Account-page route rather than printing an address that bounces.'
-  );
+  if (ANSWERED.has(error.code)) {
+    failed = true;
+    console.error(`FAIL - no usable MX record for ${domain}: ${error.message}`);
+    console.error(
+      '\nMail to the address in the Terms is going nowhere. Either fix the DNS, or set\n' +
+        'CONTACT_LIVE to false in web/src/lib/contact.js and deploy - the documents will\n' +
+        'fall back to the Account-page route rather than printing an address that bounces.'
+    );
+  } else {
+    unknown = true;
+    console.error(
+      `UNKNOWN - could not reach a DNS resolver for ${domain}: ${error.code ?? error.message}\n\n` +
+        'THE CHECK DID NOT RUN. This says nothing about whether the address works, and\n' +
+        'is not a reason to change CONTACT_LIVE. Usually a sandbox, a VPN or a captive\n' +
+        'network with no DNS egress - re-run it from a machine with ordinary internet\n' +
+        'access before believing anything about the contact route.'
+    );
+  }
 }
 
 // SPF is not required for RECEIVING mail, so its absence is a warning rather
@@ -88,6 +133,10 @@ if (live && failed) {
   console.error('\nThe documents are printing an address that cannot receive mail.');
   process.exit(1);
 }
+// A distinct exit code, so CI can tell "this is broken" from "I could not
+// look". Treating the second as a pass would make the check decorative;
+// treating it as a failure would make a network blip look like an outage.
+if (unknown) process.exit(3);
 if (!live && !failed) {
   console.log(
     '\nNote: the DNS is working but CONTACT_LIVE is false, so nothing prints the address.\n' +

@@ -191,3 +191,47 @@ describe('the contact address is one address', () => {
     assert.match(source, phrase('records a fact rather than an intention'));
   });
 });
+
+test('the contact-route check can say "I could not look"', async (t) => {
+  /**
+   * ── THE FALSE ALARM THIS PREVENTS ─────────────────────────────────────
+   *
+   * check-contact-route.mjs treated every DNS error as proof the address was
+   * dead. Run on 2026-08-30 from a sandbox with no DNS egress it printed
+   * "FAIL - no usable MX record for coachdiaz.app" and recommended setting
+   * CONTACT_LIVE to false - for a domain whose MX records were live and
+   * correct, verified from another machine seconds later.
+   *
+   * Acting on it would have REMOVED a working contact route from the Terms,
+   * which is the exact harm the check exists to prevent. And the Terms commit
+   * to deleting a minor's account when a parent writes to that address, so the
+   * route is not decoration.
+   *
+   * ENOTFOUND and ENODATA are answers from a resolver that looked. Everything
+   * else means the question was never asked.
+   */
+  const script = readRaw(new URL('../../scripts/check-contact-route.mjs', import.meta.url));
+
+  await t.test('only a real resolver answer counts as a failure', () => {
+    assert.match(script, /const ANSWERED = new Set\(\['ENOTFOUND', 'ENODATA'\]\)/);
+    assert.match(script, /ANSWERED\.has\(error\.code\)/);
+  });
+
+  await t.test('anything else is UNKNOWN, and says the check did not run', () => {
+    assert.match(script, /UNKNOWN - could not reach a DNS resolver/);
+    assert.match(script, phrase('THE CHECK DID NOT RUN'));
+    assert.match(script, phrase('is not a reason to change CONTACT_LIVE'));
+  });
+
+  await t.test('and it exits with a code CI can tell apart', () => {
+    // Exit 1 means broken. Exit 3 means unlooked. Collapsing them makes the
+    // check either decorative or a source of false outages.
+    assert.match(script, /if \(unknown\) process\.exit\(3\)/);
+  });
+
+  await t.test('an empty MX list is still a real failure', () => {
+    // A domain that resolves and advertises nowhere to deliver IS broken, and
+    // must not be swept into "could not look" by the new branch.
+    assert.match(script, /empty\.code = 'ENODATA'/);
+  });
+});
