@@ -21,11 +21,11 @@
  * been the target of prompt injection twice in the adversarial suite. An
  * athlete can put text in their profile; the coach quotes profiles back. The
  * path from "a user typed it" to "the browser executed it" has to not exist,
- * rather than exist behind a sanitiser that has to be right every time.
+ * rather than exist behind a sanitizer that has to be right every time.
  *
  * So this parses into a plain data structure and the component renders React
  * elements from it. React escapes text nodes by construction. There is no
- * HTML string anywhere in the pipeline, no sanitiser to keep current, and no
+ * HTML string anywhere in the pipeline, no sanitizer to keep current, and no
  * dependency to audit - and a `<script>` in a reply renders as the characters
  * `<script>`, which is the correct outcome and is asserted by a test.
  *
@@ -34,7 +34,7 @@
  * The subset is what the coach actually emits, read off real replies from the
  * adversarial evaluation and production: paragraphs, headings, bullet and
  * numbered lists, pipe tables (meet-prep blocks use them), and inline bold,
- * italic and code. Anything unrecognised falls through as text rather than
+ * italic and code. Anything unrecognized falls through as text rather than
  * being dropped - an unsupported construct should look plain, never vanish.
  */
 

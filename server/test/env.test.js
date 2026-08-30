@@ -10,7 +10,7 @@ import { assertNoLeakedSecrets, buildConfig, optional, required } from '../src/l
  * out of config.js. Previously the validation ran at import time, so a test
  * asserting "buildConfig throws when ANTHROPIC_API_KEY is missing" could not
  * import the function without triggering the throw first and taking the whole
- * test file down with it. The fail-fast behaviour was therefore the one piece
+ * test file down with it. The fail-fast behavior was therefore the one piece
  * of the configuration layer with no coverage at all - which is how it stayed
  * broken for `npm test`.
  */

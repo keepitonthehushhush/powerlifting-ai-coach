@@ -404,7 +404,7 @@ describe('the terms describe the age rule the code actually enforces', () => {
 
   test('there is a route back for a parent, and it is acted on', () => {
     // COPPA and the state statutes turn on ACTUAL KNOWLEDGE. A takedown path
-    // that is honoured is worth more than any wording that is not.
+    // that is honored is worth more than any wording that is not.
     assert.match(termsPage, phrase('If you are a parent or guardian', 'i'));
     assert.match(termsPage, phrase('we do not knowingly provide this service to', 'i'));
   });

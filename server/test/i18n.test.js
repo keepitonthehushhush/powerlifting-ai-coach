@@ -10,12 +10,12 @@ import { es } from '../../web/src/i18n/locales/es.js';
  *
  * A missing translation key does not crash - `t()` falls back to English - so
  * it ships silently and a Spanish-speaking user gets a page in two languages.
- * The only reliable way to catch that is to compare the catalogues in CI, which
+ * The only reliable way to catch that is to compare the catalogs in CI, which
  * is what this does. Adding a locale means adding one line here and getting
  * told exactly which keys are outstanding.
  */
 
-/** Flatten to dotted paths so two catalogues can be compared as key sets. */
+/** Flatten to dotted paths so two catalogs can be compared as key sets. */
 function flatten(object, prefix = '') {
   return Object.entries(object).flatMap(([key, value]) => {
     const path = prefix ? `${prefix}.${key}` : key;
@@ -87,17 +87,17 @@ describe('locale catalogues', () => {
 });
 
 /**
- * ── EVERY KEY THE APP ASKS FOR, AND EVERY KEY THE CATALOGUE DECLARES ──────
+ * ── EVERY KEY THE APP ASKS FOR, AND EVERY KEY THE CATALOG DECLARES ──────
  *
- * The suite above compares the catalogues to each other. That is necessary and
- * it is not sufficient: it cannot see a key the app asks for that no catalogue
+ * The suite above compares the catalogs to each other. That is necessary and
+ * it is not sufficient: it cannot see a key the app asks for that no catalog
  * has, and it cannot see a key declared twice, because JavaScript resolves a
  * duplicate before any test gets to look at the object.
  *
  * Both gaps had shipped. `auth` declared `password` twice - once the string
  * 'Password' for the field label, once an object of password-strength strings.
  * The object won, `t('auth.password')` returned an object, and `t()` falls back
- * to returning the key itself, so the live sign-in page had a field labelled
+ * to returning the key itself, so the live sign-in page had a field labeled
  * "auth.password" for as long as the second declaration existed. Nothing
  * failed: en and es were duplicated identically, so they still matched.
  */
@@ -197,7 +197,7 @@ describe('the keys the app actually asks for', () => {
  *
  * The scan is indentation-based, which is sound here because these files are
  * formatted and asserted to be: the key count it recovers is compared against
- * the count from the imported catalogue, so a scanner that quietly stopped
+ * the count from the imported catalog, so a scanner that quietly stopped
  * understanding the file fails instead of passing vacuously.
  */
 describe('locale sources', () => {

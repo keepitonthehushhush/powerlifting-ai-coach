@@ -106,7 +106,7 @@ describe('verifyVerdict', () => {
 describe('evidenceAppearsIn — transcription drift versus fabrication', () => {
   /**
    * The judge's second live run rejected five more correct verdicts because
-   * judges do not transcribe perfectly: they drop an article, normalise a
+   * judges do not transcribe perfectly: they drop an article, normalize a
    * typo, or stitch a quote across a list bullet. That is drift, not
    * fabrication, and treating it as fabrication throws away good verdicts.
    *

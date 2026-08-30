@@ -49,7 +49,7 @@ describe('the gym list is one list, in four places', () => {
 
 describe('THESE ARE SUGGESTIONS, NOT AN EQUIPMENT DATABASE', () => {
   test('the module holds no equipment text at all', () => {
-    // It lives in the i18n catalogue, because it is prose a person reads and
+    // It lives in the i18n catalog, because it is prose a person reads and
     // corrects. Two copies of the same sentences means the one nobody looks at
     // goes stale, and the stale one would be the one asserting facts about
     // somebody else's premises.
@@ -149,7 +149,7 @@ describe('the directive handed to the coach', () => {
   test('it survives the clearance gate, deliberately', () => {
     // "Your gym has no barbell" is true whether or not somebody is waiting on
     // a doctor, and it is exactly the sort of thing worth knowing during the
-    // wait. Unlike fuelling and adherence, it cannot be read as a way around
+    // wait. Unlike fueling and adherence, it cannot be read as a way around
     // the gate: it forbids programming rather than enabling it.
     const gated = buildSystemPrompt({
       profile: {

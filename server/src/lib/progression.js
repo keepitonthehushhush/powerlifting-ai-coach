@@ -11,7 +11,7 @@
  * feels about it, and adjust the conversation around it. Its job is not to
  * work out 185 + 10.
  *
- * It also means the interesting behaviour is testable without an API key,
+ * It also means the interesting behavior is testable without an API key,
  * which is where the rest of this suite already lives.
  *
  * ── WHERE THE NUMBERS COME FROM ───────────────────────────────────────────
@@ -130,7 +130,7 @@ const LIFT_SPELLINGS = new Map(
 );
 
 /**
- * Normalises what a lifter typed into one of our four lifts, or null.
+ * Normalizes what a lifter typed into one of our four lifts, or null.
  */
 export function canonicalLift(name) {
   if (typeof name !== 'string') return null;

@@ -61,7 +61,7 @@ describe('the recovery guidance states the evidence honestly', () => {
   });
 
   test('names a protein ceiling rather than implying more is always better', () => {
-    // This asserted `1.6 g per kg` until the fuelling section was researched
+    // This asserted `1.6 g per kg` until the fueling section was researched
     // and written. That figure was a defensible simplification and it is now
     // superseded rather than merely reworded: the ISSN position stand puts
     // most exercising people at 1.4-2.0 g/kg/day, and the requirement RISES to
@@ -82,7 +82,7 @@ describe('the hard limits are present', () => {
     ['alcohol withdrawal named as medically dangerous', /withdrawal in particular can be medically dangerous/],
     ['no calorie or restriction plans on ED signals', /do NOT provide calorie targets/],
     // The supplement rule was widened deliberately - specifics are now allowed,
-    // because refusing to say "3 to 5 grams" about creatine is theatre - so what
+    // because refusing to say "3 to 5 grams" about creatine is theater - so what
     // is pinned here is the half that carries risk. Full coverage is in
     // nutrition.test.js.
     ['no dose for anybody on medication or under 18', /Do not give a dose to anybody/],

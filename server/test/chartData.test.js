@@ -212,13 +212,13 @@ describe('the decisions this chart is built on', () => {
 
   test('each lift gets its own chart rather than sharing one axis', () => {
     // A deadlift at 405 and a press at 95 do not share a scale usefully, and
-    // two y-axes make the crossing point an artefact of axis placement.
+    // two y-axes make the crossing point an artifact of axis placement.
     assert.match(page, /chart-grid-layout/);
     assert.match(page, /series\.map/);
   });
 
   test('a missed set differs by shape, not only by colour', () => {
-    // Colour alone must never carry the one distinction that changes what the
+    // Color alone must never carry the one distinction that changes what the
     // chart means - and red/green fails CVD separation at deltaE 2.7 anyway.
     assert.match(css, /\.chart-dot-missed\s*\{[^}]*fill:\s*var\(--surface\)/s);
     assert.match(chart, /chart-dot-missed/);
@@ -227,7 +227,7 @@ describe('the decisions this chart is built on', () => {
   test('dark mode gets its own validated steps, not an automatic flip', () => {
     // Anchored to the chart section. Searching the whole file finds the brand
     // palette's light block first and then runs forward to the DARK chart
-    // value - which is how an earlier version of this test compared a colour
+    // value - which is how an earlier version of this test compared a color
     // with itself and reported success.
     const chartSection = css.slice(css.indexOf('--chart-line'));
     const values = [...chartSection.matchAll(/--chart-line:\s*(#[0-9a-f]{6})/gi)].map((m) => m[1]);
@@ -236,7 +236,7 @@ describe('the decisions this chart is built on', () => {
   });
 
   test('the chart colours are not the brand colours', () => {
-    // Brand colour has no colour-vision-separation requirement; chart colour
+    // Brand color has no color-vision-separation requirement; chart color
     // does. Magenta and cyan look striking together and fail it.
     const accent = css.match(/--accent:\s*(#[0-9a-f]{6})/i)?.[1];
     const chartLine = css.match(/--chart-line:\s*(#[0-9a-f]{6})/i)?.[1];

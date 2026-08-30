@@ -10,7 +10,7 @@
  * need. Four line charts is a few dozen lines of SVG.
  *
  * The bigger reason is testability. Everything below is a pure function over
- * arrays of numbers, so the interesting behaviour - an empty series, a single
+ * arrays of numbers, so the interesting behavior - an empty series, a single
  * point, every weight identical, a miss at the top of the range - is asserted
  * in the test suite rather than checked by squinting at a screenshot. That is
  * the same argument as progression.js, applied to pixels.
@@ -21,10 +21,10 @@
  * together and the press is a flat line along the bottom, unreadable, while the
  * deadlift owns the whole range. The alternative - two y-scales - is the single
  * most misleading thing a chart can do, because the crossing point of the two
- * lines is an artefact of where you chose to put the axes.
+ * lines is an artifact of where you chose to put the axes.
  *
  * So: small multiples. One chart per lift, each scaled to its own data. Every
- * chart carries one series, which also means no chart needs a colour legend to
+ * chart carries one series, which also means no chart needs a color legend to
  * say which line is which - the title says it.
  */
 
@@ -136,7 +136,7 @@ export function buildChart(points, { width = 320, height = 160, tickCount = 4 } 
 
   const yTicks = scale.ticks.map((value) => ({ value, y: round(y(value)) }));
 
-  // Only the ends are labelled. A date under every point is unreadable at this
+  // Only the ends are labeled. A date under every point is unreadable at this
   // width and tells the reader nothing the shape of the line does not.
   const xLabels =
     dots.length === 0

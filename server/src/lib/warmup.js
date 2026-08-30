@@ -59,7 +59,7 @@ export const RAMP = Object.freeze([
 ]);
 
 /**
- * Below this, ramping is theatre: the working weight is close enough to the
+ * Below this, ramping is theater: the working weight is close enough to the
  * empty bar that a couple of sets with the bar is the whole warm-up.
  */
 export const RAMP_THRESHOLD_MULTIPLE = 1.5;

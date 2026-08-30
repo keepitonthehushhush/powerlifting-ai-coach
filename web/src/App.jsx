@@ -149,7 +149,7 @@ export function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Public, and that is the point: a page you must create an
-                  account to read is useless to a physiotherapist holding a
+                  account to read is useless to a physical therapist holding a
                   phone in a treatment room. */}
               <Route path="/about" element={<ForYourClinician />} />
 

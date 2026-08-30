@@ -170,7 +170,7 @@ export function readProfileApi({ raw = false } = {}) {
  *
  * That is the same defect as the invariant that checked the fingerprint's
  * contents but not whether the trigger still called it: reading a real
- * artefact, and the wrong one. The last file that defines an object is the only
+ * artifact, and the wrong one. The last file that defines an object is the only
  * file that describes it.
  *
  * @param {string} declaration - the text that opens the definition, without the

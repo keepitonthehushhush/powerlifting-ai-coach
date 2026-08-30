@@ -49,7 +49,7 @@ export function createApp() {
    * PAYWALL_ENABLED with no Stripe configuration - is an error rather than a
    * warning: it means somebody intended to charge and cannot, and the app has
    * silently kept everyone on the free product to avoid locking a door with no
-   * handle. That is the right behaviour and the wrong situation.
+   * handle. That is the right behavior and the wrong situation.
    */
   if (config.paywall.testKeysInProduction) {
     logger.error('paywall.test_keys_in_production', {
@@ -146,7 +146,7 @@ export function createApp() {
    * The client compares this against the id compiled into its own bundle. When
    * they differ, the person is looking at a page built by an older deployment
    * - which is exactly the situation where a refresh mid-fix produces
-   * behaviour nobody can explain, because the JavaScript in the tab and the
+   * behavior nobody can explain, because the JavaScript in the tab and the
    * API answering it are from different commits.
    *
    * Unauthenticated on purpose: it is already the maintenance page's poll

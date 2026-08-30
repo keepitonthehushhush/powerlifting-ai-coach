@@ -1,5 +1,5 @@
 /**
- * Spanish catalogue.
+ * Spanish catalog.
  *
  * Translated with the domain in mind rather than word-for-word: powerlifting
  * terminology is largely borrowed in Spanish-speaking gyms ("press banca",

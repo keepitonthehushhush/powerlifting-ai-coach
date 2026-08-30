@@ -176,7 +176,7 @@ test('the state the bug left behind is reconciled and then watched', async (t) =
   await t.test('and the migration says what it found, rather than implying a repair', () => {
     // It found nothing: production had four profiles and no withdrawals at all.
     // A cleanup migration that reads as though it rescued somebody is a worse
-    // artefact than one that records the count it actually saw.
+    // artifact than one that records the count it actually saw.
     assert.match(reconciliation, phrase('Nothing, and that is written down rather than implied'));
   });
 });

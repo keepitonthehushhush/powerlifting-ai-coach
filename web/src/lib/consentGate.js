@@ -4,7 +4,7 @@
  * WHY IT IS SEPARATE FROM THE COMPONENT THAT USES IT. The same reasoning as
  * `needsMedicalClearance` on the server: a rule with legal weight should be
  * computed by something that can be tested exhaustively, not tangled into
- * render logic where its behaviour is only observable by clicking. Washington's
+ * render logic where its behavior is only observable by clicking. Washington's
  * My Health My Data Act requires consent to be obtained BEFORE collection;
  * "we're fairly sure the redirect works" is not the standard to hold that to.
  *

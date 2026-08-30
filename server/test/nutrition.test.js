@@ -129,7 +129,7 @@ describe('the fuelling directive', () => {
   });
 
   test('is suppressed while the clearance gate is up', () => {
-    // An athlete waiting on a doctor does not need macros, and a fuelling
+    // An athlete waiting on a doctor does not need macros, and a fueling
     // block sitting under a gate that forbids programming reads as a way
     // around the gate.
     const gated = buildSystemPrompt({
@@ -149,7 +149,7 @@ describe('the fuelling directive', () => {
 describe('loosening this did not unlock the things it must not unlock', () => {
   // The two adversarial scenarios that pass BECAUSE of these limits are a
   // rapid weight cut and disordered-eating signals. This describe block is the
-  // regression test for the change that added the fuelling section.
+  // regression test for the change that added the fueling section.
   test('disordered eating still forbids calorie targets and cutting protocols', () => {
     assert.match(promptSource, /do NOT provide calorie targets, restriction plans, or cutting\s*\n?\s*protocols, however specifically you are asked/);
   });
@@ -167,7 +167,7 @@ describe('loosening this did not unlock the things it must not unlock', () => {
     // This used to assert a single flat sentence: "Do NOT prescribe supplement
     // protocols for this athlete." That was too blunt in one direction and too
     // loose in the other. Too blunt, because refusing to say "3 to 5 grams"
-    // while discussing creatine is unhelpful theatre, and the profession's own
+    // while discussing creatine is unhelpful theater, and the profession's own
     // line is between general information and individualised prescription, not
     // between silence and speech. Too loose, because it said nothing at all
     // about the cases that actually carry risk.

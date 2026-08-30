@@ -10,7 +10,7 @@ import { stripComments } from './helpers/source.js';
  * with the wording on the website."
  *
  * One pass fixed 103 of them across 20 files. A pass is a moment; the next
- * feature written in the same hand puts "programme" straight back, and nobody
+ * feature written in the same hand puts "program" straight back, and nobody
  * reviewing a diff notices a spelling that looked right to the person who
  * typed it. The sweep is only worth having if something holds it.
  *
@@ -24,7 +24,7 @@ import { stripComments } from './helpers/source.js';
  *
  * So each surface is reduced to the text a person actually sees, and only then
  * scanned:
- *   - en.js          the quoted VALUES, which is the whole UI catalogue
+ *   - en.js          the quoted VALUES, which is the whole UI catalog
  *   - the prompt     its literal text, with interpolations removed
  *   - the pages      JSX text nodes, which excludes attributes and braces
  *
@@ -36,9 +36,9 @@ const BRITISH = [
    * The one that was asked for, and by far the most common here.
    *
    * The trailing `(s)?\b` is load-bearing. Written as /\bprogramme/i this also
-   * matches "programmed" - which is correct American English and appears all
+   * matches "programd" - which is correct American English and appears all
    * over the coaching prompt - so the check would have started failing on good
-   * copy the first time somebody wrote "a programmed single". A check with
+   * copy the first time somebody wrote "a programd single". A check with
    * false positives is a check somebody turns off, which is the whole reason
    * the -ise list below is enumerated rather than expressed as one pattern.
    */
@@ -68,14 +68,14 @@ const BRITISH = [
    * Found in docs/SECURITY.md on 2026-08-29, in a sentence about TOTP that had
    * been there for weeks. The single-l forms are the British ones and none of
    * the doubled American spellings collide with anything: there is no word
-   * where "enrolment" or "instalment" is correct here.
+   * where "enrollment" or "installment" is correct here.
    */
   [/\benrolment/i, 'enrolment', 'enrollment'],
   [/\binstalment/i, 'instalment', 'installment'],
   [/\bfulfil\b/i, 'fulfil', 'fulfill'],
   [/\bskilful/i, 'skilful', 'skillful'],
   /*
-   * "artefact" is the British form and it appears naturally in engineering
+   * "artifact" is the British form and it appears naturally in engineering
    * prose about build outputs, which is exactly where it slipped in twice.
    */
   [/\bartefact/i, 'artefact', 'artifact'],
@@ -192,7 +192,7 @@ function pageCopy() {
  *
  * Said twice, because the first sweep covered the product's copy and stopped
  * there - and then the very next document written by hand came back with
- * "centre", "minimised" and a British rhythm. The docs are read by anybody
+ * "center", "minimised" and a British rhythm. The docs are read by anybody
  * evaluating this codebase, which makes them part of the product's voice
  * whether or not they render in a browser.
  *
@@ -218,11 +218,56 @@ function docsCopy() {
     .join('\n');
 }
 
+
+/**
+ * The comments, which are the largest body of prose in this repository.
+ *
+ * ── WHY THIS SURFACE WAS ADDED LAST, AND WHY IT MATTERS MOST ──────────────
+ *
+ * The four readers above cover what a user reads. None of them read a code
+ * comment, so on 2026-08-30 a new file shipped with "sanitizer",
+ * "unrecognised" and "apologize" in it while this suite passed - and a sweep
+ * then found 161 more across 88 files. This codebase comments heavily on
+ * purpose; the comments ARE a large part of what anybody evaluating it reads.
+ * A voice check that skips the biggest thing written in that voice is a check
+ * that agrees with itself rather than with the repository.
+ *
+ * Backticked spans are excluded for the same reason the docs reader excludes
+ * code spans: `normaliseRoute`, `fuellingRanges` and `checkoutCancelled` are
+ * identifiers being quoted, and a check that demanded those change would be
+ * satisfied by renaming code instead of by writing better prose.
+ */
+function commentCopy() {
+  const roots = ['server/src', 'web/src', 'scripts', 'server/test'].map(
+    (dir) => new URL(`../../${dir}/`, import.meta.url)
+  );
+
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const child = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+      if (entry.isDirectory()) walk(child);
+      else if (/\.(js|jsx|mjs)$/.test(entry.name)) files.push(child);
+    }
+  };
+  roots.forEach(walk);
+
+  return files
+    .map((url) => {
+      const source = readFileSync(url, 'utf8');
+      const comments = (source.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g) ?? []).join('\n');
+      // Drop the quoted identifiers, keep the prose around them.
+      return comments.split(/`[^`\n]*`/).join(' ');
+    })
+    .join('\n');
+}
+
 const SURFACES = [
   ['the UI copy catalogue', localeCopy],
   ['the coach prompt', promptCopy],
   ['the page text', pageCopy],
   ['the documents', docsCopy],
+  ['the source comments', commentCopy],
 ];
 
 describe('the copy is American English', () => {

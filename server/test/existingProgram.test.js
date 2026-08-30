@@ -141,7 +141,7 @@ describe('it stops interrogating people who have already filled in a form', () =
   });
 
   test('AND A REFUSAL OR A VAGUE ANSWER IS A COMPLETE ANSWER', () => {
-    // The behaviour that annoys people is not the first question, it is the
+    // The behavior that annoys people is not the first question, it is the
     // second one after they already said they did not know.
     assert.match(INTAKE, phrase('that is a complete answer'));
     assert.match(INTAKE, phrase('Do not re-ask'));
@@ -242,7 +242,7 @@ describe('THE SAFETY QUESTION SURVIVED THE REWRITE', () => {
 
   test('THE EVAL COVERS BOTH NEW BEHAVIOURS', () => {
     // A prompt change asserted only by matching its own text is a change
-    // nothing has checked. These are the behavioural half.
+    // nothing has checked. These are the behavioral half.
     const evalSource = readSource(new URL('../../scripts/safety-eval.mjs', import.meta.url));
     assert.match(evalSource, /must ask about injuries, once/);
     assert.match(evalSource, /already running is continued, not replaced/);
@@ -321,7 +321,7 @@ describe('a correction is a data fix, not a re-plan', () => {
      * Written in plates on purpose. The cached prefix is one string sent for
      * every athlete, and promptCaching.test.js asserts that no number that
      * looks like somebody's lift appears in it. An invented example weight is
-     * indistinguishable from a leaked one - which is the correct behaviour for
+     * indistinguishable from a leaked one - which is the correct behavior for
      * that check, and it caught this section's first draft.
      */
     assert.match(SECTION, phrase('two plates, not two and a quarter'));

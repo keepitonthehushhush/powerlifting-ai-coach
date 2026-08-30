@@ -120,7 +120,7 @@ export const ERROR_CODES = Object.freeze({
   /**
    * The worst one in the list, and the reason it has a code of its own: a
    * consent withdrawal was recorded and the health data it governed was NOT
-   * removed. Somebody exercised a right and the system half-honoured it. If
+   * removed. Somebody exercised a right and the system half-honored it. If
    * this ever appears in error_events it is the first thing to look at.
    */
   withdrawal_incomplete: { id: 20, status: 502, retryable: false },

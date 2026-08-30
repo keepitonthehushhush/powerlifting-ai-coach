@@ -11,10 +11,10 @@ import { readSource } from './helpers/source.js';
 const css = readSource(new URL('../../web/src/styles.css', import.meta.url));
 
 /**
- * Colour choices are computable, so they get computed.
+ * Color choices are computable, so they get computed.
  *
  * This file exists because a comment in the stylesheet asserted that a link
- * colour reached 4.98:1 when it actually reached 3.48 - a claim that looked
+ * color reached 4.98:1 when it actually reached 3.48 - a claim that looked
  * authoritative, was written in good faith, and was wrong. A number in a
  * comment is a memory; a number from a function is a measurement.
  */
@@ -178,7 +178,7 @@ describe('the palette is readable, measured rather than asserted', () => {
   }
 
   test('the background washes are quiet enough to read over', () => {
-    // A gradient has no single colour, so the honest check is the extreme of
+    // A gradient has no single color, so the honest check is the extreme of
     // each wash. Keeping the alpha low is what keeps that true; a test on the
     // alpha is a proxy for a contrast measurement that cannot be taken from a
     // stylesheet alone. Measured at those extremes when written: worst case
@@ -206,7 +206,7 @@ describe('the palette is readable, measured rather than asserted', () => {
 
 describe('the scheme does not borrow a name it has no right to', () => {
   test('the stylesheet names no television series', () => {
-    // A colour pairing can only be protected by acquiring secondary meaning
+    // A color pairing can only be protected by acquiring secondary meaning
     // within a product category, and nobody owns teal-and-magenta for strength
     // software. The NAME of the show that made the palette famous is a
     // different matter, so it appears nowhere - not in a class, not in a

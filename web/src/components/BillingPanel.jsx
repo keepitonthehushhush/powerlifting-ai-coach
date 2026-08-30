@@ -33,7 +33,7 @@ const SETTLE_INTERVAL_MS = 2000;
  *
  * ── WHY BOTH SPELLINGS ARE ACCEPTED ───────────────────────────────────────
  *
- * The value used to be the British "cancelled", which put it in the address
+ * The value used to be the British "canceled", which put it in the address
  * bar of an American product. Stripe's own field is `canceled`, so the app was
  * the odd one out.
  *

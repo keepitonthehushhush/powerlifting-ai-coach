@@ -42,7 +42,7 @@ describe('the manifest says what it must', () => {
   test('THE COLOURS MATCH THE ONES THE APP ACTUALLY USES', () => {
     // background_color paints the splash and theme_color the status bar. A
     // value invented here rather than read from the stylesheet produces a
-    // flash of a colour the app never shows, on launch, every time.
+    // flash of a color the app never shows, on launch, every time.
     assert.match(styles, new RegExp(`--bg:\\s*${manifest.background_color};`));
     assert.equal(manifest.theme_color, manifest.background_color);
   });
@@ -86,7 +86,7 @@ describe('the icons', () => {
 
   test('THERE IS A MASKABLE ONE, AND IT IS NOT THE FULL-BLEED ONE', () => {
     // Android crops an icon to whatever shape the launcher uses and only
-    // guarantees the centre 80%. Declaring the full-bleed badge as maskable
+    // guarantees the center 80%. Declaring the full-bleed badge as maskable
     // gets its points shaved off; declaring none at all gets it letterboxed in
     // a white square.
     const maskable = manifest.icons.filter((i) => i.purpose === 'maskable');

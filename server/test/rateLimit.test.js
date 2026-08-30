@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { rateLimit } from '../src/middleware/rateLimit.js';
 
 /**
- * The rate limit middleware's own behaviour, with the database stubbed.
+ * The rate limit middleware's own behavior, with the database stubbed.
  *
  * The counting itself is tested in Postgres (see the build log); what matters
  * here is what the middleware does with the answer - and in particular that it

@@ -22,7 +22,7 @@ const CHARTED = [
  * Four separate charts rather than four lines on one axis. A deadlift at 405
  * and a press at 95 do not share a scale usefully - together, the press is a
  * flat line along the bottom - and the alternative, two y-axes, makes the
- * crossing point of the lines an artefact of where the axes were placed rather
+ * crossing point of the lines an artifact of where the axes were placed rather
  * than a fact about the training.
  *
  * The table underneath is not a fallback for when the charts fail. It is the
@@ -48,7 +48,7 @@ export function Progress() {
   const series = useMemo(() => {
     if (!logs) return [];
     return CHARTED.map(({ key, matches }) => {
-      // Normalise on the way in so 'Bench Press' and 'bench' land in one series.
+      // Normalize on the way in so 'Bench Press' and 'bench' land in one series.
       const normalised = logs.map((row) => ({
         ...row,
         lift: matches.includes(String(row.lift ?? '').trim().toLowerCase().replace(/\s+/g, ' ')) ? key : row.lift,

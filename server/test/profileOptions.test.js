@@ -7,12 +7,12 @@ import { EMPTY, toPayload } from '../../web/src/lib/profileForm.js';
 /**
  * Every answerable option in the profile lives in four places at once: a CHECK
  * constraint in Postgres, a zod enum in the API, an array in the intake form,
- * and a label in each locale catalogue. Nothing makes them agree.
+ * and a label in each locale catalog. Nothing makes them agree.
  *
  * The failure when they drift is nasty and asymmetric. An option the form
  * offers but the database rejects is a save that fails with a Postgres
  * constraint violation at the moment somebody finishes a long form. An option
- * the database allows but no catalogue names renders as a blank line in a
+ * the database allows but no catalog names renders as a blank line in a
  * dropdown. Neither shows up in any other test, because each layer is
  * individually correct.
  *
@@ -78,7 +78,7 @@ function formOptions(source, name) {
   return new Set([...source.slice(at, close).matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]));
 }
 
-/** The keys of a nested object literal in a locale catalogue. */
+/** The keys of a nested object literal in a locale catalog. */
 function catalogueKeys(source, name) {
   const at = source.indexOf(`${name}: {`);
   assert.notEqual(at, -1, `no ${name} block found in the catalogue`);

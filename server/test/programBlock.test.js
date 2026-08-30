@@ -154,7 +154,7 @@ describe('this did not give the coach a new capability', () => {
   });
 
   test('the coach is told the athlete never sees the block', () => {
-    // Otherwise it explains or apologises for it, in the reply, to somebody
+    // Otherwise it explains or apologizes for it, in the reply, to somebody
     // who cannot see what it is talking about.
     // phrase(), not a literal-space regex: the prompt is hard-wrapped, so
     // "do not" and "mention it" are separated by a newline and six spaces.
@@ -168,7 +168,7 @@ describe('a gated athlete cannot end up with a stored program', () => {
     // A stored program is different in kind from a bad sentence: it is a
     // document the athlete can open tomorrow and follow, long after the
     // message around it has scrolled away. The instruction is the first line
-    // of defence; this is the second.
+    // of defense; this is the second.
     assert.match(chatRoute, /needsMedicalClearance\(context\.profile\)/);
     assert.match(chatRoute, /const storable = program && !needsMedicalClearance/);
     // And what actually gets written is the re-checked value, not the raw one.

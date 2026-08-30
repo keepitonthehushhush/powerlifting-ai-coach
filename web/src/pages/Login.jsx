@@ -18,7 +18,7 @@ export function Login() {
    *
    * The landing page's primary button says "create your account", and until
    * this existed it produced the SIGN-IN form - the same class of untruth as a
-   * field labelled "Username or Email" on a form that only accepts email.
+   * field labeled "Username or Email" on a form that only accepts email.
    *
    * Validated against the three modes this component knows rather than trusted
    * as a string, so `?mode=` cannot put the form into a state that does not

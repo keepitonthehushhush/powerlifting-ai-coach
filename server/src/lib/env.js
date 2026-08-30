@@ -4,7 +4,7 @@
  * Every function here takes the environment as an argument and returns a value
  * or throws. Nothing runs at import time. `config.js` is the module that
  * actually applies these to `process.env` at load, which is where the
- * fail-fast behaviour lives.
+ * fail-fast behavior lives.
  *
  * Splitting it this way is what makes the validation testable at all: before,
  * a test that wanted to check "does this throw when ANTHROPIC_API_KEY is

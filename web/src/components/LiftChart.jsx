@@ -5,15 +5,15 @@ import { useI18n } from '../i18n/index.jsx';
 /**
  * One lift, one chart.
  *
- * A single series, so there is no colour legend: the heading names the lift and
+ * A single series, so there is no color legend: the heading names the lift and
  * the line is the only line. What DOES need a key is the difference between a
  * completed set and a missed one, and that is carried three ways - a different
- * shape (filled circle vs hollow ring), a different colour, and a written key
- * underneath. Never colour alone: the miss marker is the one thing on this page
+ * shape (filled circle vs hollow ring), a different color, and a written key
+ * underneath. Never color alone: the miss marker is the one thing on this page
  * that changes what the chart means.
  *
- * Colours were validated rather than chosen. The obvious pairing - the app's
- * accent red for the line, green for good - fails colour-vision separation at
+ * Colors were validated rather than chosen. The obvious pairing - the app's
+ * accent red for the line, green for good - fails color-vision separation at
  * ΔE 2.7 for deuteranopia, which is the single most common form. Blue and amber
  * pass on both surfaces at ΔE 32 and 27.
  */

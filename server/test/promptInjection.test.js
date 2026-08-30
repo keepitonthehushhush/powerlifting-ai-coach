@@ -126,7 +126,7 @@ describe('properties that hold even if the model is entirely fooled', () => {
 
   test('the context contains no credentials — assume it is discoverable', () => {
     // OWASP 2026 renamed System Prompt Leakage to Hidden Context Exposure and
-    // advises assuming the context IS discoverable. The defence is therefore
+    // advises assuming the context IS discoverable. The defense is therefore
     // not to hide it but to ensure nothing in it is a secret.
     for (const pattern of [/sk-ant-/, /sb_secret_/, /service_role/, /SUPABASE_URL/, /BEGIN [A-Z ]*PRIVATE KEY/]) {
       assert.ok(!pattern.test(prompt), `system prompt contains ${pattern}`);

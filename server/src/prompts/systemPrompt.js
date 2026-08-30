@@ -907,7 +907,7 @@ export function describeRecoveryConcerns(profile) {
  * until you cannot, then reset. That model is only right for someone still
  * in the phase where a single session is enough to produce a measurable
  * adaptation. Prescribing it to a lifter who has not added weight in three
- * months is not merely unhelpful, it is a promise the programme cannot keep -
+ * months is not merely unhelpful, it is a promise the program cannot keep -
  * and they will conclude the coach does not know what it is looking at.
  *
  * So the honest thing is to say so. `progress_cadence` is the athlete's own
@@ -1020,7 +1020,7 @@ ${lines.join('\n')}
 }
 
 /**
- * This athlete's fuelling ranges, already multiplied out.
+ * This athlete's fueling ranges, already multiplied out.
  *
  * Same reason as every other computed directive in this file: a model asked to
  * multiply 1.4 and 2.0 by a bodyweight in pounds, having first converted to
@@ -1155,7 +1155,7 @@ export function describeAddressing(profile) {
 
 /**
  * Whether this athlete's loads have reached the point where a belt is a
- * sensible purchase, handed over as a threshold rather than a judgement.
+ * sensible purchase, handed over as a threshold rather than a judgment.
  *
  * See lib/equipment.js for the numbers and for why they are conservative. The
  * short version: a model asked to eyeball "is this heavy" will suggest a belt
@@ -1275,7 +1275,7 @@ export function describeFuelling(profile) {
 /**
  * The computed sanity checks on the entered maxes, as a directive.
  *
- * Same pattern as the clearance gate and the prescriptions: the judgement is
+ * Same pattern as the clearance gate and the prescriptions: the judgment is
  * made in code and handed to the model as a finding, because a model asked to
  * eyeball whether a number "looks right" will sometimes decide that it does.
  * See `lib/plausibility.js` for what is checked and why the two directions are
@@ -1579,7 +1579,7 @@ ${rows}`;
  * content that varies - the entry is rewritten every time and never read.
  *
  * This prompt is exactly that shape. COACH_ROLE is a module constant: the
- * role, the safety rules, the clearance boundaries, the fuelling ranges. Then
+ * role, the safety rules, the clearance boundaries, the fueling ranges. Then
  * everything after it varies per request and per athlete - the profile, the
  * logged sessions, the computed prescriptions, and today's date at the very
  * end. Caching the assembled string would write a fresh entry on every single
@@ -1739,7 +1739,7 @@ function buildSystemParts({
   if (cadence) directives.push(cadence);
 
   // Suppressed with everything else when the clearance gate is up: an athlete
-  // waiting on a doctor does not need macros, and a fuelling directive sitting
+  // waiting on a doctor does not need macros, and a fueling directive sitting
   // under a gate that forbids programming reads as a way around it.
   // Never suppressed by the clearance gate. How to address somebody is not a
   // programming decision and applies to every sentence, including the one

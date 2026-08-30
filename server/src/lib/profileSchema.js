@@ -176,7 +176,7 @@ export const ProfileUpdate = z
  * point at the controls with.
  *
  * It is a function, and it is here rather than inline in the route, because
- * the three tests that used to guard this behaviour all matched source text -
+ * the three tests that used to guard this behavior all matched source text -
  * including the trailing comma of the ternary it used to be written as. Two
  * of them broke on a correct change. Assert through the function.
  */

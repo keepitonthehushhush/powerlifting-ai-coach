@@ -16,11 +16,11 @@ import { readChatSettings, isSendKey } from '../lib/chatSettings.js';
  * the history, replayed and paid for on every subsequent turn.
  *
  * Aborting mid-flight would not have fixed it. The server saves the reply
- * before it answers, so a cancelled request still produces a reply, still
+ * before it answers, so a canceled request still produces a reply, still
  * costs money, and still shows up on the next page load. A "stop" button whose
  * effect is only to stop LOOKING is a lie told by a control.
  *
- * So the pause goes before dispatch, where cancelling is real: within this
+ * So the pause goes before dispatch, where canceling is real: within this
  * window nothing has been sent, nothing has been billed, and pressing Undo
  * returns the text to the box for editing. Five seconds is long enough to
  * catch a typo you can already see and short enough to disappear next to a
@@ -162,7 +162,7 @@ export function Chat() {
   }
 
   /**
-   * Take it back. Nothing was sent, so there is nothing to apologise for and
+   * Take it back. Nothing was sent, so there is nothing to apologize for and
    * nothing on the server to reconcile - the message returns to the box with
    * the cursor in it, which is where somebody who spotted a typo wants to be.
    */
@@ -243,7 +243,7 @@ export function Chat() {
           styles.css. In short: the counter used to be a flex item BETWEEN the
           box and the button, and the button, as a direct child of this form,
           was matching a `form > button.primary { min-width: 320px }` rule
-          written for the submit button at the bottom of a centred form. On a
+          written for the submit button at the bottom of a centered form. On a
           phone that left a 24px textarea beside a button wider than the
           screen. */}
       <form className="composer" onSubmit={send}>

@@ -118,7 +118,7 @@ export function Program() {
                           "work up to a heavy single" both arrive as null, and
                           printing 0lb would be a different instruction. */}
                       <td>{exercise.weight === null ? t('program.noWeight') : exercise.weight}</td>
-                      {/* Words, not a colour. A red cell says "you failed";
+                      {/* Words, not a color. A red cell says "you failed";
                           "changed" says what happened and leaves the reason to
                           the athlete, who knows it and we do not. */}
                       <td className="muted small">

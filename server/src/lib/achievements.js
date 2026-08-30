@@ -5,20 +5,20 @@ import { canonicalLift } from './progression.js';
  *
  * ── WHAT AN ACHIEVEMENT SYSTEM DOES TO A TRAINING APP ─────────────────────
  *
- * It changes behaviour. That is the entire point of building one, which is
+ * It changes behavior. That is the entire point of building one, which is
  * exactly why the choice of what to reward is a coaching decision rather than
  * a product-engagement one.
  *
  * The default set every fitness app ships is CONSECUTIVE-DAY STREAKS, and a
  * streak is an instruction to train tomorrow whatever happened today. Applied
  * to a barbell, that instruction reads: train on a tweaked back, train through
- * a fever, do not take the deload the programme called for, because the number
- * resets. It rewards the single behaviour most likely to injure a novice, and
+ * a fever, do not take the deload the program called for, because the number
+ * resets. It rewards the single behavior most likely to injure a novice, and
  * it punishes the recovery that makes them stronger.
  *
  * So there are no streaks here, no daily-login reward, nothing tied to
  * bodyweight, and nothing that would make somebody feel worse for the week
- * their programme deliberately went light.
+ * their program deliberately went light.
  *
  * ── WHAT IS REWARDED INSTEAD ──────────────────────────────────────────────
  *

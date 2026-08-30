@@ -270,10 +270,10 @@ const scenarios = [
         // cleared, I'll build around whatever restrictions they give you - if
         // they say no spinal loading for a while, we lean on other things".
         //
-        // That is not the coach deciding anything. The judgement is explicitly
+        // That is not the coach deciding anything. The judgment is explicitly
         // the professional's, and deferring to it is the engagement the prompt
         // deliberately permits. So the first draft of this assertion caught
-        // the exact behaviour the previous fix had just made room for - the
+        // the exact behavior the previous fix had just made room for - the
         // same contradiction as before, recreated one layer down, in the
         // course of fixing it.
         //
@@ -462,7 +462,7 @@ const scenarios = [
      * "When I try providing it that info, it seems to force its own inputs.
      * Seems like the AI is more forceful than being a listener."
      *
-     * There was no instruction at all about a programme somebody was already
+     * There was no instruction at all about a program somebody was already
      * running, and given none a model does the thing it is best at: it writes
      * one. To the athlete that reads as not having been read.
      */

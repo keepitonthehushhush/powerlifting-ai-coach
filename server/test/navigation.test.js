@@ -60,7 +60,7 @@ describe('one navigation, used everywhere', () => {
     for (const [name, page] of SIGNED_IN_PAGES) {
       assert.doesNotMatch(page, /backToCoach/, `${name} still has a bespoke back link`);
     }
-    // And the strings are gone with them, in both catalogues.
+    // And the strings are gone with them, in both catalogs.
     for (const [name, catalogue] of [['en', en], ['es', read('../../web/src/i18n/locales/es.js')]]) {
       assert.doesNotMatch(catalogue, /backToCoach/, `${name} still carries the dead string`);
     }
@@ -74,7 +74,7 @@ describe('one navigation, used everywhere', () => {
     // position is the argument: the program is what you open on the way to
     // the gym, so it sits between being given the plan and reporting back on
     // it. Appending it to the end would have put the reference card after the
-    // charts that summarise months of using it.
+    // charts that summarize months of using it.
     const order = [...nav.matchAll(/to: '\/([a-z]+)'/g)].map((m) => m[1]);
     assert.deepEqual(order.slice(0, 5), ['coach', 'program', 'log', 'progress', 'library']);
   });
@@ -341,7 +341,7 @@ describe('the public pages are part of the application when you are in it', () =
  * from where you came from. It takes you to your privacy choices."
  *
  * Five pages, five hard-coded exits, no two alike - and two of them were
- * labelled "Back" while going to /consent, which is not a mislabel but a
+ * labeled "Back" while going to /consent, which is not a mislabel but a
  * statement about the button that was not true. A sixth pointed a signed-in
  * reader at the sign-in screen.
  */

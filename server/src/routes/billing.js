@@ -37,10 +37,10 @@ export const billingRouter = Router();
  *
  * ── CANCELLATION IS THE PORTAL, AND THAT IS THE POINT ─────────────────────
  *
- * The FAQ promises cancelling is possible at any time, from inside the
+ * The FAQ promises canceling is possible at any time, from inside the
  * account, without emailing anybody or explaining yourself. Stripe's billing
  * portal does exactly that in one click, and it is the same page whether
- * somebody is cancelling, updating a card, or downloading an invoice.
+ * somebody is canceling, updating a card, or downloading an invoice.
  *
  * A hand-rolled cancel button would let us put a "are you sure?" flow in front
  * of it, which is precisely what ROSCA calls a functional impediment and what
@@ -136,7 +136,7 @@ billingRouter.post('/checkout', async (req, res, next) => {
       cancel_url: `${origin}/account?checkout=canceled`,
 
       // Stated before the card is collected, which is what ROSCA requires of
-      // a recurring charge: the terms, and that it renews until cancelled.
+      // a recurring charge: the terms, and that it renews until canceled.
       /**
        * ── THE TRIAL, AND SAYING SO WHERE THE CARD IS ENTERED ─────────────
        *
@@ -170,7 +170,7 @@ billingRouter.post('/checkout', async (req, res, next) => {
 /**
  * POST /api/billing/portal
  *
- * The one-click route to cancelling, updating a card, or getting an invoice.
+ * The one-click route to canceling, updating a card, or getting an invoice.
  */
 billingRouter.post('/portal', async (req, res, next) => {
   try {

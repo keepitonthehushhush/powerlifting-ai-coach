@@ -140,7 +140,7 @@ export function Intake() {
         : prev.gym_chains.filter((s) => s !== slug);
 
       let equipment = prev.equipment_available;
-      // From the catalogue, because it is prose a person reads and has to be
+      // From the catalog, because it is prose a person reads and has to be
       // translatable. t() returns the key itself when there is none, which is
       // what the includes() guard below quietly handles for home_gym and other.
       const key = `intake.gymEquipment.${slug}`;

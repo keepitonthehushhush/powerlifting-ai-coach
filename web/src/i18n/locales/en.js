@@ -1,5 +1,5 @@
 /**
- * English source catalogue. This is the reference: every other locale is
+ * English source catalog. This is the reference: every other locale is
  * translated from here, and `t()` falls back to these strings when a key is
  * missing elsewhere.
  *

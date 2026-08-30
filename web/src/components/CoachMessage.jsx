@@ -8,7 +8,7 @@ import { parseCoachMarkdown } from '../lib/coachMarkdown.js';
  *
  * Every leaf below is a React text child. React escapes those by
  * construction, so there is no HTML string in this file, no
- * dangerouslySetInnerHTML, and nothing for a sanitiser to get wrong. A reply
+ * dangerouslySetInnerHTML, and nothing for a sanitizer to get wrong. A reply
  * containing `<script>alert(1)</script>` renders the characters. That is not
  * a happy accident of the current code - it is the reason the parser returns
  * data instead of markup, and a test asserts it.

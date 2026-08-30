@@ -194,7 +194,7 @@ export function evidenceAppearsIn(evidence, reply) {
   const MIN_CHARS = 15;
   if (whole.split(' ').filter(Boolean).length < MIN_WORDS || whole.length < MIN_CHARS) return false;
 
-  // 1. Exact match after formatting is normalised away. The common case.
+  // 1. Exact match after formatting is normalized away. The common case.
   if (haystack.includes(whole)) return true;
 
   // 2. Stitched quotes.

@@ -25,7 +25,7 @@ describe('who is entitled', () => {
 
   test('A FAILING CARD DOES NOT LOCK SOMEBODY OUT MID-BLOCK', () => {
     // past_due means a renewal charge failed and Stripe is retrying for days.
-    // The person has not cancelled and usually has not noticed. Cutting off
+    // The person has not canceled and usually has not noticed. Cutting off
     // their coaching the hour their card expired would be a punishment for a
     // bank's decision, on a product they are mid-training-block on.
     const e = entitlement({ status: 'past_due', current_period_end: past }, now);
@@ -140,7 +140,7 @@ describe('billing is optional configuration', () => {
     //
     //   assert.match(env, /enabled: Boolean\(secretKey && webhookSecret && priceId\)/)
     //
-    // which pinned the EXPRESSION rather than the behaviour, and the
+    // which pinned the EXPRESSION rather than the behavior, and the
     // expression was wrong: it omitted SUPABASE_SECRET_KEY, without which the
     // webhook cannot write the subscription, so a deployment could charge a
     // card and grant nothing. A test written against the source text cannot

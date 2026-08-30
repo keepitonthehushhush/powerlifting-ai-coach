@@ -271,7 +271,7 @@ describe('the route stays inside ADR-1', () => {
       grants,
       /grant select \(display_name, best_squat, best_bench, best_deadlift, units\)/
     );
-    // And the invariant that asks the live catalogue, since a later migration
+    // And the invariant that asks the live catalog, since a later migration
     // could re-grant the table and no migration file would look wrong.
     assert.match(invariants, /AND CANNOT READ THE COLUMNS THE LEADERBOARD DOES NOT PUBLISH/);
   });

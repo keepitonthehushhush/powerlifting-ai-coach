@@ -17,7 +17,7 @@ describe('recommendPhase', () => {
   });
 
   test('THE SQUAT IS THE BELLWETHER', () => {
-    // Trained most often, drives the programme, and running out of squat
+    // Trained most often, drives the program, and running out of squat
     // resets is the classic signal to move on.
     const d = recommendPhase({ profile: {}, prescriptions: { ...ex('squat'), ...fine('bench') } });
     assert.equal(d.phase, 'intermediate');
@@ -49,7 +49,7 @@ describe('recommendPhase', () => {
   });
 
   test('an athlete who arrives already stalled is not made to prove it', () => {
-    // Handing a novice programme to somebody who reported months of no
+    // Handing a novice program to somebody who reported months of no
     // progress means watching them fail reps for three weeks to establish
     // something they already told us at intake.
     const d = recommendPhase({ profile: { progress_cadence: 'stalled' }, prescriptions: {} });
@@ -78,7 +78,7 @@ describe('recommendPhase', () => {
     // Detraining genuinely restores linear progression, so novice programming
     // after a layoff is correct - but automating it needs to tell a layoff
     // from a deload from a holiday from somebody who stopped logging, and
-    // getting it wrong resets a working programme.
+    // getting it wrong resets a working program.
     const d = recommendPhase({ profile: {}, prescriptions: fine('squat'), currentPhase: 'intermediate' });
     assert.equal(d.phase, 'intermediate');
     assert.equal(d.changed, false);
@@ -187,7 +187,7 @@ describe('it recommends rather than enforcing, deliberately', () => {
   test('THE REASONING FOR NOT OVERRIDING IS WRITTEN DOWN', () => {
     // The clearance gate IS overridden in code. The difference is what a wrong
     // answer costs - a gated athlete with a program is a safety failure, a
-    // wrong phase is a worse programme. Conflating those would either make
+    // wrong phase is a worse program. Conflating those would either make
     // this too weak or the gate too soft.
     const raw = readRaw(new URL('../src/routes/chat.js', import.meta.url));
     assert.match(raw, phrase('VISIBILITY, NOT ENFORCEMENT'));

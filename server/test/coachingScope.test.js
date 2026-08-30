@@ -117,7 +117,7 @@ describe('jumps, throws and sprints', () => {
   });
 
   test('THEY GO BEFORE THE HEAVY WORK, NEVER AFTER', () => {
-    // The single most common way this is programmed wrong, and it inverts the
+    // The single most common way this is programd wrong, and it inverts the
     // adaptation being trained.
     assert.match(COACH_ROLE, phrase('BEFORE the heavy lifting, never after'));
     assert.match(COACH_ROLE, phrase('teaches the nervous system the opposite of the point'));

@@ -44,7 +44,7 @@
  * wrong even when the numbers were made up.
  *
  * It also does not need to be clever, because it is not the last line of
- * defence. `progression.js` computes every subsequent prescription from logged
+ * defense. `progression.js` computes every subsequent prescription from logged
  * performance, which cannot be misremembered. This module only has to survive
  * the first session.
  */

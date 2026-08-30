@@ -135,7 +135,7 @@ describe('MODEL OUTPUT NEVER BECOMES MARKUP', () => {
   test('the renderer has no HTML string anywhere in it', () => {
     // The coach quotes profile fields back, and an athlete types those. The
     // path from "a user typed it" to "the browser ran it" must not exist,
-    // rather than exist behind a sanitiser that has to be right every time.
+    // rather than exist behind a sanitizer that has to be right every time.
     assert.doesNotMatch(component, /dangerouslySetInnerHTML/);
     assert.doesNotMatch(component, /innerHTML/);
     assert.doesNotMatch(chatPage, /dangerouslySetInnerHTML/);
@@ -157,8 +157,8 @@ describe('MODEL OUTPUT NEVER BECOMES MARKUP', () => {
 describe('THE UNDO WINDOW IS REAL, NOT COSMETIC', () => {
   test('the pause happens before dispatch, not during it', () => {
     // Aborting mid-flight would not undo anything: the server saves the reply
-    // before it answers, so a cancelled request still costs money and still
-    // appears on the next load. Cancelling is only honest before the send.
+    // before it answers, so a canceled request still costs money and still
+    // appears on the next load. Canceling is only honest before the send.
     const sendFn = chatPage.slice(chatPage.indexOf('function send(event)'), chatPage.indexOf('function undoSend'));
     assert.doesNotMatch(sendFn, /api\.sendMessage/, 'send() dispatches immediately');
     assert.match(sendFn, /setHolding\(/);
@@ -177,7 +177,7 @@ describe('THE UNDO WINDOW IS REAL, NOT COSMETIC', () => {
     assert.match(chatPage, /if \(!text \|\| busy \|\| holding !== null\) return;/);
     // Spelling-tolerant on purpose: `holding` and `holding !== null` are the
     // same guard, and pinning one of them makes the test about the source
-    // rather than about the behaviour. What must hold is that the send button
+    // rather than about the behavior. What must hold is that the send button
     // is disabled while a message is held, and that `holding` is what does it.
     const disabled = chatPage.match(/<button type="submit"[^>]*disabled=\{([^}]*)\}/);
     assert.ok(disabled, 'the submit button could not be found - this check did not run');

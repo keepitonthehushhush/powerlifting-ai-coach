@@ -17,7 +17,7 @@
  * ── AND IT IS OFF UNLESS CONFIGURED ───────────────────────────────────────
  *
  * `enabled()` is false when no site key was built in. Nothing loads, no widget
- * renders, and the auth calls send no token - byte-for-byte the behaviour
+ * renders, and the auth calls send no token - byte-for-byte the behavior
  * before this existed. That is what makes it safe to deploy this code before
  * turning CAPTCHA on in Supabase, which is the only ordering that never breaks
  * sign-in.

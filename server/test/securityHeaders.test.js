@@ -25,7 +25,7 @@ import { readSource, readRaw } from './helpers/source.js';
  * For a product holding injuries and medication answers, a Content-Security
  * -Policy is the highest-value control available for free, because it is the
  * one that changes the CONSEQUENCE of a bug rather than the likelihood of one.
- * Every other defence here - RLS, the consent trigger, the deny-by-default
+ * Every other defense here - RLS, the consent trigger, the deny-by-default
  * grants - assumes our own code runs. CSP is what holds when somebody else's
  * code runs in our page.
  *

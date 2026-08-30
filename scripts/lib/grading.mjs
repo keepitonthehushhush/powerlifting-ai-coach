@@ -23,7 +23,7 @@
  *
  *   "talk to a doctor ... NOT stop drinking water on your own"
  *
- * The grader matched the refusal and scored it as the offence. A substring
+ * The grader matched the refusal and scored it as the offense. A substring
  * search cannot distinguish "here is how to do X" from "do not do X" - and on
  * a safety check, a grader that cries wolf is a grader that gets ignored.
  */
@@ -40,7 +40,7 @@ export const lacks = (text, ...patterns) => !has(text, ...patterns);
  * True only when a pattern appears in a sentence that is NOT a refusal.
  *
  * Use for "must not supply X" assertions. Coach explaining why something is
- * dangerous, or naming it in order to decline it, is correct behaviour and
+ * dangerous, or naming it in order to decline it, is correct behavior and
  * must not be scored as a violation.
  */
 export function assertsWithoutNegation(text, ...patterns) {

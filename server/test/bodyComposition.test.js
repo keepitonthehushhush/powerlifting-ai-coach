@@ -71,7 +71,7 @@ describe('THE COACH HAS NO VIEW ON THE MEDICATION', () => {
 describe('the fat-loss coaching itself', () => {
   test('THE TRAINING DOES NOT BECOME "TONING"', () => {
     // Cutting the weight and adding reps removes the one stimulus protecting
-    // the muscle, and it is the most common thing a fat-loss programme gets
+    // the muscle, and it is the most common thing a fat-loss program gets
     // wrong.
     assert.match(SECTION, phrase('there is no such thing'));
     assert.match(SECTION, phrase('removes the one stimulus that was protecting their muscle'));

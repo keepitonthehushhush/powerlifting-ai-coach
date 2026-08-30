@@ -18,7 +18,7 @@ import { logger } from './logger.js';
  * list of keys HERE and constrained again by a CHECK in the database, because
  * one of the two will eventually be edited by somebody in a hurry.
  *
- * The path is normalised before it is stored: `/api/conversations/<uuid>`
+ * The path is normalized before it is stored: `/api/conversations/<uuid>`
  * becomes `/api/conversations/_id`. An error table is not a place to
  * accumulate identifiers, and a route pattern is what a pattern needs anyway.
  */

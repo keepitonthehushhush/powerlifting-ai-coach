@@ -90,7 +90,7 @@ describe('nothing about an athlete is in the shared cache entry', () => {
      * This caught a real one, and not the kind it was written for: a new
      * prompt section illustrated a correction with "that was 225, not 275" and
      * put 275 into the cached prefix. Invented, not leaked - and the check
-     * cannot tell the difference, which is the correct behaviour for it and
+     * cannot tell the difference, which is the correct behavior for it and
      * the reason the prompt now writes its examples in plates.
      *
      * The one number that IS allowed through is the weight in the

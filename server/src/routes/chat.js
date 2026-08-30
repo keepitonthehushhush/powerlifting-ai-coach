@@ -189,7 +189,7 @@ chatRouter.post('/', async (req, res, next) => {
      * below is dead and the coaching is free, which is what the FAQ says.
      *
      * entitlement() decides. The rule lives there and nowhere else: past_due
-     * still counts, a cancelled subscription inside its paid period still
+     * still counts, a canceled subscription inside its paid period still
      * counts, and this route does not get an opinion about any of it.
      */
     if (config.paywall.active && requiresSubscription(PAID_FEATURE)) {
@@ -297,7 +297,7 @@ chatRouter.post('/', async (req, res, next) => {
      * the athlete can open tomorrow and follow, long after the conversation
      * that produced it has scrolled away.
      *
-     * So the instruction is the first line of defence and this is the second.
+     * So the instruction is the first line of defense and this is the second.
      * Same reasoning as computing the gate rather than asking the model to
      * apply it - if it matters, it does not live in the prompt alone.
      */
@@ -418,9 +418,9 @@ chatRouter.post('/', async (req, res, next) => {
        * Unlike the clearance gate, this is NOT re-checked and overridden here,
        * and the difference is what a wrong answer costs: a gated athlete who
        * receives a program is a safety failure, while an athlete on the wrong
-       * phase gets a worse programme and stalls. That is bad coaching, not
+       * phase gets a worse program and stalls. That is bad coaching, not
        * danger, and there are legitimate reasons to hold somebody on linear
-       * progression another fortnight - a missed week, a bad sleep run, a move.
+       * progression another two weeks - a missed week, a bad sleep run, a move.
        *
        * Overriding the stored phase would also make the record disagree with
        * the prose the athlete just read, which is worse than either being

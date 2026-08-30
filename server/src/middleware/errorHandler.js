@@ -60,7 +60,7 @@ function statusOf(err) {
  *      ignore the alerts that matter.
  *
  * NODE_ENV is read directly rather than through config.js on purpose. This is
- * the last line of defence in the request pipeline, and the last thing that
+ * the last line of defense in the request pipeline, and the last thing that
  * should stop working because configuration failed to load.
  */
 // Express identifies an error handler BY ARITY: four parameters or it is
