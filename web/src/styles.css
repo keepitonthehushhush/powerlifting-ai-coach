@@ -1998,3 +1998,22 @@ form > button.primary {
 .theme-option-body { display: flex; flex-direction: column; gap: 0.1rem; }
 .theme-name { font-weight: 600; font-size: 0.92rem; }
 .theme-blurb { font-size: 0.78rem; line-height: 1.35; }
+
+/* The control that mounts the rest of a long conversation. Quiet on purpose:
+   it is a way back into history, not an action anybody needs to take. */
+.show-earlier {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.show-earlier:hover { color: var(--text); border-color: var(--field-border); }
+.show-earlier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+

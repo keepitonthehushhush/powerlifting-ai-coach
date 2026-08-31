@@ -7,6 +7,7 @@ import { Loading } from '../components/Loading.jsx';
 import { CoachMessage } from '../components/CoachMessage.jsx';
 import { Link } from 'react-router-dom';
 import { readChatSettings, isSendKey } from '../lib/chatSettings.js';
+import { windowTranscript } from '../lib/transcriptWindow.js';
 
 /**
  * ── THE PAUSE BEFORE A MESSAGE IS ACTUALLY SENT, WHEN IT IS TURNED ON ─────
@@ -64,6 +65,13 @@ export function Chat() {
    * describe an older turn.
    */
   const [savedProgram, setSavedProgram] = useState(null);
+  /*
+   * Whether the whole conversation is mounted, or only its recent end.
+   * Per visit, not per account, and deliberately so: somebody who opened the
+   * full history once should not have their phone lay out the entire thing
+   * every time they come back. See lib/transcriptWindow.js for the numbers.
+   */
+  const [showAllMessages, setShowAllMessages] = useState(false);
   const endRef = useRef(null);
   const inputRef = useRef(null);
   const holdRef = useRef(null);
@@ -109,6 +117,12 @@ export function Chat() {
   // Anything still held when the page unmounts is abandoned rather than fired
   // into a component that is no longer listening for the answer.
   useEffect(() => () => clearTimeout(holdRef.current), []);
+
+  // Only the recent end of the conversation is mounted. The full history is
+  // still sent to the coach; this is about what the browser has to lay out.
+  const { visible: visibleMessages, hidden: hiddenCount } = windowTranscript(messages, {
+    expanded: showAllMessages,
+  });
 
   /** Actually dispatch. Only ever called once the undo window has elapsed. */
   async function dispatch(text, optimistic) {
@@ -208,7 +222,17 @@ export function Chat() {
           </div>
         )}
 
-        {messages.map((message, index) => (
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            className="show-earlier"
+            onClick={() => setShowAllMessages(true)}
+          >
+            {t('chat.showEarlier', { count: hiddenCount })}
+          </button>
+        )}
+
+        {visibleMessages.map((message, index) => (
           <article key={index} className={`bubble ${message.role}`}>
             <div className="who">{message.role === 'user' ? t('chat.you') : t('chat.coach')}</div>
             {/* The coach writes markdown and gets typography. The athlete

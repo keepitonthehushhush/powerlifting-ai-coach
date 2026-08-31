@@ -365,6 +365,7 @@ export const es = {
   },
 
   chat: {
+    showEarlier: 'Mostrar {count} mensajes anteriores',
     characterCount: '{count} de {limit} caracteres',
     emptyPrompt:
       'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',

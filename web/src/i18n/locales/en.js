@@ -420,6 +420,7 @@ export const en = {
     placeholder: 'How did that session go?',
     send: 'Send',
     inputLabel: 'Message Coach Diaz',
+    showEarlier: 'Show {count} earlier messages',
     loadFailed: 'Could not load your conversation.',
     rateLimited: 'You have sent a lot of messages recently. Try again shortly.',
   },
