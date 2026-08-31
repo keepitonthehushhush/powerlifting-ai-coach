@@ -2062,3 +2062,57 @@ form > button.primary {
 .mfa-status.off::before { content: '○ '; color: var(--muted); }
 .mfa-enroll { margin-top: var(--space-3); }
 
+/* ── THE PAGE THAT WAS "ZOOMED IN A BIT" ───────────────────────────────────
+ *
+ * Reported as: some pages look zoomed in, and a new page later in the day
+ * still looks that way.
+ *
+ * It is not a zoom setting and it is not the layout. iOS Safari ZOOMS THE
+ * PAGE when a text field takes focus and that field's computed font-size is
+ * under 16px - and it does not zoom back out afterwards. So one tap on the
+ * email field magnifies everything, and every page visited after that in the
+ * same tab stays magnified until somebody pinches out by hand. Which is
+ * exactly "odd when viewing a new page for the day".
+ *
+ * Measured on the live site at 375px before writing a line of this:
+ *
+ *     input[type=email]      14.4px
+ *     input[type=password]   14.4px
+ *     select (language)      13.6px
+ *
+ * The 14.4 is inherited: `label` is 0.9rem by design and `input, select,
+ * textarea` take `font: inherit`. The label SHOULD stay small - it is a label.
+ * The control is what gets focused, so the floor goes on the control.
+ *
+ * ── WHY NOT maximum-scale=1, WHICH IS THE USUAL "FIX" ─────────────────────
+ *
+ * Because it works by taking pinch-zoom away from everybody. On a product
+ * holding health information, read by people who may need to magnify it, that
+ * trades a cosmetic annoyance for an accessibility failure - WCAG 1.4.4 - and
+ * iOS has ignored user-scalable=no in Safari since iOS 10 anyway. It would be
+ * the wrong fix even if it worked.
+ *
+ * Removing the CAUSE leaves pinch-zoom exactly where it was.
+ *
+ * ── WHY pointer: coarse RATHER THAN A WIDTH ───────────────────────────────
+ *
+ * The zoom is a touch-device behavior, not a narrow-screen one. A phone held
+ * in landscape is wide and still zooms; a narrow desktop window never does.
+ * Gating on the pointer asks the question the browser is actually answering.
+ *
+ * max(1rem, 16px) rather than a flat 16px so that a reader who has raised
+ * their browser's base font size keeps the larger of the two, instead of
+ * having this rule quietly shrink their fields back down.
+ *
+ * .site-nav .lang select is named explicitly because it is 0,2,1 and would
+ * otherwise outrank a bare `select` and keep its 0.85rem. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  textarea,
+  select,
+  .lang select,
+  .site-nav .lang select {
+    font-size: max(1rem, 16px);
+  }
+}
+
