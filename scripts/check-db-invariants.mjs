@@ -34,7 +34,15 @@ import { migrationLedgerCheck } from './lib/migrationLedger.mjs';
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!url || !key) {
+/*
+ * Printing the SQL needs no credentials, because it contacts nothing. The
+ * first version of this flag sat below the env guard and exited before it -
+ * so the one command that works on a machine without database access was the
+ * one that demanded database access.
+ */
+const PRINT_SQL = process.argv.includes('--print-sql');
+
+if (!PRINT_SQL && (!url || !key)) {
   console.error(
     'check-db-invariants needs SUPABASE_URL and SUPABASE_SECRET_KEY in the environment.\n' +
       'They are in .env at the REPOSITORY ROOT - not server/.env, which does not\n' +
@@ -405,6 +413,50 @@ async function run(check) {
   return { ok: row?.ok === true, detail: JSON.stringify(row) };
 }
 
+/*
+ * ── WHEN THE RPC IS NOT THERE, WHICH IS THE NORMAL CASE ───────────────────
+ *
+ * This script needs an `exec_sql` RPC, and the project deliberately does not
+ * create one: a checking tool that installs something in order to check has
+ * its own failure modes. The consequence is that on a machine without it,
+ * every check reports SKIP and the run ends with "Nothing could be checked" -
+ * which is honest, fails closed, and leaves the operator with nothing.
+ *
+ * The old advice was "run the same assertions through the Supabase SQL
+ * editor". That is correct and nobody was ever going to do it by hand for
+ * thirty-four queries. So the script will now assemble them into ONE query
+ * that returns one row per check with a true/false beside it:
+ *
+ *   npm run check:db -- --print-sql
+ *
+ * Paste, run, read the false rows. Same assertions, same source, no new
+ * database object, and no second copy of the checks to drift from these.
+ */
+if (PRINT_SQL) {
+  const runnable = CHECKS.filter((c) => !c.unavailable);
+  const skipped = CHECKS.filter((c) => c.unavailable);
+
+  const parts = runnable.map((check, i) => {
+    // Comments stripped and whitespace collapsed so the result is small enough
+    // to paste comfortably. The SQL is otherwise untouched.
+    const sql = check.sql.replace(/--[^\n]*/g, ' ').replace(/\s+/g, ' ').replace(/;\s*$/, '').trim();
+    const label = check.name.replace(/'/g, "''");
+    return `select ${i} as n, '${label}' as check_name, ok from (${sql}) q${i}`;
+  });
+
+  console.log('-- Coach Diaz database invariants.');
+  console.log('-- Paste into the Supabase SQL editor. Every row must read ok = true.');
+  console.log(`-- ${runnable.length} checks, generated ${new Date().toISOString().slice(0, 10)}.`);
+  if (skipped.length) {
+    console.log('--');
+    console.log(`-- ${skipped.length} check(s) could not be built and are NOT below:`);
+    for (const check of skipped) console.log(`--   ${check.name}: ${check.unavailable}`);
+  }
+  console.log('');
+  console.log(`${parts.join('\nunion all\n')}\norder by n;`);
+  process.exit(0);
+}
+
 let failed = 0;
 let unavailable = 0;
 
@@ -423,11 +475,22 @@ for (const check of CHECKS) {
 
 if (unavailable === CHECKS.length) {
   console.error(
-    '\nNothing could be checked. This script needs an `exec_sql` RPC on the database,\n' +
-      'which this project does not create on purpose - a checking tool that installs\n' +
-      'something in order to check has its own failure modes. Run the same assertions\n' +
-      'through the Supabase SQL editor, or install psql and use `npm run test:db`,\n' +
-      'which is the more thorough suite.'
+    [
+      '',
+      'Nothing could be checked, so nothing here is evidence about the database.',
+      '',
+      'This script needs an `exec_sql` RPC, which this project does not create on',
+      'purpose - a checking tool that installs something in order to check has its',
+      'own failure modes.',
+      '',
+      'Run the same assertions without it:',
+      '',
+      '  npm run check:db -- --print-sql',
+      '',
+      'and paste the result into the Supabase SQL editor. It is one query, one row',
+      'per check, and every row must read true. Or install psql and use',
+      '`npm run test:db`, which is the more thorough suite.',
+    ].join('\n')
   );
   process.exit(2);
 }
