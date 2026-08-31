@@ -6,6 +6,7 @@ import { rateLimit } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { chatRouter } from './routes/chat.js';
 import { profileRouter } from './routes/profile.js';
+import { preferencesRouter } from './routes/preferences.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { programRouter } from './routes/program.js';
 import { libraryRouter } from './routes/library.js';
@@ -202,6 +203,7 @@ export function createApp() {
   // Adding a bucket means changing the function, not the call site.
   app.use('/api/achievements', rateLimit('write'), achievementsRouter);
   app.use('/api/profile', rateLimit('write'), profileRouter);
+  app.use('/api/preferences', rateLimit('write'), preferencesRouter);
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/program', programRouter);
   app.use('/api/library', libraryRouter);

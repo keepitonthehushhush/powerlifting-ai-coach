@@ -467,6 +467,48 @@ export const en = {
     },
   },
 
+  /*
+   * Theme packs.
+   *
+   * The names are deliberately about the palette rather than about who is
+   * supposed to pick it. A theme labeled for a demographic tells everyone else
+   * it is not for them, and there is no version of that which makes the
+   * product better - anybody can want the pink one.
+   *
+   * A theme's `id` is what the database stores and never changes; these
+   * strings can be reworded or translated freely without a migration.
+   */
+  themes: {
+    heading: 'Theme',
+    intro: 'Pick how the app looks. Your choice follows your account to any device you sign in on.',
+    saving: 'Saving...',
+    saved: 'Saved',
+    failed: 'Could not save that. Your pick is showing, but it did not reach your account.',
+    names: {
+      miami: 'Miami',
+      blush: 'Blush',
+      cobalt: 'Cobalt',
+      ember: 'Ember',
+      moss: 'Moss',
+      amethyst: 'Amethyst',
+      copper: 'Copper',
+      slate: 'Slate',
+      mono: 'Mono',
+      sunrise: 'Sunrise',
+    },
+    blurbs: {
+      miami: 'Teal and magenta on deep indigo. The original.',
+      blush: 'Warm pink with a violet accent.',
+      cobalt: 'Deep blue, cool and quiet.',
+      ember: 'Burnt orange and red.',
+      moss: 'Forest green with a lime edge.',
+      amethyst: 'Purple and orchid.',
+      copper: 'Bronze and amber.',
+      slate: 'Near-neutral gray with a blue accent.',
+      mono: 'No color at all. Maximum contrast.',
+      sunrise: 'Gold and clay.',
+    },
+  },
   account: {
     title: 'Your data',
     exportHeading: 'Download everything we hold about you',

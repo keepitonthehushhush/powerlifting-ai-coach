@@ -150,6 +150,15 @@ export const api = {
   getConversation: () => request('/chat/conversation'),
   sendMessage: (message, conversationId) =>
     request('/chat', { method: 'POST', body: JSON.stringify({ message, conversationId }) }),
+  /*
+   * Interface preferences, deliberately separate from the profile. The theme
+   * is wanted on every page; the profile carries health data. See migration
+   * 0045 for why those are two tables and two endpoints.
+   */
+  getPreferences: () => request('/preferences'),
+  savePreferences: (preferences) =>
+    request('/preferences', { method: 'PUT', body: JSON.stringify(preferences) }),
+
   getSessions: () => request('/sessions'),
   getProgress: () => request('/sessions/progress'),
   logSession: (session) => request('/sessions', { method: 'POST', body: JSON.stringify(session) }),

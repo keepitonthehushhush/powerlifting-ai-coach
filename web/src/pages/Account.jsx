@@ -8,6 +8,8 @@ import { ActivityLog } from '../components/ActivityLog.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ChatSettings } from '../components/ChatSettings.jsx';
+import { ThemePicker } from '../components/ThemePicker.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 /**
  * Data subject rights, exposed as an actual screen rather than a policy page.
@@ -20,6 +22,7 @@ import { ChatSettings } from '../components/ChatSettings.jsx';
 export function Account() {
   const { t } = useI18n();
   const { signOut } = useAuth();
+  const { themeId, setTheme, status: themeStatus } = useTheme();
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
   const [confirmText, setConfirmText] = useState('');
@@ -84,6 +87,7 @@ export function Account() {
         <ConsentPanel />
       </section>
 
+      <ThemePicker value={themeId} onChange={setTheme} status={themeStatus} />
       <ChatSettings />
 
       <section className="card stack">

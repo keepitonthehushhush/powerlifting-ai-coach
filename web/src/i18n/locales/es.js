@@ -428,6 +428,45 @@ export const es = {
     },
   },
 
+  /*
+   * Paquetes de temas. Los nombres describen la paleta, no a quien deberia
+   * elegirla - ver la nota en en.js.
+   *
+   * Los nombres propios de los temas se dejan sin traducir a proposito: son
+   * etiquetas de marca, y traducirlas rompe la conversacion entre una persona
+   * que dice "estoy usando Cobalt" y otra que busca "Cobalto".
+   */
+  themes: {
+    heading: 'Tema',
+    intro: 'Elige como se ve la aplicacion. Tu eleccion te sigue en cualquier dispositivo donde inicies sesion.',
+    saving: 'Guardando...',
+    saved: 'Guardado',
+    failed: 'No se pudo guardar. Lo estas viendo, pero no llego a tu cuenta.',
+    names: {
+      miami: 'Miami',
+      blush: 'Blush',
+      cobalt: 'Cobalt',
+      ember: 'Ember',
+      moss: 'Moss',
+      amethyst: 'Amethyst',
+      copper: 'Copper',
+      slate: 'Slate',
+      mono: 'Mono',
+      sunrise: 'Sunrise',
+    },
+    blurbs: {
+      miami: 'Turquesa y magenta sobre indigo profundo. El original.',
+      blush: 'Rosa calido con acento violeta.',
+      cobalt: 'Azul profundo, frio y tranquilo.',
+      ember: 'Naranja quemado y rojo.',
+      moss: 'Verde bosque con filo lima.',
+      amethyst: 'Morado y orquidea.',
+      copper: 'Bronce y ambar.',
+      slate: 'Gris casi neutro con acento azul.',
+      mono: 'Sin color. Contraste maximo.',
+      sunrise: 'Oro y arcilla.',
+    },
+  },
   account: {
     title: 'Tus datos',
     exportHeading: 'Descarga todo lo que guardamos sobre ti',

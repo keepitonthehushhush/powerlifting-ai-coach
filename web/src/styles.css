@@ -1914,3 +1914,87 @@ form > button.primary {
   background: var(--surface);
   max-width: 90%;
 }
+
+/* ── Theme gallery ─────────────────────────────────────────────────────────
+   The swatches are painted from the theme's OWN tokens, passed in as
+   --sw-* custom properties by the picker, so a preview cannot drift from the
+   palette it previews. There is no per-theme CSS here and there must not be:
+   adding a holiday pack is a catalog entry, not a stylesheet edit.
+
+   auto-fill with a minimum rather than a fixed column count, so ten options
+   reflow from one column on a phone to four on a laptop without a breakpoint
+   per size. */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.6rem;
+}
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+/* The selected ring uses the app's accent, not the swatch's - it belongs to
+   the page the person is looking at, not to the option being described. */
+.theme-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+/* Visible focus for keyboard users: the native ring is on the input, which is
+   visually hidden, so it is forwarded to the label. */
+.theme-option:focus-within {
+  outline: 2px solid var(--field-border);
+  outline-offset: 2px;
+}
+/* Not display:none - a hidden input is unreachable by keyboard and invisible
+   to assistive technology. Kept in the layout at zero size instead. */
+.theme-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.theme-swatch {
+  display: block;
+  position: relative;
+  height: 44px;
+  border-radius: 7px;
+  background: var(--sw-bg);
+  border: 1px solid var(--sw-border);
+  overflow: hidden;
+}
+.theme-swatch-bar {
+  position: absolute;
+  inset: 6px 6px auto 6px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--sw-surface);
+  border: 1px solid var(--sw-border);
+}
+.theme-swatch-chip {
+  position: absolute;
+  left: 6px;
+  bottom: 7px;
+  width: 40px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--sw-accent);
+}
+.theme-swatch-dot {
+  position: absolute;
+  left: 52px;
+  bottom: 7px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sw-secondary);
+}
+.theme-option-body { display: flex; flex-direction: column; gap: 0.1rem; }
+.theme-name { font-weight: 600; font-size: 0.92rem; }
+.theme-blurb { font-size: 0.78rem; line-height: 1.35; }

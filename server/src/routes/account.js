@@ -69,8 +69,12 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board] = await Promise.all([
+    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
+      // Interface preferences are personal data too. Small, dull, and still
+      // the subject's - an export that quietly omits a table is an export
+      // that is wrong, and nothing was checking that until now.
+      req.supabase.from('user_preferences').select('*').maybeSingle(),
       req.supabase.from('workout_programs').select('*').order('created_at'),
       req.supabase.from('workout_sessions').select('*').order('date'),
       req.supabase.from('progress_logs').select('*').order('date'),
@@ -172,6 +176,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         'health information you provided. Store it somewhere you consider private.',
       data: {
         profile: profile.data,
+        user_preferences: preferences.data,
         workout_programs: programs.data ?? [],
         workout_sessions: sessions.data ?? [],
         progress_logs: logs.data ?? [],
