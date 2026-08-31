@@ -360,6 +360,18 @@ const CHECKS = [
              and g.table_name <> 'exercise_library'`,
   },
   {
+    name: 'the destructive RPCs ask for the second factor themselves',
+    why: 'RLS does not apply to a SECURITY DEFINER function - that is the point of one - so the restrictive policies from 0050 are invisible to every RPC in this schema. With MFA on and a stolen password, an aal1 session could not read a single row of an athlete history and could still call delete_my_account() at /rest/v1/rpc/. The gate is inside those two functions now, and this asserts it against the DEPLOYED definition rather than the migration file, because create or replace has silently dropped security definer in this project before and would drop this just as quietly.',
+    sql: `select count(*) = 2 as ok
+            from pg_proc p
+            join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname in ('delete_my_account', 'set_leaderboard_opt_in')
+             and p.prosecdef
+             and p.proconfig is not null
+             and pg_get_functiondef(p.oid) like '%mfa_satisfied%'`,
+  },
+  {
     name: 'the second factor is enforced where it cannot be edited away',
     why: 'MFA is enforced in three places and only one of them holds if the code is wrong. The browser decides what to render and the API refuses an aal1 token, but both are JavaScript. The restrictive policies from 0050 are the layer that survives either being mistaken. Two things have to stay true: the policies exist on every table holding personal or health data, and every one of them is RESTRICTIVE. A permissive policy with the same body would be OR-ed with the others and would GRANT access rather than withhold it - the exact opposite of the control, compiling cleanly, with a name that still reads correct.',
     sql: `with expected as (

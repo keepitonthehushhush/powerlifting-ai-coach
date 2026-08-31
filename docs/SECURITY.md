@@ -613,6 +613,16 @@ was written. Asked of the catalogue on 2026-08-29, there are now **seven**:
 - `public.record_error_event(...)`
 - `public.record_client_error_event(...)`
 - `public.mfa_satisfied()`
+
+`delete_my_account()` and `set_leaderboard_opt_in()` call `mfa_satisfied()`
+themselves. RLS does not apply to a `SECURITY DEFINER` function, so the
+restrictive policies from `0050` are invisible to every RPC in this schema —
+which meant that with MFA on and a stolen password, an `aal1` session could not
+read a single row of an athlete's history and could still delete the whole
+account. Found by reading the database linter after the deploy; nothing failed.
+The other definer functions are deliberately ungated and migration `0052` says
+why for each one.
+
 - `public.refresh_leaderboard_entry()`
 - `public.set_leaderboard_opt_in(boolean)`
 - `public.my_leaderboard_entry()`
