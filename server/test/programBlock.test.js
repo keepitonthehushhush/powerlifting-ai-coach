@@ -251,3 +251,66 @@ describe('summariseProgram', () => {
     assert.equal(summariseProgram(null), null);
   });
 });
+
+describe('A REPLY THAT WAS CUT OFF INSIDE THE PROGRAM BLOCK', () => {
+  /**
+   * Reported with a screenshot on 2026-08-31.
+   *
+   * A reply hit the output ceiling partway through the block, so it carried
+   * one open tag and no close. `problem` was set, the program was correctly
+   * not saved, and the reply was returned to the athlete with the half-written
+   * JSON still in it - because stripAll removed the tag characters and not the
+   * block. Machine output in a coaching conversation, underneath a paragraph
+   * about bracing.
+   *
+   * Nothing failed. Every part of the pipeline did what it was written to do.
+   */
+  const cutOff = [
+    'Not required, the program works without one - just flagging it.',
+    '',
+    '<program_data>{"phase":"intermediate","week":20,"summary":"Push/lower-power/pull/posterior chain split,',
+  ].join('\n');
+
+  test('the athlete sees the prose and none of the JSON', () => {
+    const { reply } = extractProgramBlock(cutOff);
+    assert.equal(reply, 'Not required, the program works without one - just flagging it.');
+    for (const fragment of ['phase', 'intermediate', 'week', 'summary', '{', '"']) {
+      assert.ok(!reply.includes(fragment), `"${fragment}" survived into the reply`);
+    }
+  });
+
+  test('no tag survives either', () => {
+    const { reply } = extractProgramBlock(cutOff);
+    assert.ok(!reply.includes('program_data'));
+    assert.ok(!reply.includes('<'));
+  });
+
+  test('nothing is stored, and the reason is recorded for the log', () => {
+    const { program, problem } = extractProgramBlock(cutOff);
+    assert.equal(program, null, 'a half-written program must never be saved');
+    assert.match(problem, /1 open and 0 close/);
+  });
+
+  test('a stray CLOSE with no open keeps the prose around it', () => {
+    // The mirror case. Dropping everything before a stray close would throw
+    // away a whole reply over one hallucinated tag.
+    const { reply } = extractProgramBlock('Here is your week.</program_data> Log it as you go.');
+    assert.equal(reply, 'Here is your week. Log it as you go.');
+  });
+
+  test('a complete block is still extracted, which is the case that matters most', () => {
+    // The floor assertion. A stripAll that deleted everything would pass every
+    // test above and break the product.
+    const good = {
+      phase: 'intermediate',
+      week: 20,
+      days: [{ name: 'Day A', exercises: [{ lift: 'Squat', sets: 3, reps: 5, weight: 225 }] }],
+    };
+    const { reply, program, problem } = extractProgramBlock(
+      `Here is week 20.\n<program_data>${JSON.stringify(good)}</program_data>\nLog it as you go.`
+    );
+    assert.equal(problem, null);
+    assert.equal(program.week, 20);
+    assert.equal(reply, 'Here is week 20.\n\nLog it as you go.');
+  });
+});

@@ -411,6 +411,16 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .bubble.assistant { align-self: flex-start; background: var(--surface); }
 .bubble .who { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.3rem; }
 .bubble .content { white-space: pre-wrap; }
+/* A reply can contain a run with no spaces in it - a URL, or the program block
+   when a truncated reply left one behind (see server/src/lib/programBlock.js).
+   `pre-wrap` breaks on whitespace and there is none, so the line ran past the
+   bubble, past the card and off the right of a 390px phone. Reported with a
+   screenshot on 2026-08-31. `anywhere` is the one value that breaks INSIDE a
+   word without also affecting how the box is measured, which `break-all`
+   does. The athlete's own message gets it too: somebody pasting a long link
+   should not be able to break the page they are typing into. */
+.bubble .content { overflow-wrap: anywhere; }
+.bubble { min-width: 0; }
 
 .empty { color: var(--muted); text-align: center; padding: 3rem 1rem; }
 
