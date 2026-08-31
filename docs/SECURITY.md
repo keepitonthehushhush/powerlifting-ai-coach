@@ -216,9 +216,13 @@ silently.
 
 ### Not done yet
 
-- **MFA.** Supabase Auth supports TOTP. For an application holding injury
-  history it is the obvious next control, and it is a bigger change than a
-  settings toggle — enrollment UI, a challenge step at sign-in, and recovery.
+- ~~**MFA.**~~ Done. TOTP enrollment on the account page, a challenge step in
+  `ProtectedRoute`, `aal` enforced in `requireAuth`, and a restrictive RLS
+  policy on every table holding personal or health data (migration `0050`).
+  Opt-in: the policy demands `aal2` only from accounts that have a verified
+  factor, so nobody who has not enrolled can be locked out by it. Recovery is
+  `scripts/mfa-recovery.mjs`, which needs the service-role key and writes an
+  `audit_events` row with `actor = 'operator'` (migration `0051`).
 
 ---
 
@@ -608,6 +612,7 @@ was written. Asked of the catalogue on 2026-08-29, there are now **seven**:
 - `public.record_audit_event(text, jsonb)`
 - `public.record_error_event(...)`
 - `public.record_client_error_event(...)`
+- `public.mfa_satisfied()`
 - `public.refresh_leaderboard_entry()`
 - `public.set_leaderboard_opt_in(boolean)`
 - `public.my_leaderboard_entry()`
@@ -650,11 +655,24 @@ Listed rather than omitted. Rewritten 2026-08-29, when four of the nine had
 become false — a stale gap list is worse than none, because it makes the
 document look maintained while pointing at the wrong things.
 
-1. **No MFA.** Email and password only. Supabase Auth supports TOTP and it is
-   free; this is the largest remaining control gap for an application holding
-   injury history. Password *policy* is no longer a gap: 12 characters with
-   mixed classes enforced by Supabase, and a browser-side HaveIBeenPwned check
-   covering the paid feature this plan does not include.
+1. **MFA is available but not required.** TOTP is implemented and enforced in
+   three places once somebody turns it on — the browser, the API, and a
+   restrictive RLS policy — but turning it on is the athlete's choice, and
+   there is no way to require it of everybody. That is deliberate rather than
+   unfinished: requiring it would lock out every existing account, because
+   enrolling needs a session. The honest statement of the remaining gap is
+   that an account without a second factor is protected by a password alone.
+   Password *policy* is not a gap: 12 characters with mixed classes enforced
+   by Supabase, and a browser-side HaveIBeenPwned check covering the paid
+   feature this plan does not include.
+
+   The recovery path is the sharp edge. Losing an authenticator means losing
+   access, Supabase requires an `aal2` session to unenroll, and there are no
+   built-in recovery codes — so the way back in runs through the operator and
+   the service-role key. `scripts/mfa-recovery.mjs` refuses to act without
+   `--confirm` and audits what it did, but it cannot verify identity and
+   neither can the database. That check is a human one and it has no
+   procedure written for it yet.
 2. **No per-IP rate limiting.** See the next item; this slot is kept so the
    numbering below does not shift.
 3. **Rate limiting is per-user, not per-IP.** It bounds cost from authenticated

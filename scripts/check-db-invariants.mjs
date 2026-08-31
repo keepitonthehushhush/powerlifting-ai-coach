@@ -360,6 +360,28 @@ const CHECKS = [
              and g.table_name <> 'exercise_library'`,
   },
   {
+    name: 'the second factor is enforced where it cannot be edited away',
+    why: 'MFA is enforced in three places and only one of them holds if the code is wrong. The browser decides what to render and the API refuses an aal1 token, but both are JavaScript. The restrictive policies from 0050 are the layer that survives either being mistaken. Two things have to stay true: the policies exist on every table holding personal or health data, and every one of them is RESTRICTIVE. A permissive policy with the same body would be OR-ed with the others and would GRANT access rather than withhold it - the exact opposite of the control, compiling cleanly, with a name that still reads correct.',
+    sql: `with expected as (
+             select unnest(array[
+               'user_profile','conversations','workout_programs','progress_logs',
+               'workout_sessions','consent_records','subscriptions',
+               'leaderboard_entries','audit_events','usage_events'
+             ]) as tablename
+           ),
+           got as (
+             select tablename, permissive
+               from pg_policies
+              where schemaname = 'public' and policyname like '%_requires_mfa'
+           )
+           select
+             (select count(*) from expected) = (select count(*) from got)
+             and not exists (select 1 from expected e
+                              where not exists (select 1 from got g where g.tablename = e.tablename))
+             and not exists (select 1 from got where permissive <> 'RESTRICTIVE')
+             as ok`,
+  },
+  {
     name: 'the error table cannot be told a story',
     why: 'Browsers now write to error_events, and a browser is a thing an athlete controls. The privacy promise in the README - that health data never reaches observability - is kept by three CHECK constraints rather than by the route remembering to be careful: a client row may carry no http_status and no method, only four named detail keys, and a topFrame that is a coordinate rather than a sentence. If those constraints are ever dropped, the promise becomes a matter of code review again, which is how it would quietly stop being true.',
     sql: `select count(*) = 3 as ok

@@ -35,6 +35,41 @@ export const en = {
     language: 'Language',
   },
 
+  mfa: {
+    heading: 'Two-step sign-in',
+    intro:
+      'Ask for a code from an authenticator app as well as your password. Your training history and everything you have told the coach about your health sit behind this account, so it is worth the extra six seconds.',
+    checking: 'Checking…',
+    on: 'Two-step sign-in is on.',
+    off: 'Two-step sign-in is off.',
+    turnOn: 'Turn on two-step sign-in',
+    turnOff: 'Turn off two-step sign-in',
+    turnOffWarning:
+      'You can only do this while signed in with a code. If you lose your authenticator, nobody at Coach Diaz can turn it off for you without checking who you are first.',
+    step1: 'Open your authenticator app — Google Authenticator, 1Password, Authy, or whichever you use.',
+    step2: 'Scan the square below, or type the code underneath it if you are setting this up on the same phone.',
+    step3: 'Enter the six digits your app shows.',
+    orTypeIt: 'Or type this into your app instead:',
+    codeLabel: 'Six-digit code',
+    confirm: 'Confirm',
+    cancel: 'Cancel setup',
+    verify: 'Verify',
+    verifying: 'Checking…',
+    codeRejected:
+      'That code was not accepted. Codes change every thirty seconds — wait for the next one and try again.',
+    setupFailed: 'Setup could not be started. Try again in a moment.',
+    removeFailed: 'That could not be turned off. Try again in a moment.',
+    removed: 'Two-step sign-in is off.',
+    enrolledOtherSessionsEnded:
+      'Two-step sign-in is on. You have been signed out everywhere else — that is deliberate, so an old session cannot skip the new step.',
+    challengeHeading: 'One more step',
+    challengeIntro: 'Enter the code from your authenticator app to finish signing in.',
+    noFactorFound:
+      'Your account expects a code but no authenticator is registered. Sign out and get in touch so this can be sorted out.',
+    lostDevice:
+      'Lost your authenticator? Sign out and contact us — we will check who you are before turning this off.',
+  },
+
   medical: {
     disclaimer:
       'Coach is an AI tool, not a medical professional. If you have current pain, an injury, or a health condition, get clearance from a doctor or physical therapist before training.',

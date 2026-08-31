@@ -102,6 +102,17 @@ export const ERROR_CODES = Object.freeze({
   payment_required: { id: 14, status: 402, retryable: false },
   billing_unavailable: { id: 15, status: 503, retryable: false },
   auth_required: { id: 16, status: 401, retryable: false },
+  /**
+   * The session is real and weaker than the account requires: a verified
+   * second factor exists and this token is still aal1.
+   *
+   * A 401 and not a 403, and the distinction matters to the client. 403 means
+   * "you may not"; this means "you have not finished". Supabase's own guidance
+   * is to send somebody to the code screen rather than to an error page:
+   * the likely causes are a closed tab mid-enrollment and a tab left open for
+   * a week, not an attack.
+   */
+  mfa_required: { id: 22, status: 401, retryable: false },
   /** A 409 rather than a 400: the request was fine, the account already had one. */
   already_subscribed: { id: 17, status: 409, retryable: false },
   /**

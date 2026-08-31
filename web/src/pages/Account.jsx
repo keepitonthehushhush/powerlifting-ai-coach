@@ -9,6 +9,7 @@ import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ChatSettings } from '../components/ChatSettings.jsx';
 import { ThemePicker } from '../components/ThemePicker.jsx';
+import { MfaSettings } from '../components/MfaSettings.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 
 /**
@@ -88,6 +89,8 @@ export function Account() {
       </section>
 
       <ThemePicker value={themeId} onChange={setTheme} status={themeStatus} />
+
+      <MfaSettings />
       <ChatSettings />
 
       <section className="card stack">

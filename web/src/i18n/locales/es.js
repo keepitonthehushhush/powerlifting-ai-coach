@@ -28,6 +28,41 @@ export const es = {
     language: 'Idioma',
   },
 
+  mfa: {
+    heading: 'Inicio de sesión en dos pasos',
+    intro:
+      'Pide un código de una aplicación de autenticación además de tu contraseña. Tu historial de entrenamiento y todo lo que le has contado al entrenador sobre tu salud están detrás de esta cuenta, así que vale la pena los seis segundos extra.',
+    checking: 'Comprobando…',
+    on: 'El inicio de sesión en dos pasos está activado.',
+    off: 'El inicio de sesión en dos pasos está desactivado.',
+    turnOn: 'Activar el inicio de sesión en dos pasos',
+    turnOff: 'Desactivar el inicio de sesión en dos pasos',
+    turnOffWarning:
+      'Solo puedes hacerlo mientras tengas la sesión iniciada con un código. Si pierdes tu autenticador, nadie en Coach Diaz puede desactivarlo sin comprobar antes tu identidad.',
+    step1: 'Abre tu aplicación de autenticación: Google Authenticator, 1Password, Authy o la que uses.',
+    step2: 'Escanea el cuadro de abajo, o escribe el código que aparece debajo si lo estás configurando en el mismo teléfono.',
+    step3: 'Introduce los seis dígitos que muestra tu aplicación.',
+    orTypeIt: 'O escribe esto en tu aplicación:',
+    codeLabel: 'Código de seis dígitos',
+    confirm: 'Confirmar',
+    cancel: 'Cancelar la configuración',
+    verify: 'Verificar',
+    verifying: 'Comprobando…',
+    codeRejected:
+      'Ese código no se aceptó. Los códigos cambian cada treinta segundos: espera al siguiente e inténtalo de nuevo.',
+    setupFailed: 'No se pudo iniciar la configuración. Inténtalo de nuevo en un momento.',
+    removeFailed: 'No se pudo desactivar. Inténtalo de nuevo en un momento.',
+    removed: 'El inicio de sesión en dos pasos está desactivado.',
+    enrolledOtherSessionsEnded:
+      'El inicio de sesión en dos pasos está activado. Se ha cerrado tu sesión en todos los demás sitios: es deliberado, para que una sesión antigua no pueda saltarse el nuevo paso.',
+    challengeHeading: 'Un paso más',
+    challengeIntro: 'Introduce el código de tu aplicación de autenticación para terminar de iniciar sesión.',
+    noFactorFound:
+      'Tu cuenta espera un código pero no hay ningún autenticador registrado. Cierra sesión y ponte en contacto para resolverlo.',
+    lostDevice:
+      '¿Perdiste tu autenticador? Cierra sesión y contáctanos: comprobaremos tu identidad antes de desactivarlo.',
+  },
+
   medical: {
     disclaimer:
       'Coach es una herramienta de IA, no un profesional médico. Si tienes dolor, una lesión o una condición de salud, consulta con un médico o fisioterapeuta antes de entrenar.',

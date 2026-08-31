@@ -5,6 +5,7 @@ import { ConfigError } from './components/ConfigError.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ConsentProvider } from './context/ConsentContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { MfaProvider } from './context/MfaContext.jsx';
 import { I18nProvider } from './i18n/index.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { ScrollToTop } from './components/ScrollToTop.jsx';
@@ -73,6 +74,7 @@ export function App() {
     <I18nProvider>
       <AuthProvider>
         <ThemeProvider>
+        <MfaProvider>
         <ConsentProvider>
           <BrowserRouter>
             {/* Inside the router because it reads the router's own history,
@@ -205,6 +207,7 @@ export function App() {
             </Routes>
           </BrowserRouter>
         </ConsentProvider>
+        </MfaProvider>
         </ThemeProvider>
       </AuthProvider>
     </I18nProvider>

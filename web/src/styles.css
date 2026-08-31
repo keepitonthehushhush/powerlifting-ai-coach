@@ -2027,3 +2027,38 @@ form > button.primary {
 .show-earlier:hover { color: var(--text); border-color: var(--field-border); }
 .show-earlier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* ── TWO-STEP SIGN-IN ──────────────────────────────────────────────────────
+   The QR code is an SVG that Supabase sizes for a desktop. Constrained to the
+   column and given a white plate regardless of theme: a QR code is read by a
+   camera expecting dark-on-light, and nine of the ten palettes would hand it
+   light-on-dark. The one place in this app where the theme does not get a
+   vote, because the reader is a phone camera and not a person. */
+.mfa-qr {
+  display: block;
+  width: min(200px, 60vw);
+  height: auto;
+  margin: var(--space-3) 0;
+  padding: var(--space-2);
+  background: #ffffff;
+  border-radius: var(--radius);
+}
+/* The secret is a long unbroken string. Same lesson as the chat bubble: with
+   nothing to break on it runs off the right of a phone. */
+.mfa-secret {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  overflow-wrap: anywhere;
+  padding: var(--space-2);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+}
+.mfa-steps { margin: 0 0 var(--space-3); padding-left: 1.2rem; }
+.mfa-steps li { margin-bottom: var(--space-1); }
+.mfa-status { font-weight: 600; margin: var(--space-2) 0; }
+.mfa-status.on::before { content: '● '; color: var(--accent); }
+.mfa-status.off::before { content: '○ '; color: var(--muted); }
+.mfa-enroll { margin-top: var(--space-3); }
+
