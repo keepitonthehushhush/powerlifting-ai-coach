@@ -119,6 +119,7 @@ export const en = {
     sessionEnded: 'You were signed out and we are not sure why — please sign in again. If this keeps happening, the code in brackets tells us what went wrong.',
     tagline: 'Structured powerlifting programming that adapts to what you actually lift.',
     email: 'Email',
+    emailCleaned: 'Removed an invisible character your keyboard added. The address above is what will be used.',
     password: 'Password',
     signIn: 'Sign in',
     createAccount: 'Create account',

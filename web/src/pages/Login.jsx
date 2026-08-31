@@ -7,6 +7,7 @@ import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
 import { Turnstile, resetTurnstile } from '../components/Turnstile.jsx';
 import { enabled as captchaEnabled } from '../lib/turnstile.js';
+import { cleanEmailInput, hadInvisibleCharacters } from '../lib/emailInput.js';
 import { classifyAuthError, authErrorMessageKey, shouldRecord } from '../lib/authErrors.js';
 import { supabase } from '../lib/supabase.js';
 
@@ -30,6 +31,12 @@ export function Login() {
     return requested === 'signup' ? 'signup' : 'signin';
   });
   const [email, setEmail] = useState('');
+  /*
+   * Whether the last keystroke contained something invisible that was removed.
+   * Fixing it silently is right; fixing it silently AND saying nothing means
+   * somebody whose address keeps arriving mangled never learns why.
+   */
+  const [emailRepaired, setEmailRepaired] = useState(false);
   const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaBlocked, setCaptchaBlocked] = useState(false);
@@ -238,11 +245,42 @@ export function Login() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              /*
+               * Cleaned on the way in, not checked on the way out. A phone can
+               * put a non-breaking space or a zero-width character into this
+               * field - from a QuickType suggestion, a contact-card autofill,
+               * or a paste - and the browser then refuses to submit with
+               * "Enter an email address." while a correct-looking address sits
+               * in front of the user. Reported from an iPhone; nothing reached
+               * the server, because nothing was ever sent.
+               *
+               * See lib/emailInput.js: ASCII spaces are stripped by the
+               * browser itself, which is why the obvious suspect was innocent.
+               */
+              onChange={(e) => {
+                setEmailRepaired(hadInvisibleCharacters(e.target.value));
+                setEmail(cleanEmailInput(e.target.value));
+              }}
               required
               autoComplete="email"
+              /*
+               * iOS capitalizes and autocorrects text fields by default. None
+               * of these break validation on their own, but an address the
+               * user did not type is an address that does not match the one on
+               * the account, and the failure that produces is a login screen
+               * that just says no.
+               */
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="email"
             />
           </label>
+          {emailRepaired && (
+            <p className="muted small" role="status">
+              {t('auth.emailCleaned')}
+            </p>
+          )}
           {!isReset && (
           <label>
             {t('auth.password')}

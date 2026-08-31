@@ -87,6 +87,7 @@ export const es = {
     sessionEnded: 'Se cerró tu sesión y no sabemos con certeza por qué; vuelve a iniciar sesión. Si sigue pasando, el código entre paréntesis nos dice qué falló.',
     tagline: 'Programación estructurada de powerlifting que se adapta a lo que realmente levantas.',
     email: 'Correo electrónico',
+    emailCleaned: 'Se elimino un caracter invisible que agrego tu teclado. Se usara la direccion de arriba.',
     password: 'Contraseña',
     signIn: 'Iniciar sesión',
     createAccount: 'Crear cuenta',
