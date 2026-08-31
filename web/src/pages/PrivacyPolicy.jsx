@@ -39,7 +39,7 @@ import { CONTACT_EMAIL } from '../lib/contact.js';
 export function PrivacyPolicy() {
   return (
     <div className="page">
-      <InfoHeader title="Privacy Policy" version="Version pp-2026-08-31a" />
+      <InfoHeader title="Privacy Policy" version="Version pp-2026-08-31b" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -71,7 +71,7 @@ export function PrivacyPolicy() {
       <div className="card prose">
         <h2 className="h3">Who is responsible for your data</h2>
         <p>
-          Coach Diaz is operated by an individual, Eduardo Diaz, based in Florida, United States.
+          Coach Diaz is operated by an individual, Eduardo Diaz, based in Michigan, United States.
           There is no company behind it. When this page says &ldquo;we&rdquo;, that is who it
           means. You can reach a person at{' '}
           <a className="link" href={`mailto:${CONTACT_EMAIL}`}>

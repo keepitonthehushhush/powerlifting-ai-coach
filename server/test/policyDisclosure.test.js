@@ -452,7 +452,7 @@ describe('the terms describe the age rule the code actually enforces', () => {
 describe('every policy page dates its own change', () => {
   test('each carries a changelog for the version it is stamped with', () => {
     for (const [page, version] of [
-      [termsPage, 'tos-2026-08-31a'],
+      [termsPage, 'tos-2026-08-31b'],
       [aiPage, 'aip-2026-08-27c'],
       [healthPage, 'chd-2026-08-27b'],
     ]) {

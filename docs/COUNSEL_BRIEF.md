@@ -1,6 +1,6 @@
 # Brief for counsel — Coach Diaz
 
-**Date:** 2026-08-31
+**Date:** 2026-08-31 (revised same day — see the correction note under Decision 1)
 **Prepared by:** the engineering side, not a lawyer. Nothing in this file, and
 nothing in the documents it describes, is legal advice.
 
@@ -13,8 +13,8 @@ Two documents were drafted to close the gaps the internal review
 
 | File | Serves |
 |---|---|
-| `web/src/pages/PrivacyPolicy.jsx` — **new**, `pp-2026-08-31a`, at `/policies/privacy` | C1, C9, C10 |
-| `web/src/pages/Terms.jsx` — **revised**, `tos-2026-08-27b` → `tos-2026-08-31a` | C2–C8, C11 |
+| `web/src/pages/PrivacyPolicy.jsx` — **new**, `pp-2026-08-31b`, at `/policies/privacy` | C1, C9, C10 |
+| `web/src/pages/Terms.jsx` — **revised**, `tos-2026-08-27b` → `tos-2026-08-31b` | C2–C8, C11 |
 
 They are drafts written from the source code and the live database, not from a
 template. Every factual claim in them is checked by a test against the thing it
@@ -32,8 +32,18 @@ The owner chose each of these. They are recorded so you can overrule them
 knowingly rather than discover them.
 
 **1. The contracting party is an individual, not a company.**
-Eduardo Diaz personally, in Florida. There is no LLC. The documents say so
+Eduardo Diaz personally, in **Michigan**. There is no LLC. The documents say so
 plainly rather than implying a corporate entity that does not exist.
+
+> **Correction, recorded rather than quietly fixed.** The first draft of these
+> documents said Florida, in five places including the governing-law clause.
+> That came from a menu of options I offered and the owner selected; neither of
+> us caught it until he asked for a lawyer near Pinckney, Michigan. Corrected
+> to Michigan the same day, before any user consented to the wrong version —
+> `tos-2026-08-31a` → `tos-2026-08-31b`, `pp-2026-08-31a` → `pp-2026-08-31b`.
+> Worth knowing because it is the kind of error that is invisible until
+> somebody needs the clause, and because it is the reason the version bumped
+> twice in one day.
 
 > **The engineering view, offered as a flag rather than as advice:** this is the
 > single largest exposure in the whole project, and it is not a software
@@ -41,7 +51,7 @@ plainly rather than implying a corporate entity that does not exist.
 > it does so for people who have told it they are injured. An uncapped personal
 > liability posture on that is worth raising before open signup, not after.
 
-**2. Florida law, Florida venue, courts — no arbitration clause, no class
+**2. Michigan law, Michigan venue, courts — no arbitration clause, no class
 action waiver.**
 Chosen deliberately over arbitration. The reasoning was that consumer
 arbitration clauses draw scrutiny and require careful drafting to survive it,

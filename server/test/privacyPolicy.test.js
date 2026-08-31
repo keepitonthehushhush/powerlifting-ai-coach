@@ -61,7 +61,7 @@ describe('the privacy policy exists and is reachable', () => {
   });
 
   test('it carries a version and a draft banner', () => {
-    assert.match(page, /pp-2026-08-31a/);
+    assert.match(page, /pp-2026-08-31b/);
     assert.match(page, phrase('has not been reviewed by an attorney', 'i'));
   });
 });
@@ -147,9 +147,9 @@ describe('what it promises is what the database does', () => {
     assert.match(page, phrase('Health Breach Notification Rule', 'i'));
   });
 
-  test('it states the operator and the governing jurisdiction', () => {
-    assert.match(page, /Florida/);
+  test('it states the operator and where they are', () => {
     assert.match(page, phrase('operated by an individual', 'i'));
+    assert.match(page, /based in [A-Z][a-z]+, United States/);
   });
 });
 
@@ -157,9 +157,41 @@ describe('the terms carry the clauses the review said were missing', () => {
   const terms = raw(new URL('../../web/src/pages/Terms.jsx', import.meta.url));
 
   test('governing law, venue, and an explicit position on arbitration', () => {
-    assert.match(terms, phrase('laws of the State of Florida', 'i'));
+    assert.match(terms, /laws of the State of [A-Z][a-z]+/);
     // Silence on arbitration is ambiguous. Saying there is none is a position.
     assert.match(terms, phrase('There is no arbitration clause', 'i'));
+  });
+
+  test('the two documents name the SAME state, and it is where the operator is', () => {
+    /*
+     * ── THE ERROR THIS EXISTS FOR ─────────────────────────────────────────
+     *
+     * The first draft said Florida - governing law, venue, and the operator's
+     * location - and the operator is in Michigan. It came from a menu of
+     * options nobody checked against reality, and it surfaced only when he
+     * asked for a lawyer near his actual town. Five places, two documents, one
+     * wrong fact.
+     *
+     * Hardcoding the right state here would pin today's answer and catch
+     * nothing: the failure was never "the state is not Michigan", it was
+     * "nobody compared the state to anything". So this compares the documents
+     * to each other. If somebody moves, or edits one clause and not the other,
+     * these disagree and the suite says so.
+     */
+    const governing = terms.match(/laws of the State of ([A-Z][a-z]+)/)?.[1];
+    const venue = terms.match(/courts located in ([A-Z][a-z]+)/)?.[1];
+    const operator = page.match(/based in ([A-Z][a-z]+), United States/)?.[1];
+
+    assert.ok(governing, 'the Terms name no governing law');
+    assert.ok(venue, 'the Terms name no venue');
+    assert.ok(operator, 'the privacy policy does not say where the operator is');
+
+    assert.equal(venue, governing, 'the Terms pick one state for law and another for venue');
+    assert.equal(
+      operator,
+      governing,
+      `the privacy policy says the operator is in ${operator} while the Terms choose ${governing} law`,
+    );
   });
 
   test('a liability cap with a number in it', () => {

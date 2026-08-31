@@ -42,7 +42,7 @@ import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js
 export function Terms() {
   return (
     <div className="page">
-      <InfoHeader title="Terms of Service" version="Version tos-2026-08-31a" />
+      <InfoHeader title="Terms of Service" version="Version tos-2026-08-31b" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -54,6 +54,11 @@ export function Terms() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>tos-2026-08-31b.</strong> Governing law and venue corrected from Florida to
+          Michigan, which is where this service is actually operated from. The previous version
+          named the wrong state.
+        </p>
         <p className="small">
           <strong>tos-2026-08-31a.</strong> The clauses a contract is normally expected to have,
           and did not: governing law and where a dispute would be heard, a limit on liability, a
@@ -344,9 +349,9 @@ export function Terms() {
       <div className="card prose">
         <h2 className="h3">Governing law and disputes</h2>
         <p>
-          These terms are governed by the laws of the State of Florida, United States, without
+          These terms are governed by the laws of the State of Michigan, United States, without
           regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal
-          courts located in Florida, and both of us consent to the jurisdiction of those courts.
+          courts located in Michigan, and both of us consent to the jurisdiction of those courts.
         </p>
         <p>
           <strong>There is no arbitration clause and no class-action waiver</strong>, which is a
