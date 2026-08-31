@@ -32,6 +32,8 @@
  */
 import { findSecrets } from './lib/secretPatterns.mjs';
 import { resolveMaxTokens, describeBudgetAgreement } from '../server/src/lib/modelBudget.js';
+import { describeCommitAgreement } from '../server/src/lib/deployedCommit.js';
+import { execFileSync } from 'node:child_process';
 
 const target = process.argv[2] || process.env.DEPLOY_URL;
 
@@ -304,6 +306,65 @@ if (budget.verdict === 'unknown') {
   );
 } else {
   console.log(`PASS - production and this machine agree on ${budget.local} output tokens.`);
+}
+
+/*
+ * ── AND IS IT EVEN THE RIGHT CODE? ────────────────────────────────────────
+ *
+ * Everything above checks the deployment that is serving. This checks that it
+ * is the deployment you meant. On 2026-08-31 those were different for two
+ * hours: a login fix went live at 16:44 and a redeploy of the previous day's
+ * commit took the alias at 16:45. Every assertion above passed the whole time,
+ * because the old build was a perfectly good build of the wrong thing.
+ */
+let localCommit = '';
+try {
+  localCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+} catch {
+  // Not a git checkout, or git is missing. Reported as unknown below rather
+  // than assumed to match.
+}
+
+const deployed = describeCommitAgreement({ local: localCommit, health, healthProblem });
+
+console.log('');
+if (deployed.verdict === 'unknown') {
+  console.error(
+    `COULD NOT DETERMINE - which commit is serving is unknown (${deployed.reason}).\n` +
+      `      Everything above describes SOME deployment. Whether it is the one you just\n` +
+      `      pushed is unanswered, and a redeploy of an older commit looks identical\n` +
+      `      from out here.`
+  );
+} else if (deployed.verdict === 'differ') {
+  failed = true;
+  /*
+   * Say WHICH WAY, because "behind" and "ahead" need opposite actions and the
+   * distinction is the whole value of the message. Guarded: the local
+   * repository may not contain the deployed commit at all.
+   */
+  let relationship = 'It is a different commit.';
+  try {
+    execFileSync('git', ['cat-file', '-e', `${deployed.remote}^{commit}`], { stdio: 'ignore' });
+    const behind = execFileSync('git', ['rev-list', '--count', `${deployed.remote}..HEAD`], {
+      encoding: 'utf8',
+    }).trim();
+    if (behind !== '0') {
+      relationship = `Production is ${behind} commit(s) BEHIND this checkout.`;
+    }
+  } catch {
+    relationship = 'It is a commit this checkout does not contain.';
+  }
+
+  console.error(
+    `FAIL - production is not serving the commit in this checkout.\n` +
+      `      here:       ${deployed.local}\n` +
+      `      production: ${deployed.remote}\n` +
+      `      ${relationship}\n` +
+      `      A fix that is not deployed is not a fix. If somebody clicked Redeploy on an\n` +
+      `      older deployment, it took the alias - promote the newest one, or push again.`
+  );
+} else {
+  console.log(`PASS - production is serving ${deployed.local.slice(0, 8)}, the commit in this checkout.`);
 }
 
 process.exit(failed ? 1 : 0);

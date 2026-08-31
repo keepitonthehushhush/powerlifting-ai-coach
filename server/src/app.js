@@ -158,6 +158,27 @@ export function createApp() {
       status: 'ok',
       deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev',
       /*
+       * ── WHICH COMMIT IS ACTUALLY SERVING ──────────────────────────────────
+       *
+       * On 2026-08-31 a login fix was deployed at 16:44 and, one minute later,
+       * a REDEPLOY of a commit from the previous day took the coachdiaz.app
+       * alias. Production silently reverted a day's work. The user reinstalled
+       * the app twice, on the reasonable assumption that a fix he had been
+       * told was live was live.
+       *
+       * Nothing could have told him otherwise. verify:deployment downloads the
+       * real assets and checks them for secrets and for public config - both
+       * of which yesterday's build passes, because yesterday's build was fine.
+       * It just was not the one anybody meant to be running. deploymentId
+       * changes on every redeploy, so it cannot answer "which CODE is this?"
+       * either.
+       *
+       * A commit sha can. It is not a secret - the repository is public, and
+       * the sha is already in every deployment record Vercel shows - and it
+       * turns "is my fix live?" from an investigation into one comparison.
+       */
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev',
+      /*
        * ── WHY THE OUTPUT BUDGET IS PUBLISHED HERE ───────────────────────────
        *
        * On 2026-08-30 the safety evaluation was found to be running at
