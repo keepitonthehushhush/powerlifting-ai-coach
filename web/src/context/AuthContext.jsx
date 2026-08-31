@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { clearSignOutReason, recordSignOut, readSignOutReason } from '../lib/signOutReason.js';
+import {
+  SIGN_OUT_REASONS,
+  clearSignOutReason,
+  declareSignOutIntent,
+  readSignOutReason,
+  recordSignOut,
+  takeSignOutIntent,
+} from '../lib/signOutReason.js';
 
 const AuthContext = createContext(null);
 
@@ -55,7 +62,18 @@ export function AuthProvider({ children }) {
       // null session on every cold load for anybody not signed in, and
       // recording that would greet every first-time visitor with a notice that
       // their session had ended.
-      if (hadSession.current && !next) recordSignOut(event);
+      if (hadSession.current && !next) {
+        /*
+         * Ask what was DECLARED before falling back to the event name. The
+         * listener is the last thing to run, so writing the breadcrumb around
+         * the sign-out - clear, then sign out, then this - meant this
+         * overwrote it every time. Every deliberate sign-out was being
+         * reported as an unexplained one. See lib/signOutReason.js.
+         */
+        const declared = takeSignOutIntent();
+        if (declared === SIGN_OUT_REASONS.deliberate) clearSignOutReason();
+        else recordSignOut(declared ?? event);
+      }
       if (next) clearSignOutReason();
       hadSession.current = Boolean(next);
 
@@ -138,8 +156,16 @@ export function AuthProvider({ children }) {
       updatePassword: (password) => supabase.auth.updateUser({ password }),
 
       signOut: () => {
-        // A sign-out the person asked for is not a fault, and must not show up
-        // on the login screen as though something went wrong.
+        /*
+         * A sign-out the person asked for is not a fault and must not show up
+         * on the login screen as though something went wrong.
+         *
+         * Declared BEFORE the call, not cleared around it. supabase.auth
+         * .signOut() fires SIGNED_OUT, and the listener above runs after this
+         * function returns - so clearing here and hoping was exactly the bug:
+         * the listener wrote the breadcrumb back a moment later.
+         */
+        declareSignOutIntent(SIGN_OUT_REASONS.deliberate);
         clearSignOutReason();
         return supabase.auth.signOut();
       },

@@ -151,7 +151,10 @@ export const en = {
   },
 
   auth: {
-    sessionEnded: 'You were signed out and we are not sure why — please sign in again. If this keeps happening, the code in brackets tells us what went wrong.',
+    signedOutRevoked:
+      'Your session on this device is no longer valid, so you have been signed out. This is normal right after turning on two-step sign-in, which ends every other session. Sign in again to carry on.',
+    signedOutPlain: 'You have been signed out. Sign in again to pick up where you left off.',
+    signedOutGeneric: 'You have been signed out. Sign in again to pick up where you left off.',
     tagline: 'Structured powerlifting programming that adapts to what you actually lift.',
     email: 'Email',
     emailCleaned: 'Removed an invisible character your keyboard added. The address above is what will be used.',

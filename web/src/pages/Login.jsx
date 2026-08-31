@@ -8,6 +8,7 @@ import { checkPwned } from '../lib/pwnedPassword.js';
 import { Turnstile, resetTurnstile } from '../components/Turnstile.jsx';
 import { enabled as captchaEnabled } from '../lib/turnstile.js';
 import { cleanEmailInput, hadInvisibleCharacters, describeEmailProblem } from '../lib/emailInput.js';
+import { describeSignOut } from '../lib/signOutReason.js';
 import { classifyAuthError, authErrorMessageKey, shouldRecord } from '../lib/authErrors.js';
 import { supabase } from '../lib/supabase.js';
 
@@ -253,9 +254,19 @@ export function Login() {
             being guessed at on the strength of a hypothesis; this is the
             instrument that decides which fix is the right one. */}
         {endedSession && (
-          <p className="warning">
-            {t('auth.sessionEnded')}{' '}
-            <span className="muted small">({endedSession.reason})</span>
+          /*
+           * The raw event name used to be printed after this sentence, in
+           * brackets. That was right while this was an instrument for a bug
+           * with three indistinguishable causes - the code WAS the diagnostic.
+           * It is wrong now that the causes are known: "we are not sure why
+           * (SIGNED_OUT)" shows somebody the inside of the machine and tells
+           * them the operator is confused.
+           *
+           * The code still ships, on data-reason, where a developer reading
+           * devtools finds it and a person reading the page does not.
+           */
+          <p className="warning" data-reason={endedSession.reason}>
+            {t(describeSignOut(endedSession.reason))}
           </p>
         )}
 

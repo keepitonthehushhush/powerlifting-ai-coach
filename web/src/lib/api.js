@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js';
 import { config } from './config.js';
 import { BUILD_ID } from './version.js';
+import { SIGN_OUT_REASONS, declareSignOutIntent, sessionIsDead } from './signOutReason.js';
 
 /**
  * Thin fetch wrapper that attaches the current Supabase access token to every
@@ -140,8 +141,52 @@ async function request(path, options = {}) {
   if (response.status === 304) return null;
 
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, body);
+
+  if (!response.ok) {
+    // A session the server has finished with cannot be recovered by trying
+    // again, and getSession() will keep handing out the dead token because it
+    // reads storage without verifying. Drop it here so the app lands on the
+    // sign-in screen instead of repeating the same 401. See sessionIsDead.
+    if (sessionIsDead({ status: response.status, code: body?.details?.code })) {
+      await endDeadSession();
+    }
+    throw new ApiError(response.status, body);
+  }
+
   return body;
+}
+
+/**
+ * Give up a session the server has rejected.
+ *
+ * `scope: 'local'` because the token is already invalid - a global sign-out
+ * would try to revoke it over the network and be refused, and the point here
+ * is to clear what THIS browser is holding.
+ *
+ * Guarded by a flag because a page typically has several requests in flight,
+ * and every one of them gets the same 401. Without it, one dead session
+ * produces a burst of sign-outs and a burst of auth events behind them.
+ */
+let endingSession = false;
+
+async function endDeadSession() {
+  if (endingSession) return;
+  endingSession = true;
+  try {
+    // Declared, not written: signOut() fires SIGNED_OUT and the auth listener
+    // runs last, so a breadcrumb written here would be overwritten with the
+    // generic event name a moment later. Same ordering trap as the deliberate
+    // sign-out - see lib/signOutReason.js.
+    declareSignOutIntent(SIGN_OUT_REASONS.serverRejected);
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Nothing useful is left to do. The throw below still reaches the caller,
+    // and the person sees a real error rather than a silent nothing.
+  } finally {
+    // Cleared so a later session, signed in after this one, can also be
+    // dropped if the server rejects it too.
+    endingSession = false;
+  }
 }
 
 export const api = {

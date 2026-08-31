@@ -119,7 +119,10 @@ export const es = {
   },
 
   auth: {
-    sessionEnded: 'Se cerró tu sesión y no sabemos con certeza por qué; vuelve a iniciar sesión. Si sigue pasando, el código entre paréntesis nos dice qué falló.',
+    signedOutRevoked:
+      'Tu sesión en este dispositivo ya no es válida, así que se ha cerrado. Es normal justo después de activar el inicio de sesión en dos pasos, que finaliza todas las demás sesiones. Vuelve a iniciar sesión para continuar.',
+    signedOutPlain: 'Has cerrado sesión. Vuelve a iniciar sesión para continuar donde lo dejaste.',
+    signedOutGeneric: 'Has cerrado sesión. Vuelve a iniciar sesión para continuar donde lo dejaste.',
     tagline: 'Programación estructurada de powerlifting que se adapta a lo que realmente levantas.',
     email: 'Correo electrónico',
     emailCleaned: 'Se elimino un caracter invisible que agrego tu teclado. Se usara la direccion de arriba.',
