@@ -360,6 +360,21 @@ const CHECKS = [
              and g.table_name <> 'exercise_library'`,
   },
   {
+    name: 'the error table cannot be told a story',
+    why: 'Browsers now write to error_events, and a browser is a thing an athlete controls. The privacy promise in the README - that health data never reaches observability - is kept by three CHECK constraints rather than by the route remembering to be careful: a client row may carry no http_status and no method, only four named detail keys, and a topFrame that is a coordinate rather than a sentence. If those constraints are ever dropped, the promise becomes a matter of code review again, which is how it would quietly stop being true.',
+    sql: `select count(*) = 3 as ok
+            from pg_constraint con
+            join pg_class rel on rel.oid = con.conrelid
+            join pg_namespace n on n.oid = rel.relnamespace
+           where n.nspname = 'public'
+             and rel.relname = 'error_events'
+             and con.conname in (
+               'error_events_origin_shape',
+               'error_events_detail_check',
+               'error_events_top_frame_shape'
+             )`,
+  },
+  {
     name: 'a coach that has written this much has stored at least one program',
     why: 'workout_programs is the only durable memory in the product. The conversation window replays 30 messages; everything older is gone. If the coach has been writing programs in prose and none have been recorded, athletes are being told which week they are on by a system that will not remember it - which is exactly what an athlete reported on 2026-08-30, with 54 assistant messages on file and zero program rows.',
     sql: `with volume as (

@@ -38,13 +38,28 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    // Console only, and deliberately. There is no error tracker wired up, and
-    // sending a stack trace anywhere would need to answer what health data
-    // might be sitting in a component's props at the moment it threw. The
-    // console is the developer's, on the developer's machine, and goes no
-    // further.
     // eslint-disable-next-line no-console
     console.error('Coach Diaz crashed while rendering:', error);
+
+    /*
+     * The reporter arrives as a PROP, and that is the whole design.
+     *
+     * This file's rule is that it imports React and nothing else: it renders
+     * exactly when something has failed, so importing the API client or the
+     * i18n provider risks failing for the very reason it is being shown.
+     * Importing a crash reporter would break that rule for the one thing that
+     * most needs to keep working during a crash.
+     *
+     * The question this used to defer - what health data might be sitting in a
+     * component's props at the moment it threw - is answered in
+     * lib/crashReport.js: nothing leaves here but a stack coordinate, and the
+     * database refuses anything else.
+     */
+    try {
+      this.props.onCrash?.(error);
+    } catch {
+      // A reporter that throws must not replace the error it was reporting.
+    }
   }
 
   render() {

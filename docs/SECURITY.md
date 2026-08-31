@@ -607,6 +607,7 @@ was written. Asked of the catalogue on 2026-08-29, there are now **seven**:
 - `public.delete_my_account()`
 - `public.record_audit_event(text, jsonb)`
 - `public.record_error_event(...)`
+- `public.record_client_error_event(...)`
 - `public.refresh_leaderboard_entry()`
 - `public.set_leaderboard_opt_in(boolean)`
 - `public.my_leaderboard_entry()`

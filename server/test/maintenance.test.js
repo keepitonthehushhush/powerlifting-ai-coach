@@ -112,7 +112,7 @@ describe('the error boundary', () => {
   test('it wraps App from OUTSIDE the provider tree', () => {
     // A boundary inside the providers cannot catch a provider that throws on
     // its first render, and the providers are where a bad token surfaces.
-    assert.match(main, /<ErrorBoundary>\s*<App \/>\s*<\/ErrorBoundary>/);
+    assert.match(main, /<ErrorBoundary[^>]*>\s*<App \/>\s*<\/ErrorBoundary>/);
   });
 
   test('it offers a way out, and one of them is a full navigation', () => {
