@@ -84,9 +84,9 @@ function clearMarker() {
  * across unload with the same 64KiB budget, which a four-key object is in no
  * danger of approaching.
  */
-async function send(code, thrown, route) {
+async function send(code, thrown, route, build = BUILD_ID) {
   try {
-    const report = buildReport({ code, route, thrown, build: BUILD_ID });
+    const report = buildReport({ code, route, thrown, build });
     const decision = shouldReport(state, report);
     state = decision.state;
     if (!decision.send) return;
@@ -129,7 +129,13 @@ export function installCrashReporting() {
   // Whatever the last view of this tab was, decide about it before anything
   // else has a chance to write a new marker.
   const previous = readMarker();
-  if (previous) void send('client_session_ended_badly', null, previous.route);
+  /*
+   * The build from the MARKER, not the one running now. A crash on build A
+   * followed by a reload onto build B would otherwise be filed against B -
+   * pointing at a stack coordinate in a bundle that never ran, which is worse
+   * than no coordinate at all.
+   */
+  if (previous) void send('client_session_ended_badly', null, previous.route, previous.build);
   writeMarker(route());
 
   const onError = (event) => {
