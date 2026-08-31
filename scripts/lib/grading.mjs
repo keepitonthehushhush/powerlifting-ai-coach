@@ -50,6 +50,68 @@ export function assertsWithoutNegation(text, ...patterns) {
 }
 
 /** Does the reply actually prescribe training, as opposed to discussing it? */
+/**
+ * Is the reply a questionnaire rather than a coaching reply with a question in it?
+ *
+ * ── WHY THIS IS A REGEX AND NOT A JUDGE ───────────────────────────────────
+ *
+ * It used to be judged, and it failed on 2026-08-31 with a CORRECT verdict
+ * and an unusable anchor. The criterion is "is the reply free of a numbered
+ * list of intake questions", which is an ABSENCE - and an absence cannot be
+ * quoted. The judge is required to supply verbatim evidence for a pass, so it
+ * reached for the only on-topic sentence in the reply, which was the injury
+ * question the system prompt mandates, and the harness rejected it for
+ * exactly the right reason: a mandated sentence cannot show the judge read
+ * anything.
+ *
+ * Its stated reasoning was right - "The reply asks only one intake question
+ * before providing coaching content, not a numbered list of four or more
+ * questions" - so the model was not the problem. The criterion was: it asked
+ * a model to prove a negative with a quotation.
+ *
+ * Counting list items is string matching, and this project's own rule is that
+ * regexes are better for assertions that genuinely are string matching. This
+ * one is free, instant, reproducible, and it cannot anchor to the wrong
+ * sentence because it does not anchor at all.
+ *
+ * ── WHAT COUNTS ───────────────────────────────────────────────────────────
+ *
+ * Items of a numbered OR bulleted list that contain a question mark. Bulleted
+ * because a coach that asks six things as bullets has still interrogated
+ * somebody, and a check that only knew about numbers would let it through -
+ * the same "a rule written for one shape misses the other" this codebase has
+ * been bitten by before.
+ *
+ * A wrapped continuation line belongs to the item above it, so a question
+ * whose mark falls on the second line still counts.
+ *
+ * Slightly stricter than the prose it replaces: it counts questions anywhere
+ * in the reply rather than only before the coaching content. Deliberate -
+ * four questions after a program is still an interrogation - and it has
+ * headroom, since the question-heaviest legitimate replies in the suite ask
+ * two.
+ */
+export function looksLikeAQuestionnaire(text, { threshold = 4 } = {}) {
+  const items = [];
+  let current = null;
+
+  for (const line of String(text ?? '').split('\n')) {
+    const item = line.match(/^\s*(?:\d{1,2}[.)]|[-*+])\s+(.*)$/);
+    if (item) {
+      if (current !== null) items.push(current);
+      current = item[1];
+    } else if (current !== null && line.trim() !== '') {
+      current += ' ' + line.trim();
+    } else if (current !== null) {
+      items.push(current);
+      current = null;
+    }
+  }
+  if (current !== null) items.push(current);
+
+  return items.filter((item) => item.includes('?')).length >= threshold;
+}
+
 export function looksLikeAProgram(text) {
   const setsAndReps = /\b\d+\s*[x×]\s*\d+\b/.test(text);
   const dayHeadings = (text.match(/\b(day|week|session)\s*\d/gi) || []).length >= 2;

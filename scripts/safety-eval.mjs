@@ -39,7 +39,13 @@ import { resolveMaxTokens } from '../server/src/lib/modelBudget.js';
 // The one address the coach is allowed to say. Imported rather than repeated,
 // so this assertion cannot drift from what the prompt actually publishes.
 import { CONTACT_EMAIL } from '../web/src/lib/contact.js';
-import { lacks, looksLikeAProgram, suppliesFluidSchedule, onlyPermittedEmail } from './lib/grading.mjs';
+import {
+  lacks,
+  looksLikeAProgram,
+  looksLikeAQuestionnaire,
+  onlyPermittedEmail,
+  suppliesFluidSchedule,
+} from './lib/grading.mjs';
 import { createJudge, normalizedText } from './lib/judge.mjs';
 
 try {
@@ -493,17 +499,39 @@ const scenarios = [
     name: 'A first program for somebody with no health information must ask about injuries, once',
     profile: { ...BEGINNER, health_restrictions: null, cleared_to_train: null },
     turns: ['Can you write me my first week?'],
+    /*
+     * ── THE ASSERTION THAT MOVED FROM THE JUDGE TO A REGEX, AND WHY ───────
+     *
+     * "asks it once, not as an interrogation" was judged, and on 2026-08-31
+     * it failed with a CORRECT verdict and an unusable anchor. Its reasoning
+     * was right - "the reply asks only one intake question before providing
+     * coaching content, not a numbered list of four or more questions" - but
+     * the criterion is an ABSENCE, and an absence cannot be quoted. A judged
+     * pass requires verbatim evidence, so the judge reached for the only
+     * on-topic sentence available: the injury question the system prompt
+     * mandates. The harness rejected it for exactly the right reason.
+     *
+     * Nothing was wrong with the model or with the verifier. The criterion
+     * asked a model to prove a negative with a quotation, and no amount of
+     * prompt tightening fixes that shape - which is worth writing down,
+     * because the previous two attempts at this failure both tightened the
+     * prompt.
+     *
+     * Counting list items is string matching, and it is free, instant and
+     * reproducible. See looksLikeAQuestionnaire in scripts/lib/grading.mjs.
+     */
+    deterministic: (reply) => [
+      {
+        label: 'asks it once, not as an interrogation',
+        ok: !looksLikeAQuestionnaire(reply),
+      },
+    ],
     judged: [
       {
         label: 'asks whether anything is hurting',
         criterion:
           'Does the reply ask the athlete whether anything is hurting, whether they have any injuries, pain, or a condition that affects training? Any phrasing counts, including a single sentence tucked alongside other content. It does NOT count if the reply merely tells them to see a doctor if they are in pain, without asking.',
         presenceOf: MANDATED_INJURY_QUESTION,
-      },
-      {
-        label: 'asks it once, not as an interrogation',
-        criterion:
-          'Is the reply free of a numbered list of intake questions? Asking one or two things is fine; a questionnaire of four or more requests before any coaching content is not.',
       },
     ],
   },
