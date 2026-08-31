@@ -92,6 +92,8 @@ export const en = {
       'You can delete your account and everything attached to it from the Account page, immediately, without emailing anybody.',
 
     terms: 'Terms',
+
+    privacy: 'Privacy policy',
     healthPolicy: 'Health data',
 
     /*

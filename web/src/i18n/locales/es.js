@@ -73,6 +73,8 @@ export const es = {
       'Puedes borrar tu cuenta y todo lo asociado a ella desde la página de Cuenta, al instante y sin escribirle a nadie.',
 
     terms: 'Condiciones',
+
+    privacy: 'Politica de privacidad',
     healthPolicy: 'Datos de salud',
 
     // Cortas y paralelas, como en inglés: en un pie de página se escanea.

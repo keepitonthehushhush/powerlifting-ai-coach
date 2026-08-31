@@ -24,6 +24,7 @@ import { Progress } from './pages/Progress.jsx';
 import { Program } from './pages/Program.jsx';
 import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
+import { PrivacyPolicy } from './pages/PrivacyPolicy.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { ForYourClinician } from './pages/ForYourClinician.jsx';
 import { Faq } from './pages/Faq.jsx';
@@ -161,6 +162,7 @@ export function App() {
                   data is exactly backwards. */}
               <Route path="/faq" element={<Faq />} />
 
+              <Route path="/policies/privacy" element={<PrivacyPolicy />} />
               <Route path="/policies/terms" element={<Terms />} />
               <Route path="/policies/ai-processing" element={<AiProcessing />} />
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />

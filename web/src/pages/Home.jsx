@@ -167,6 +167,9 @@ export function Home() {
           <Link className="home-link" to="/policies/terms">
             {t('home.terms')}
           </Link>
+          <Link className="home-link" to="/policies/privacy">
+            {t('home.privacy')}
+          </Link>
           <Link className="home-link" to="/policies/health-data">
             {t('home.healthPolicy')}
           </Link>

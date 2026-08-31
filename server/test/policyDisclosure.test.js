@@ -419,18 +419,40 @@ describe('the terms describe the age rule the code actually enforces', () => {
 
   test('the deletion promise matches the cascade that delivers it', () => {
     // Every user-scoped table hangs off auth.users with ON DELETE CASCADE, so
-    // "nothing is kept back" is a claim the schema makes true rather than a
-    // claim the route has to remember.
+    // the sweep is a claim the schema makes true rather than one the route has
+    // to remember.
     const cascades = [...migrations.matchAll(/references auth\.users \(id\) on delete cascade/g)];
     assert.ok(cascades.length >= 8, 'a user-scoped table may have been added without a cascade');
-    assert.match(termsPage, phrase('Nothing is kept back for our own records'));
+  });
+
+  test('and it no longer promises more than the schema delivers', () => {
+    /*
+     * ── THE PROMISE THIS TEST USED TO PIN ─────────────────────────────────
+     *
+     * It asserted the Terms say "Nothing is kept back for our own records",
+     * and treated the cascade count as proof of it. The cascades are real; the
+     * sentence was not. Migration 0030 keeps audit_events after deletion with
+     * user_id set to NULL, and Stripe keeps its own transaction records under
+     * its own obligations - neither of which a cascade on auth.users touches.
+     * The internal review flagged it as A7 and the sentence stayed for two
+     * more weeks because a passing test sat on top of it.
+     *
+     * A test that pins a false claim is worse than no test: it converts a
+     * documentation error into a thing you have to argue with CI about. So
+     * this one now pins the opposite - that the overclaim is gone, and that
+     * the two survivors are named where a reader will see them.
+     */
+    assert.doesNotMatch(termsPage, phrase('Nothing is kept back for our own records'));
+    assert.match(termsPage, phrase('Two things survive', 'i'));
+    assert.match(termsPage, /audit trail/i);
+    assert.match(termsPage, /Stripe/);
   });
 });
 
 describe('every policy page dates its own change', () => {
   test('each carries a changelog for the version it is stamped with', () => {
     for (const [page, version] of [
-      [termsPage, 'tos-2026-08-27b'],
+      [termsPage, 'tos-2026-08-31a'],
       [aiPage, 'aip-2026-08-27c'],
       [healthPage, 'chd-2026-08-27b'],
     ]) {

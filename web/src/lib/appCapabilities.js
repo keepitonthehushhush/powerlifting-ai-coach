@@ -120,6 +120,7 @@ export const NOT_WORTH_DESCRIBING = {
   '/login': 'sign-in',
   '/consent': 'the consent screen, shown when it is needed rather than advertised',
   '/reset-password': 'password recovery, reached from an email',
+  '/policies/privacy': 'the privacy policy; notice rather than a feature, linked from every page footer',
   '/policies/terms': 'legal text, linked from every page footer',
   '/policies/ai-processing': 'legal text, linked from every page footer',
   '/policies/health-data': 'legal text, linked from every page footer',
