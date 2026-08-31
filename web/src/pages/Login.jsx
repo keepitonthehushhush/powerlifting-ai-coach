@@ -7,7 +7,7 @@ import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
 import { Turnstile, resetTurnstile } from '../components/Turnstile.jsx';
 import { enabled as captchaEnabled } from '../lib/turnstile.js';
-import { cleanEmailInput, hadInvisibleCharacters } from '../lib/emailInput.js';
+import { cleanEmailInput, hadInvisibleCharacters, describeEmailProblem } from '../lib/emailInput.js';
 import { classifyAuthError, authErrorMessageKey, shouldRecord } from '../lib/authErrors.js';
 import { supabase } from '../lib/supabase.js';
 
@@ -37,6 +37,14 @@ export function Login() {
    * somebody whose address keeps arriving mangled never learns why.
    */
   const [emailRepaired, setEmailRepaired] = useState(false);
+  /*
+   * Our own verdict on the address, replacing the browser's. See
+   * lib/emailInput.js for why the native one had to go: it blocked submission
+   * on a field that visibly contained an address and said "Enter an email
+   * address", which names the only thing that was not wrong and reports
+   * nothing back to us.
+   */
+  const [emailProblem, setEmailProblem] = useState(null);
   const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaBlocked, setCaptchaBlocked] = useState(false);
@@ -115,6 +123,18 @@ export function Login() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (isReset) return handleReset(event);
+
+    /*
+     * Our own address check, first, because the browser's no longer runs. It
+     * has to name the problem: a person told "enter an email address" while
+     * looking at their own address learns nothing and can do nothing, which is
+     * exactly how this cost two rounds of "same thing".
+     */
+    const problem = describeEmailProblem(email);
+    if (problem) {
+      setEmailProblem(problem);
+      return;
+    }
 
     // Checked here as well as by disabling the button: a submit can still
     // arrive by keyboard, and this branch is the one that decides.
@@ -239,7 +259,13 @@ export function Login() {
           </p>
         )}
 
-        <form onSubmit={handleSubmit} className="stack">
+        {/*
+          noValidate: the browser's constraint UI is replaced, not disabled in
+          spirit. The field stays type=email so an iPhone still offers the @
+          key; only the refusal changes hands, to something that can say WHICH
+          character is wrong - including one nobody can see.
+        */}
+        <form onSubmit={handleSubmit} className="stack" noValidate>
           <label>
             {t('auth.email')}
             <input
@@ -260,8 +286,10 @@ export function Login() {
               onChange={(e) => {
                 setEmailRepaired(hadInvisibleCharacters(e.target.value));
                 setEmail(cleanEmailInput(e.target.value));
+                setEmailProblem(null);
               }}
-              required
+              aria-invalid={emailProblem ? 'true' : undefined}
+              aria-describedby={emailProblem ? 'email-problem' : undefined}
               autoComplete="email"
               /*
                * iOS capitalizes and autocorrects text fields by default. None
@@ -276,7 +304,14 @@ export function Login() {
               inputMode="email"
             />
           </label>
-          {emailRepaired && (
+          {emailProblem && (
+            <p className="error small" id="email-problem" role="alert">
+              {emailProblem.codePoint
+                ? t('auth.emailProblem.character', { code: emailProblem.codePoint })
+                : t(`auth.emailProblem.${emailProblem.code}`)}
+            </p>
+          )}
+          {emailRepaired && !emailProblem && (
             <p className="muted small" role="status">
               {t('auth.emailCleaned')}
             </p>

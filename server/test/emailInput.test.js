@@ -1,6 +1,12 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanEmailInput, hadInvisibleCharacters } from '../../web/src/lib/emailInput.js';
+import {
+  cleanEmailInput,
+  hadInvisibleCharacters,
+  describeEmailProblem,
+} from '../../web/src/lib/emailInput.js';
+import { en } from '../../web/src/i18n/locales/en.js';
+import { es } from '../../web/src/i18n/locales/es.js';
 import { readSource } from './helpers/source.js';
 
 /**
@@ -123,5 +129,84 @@ describe('the login form actually uses it, and tells iOS to behave', () => {
     // an iPhone keyboard is worth more than the validation is worth avoiding.
     assert.match(login, /type="email"/);
     assert.match(login, /autoComplete="email"/);
+  });
+});
+
+describe('the form says WHICH problem, not "enter an email address"', () => {
+  /*
+   * Two rounds of "same thing" produced no new information, because the only
+   * thing the app could say was the browser's own sentence - which names the
+   * one thing that is not wrong, cannot be reworded, and reports nothing back.
+   * Every branch below exists so the third round starts from a fact.
+   */
+  const CASES = {
+    'eddydiaz10@gmail.com': null,
+    'eddy+tag@sub.gmail.co.uk': null,
+    '': 'empty',
+    '   ': 'empty',
+    'eddydiaz10': 'noAt',
+    'a@@b.com': 'manyAt',
+    '@gmail.com': 'noLocal',
+    'eddy@': 'noDomain',
+    'eddy@gmail': 'noDot',
+    'eddy@gmail..com': 'badDot',
+    'eddy@gmail.com.': 'badDot',
+    'eddy@.gmail.com': 'badDot',
+  };
+
+  for (const [value, code] of Object.entries(CASES)) {
+    test(`${JSON.stringify(value)} -> ${code ?? 'accepted'}`, () => {
+      const problem = describeEmailProblem(value);
+      assert.equal(problem?.code ?? null, code);
+    });
+  }
+
+  test('an invisible character never reaches the verdict, because it is stripped first', () => {
+    // The two halves working together: cleaning removes it, so the address
+    // that remains is judged on its merits rather than rejected for a
+    // character nobody can see.
+    assert.equal(describeEmailProblem(`eddydiaz10@gmail.com\u00a0`), null);
+    assert.equal(describeEmailProblem(`\u200beddydiaz10@gmail.com`), null);
+  });
+
+  test('a lookalike @ is named as such, not reported as a missing @', () => {
+    /*
+     * Checked BEFORE the missing-@ test on purpose. A full-width @ from a
+     * keyboard the user did not realize they were on would otherwise produce
+     * "that address is missing an @ sign" while one is plainly on screen -
+     * the same unhelpfulness, one level down.
+     */
+    const problem = describeEmailProblem('eddy＠gmail.com');
+    assert.equal(problem.code, 'lookalikeAt');
+    assert.equal(problem.codePoint, 'U+FF20');
+  });
+
+  test('an unusual visible character is reported with its code point', () => {
+    // "Remove the U+2019 character" is actionable. "Enter an email address"
+    // is not, which is the entire reason this function exists.
+    const problem = describeEmailProblem("eddy’s@gmail.com");
+    assert.equal(problem.code, 'oddCharacter');
+    assert.equal(problem.codePoint, 'U+2019');
+  });
+
+  test('every code the function can return has a message in every locale', () => {
+    // A verdict with no sentence attached is a silent failure wearing a
+    // different hat.
+    const codes = ['empty', 'noAt', 'manyAt', 'noLocal', 'noDomain', 'noDot', 'badDot'];
+    for (const [name, locale] of [['en', en], ['es', es]]) {
+      for (const code of codes) {
+        assert.ok(locale.auth.emailProblem[code], `${name} has no message for ${code}`);
+      }
+      // The two character verdicts share one message, which takes the code point.
+      assert.match(locale.auth.emailProblem.character, /\{code\}/, `${name} does not interpolate the code point`);
+    }
+  });
+
+  test('the form validates itself rather than leaving it to the browser', () => {
+    const login = readSource(new URL('../../web/src/pages/Login.jsx', import.meta.url));
+    assert.match(login, /noValidate/);
+    assert.match(login, /describeEmailProblem\(email\)/);
+    // And the field keeps type=email, so the phone keyboard still has an @.
+    assert.match(login, /type="email"/);
   });
 });

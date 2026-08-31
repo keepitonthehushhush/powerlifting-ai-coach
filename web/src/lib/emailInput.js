@@ -78,3 +78,82 @@ export function cleanEmailInput(value) {
 export function hadInvisibleCharacters(value) {
   return typeof value === 'string' && cleanEmailInput(value) !== value;
 }
+
+/**
+ * Why this value is not an address, in terms a person can act on.
+ *
+ * ── WHY WE VALIDATE INSTEAD OF THE BROWSER ────────────────────────────────
+ *
+ * `input type=email` blocks submission and says "Enter an email address." on a
+ * field that visibly contains one. That message names the only thing that is
+ * not wrong. It cannot be reworded, cannot be translated, and reports nothing
+ * back to us - so two rounds of "same thing" produced no new information.
+ *
+ * The form now carries noValidate and asks this instead. It costs the native
+ * bubble, which was worth nothing here, and buys a sentence that names the
+ * actual problem - including the code point of a character nobody can see.
+ *
+ * The keyboard is unaffected: the field is still type=email, so an iPhone
+ * still offers the @ key. Only the refusal changes hands.
+ *
+ * ── DELIBERATELY NOT AN RFC 5322 VALIDATOR ────────────────────────────────
+ *
+ * Every regex claiming to implement that standard is either wrong or
+ * unreadable, and being stricter than the mail system helps nobody: the
+ * authoritative test of an address is whether mail arrives. This looks for the
+ * mistakes people actually make and the characters phones actually insert, and
+ * lets anything else through to the server, which will say no with its own
+ * error if it must.
+ *
+ * @returns {null | {code: string, character?: string, codePoint?: string}}
+ */
+export function describeEmailProblem(value) {
+  const cleaned = cleanEmailInput(value);
+
+  if (!cleaned) return { code: 'empty' };
+
+  /*
+   * A lookalike @ is checked BEFORE the missing-@ test, or the message tells
+   * somebody there is no @ sign while one is plainly on their screen - the
+   * same unhelpfulness this function was written to remove, one level down.
+   * U+FF20 comes from a full-width keyboard, U+FE6B from some paste paths.
+   */
+  const lookalikeAt = cleaned.match(/[\uff20\ufe6b]/);
+  if (lookalikeAt) {
+    return {
+      code: 'lookalikeAt',
+      character: lookalikeAt[0],
+      codePoint: `U+${lookalikeAt[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+    };
+  }
+
+  const at = cleaned.split('@');
+  if (at.length === 1) return { code: 'noAt' };
+  if (at.length > 2) return { code: 'manyAt' };
+
+  const [local, domain] = at;
+  if (!local) return { code: 'noLocal' };
+  if (!domain) return { code: 'noDomain' };
+  if (!domain.includes('.')) return { code: 'noDot' };
+  if (domain.startsWith('.') || domain.endsWith('.') || domain.includes('..')) {
+    return { code: 'badDot' };
+  }
+
+  /*
+   * Anything outside the set an address may contain. Reported WITH its code
+   * point, because the characters that cause this are routinely invisible - a
+   * full-width @ from a Japanese keyboard, a Cyrillic 'а' from a copied link,
+   * a smart apostrophe from a notes app. "Remove the U+FF20 character" is
+   * something a person can act on; "enter an email address" is not.
+   */
+  const odd = cleaned.match(/[^\p{L}\p{N}.!#$%&'*+/=?^_`{|}~@-]/u);
+  if (odd) {
+    return {
+      code: 'oddCharacter',
+      character: odd[0],
+      codePoint: `U+${odd[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+    };
+  }
+
+  return null;
+}

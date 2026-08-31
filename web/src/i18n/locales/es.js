@@ -88,6 +88,17 @@ export const es = {
     tagline: 'Programación estructurada de powerlifting que se adapta a lo que realmente levantas.',
     email: 'Correo electrónico',
     emailCleaned: 'Se elimino un caracter invisible que agrego tu teclado. Se usara la direccion de arriba.',
+    emailProblem: {
+      empty: 'Escribe tu correo electronico.',
+      noAt: 'A esa direccion le falta el signo @.',
+      manyAt: 'Esa direccion tiene mas de un signo @.',
+      noLocal: 'No hay nada antes del signo @.',
+      noDomain: 'No hay nada despues del signo @.',
+      noDot: 'La parte despues del @ necesita un punto, como gmail.com.',
+      badDot: 'Hay un punto en el lugar equivocado despues del signo @.',
+      character:
+        'Hay un caracter oculto o inusual en esa direccion ({code}). Borra la direccion y escribela de nuevo en vez de pegarla.',
+    },
     password: 'Contraseña',
     signIn: 'Iniciar sesión',
     createAccount: 'Crear cuenta',

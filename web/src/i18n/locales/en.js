@@ -120,6 +120,17 @@ export const en = {
     tagline: 'Structured powerlifting programming that adapts to what you actually lift.',
     email: 'Email',
     emailCleaned: 'Removed an invisible character your keyboard added. The address above is what will be used.',
+    emailProblem: {
+      empty: 'Enter your email address.',
+      noAt: 'That address is missing an @ sign.',
+      manyAt: 'That address has more than one @ sign.',
+      noLocal: 'There is nothing before the @ sign.',
+      noDomain: 'There is nothing after the @ sign.',
+      noDot: 'The part after the @ needs a dot, like gmail.com.',
+      badDot: 'There is a dot in the wrong place after the @ sign.',
+      character:
+        'There is a hidden or unusual character in that address ({code}). Delete the address and type it again rather than pasting it.',
+    },
     password: 'Password',
     signIn: 'Sign in',
     createAccount: 'Create account',
