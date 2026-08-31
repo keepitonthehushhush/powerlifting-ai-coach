@@ -74,11 +74,17 @@ export async function requireAuth(req, res, next) {
       });
     }
 
-    if (stepUp.verdict === 'unknown') {
-      // Not refused - see the note in shouldRefuse - but never silent. The
-      // database's restrictive policy is what actually holds in this state,
-      // and a run of these means getUser() changed shape underneath us.
-      logger.warn('auth.step_up_undetermined', { level, reason: stepUp.reason });
+    if (stepUp.anomaly) {
+      /*
+       * Only when the factor list contradicts the assurance level, which
+       * cannot happen while the reading in assuranceLevel.js holds. The first
+       * version of this logged whenever the list was ABSENT, and absent turned
+       * out to be the ordinary state of every account that has not enrolled -
+       * twelve warnings in thirty seconds from one signed-in person. A warning
+       * that fires on the common path is a warning that gets filtered out,
+       * taking the real one with it.
+       */
+      logger.warn('auth.step_up_anomaly', { level, reason: stepUp.anomaly });
     }
 
     req.user = { id: data.user.id, email: data.user.email };

@@ -90,25 +90,51 @@ describe('deciding whether a caller still owes a second factor', () => {
     }
   });
 
-  test('an ABSENT factor list is unknown, not empty', () => {
-    // "getUser() returned no factors field" and "this person has no factors"
-    // are different facts, and collapsing them is how a check reports an
-    // unearned pass.
+  test('an ABSENT factor list means no factors, which production measured', () => {
+    /*
+     * This assertion used to say the opposite - that an absent list was
+     * `unknown` - and production disagreed within a minute of the deploy:
+     * twelve auth.step_up_undetermined warnings in thirty seconds from one
+     * signed-in account, all of them BEFORE it enrolled. getUser() omits the
+     * field when there are none rather than sending an empty array, so the
+     * "we cannot tell" branch was the ordinary path for everybody who has not
+     * turned MFA on.
+     *
+     * Careful reasoning about a general case, wrong about this one. The
+     * measurement settled it.
+     */
     for (const factors of [null, undefined, 'nope', {}]) {
       const stepUp = describeStepUp({ level: AAL1, factors });
-      assert.equal(stepUp.verdict, 'unknown', `${String(factors)} was treated as a factor list`);
+      assert.equal(stepUp.verdict, 'satisfied', `${String(factors)} blocked somebody with no factor`);
+      assert.equal(stepUp.anomaly, undefined, 'the ordinary path must not report an anomaly');
     }
   });
 
-  test('unknown does not refuse, and the reason is written down where it is decided', () => {
+  test('an aal2 session with no factor list IS an anomaly, because it cannot happen', () => {
+    // Verifying a factor is the only way to reach aal2. The field being
+    // absent anyway means absence stopped meaning absence - which is exactly
+    // when the inference above needs re-measuring. Free discriminator.
+    const stepUp = describeStepUp({ level: AAL2, factors: undefined });
+    assert.equal(stepUp.verdict, 'satisfied', 'an aal2 session is still satisfied');
+    assert.match(stepUp.anomaly, /cannot be true/);
+  });
+
+  test('an aal2 session that reports its factors is ordinary and silent', () => {
+    const stepUp = describeStepUp({ level: AAL2, factors: [verified] });
+    assert.equal(stepUp.anomaly, undefined);
+  });
+
+  test('only stepUpRequired refuses, and that is where the refusal is decided', () => {
     /*
-     * Deliberate and uncomfortable. Refusing on unknown turns any change in
-     * the shape of a getUser() response into a total outage for everybody,
-     * including the majority with no second factor. It is only safe because
-     * the restrictive RLS policy evaluates the same rule inside the database,
-     * where the factor list is the table being read and cannot be absent.
+     * Refusing on anything ambiguous turns a change in the shape of a
+     * getUser() response into a total outage for everybody, including the
+     * majority with no second factor. Safe only because the restrictive RLS
+     * policy evaluates the same rule inside the database, where the factor
+     * list cannot be absent - it IS the table being read.
      */
     assert.equal(shouldRefuse(describeStepUp({ level: AAL1, factors: null })), false);
+    assert.equal(shouldRefuse(describeStepUp({ level: AAL2, factors: undefined })), false);
+    assert.equal(shouldRefuse(describeStepUp({ level: AAL1, factors: [verified] })), true);
     const source = readSource(new URL('../src/lib/assuranceLevel.js', import.meta.url));
     assert.match(source, /verdict === 'stepUpRequired'/, 'refusal must key on the one verdict');
   });
