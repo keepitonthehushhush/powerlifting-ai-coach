@@ -2062,6 +2062,131 @@ form > button.primary {
 .mfa-status.off::before { content: '○ '; color: var(--muted); }
 .mfa-enroll { margin-top: var(--space-3); }
 
+/* ── THE SIX-DIGIT CODE FIELD ──────────────────────────────────────────────
+ *
+ * One input, six boxes. The input covers the row with transparent text and a
+ * transparent caret; the boxes underneath are a picture of its value. See
+ * components/CodeInput.jsx and lib/codeBoxes.js for why it is not six inputs.
+ *
+ * The font-size is 1.5rem, comfortably over the 16px floor that stops iOS
+ * magnifying the page on focus - which matters more here than anywhere else
+ * in the app, because this field is the first thing somebody touches after
+ * signing in. */
+.code-input {
+  position: relative;
+  display: block;
+  /* The cap lives HERE, not on .code-boxes, and a measurement is why. With it
+     on the row, the boxes stopped at 336px on a 430px screen while the input -
+     which is `inset: 0` on this element - stayed 390px, leaving 54px of
+     invisible, tappable field past the last box. Capping the wrapper caps
+     both, so what can be tapped is exactly what can be seen. */
+  max-width: 21rem;
+}
+
+.code-input-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  /* Transparent rather than opacity: 0 - a zero-opacity input reads as hidden
+     to some password managers and is skipped for autofill, which would remove
+     the one-time-code fill this whole field is built around. */
+  color: transparent;
+  caret-color: transparent;
+  font-size: 1.5rem;
+  /* Above the boxes so a tap anywhere on the row lands on the field. */
+  z-index: 1;
+  /* Safari draws its own inner shadow on inputs; without this the "invisible"
+     field is faintly visible over the boxes. */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.code-input-field:focus { outline: none; }
+
+.code-boxes {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+}
+
+.code-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A FIXED height rather than an aspect ratio, and the measurement is why.
+     `aspect-ratio: 3/4` ties the height to the width, so the boxes grew with
+     the screen: 54px tall on a 320px phone and 77px on a 430px one, for the
+     same six digits. A code field should be the same size everywhere.
+
+     The width is what flexes, and it goes down to about 42px on the narrowest
+     phone - which is fine, because the box is NOT the tap target. The input
+     is `inset: 0` over the whole row, so a tap anywhere in it, gaps included,
+     lands on the field. The row is the target and it is 280px wide. */
+  height: 3.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1.5px solid var(--field-border);
+  border-radius: 10px;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.code-box[data-state='filled'] {
+  border-color: var(--muted);
+  background: var(--surface);
+}
+
+/* The box the next digit will land in. The ring is the affordance; the bar is
+   the caret the real input is not drawing. */
+.code-box[data-state='active'] {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.code-box[data-state='active']::after {
+  content: '';
+  width: 2px;
+  height: 1.4rem;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: code-caret 1.06s steps(1, end) infinite;
+}
+
+@keyframes code-caret {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+.code-input[data-invalid='true'] .code-box {
+  border-color: var(--error);
+}
+
+/* A blinking caret and a shake are both motion, and both have a still form
+   that keeps the information: the caret stays solid, the row does not move. */
+@media (prefers-reduced-motion: reduce) {
+  .code-box { transition: none; }
+  .code-box[data-state='active']::after { animation: none; opacity: 1; }
+  .code-input[data-invalid='true'] { animation: none; }
+}
+
+.code-input[data-invalid='true'] {
+  animation: code-shake 220ms ease-in-out;
+}
+
+@keyframes code-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.code-field label { margin-bottom: 0.35rem; }
+
 /* ── THE PAGE THAT WAS "ZOOMED IN A BIT" ───────────────────────────────────
  *
  * Reported as: some pages look zoomed in, and a new page later in the day

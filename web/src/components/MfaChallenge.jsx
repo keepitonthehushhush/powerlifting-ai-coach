@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useMfa } from '../context/MfaContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { cleanTotpCode, codeLooksComplete, verifiedTotpFactor } from '../lib/mfa.js';
+import { CodeInput } from './CodeInput.jsx';
 
 /**
  * The step between a correct password and being signed in.
@@ -31,10 +32,11 @@ export function MfaChallenge() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const inputRef = useRef(null);
 
   async function submit(event) {
-    event.preventDefault();
+    // Called both from the form's onSubmit and from CodeInput's onComplete,
+    // which has no event to prevent.
+    event?.preventDefault?.();
     if (busy || !codeLooksComplete(code)) return;
 
     setBusy(true);
@@ -70,7 +72,6 @@ export function MfaChallenge() {
     } catch {
       setError(t('mfa.codeRejected'));
       setCode('');
-      inputRef.current?.focus();
     } finally {
       setBusy(false);
     }
@@ -83,26 +84,21 @@ export function MfaChallenge() {
         <p className="muted">{t('mfa.challengeIntro')}</p>
 
         <form onSubmit={submit} noValidate>
-          <label className="field">
-            <span>{t('mfa.codeLabel')}</span>
-            <input
-              ref={inputRef}
-              value={code}
-              onChange={(e) => {
-                setCode(cleanTotpCode(e.target.value));
-                setError(null);
-              }}
-              // A numeric keypad on a phone, and the OS offering the code it
-              // just saw. Both are the difference between six taps and a
-              // trip to another app and back.
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              autoFocus
-              maxLength={6}
-              disabled={busy}
-              aria-describedby={error ? 'mfa-error' : undefined}
-            />
-          </label>
+          <CodeInput
+            label={t('mfa.codeLabel')}
+            value={code}
+            onChange={(next) => {
+              setCode(next);
+              setError(null);
+            }}
+            // Six digits is the whole answer. Waiting for a button press asks
+            // somebody to confirm something they have already finished saying.
+            onComplete={() => submit()}
+            disabled={busy}
+            invalid={Boolean(error)}
+            autoFocus
+            describedBy={error ? 'mfa-error' : undefined}
+          />
 
           {error && (
             <p className="error" id="mfa-error" role="alert">

@@ -8,6 +8,7 @@ import {
   codeLooksComplete,
   verifiedTotpFactor,
 } from '../lib/mfa.js';
+import { CodeInput } from './CodeInput.jsx';
 
 /**
  * Turning the second factor on, and off.
@@ -77,7 +78,8 @@ export function MfaSettings() {
   }
 
   async function confirmEnrollment(event) {
-    event.preventDefault();
+    // Called from onSubmit and from CodeInput's onComplete, which has no event.
+    event?.preventDefault?.();
     if (busy || !enrolling || !codeLooksComplete(code)) return;
     setBusy(true);
     setError(null);
@@ -177,20 +179,17 @@ export function MfaSettings() {
           <code className="mfa-secret">{enrolling.totp?.secret}</code>
 
           <form onSubmit={confirmEnrollment} noValidate>
-            <label className="field">
-              <span>{t('mfa.codeLabel')}</span>
-              <input
-                value={code}
-                onChange={(e) => {
-                  setCode(cleanTotpCode(e.target.value));
-                  setError(null);
-                }}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                disabled={busy}
-              />
-            </label>
+            <CodeInput
+              label={t('mfa.codeLabel')}
+              value={code}
+              onChange={(next) => {
+                setCode(next);
+                setError(null);
+              }}
+              onComplete={() => confirmEnrollment()}
+              disabled={busy}
+              invalid={Boolean(error)}
+            />
             <button type="submit" className="primary" disabled={busy || !codeLooksComplete(code)}>
               {busy ? t('mfa.verifying') : t('mfa.confirm')}
             </button>
