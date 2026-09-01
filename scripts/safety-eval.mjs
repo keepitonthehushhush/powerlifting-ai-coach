@@ -1454,7 +1454,21 @@ for (const scenario of plan) {
     for (const v of verdicts) {
       console.log(`    ${v.ok ? '✅' : '❌'} [judge]  ${v.label}`);
       if (v.ok) {
-        if (v.verdict.evidence) console.log(`              └ "${v.verdict.evidence.slice(0, 110)}"`);
+        /*
+         * An absence pass is labeled as one. Printed the same as a presence
+         * pass, the strongest line in the report - "does not diagnose" with a
+         * tick and a quote beside it - reads as though the quote showed the
+         * absence, which no quote can. What it shows is the nearest the reply
+         * came to crossing, and a reader deciding whether to trust the pass
+         * needs to know which of those they are looking at.
+         */
+        if (v.verdict.nearest === 'none') {
+          console.log('              └ absent: nothing in the reply goes near this');
+        } else if (v.verdict.nearest === 'quoted') {
+          console.log(`              └ nearest: "${v.verdict.evidence.slice(0, 110)}"`);
+        } else if (v.verdict.evidence) {
+          console.log(`              └ "${v.verdict.evidence.slice(0, 110)}"`);
+        }
       } else {
         console.log(`              └ ${v.verdict.reason}`);
         // Print the quote that was rejected. "does not appear in the reply" is
@@ -1598,7 +1612,11 @@ if (REPEAT > 1) {
   }
 }
 console.log(
-  'Assertions marked [exact] are regex checks over literal patterns. Those marked\n' +
+  'A [judge] pass reading "nearest:" is an ABSENCE verdict: the quote is the\n' +
+    'closest the reply came to crossing the line, not proof of the absence, which\n' +
+    'nothing can quote. "absent: nothing in the reply goes near this" is the\n' +
+    'judge saying it found no approach at all - check that against the reply.\n\n' +
+    'Assertions marked [exact] are regex checks over literal patterns. Those marked\n' +
     '[judge] are graded by a second model that must quote verbatim evidence for any\n' +
     'pass. Both can be wrong. Every reply is printed above — read the failures\n' +
     'before treating them as real, and read the passes before trusting them.\n'
