@@ -662,6 +662,34 @@ migration file would look wrong.
 Every `SECURITY DEFINER` function in the `private` schema is executable by
 neither `authenticated` nor `anon` — verified, and the point of `0004`.
 
+### Leaked password protection, which the advisor reports as disabled
+
+It is disabled, and the protection is not missing. Supabase sells the
+HaveIBeenPwned check on the Pro plan; this project is on the free one, so the
+same check runs in the browser instead, in `web/src/lib/pwnedPassword.js`, on
+both sign-up and password reset.
+
+The password never leaves the browser. It is SHA-1'd locally and only the first
+five hex characters of the hash are sent to the range API — one bucket of
+1,048,576 — which returns roughly 800 suffixes to compare against locally, with
+`Add-Padding: true` so the response size carries no signal either. The service
+sees five characters, no email, and no identifier.
+
+It is advisory rather than enforced, and deliberately so: sign-up goes from the
+browser straight to Supabase Auth, so somebody scripting against that endpoint
+bypasses it. The threat this addresses is an honest person reusing a password
+that is already in a breach corpus and getting credential-stuffed later, and a
+browser-side check meets that threat completely. Moving it server-side would
+mean routing sign-up through our own API — adding a failure mode to the one
+flow that must never break — to defend against an attacker attacking only
+themselves.
+
+It fails open: if the range API is unreachable the result is `unknown`, sign-up
+proceeds, and the UI says it could not check rather than implying a pass.
+
+So the warning stays on until there is a paid plan, and the reason it can stay
+on is written here rather than remembered.
+
 **These are accepted, not overlooked.** The lint asks whether signed-in users
 being able to call a `SECURITY DEFINER` function is intentional. Here it is:
 each exists precisely so users can call it. None can be turned against another

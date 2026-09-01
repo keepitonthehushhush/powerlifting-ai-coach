@@ -23,19 +23,40 @@
 --
 -- pg_get_functiondef returns the body as stored, comments included, and three
 -- functions in production are missing theirs: they were applied through a path
--- that dropped them. Behaviourally identical, textually different. A drift
+-- that dropped them. Behaviorally identical, textually different. A drift
 -- check that reports those three every time is a drift check somebody stops
 -- reading, so the comparison is on the logic. The cost is stated plainly: this
 -- cannot see a change made only inside a comment.
+--
+-- ── AND WHY WHITESPACE IS SQUEEZED AGAINST PUNCTUATION ────────────────────
+--
+-- Stripping the comments was not enough, which nobody knew because this had
+-- never actually been run against both projects. On 2026-09-01 it was, and it
+-- reported private.recordable_auth_codes as drifted between them. The two
+-- definitions were the same array of the same six strings.
+--
+-- What differed was the hole the comments left. Production writes one element
+-- per line with a trailing comment; strip the comments, collapse \s+ to a
+-- single space, and you still have `array[ 'a', 'b' ]`. Preview's copy had
+-- arrived through a path that dropped the comments already, and reads
+-- `array['a','b']`. Same tokens, different spaces, different hash.
+--
+-- So a false positive on the one object a reader would have to chase by hand -
+-- in the tool whose entire value is that a reader does not have to. Whitespace
+-- next to , [ ] ( ) is removed as well, which makes the comparison about the
+-- tokens rather than about how somebody laid them out. With that in, the two
+-- databases hashed identically for the first time.
 -- =============================================================================
 
 with norm as (
   select oid,
-         lower(regexp_replace(
-           regexp_replace(
-             regexp_replace(pg_get_functiondef(oid), '/\*.*?\*/', '', 'gs'),  -- block comments
-             '--[^\n]*', '', 'g'),                                            -- line comments
-           '\s+', ' ', 'g')) as d                                             -- and layout
+         regexp_replace(
+           lower(regexp_replace(
+             regexp_replace(
+               regexp_replace(pg_get_functiondef(oid), '/\*.*?\*/', '', 'gs'),  -- block comments
+               '--[^\n]*', '', 'g'),                                            -- line comments
+             '\s+', ' ', 'g')),                                                 -- and layout
+           '\s*([,\[\]\(\)])\s*', '\1', 'g') as d                            -- and the gaps comments left
     from pg_proc
 ),
 objects as (

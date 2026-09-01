@@ -1,4 +1,28 @@
 {
+  "constraint audit_events_action_check": {
+    "owner": "0051_removing_a_second_factor_is_an_audited_act.sql",
+    "alsoIn": [
+      "0041_clearance_is_a_claim_somebody_makes.sql"
+    ]
+  },
+  "constraint audit_events_detail_check": {
+    "owner": "0051_removing_a_second_factor_is_an_audited_act.sql",
+    "alsoIn": [
+      "0041_clearance_is_a_claim_somebody_makes.sql"
+    ]
+  },
+  "constraint consent_records_consent_type_check": {
+    "owner": "0054_guardian_consent.sql",
+    "alsoIn": [
+      "0028_leaderboard_consent.sql"
+    ]
+  },
+  "constraint user_profile_goal_check": {
+    "owner": "0033_body_composition.sql",
+    "alsoIn": [
+      "0019_training_history_and_goals.sql"
+    ]
+  },
   "private.apply_retention()": {
     "owner": "0055_guardian_consent_round_trip.sql",
     "alsoIn": [

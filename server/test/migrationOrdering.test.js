@@ -92,9 +92,35 @@ describe('THE MIGRATIONS ARE ORDERED, AND THE ORDER MEANS SOMETHING', () => {
         if (!definitions.has(key)) definitions.set(key, []);
         definitions.get(key).push(file);
       }
+
+      /*
+       * ── CONSTRAINTS, ADDED AFTER THIS MISSED ONE ────────────────────────
+       *
+       * `drop constraint if exists X; add constraint X ...` is the same
+       * last-writer-wins shape as `create or replace function`, and this test
+       * did not watch it. Reconciling the preview database on 2026-09-01 I
+       * applied 0041's audit_events_action_check over 0051's - dropping the
+       * mfa_factor_removed action from a database that had it - while this
+       * very test, written to prevent that, watched only the functions.
+       *
+       * Caught by the schema fingerprint minutes later, which is the right
+       * backstop but the wrong place to find it: the fingerprint compares two
+       * live databases, so it can only tell you after somebody has already
+       * written to one.
+       */
+      for (const [, name] of sql.matchAll(/add\s+constraint\s+([a-z_]+)/gis)) {
+        const key = `constraint ${name.toLowerCase()}`;
+        if (!definitions.has(key)) definitions.set(key, []);
+        definitions.get(key).push(file);
+      }
     }
 
     assert.ok(definitions.size > 10, `parsed ${definitions.size} definitions - the regex is wrong`);
+    // Both kinds are collected, so a regex that stops matching one of them
+    // fails here rather than quietly halving what this test watches.
+    const kinds = [...definitions.keys()];
+    assert.ok(kinds.some((k) => k.startsWith('constraint ')), 'no constraints parsed');
+    assert.ok(kinds.some((k) => !k.startsWith('constraint ')), 'no functions parsed');
 
     const owners = {};
     for (const [signature, where] of [...definitions].sort()) {
