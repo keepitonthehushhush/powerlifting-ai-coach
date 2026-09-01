@@ -108,12 +108,79 @@ const MIME = {
   '.map': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
 };
 
+/**
+ * Design tokens that no element on these two routes happens to use.
+ *
+ * Added after the elevation tokens shipped and this check reported OK without
+ * having looked at them - the floating elements they style live on pages that
+ * need a session. A token defined with nested color-mix() that fails to parse
+ * computes to `none` silently, so "the check passed" would have meant nothing.
+ *
+ * Each entry is applied to a throwaway element and its computed value read
+ * back, which is the only way to prove a token resolves rather than merely
+ * exists in the stylesheet.
+ */
+const SYNTHETIC = [
+  { name: 'token:--elev-1', property: 'boxShadow', declaration: 'box-shadow: var(--elev-1)' },
+  { name: 'token:--elev-2', property: 'boxShadow', declaration: 'box-shadow: var(--elev-2)' },
+  { name: 'token:--elev-tint', property: 'backgroundColor', declaration: 'background-color: var(--elev-tint)' },
+];
+
+/**
+ * ── FORCING THE COLOR SCHEME, AND WHY NOT WITH A CHROME FLAG ──────────────
+ *
+ * The first version passed --force-prefers-color-scheme and recorded "two
+ * color schemes". Measured, that flag does nothing in this Chromium build -
+ * prefers-color-scheme: light matched under `=dark`, under `=light`, and with
+ * no flag at all. So the dark and light captures came back byte-identical and
+ * the check was reporting twice the coverage it had, which is precisely the
+ * defect it exists to catch, committed by the check itself.
+ *
+ * matchMedia is stubbed instead, before the bundle loads. That is the right
+ * seam rather than a workaround: applyTheme.js decides the mode by calling
+ * window.matchMedia('(prefers-color-scheme: light)'), and its header explains
+ * that inline custom properties beat the stylesheet's media query by
+ * specificity, so once a theme is painted the app owns light and dark outright
+ * and the CSS media block is not load-bearing. Controlling matchMedia controls
+ * the thing the app actually reads.
+ */
 const PROBE = `<script>
+(function () {
+  var force = new URLSearchParams(location.search).get('__scheme') === 'dark' ? 'dark' : 'light';
+  var real = window.matchMedia ? window.matchMedia.bind(window) : null;
+  window.matchMedia = function (query) {
+    if (/prefers-color-scheme/.test(query)) {
+      var wantsLight = /light/.test(query);
+      return {
+        matches: force === 'light' ? wantsLight : !wantsLight,
+        media: query, onchange: null,
+        addEventListener: function () {}, removeEventListener: function () {},
+        addListener: function () {}, removeListener: function () {},
+        dispatchEvent: function () { return false; },
+      };
+    }
+    return real ? real(query) : { matches: false, media: query, addEventListener: function () {},
+      removeEventListener: function () {}, addListener: function () {}, removeListener: function () {} };
+  };
+})();
+</script>
+<script>
 (function () {
   var WATCHED = ${JSON.stringify(WATCHED)};
   var PROPS = ${JSON.stringify(PROPS)};
+  var SYNTHETIC = ${JSON.stringify(SYNTHETIC)};
   setTimeout(function () {
     var out = {};
+    for (var s = 0; s < SYNTHETIC.length; s++) {
+      var probe = document.createElement('div');
+      probe.style.cssText = SYNTHETIC[s].declaration;
+      document.body.appendChild(probe);
+      var value = getComputedStyle(probe)[SYNTHETIC[s].property];
+      probe.remove();
+      var row = {};
+      row[SYNTHETIC[s].property] = value;
+      out[SYNTHETIC[s].name] = row;
+    }
     for (var i = 0; i < WATCHED.length; i++) {
       var el = document.querySelector(WATCHED[i]);
       if (!el) continue;
@@ -171,14 +238,12 @@ async function findChrome() {
   return null;
 }
 
-function dumpDom(chrome, url, scheme) {
+function dumpDom(chrome, url) {
   return new Promise((resolve, reject) => {
     const child = spawn(chrome, [
       '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
       '--no-first-run', '--no-default-browser-check',
       '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
-      // Pinned so the snapshot is not at the mercy of the runner's OS setting.
-      `--force-prefers-color-scheme=${scheme}`,
       '--window-size=1280,900',
       `--virtual-time-budget=${BUDGET_MS}`, '--dump-dom', url,
     ], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -230,7 +295,7 @@ async function main() {
     for (const scheme of ['dark', 'light']) {
       for (const route of ROUTES) {
         const key = `${scheme} ${route}`;
-        const dom = await dumpDom(chrome, `http://127.0.0.1:${port}${route}`, scheme);
+        const dom = await dumpDom(chrome, `http://127.0.0.1:${port}${route}?__scheme=${scheme}`);
         const styles = readProbe(dom);
         if (!styles) throw new Error(`the probe wrote nothing for ${key} - did the app mount?`);
         captured[key] = styles;
@@ -238,6 +303,40 @@ async function main() {
     }
   } finally {
     server.close();
+  }
+
+  // The two schemes must actually DIFFER. If they are identical the matchMedia
+  // stub has stopped working and half these captures are measuring nothing -
+  // which is how the first version of this check inflated its own coverage.
+  for (const route of ROUTES) {
+    const a = JSON.stringify(captured[`dark ${route}`]);
+    const b = JSON.stringify(captured[`light ${route}`]);
+    if (a === b) {
+      console.error(`FAIL  the dark and light captures of ${route} are identical.`);
+      console.error('      The color scheme is not being forced, so one of them is measuring');
+      console.error('      nothing. Fix the stub rather than lowering the expectation.');
+      process.exit(1);
+    }
+  }
+
+  // A token that failed to parse computes to `none` or an empty string. That is
+  // the failure this section exists for, and it must be named rather than
+  // quietly recorded as the new baseline.
+  const dead = [];
+  for (const [key, styles] of Object.entries(captured)) {
+    for (const synthetic of SYNTHETIC) {
+      const row = styles[synthetic.name];
+      if (!row) { dead.push(`${key}  ${synthetic.name}  was not captured at all`); continue; }
+      const value = row[synthetic.property];
+      if (!value || value === 'none' || value === 'rgba(0, 0, 0, 0)') {
+        dead.push(`${key}  ${synthetic.name}  resolved to "${value}" - the token does not parse`);
+      }
+    }
+  }
+  if (dead.length) {
+    console.error('FAIL  a design token did not resolve:\n');
+    for (const d of dead) console.error(`  ${d}`);
+    process.exit(1);
   }
 
   // COVERAGE FIRST. An empty capture must never read as "nothing changed".

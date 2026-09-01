@@ -713,6 +713,10 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .sticky-header.condensed {
   padding: 0.2rem 0;
   border-bottom-color: var(--border);
+  /* Condensed means it has lifted off the content and is now over it. The
+     border alone said "there is an edge here"; the shadow says which side of
+     it the reader is on. */
+  box-shadow: var(--elev-1);
 }
 .sticky-header.condensed h1,
 .sticky-header.condensed .brand {
@@ -741,7 +745,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--elev-2);
 }
 .back-to-top:hover { filter: brightness(1.08); }
 .back-to-top:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
@@ -1279,6 +1283,7 @@ form > button.primary {
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
   font-size: 0.9rem;
+  box-shadow: var(--elev-1);
 }
 
 /* Says which build this is, on a preview and nowhere else. Loud on purpose:
@@ -1395,6 +1400,49 @@ form > button.primary {
   --text-headline: 1.0625rem; /* 17pt */
   --text-body: 1.0625rem; /* 17pt - the HIG default, and larger than the web's */
   --text-caption: 0.8125rem;
+}
+
+/* ── ELEVATION ─────────────────────────────────────────────────────────────
+ *
+ * This stylesheet barely uses shadows, and that is deliberate: surfaces are
+ * flat and bordered, which reads as calm and survives every theme. So this is
+ * not an elevation SYSTEM applied everywhere. It is a shadow for the four
+ * things that genuinely float above the page - a fixed button, a sticky
+ * header, a banner - where the shadow is the only thing saying so.
+ *
+ * TWO RULES, both from the same observation: real shadows are not black.
+ *
+ * 1. The tint is derived from the page itself rather than from #000, so the
+ *    shadow belongs to whichever of the eleven themes is on. A pure black
+ *    shadow on the moss theme's green-tinted ground reads as a smudge; the
+ *    same shadow mixed toward that ground reads as depth. The one shadow this
+ *    file had before was rgba(0, 0, 0, 0.35), which is exactly that smudge.
+ *
+ * 2. Layered rather than single, with the blur roughly doubling and the
+ *    opacity falling as it grows. A single large blur is a uniform grey halo.
+ *    Stacked blurs approximate how light actually falls off, which is why the
+ *    result reads as a raised object rather than a glow behind a rectangle.
+ *
+ * The offsets are all straight down. A light source that moves between
+ * components is the thing that makes a page feel assembled rather than
+ * designed, so there is exactly one here and it is directly overhead.
+ */
+:root {
+  /* Not #000: the page's own ground, driven most of the way to black. Resolves
+     per theme automatically, because --bg is set by the theme. */
+  --elev-tint: color-mix(in oklab, var(--bg), #000 62%);
+
+  /* Resting elevation: a header or banner that has lifted off the content. */
+  --elev-1:
+    0 1px 2px color-mix(in oklab, var(--elev-tint) 24%, transparent),
+    0 2px 4px color-mix(in oklab, var(--elev-tint) 18%, transparent);
+
+  /* Floating: something that is over the page rather than part of it. */
+  --elev-2:
+    0 1px 2px  color-mix(in oklab, var(--elev-tint) 22%, transparent),
+    0 2px 4px  color-mix(in oklab, var(--elev-tint) 18%, transparent),
+    0 4px 8px  color-mix(in oklab, var(--elev-tint) 15%, transparent),
+    0 8px 16px color-mix(in oklab, var(--elev-tint) 11%, transparent);
 }
 
 .home {

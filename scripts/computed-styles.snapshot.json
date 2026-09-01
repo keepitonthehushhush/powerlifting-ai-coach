@@ -1,9 +1,18 @@
 {
   "dark /": {
+    "token:--elev-1": {
+      "boxShadow": "oklab(0.0641295 0.00354168 -0.00958556 / 0.24) 0px 1px 2px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.18) 0px 2px 4px 0px"
+    },
+    "token:--elev-2": {
+      "boxShadow": "oklab(0.0641295 0.00354168 -0.00958556 / 0.22) 0px 1px 2px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.18) 0px 2px 4px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.15) 0px 4px 8px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.11) 0px 8px 16px 0px"
+    },
+    "token:--elev-tint": {
+      "backgroundColor": "oklab(0.0641295 0.00354168 -0.00958556)"
+    },
     "body": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -21,9 +30,9 @@
       "letterSpacing": "normal"
     },
     ".home": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -41,9 +50,9 @@
       "letterSpacing": "normal"
     },
     ".home-hero": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -61,9 +70,9 @@
       "letterSpacing": "normal"
     },
     ".home-section": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -81,9 +90,9 @@
       "letterSpacing": "normal"
     },
     ".home-footer": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(223, 223, 233)",
+      "borderTopColor": "rgb(44, 39, 69)",
       "borderTopWidth": "1px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -101,9 +110,9 @@
       "letterSpacing": "normal"
     },
     "h1": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "56px",
@@ -121,9 +130,9 @@
       "letterSpacing": "-1.68px"
     },
     "h2": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "32px",
@@ -141,9 +150,9 @@
       "letterSpacing": "-0.64px"
     },
     "h3": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -161,9 +170,9 @@
       "letterSpacing": "normal"
     },
     "p": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "20px",
@@ -181,9 +190,9 @@
       "letterSpacing": "normal"
     },
     "li": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -201,9 +210,9 @@
       "letterSpacing": "normal"
     },
     ".home-headline": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "56px",
@@ -221,9 +230,9 @@
       "letterSpacing": "-1.68px"
     },
     ".home-subhead": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "20px",
@@ -241,9 +250,9 @@
       "letterSpacing": "normal"
     },
     ".home-h2": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "32px",
@@ -261,9 +270,9 @@
       "letterSpacing": "-0.64px"
     },
     ".home-h3": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -281,9 +290,9 @@
       "letterSpacing": "normal"
     },
     ".muted": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "13px",
@@ -301,9 +310,9 @@
       "letterSpacing": "normal"
     },
     ".small": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "13px",
@@ -321,9 +330,9 @@
       "letterSpacing": "normal"
     },
     ".home-fineprint": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "13px",
@@ -341,9 +350,9 @@
       "letterSpacing": "normal"
     },
     ".wordmark": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "17px",
@@ -361,9 +370,9 @@
       "letterSpacing": "normal"
     },
     ".wordmark-text": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16.32px",
@@ -381,9 +390,9 @@
       "letterSpacing": "-0.3264px"
     },
     ".cta": {
-      "color": "rgb(255, 255, 255)",
-      "backgroundColor": "rgb(196, 24, 107)",
-      "borderTopColor": "rgb(255, 255, 255)",
+      "color": "rgb(18, 16, 31)",
+      "backgroundColor": "rgb(255, 79, 154)",
+      "borderTopColor": "rgb(18, 16, 31)",
       "borderTopWidth": "0px",
       "borderRadius": "980px",
       "fontSize": "17px",
@@ -401,9 +410,9 @@
       "letterSpacing": "-0.17px"
     },
     "a": {
-      "color": "rgb(255, 255, 255)",
-      "backgroundColor": "rgb(196, 24, 107)",
-      "borderTopColor": "rgb(255, 255, 255)",
+      "color": "rgb(18, 16, 31)",
+      "backgroundColor": "rgb(255, 79, 154)",
+      "borderTopColor": "rgb(18, 16, 31)",
       "borderTopWidth": "0px",
       "borderRadius": "980px",
       "fontSize": "17px",
@@ -441,9 +450,9 @@
       "letterSpacing": "normal"
     },
     ".link": {
-      "color": "rgb(0, 112, 124)",
+      "color": "rgb(34, 211, 211)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(0, 112, 124)",
+      "borderTopColor": "rgb(34, 211, 211)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "14.4px",
@@ -461,9 +470,9 @@
       "letterSpacing": "normal"
     },
     "label": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "14.4px",
@@ -481,9 +490,9 @@
       "letterSpacing": "normal"
     },
     "select": {
-      "color": "rgb(26, 21, 38)",
-      "backgroundColor": "rgb(238, 238, 244)",
-      "borderTopColor": "rgb(132, 128, 154)",
+      "color": "rgb(245, 243, 247)",
+      "backgroundColor": "rgb(36, 31, 61)",
+      "borderTopColor": "rgb(125, 120, 187)",
       "borderTopWidth": "1px",
       "borderRadius": "8px",
       "fontSize": "13.6px",
@@ -502,10 +511,19 @@
     }
   },
   "dark /login": {
+    "token:--elev-1": {
+      "boxShadow": "oklab(0.0641295 0.00354168 -0.00958556 / 0.24) 0px 1px 2px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.18) 0px 2px 4px 0px"
+    },
+    "token:--elev-2": {
+      "boxShadow": "oklab(0.0641295 0.00354168 -0.00958556 / 0.22) 0px 1px 2px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.18) 0px 2px 4px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.15) 0px 4px 8px 0px, oklab(0.0641295 0.00354168 -0.00958556 / 0.11) 0px 8px 16px 0px"
+    },
+    "token:--elev-tint": {
+      "backgroundColor": "oklab(0.0641295 0.00354168 -0.00958556)"
+    },
     "body": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -523,9 +541,9 @@
       "letterSpacing": "normal"
     },
     ".centered": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -543,9 +561,9 @@
       "letterSpacing": "normal"
     },
     "h1": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "24px",
@@ -563,9 +581,9 @@
       "letterSpacing": "-0.48px"
     },
     "p": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -583,9 +601,9 @@
       "letterSpacing": "normal"
     },
     ".muted": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -603,9 +621,9 @@
       "letterSpacing": "normal"
     },
     ".small": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "13.12px",
@@ -623,9 +641,9 @@
       "letterSpacing": "normal"
     },
     ".fineprint": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(223, 223, 233)",
+      "borderTopColor": "rgb(44, 39, 69)",
       "borderTopWidth": "1px",
       "borderRadius": "0px",
       "fontSize": "13.12px",
@@ -643,9 +661,9 @@
       "letterSpacing": "normal"
     },
     ".brand": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "24px",
@@ -663,9 +681,9 @@
       "letterSpacing": "-0.48px"
     },
     "a": {
-      "color": "rgb(0, 0, 238)",
+      "color": "rgb(158, 158, 255)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(0, 0, 238)",
+      "borderTopColor": "rgb(158, 158, 255)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "13.12px",
@@ -683,9 +701,9 @@
       "letterSpacing": "normal"
     },
     ".link": {
-      "color": "rgb(0, 112, 124)",
+      "color": "rgb(34, 211, 211)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(0, 112, 124)",
+      "borderTopColor": "rgb(34, 211, 211)",
       "borderTopWidth": "0px",
       "borderRadius": "8px",
       "fontSize": "16px",
@@ -703,9 +721,9 @@
       "letterSpacing": "normal"
     },
     "button": {
-      "color": "rgb(255, 255, 255)",
-      "backgroundColor": "rgb(196, 24, 107)",
-      "borderTopColor": "rgb(255, 255, 255)",
+      "color": "rgb(18, 16, 31)",
+      "backgroundColor": "rgb(255, 79, 154)",
+      "borderTopColor": "rgb(18, 16, 31)",
       "borderTopWidth": "0px",
       "borderRadius": "8px",
       "fontSize": "16px",
@@ -723,9 +741,9 @@
       "letterSpacing": "normal"
     },
     "button.primary": {
-      "color": "rgb(255, 255, 255)",
-      "backgroundColor": "rgb(196, 24, 107)",
-      "borderTopColor": "rgb(255, 255, 255)",
+      "color": "rgb(18, 16, 31)",
+      "backgroundColor": "rgb(255, 79, 154)",
+      "borderTopColor": "rgb(18, 16, 31)",
       "borderTopWidth": "0px",
       "borderRadius": "8px",
       "fontSize": "16px",
@@ -743,9 +761,9 @@
       "letterSpacing": "normal"
     },
     ".card": {
-      "color": "rgb(26, 21, 38)",
-      "backgroundColor": "rgb(255, 255, 255)",
-      "borderTopColor": "rgb(223, 223, 233)",
+      "color": "rgb(245, 243, 247)",
+      "backgroundColor": "rgb(27, 24, 48)",
+      "borderTopColor": "rgb(44, 39, 69)",
       "borderTopWidth": "1px",
       "borderRadius": "10px",
       "fontSize": "16px",
@@ -763,9 +781,9 @@
       "letterSpacing": "normal"
     },
     ".auth-card": {
-      "color": "rgb(26, 21, 38)",
-      "backgroundColor": "rgb(255, 255, 255)",
-      "borderTopColor": "rgb(223, 223, 233)",
+      "color": "rgb(245, 243, 247)",
+      "backgroundColor": "rgb(27, 24, 48)",
+      "borderTopColor": "rgb(44, 39, 69)",
       "borderTopWidth": "1px",
       "borderRadius": "10px",
       "fontSize": "16px",
@@ -783,9 +801,9 @@
       "letterSpacing": "normal"
     },
     "input": {
-      "color": "rgb(26, 21, 38)",
-      "backgroundColor": "rgb(238, 238, 244)",
-      "borderTopColor": "rgb(132, 128, 154)",
+      "color": "rgb(245, 243, 247)",
+      "backgroundColor": "rgb(36, 31, 61)",
+      "borderTopColor": "rgb(125, 120, 187)",
       "borderTopWidth": "1px",
       "borderRadius": "8px",
       "fontSize": "14.4px",
@@ -803,9 +821,9 @@
       "letterSpacing": "normal"
     },
     "label": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "14.4px",
@@ -823,9 +841,9 @@
       "letterSpacing": "normal"
     },
     "select": {
-      "color": "rgb(26, 21, 38)",
-      "backgroundColor": "rgb(238, 238, 244)",
-      "borderTopColor": "rgb(132, 128, 154)",
+      "color": "rgb(245, 243, 247)",
+      "backgroundColor": "rgb(36, 31, 61)",
+      "borderTopColor": "rgb(125, 120, 187)",
       "borderTopWidth": "1px",
       "borderRadius": "8px",
       "fontSize": "13.6px",
@@ -843,9 +861,9 @@
       "letterSpacing": "normal"
     },
     ".stack": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -863,9 +881,9 @@
       "letterSpacing": "normal"
     },
     ".turnstile": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -883,9 +901,9 @@
       "letterSpacing": "normal"
     },
     ".auth-alternative": {
-      "color": "rgb(26, 21, 38)",
+      "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
       "fontSize": "16px",
@@ -904,6 +922,15 @@
     }
   },
   "light /": {
+    "token:--elev-1": {
+      "boxShadow": "oklab(0.36689 0.00072503 -0.00241879 / 0.24) 0px 1px 2px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.18) 0px 2px 4px 0px"
+    },
+    "token:--elev-2": {
+      "boxShadow": "oklab(0.36689 0.00072503 -0.00241879 / 0.22) 0px 1px 2px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.18) 0px 2px 4px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.15) 0px 4px 8px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.11) 0px 8px 16px 0px"
+    },
+    "token:--elev-tint": {
+      "backgroundColor": "oklab(0.36689 0.00072503 -0.00241879)"
+    },
     "body": {
       "color": "rgb(26, 21, 38)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
@@ -1406,6 +1433,15 @@
     }
   },
   "light /login": {
+    "token:--elev-1": {
+      "boxShadow": "oklab(0.36689 0.00072503 -0.00241879 / 0.24) 0px 1px 2px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.18) 0px 2px 4px 0px"
+    },
+    "token:--elev-2": {
+      "boxShadow": "oklab(0.36689 0.00072503 -0.00241879 / 0.22) 0px 1px 2px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.18) 0px 2px 4px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.15) 0px 4px 8px 0px, oklab(0.36689 0.00072503 -0.00241879 / 0.11) 0px 8px 16px 0px"
+    },
+    "token:--elev-tint": {
+      "backgroundColor": "oklab(0.36689 0.00072503 -0.00241879)"
+    },
     "body": {
       "color": "rgb(26, 21, 38)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
