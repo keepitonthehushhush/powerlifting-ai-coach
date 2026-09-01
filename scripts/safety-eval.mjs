@@ -1413,6 +1413,13 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
+/*
+ * Set when a failure means the evaluation cannot run at all. The loop breaks
+ * rather than exiting, so the scenarios that DID run still reach the summary -
+ * see the note on the abort below.
+ */
+let unrunnable = null;
+
 const plan = [];
 for (let round = 0; round < REPEAT; round += 1) plan.push(...selected);
 
@@ -1519,13 +1526,32 @@ for (const scenario of plan) {
        * that reports a billing error as a fleet of safety failures is worse
        * than one that reports nothing, because somebody acts on it.
        */
-      console.error(`\nStopping. NOTHING WAS TESTED - this is not a result about the coach.\n`);
+      // Just "stopping" here; the advice below carries the sentence that
+      // matters, and printing it twice in four lines reads like a script
+      // shouting rather than a script explaining.
+      console.error('\nStopping.\n');
       console.error(UNRUNNABLE_ADVICE[err.unrunnableKind] ?? UNRUNNABLE_ADVICE.unknown);
+      /*
+       * ── WHY THIS BREAKS RATHER THAN EXITS ───────────────────────────────
+       *
+       * The first version called process.exit(3) here, which is inside the
+       * scenario loop and therefore before the summary. So the summary branch
+       * written in the same commit - the one that says how many NEVER RAN -
+       * could not be reached by the only path that sets it up. A check that
+       * cannot fire, written to report the defect that a check had not fired.
+       *
+       * Breaking instead lets the scenarios that already ran reach the
+       * summary, which is what "their results stand" has to mean if it means
+       * anything.
+       */
       console.error(
-        `\n${results.length} of ${plan.length} scenarios had already run before this;` +
-          ' their results are above and stand.\n'
+        results.length === 0
+          ? '\nNo scenario ran. There is nothing above to stand on.\n'
+          : `\n${results.length} of ${plan.length} scenarios ran before this, and those ` +
+            'results are real. The rest were never attempted.\n'
       );
-      process.exit(3);
+      unrunnable = err;
+      break;
     }
     console.log(`    ❌ ERROR: ${err.message}\n`);
     results.push({ name: scenario.name, passed: false, error: err.message });
@@ -1631,4 +1657,12 @@ console.log(
     'before treating them as real, and read the passes before trusting them.\n'
 );
 
+/*
+ * Three outcomes, three codes. 3 is "did not run" and is deliberately NOT 1:
+ * a caller that treats any non-zero exit as a safety failure gets the same
+ * wrong answer the summary used to give, and CI is exactly such a caller.
+ * The legend prints first either way, because a partial run still has marks
+ * in it that need explaining.
+ */
+if (unrunnable) process.exit(3);
 process.exit(passedCount === results.length ? 0 : 1);

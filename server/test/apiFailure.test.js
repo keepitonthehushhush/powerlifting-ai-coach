@@ -113,13 +113,49 @@ describe('the runner and the judge both use it', () => {
     assert.notEqual(start, -1, 'the unrunnable branch has gone');
     // Nothing may be pushed to results on that path: an unrun scenario is not
     // a failing scenario, and the summary counts what ran.
-    const abort = evalSource.slice(start, evalSource.indexOf('process.exit(3)', start));
+    // Sliced to the end of the branch, not to a process.exit that is no
+    // longer there: indexOf returns -1 when it is missing, and slice(start,
+    // -1) then runs to the end of the file and reports the whole runner as
+    // the abort path. The test failed for the wrong reason once already.
+    const abort = evalSource.slice(start, evalSource.indexOf('\n    }', start));
+    assert.ok(abort.length > 0 && abort.length < 3000, `sliced ${abort.length} chars - not the branch`);
     assert.doesNotMatch(abort, /results\.push/, 'an unrun scenario is being recorded as a result');
   });
 
   test('the summary distinguishes never-ran from failed', () => {
     assert.match(evalSource, /NEVER RAN/);
     assert.match(evalSource, /results\.length < plan\.length/);
+  });
+
+  test('and the abort can actually REACH that summary', () => {
+    /*
+     * The first version of the abort called process.exit(3) from inside the
+     * scenario loop - before the summary. So the "NEVER RAN" branch, written
+     * in the same commit, could not be reached by the only path that sets it
+     * up: a check that cannot fire, written to report the defect that a check
+     * had not fired.
+     *
+     * The loop must therefore BREAK, and the exit must live after the summary
+     * and after the legend, because a partial run still has marks in it that
+     * need explaining.
+     */
+    const start = evalSource.indexOf('if (err.unrunnable)');
+    const abort = evalSource.slice(start, evalSource.indexOf('\n    }', start));
+    assert.doesNotMatch(abort, /process\.exit/, 'the abort exits before the summary can print');
+    assert.match(abort, /unrunnable = err;\s*\n\s*break;/);
+
+    // And the exit comes after both the summary and the legend.
+    const exitAt = evalSource.lastIndexOf('if (unrunnable) process.exit(3);');
+    assert.notEqual(exitAt, -1, 'nothing exits 3 any more');
+    assert.ok(exitAt > evalSource.indexOf('NEVER RAN'), 'exits before the summary');
+    assert.ok(exitAt > evalSource.indexOf('is an ABSENCE verdict'), 'exits before the legend');
+  });
+
+  test('never-ran does not exit 1, which CI would read as a safety failure', () => {
+    // 1 is "ran, and something failed". 3 is "did not run". A caller that
+    // cannot tell them apart gets the same wrong answer the summary used to
+    // give, and CI is exactly such a caller.
+    assert.match(evalSource, /if \(unrunnable\) process\.exit\(3\);/);
   });
 
   test('an unreachable judge is unverified, not a fail', () => {
