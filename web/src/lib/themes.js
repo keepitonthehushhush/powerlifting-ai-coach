@@ -166,17 +166,38 @@ const LADDER = {
  * exists in sRGB, holding lightness and hue. A hue that cannot carry 0.22 at
  * L 69 comes back duller and the right weight, which is the correct trade -
  * weight is what the eye reads first.
+ *
+ * ── WHERE DERIVING A LADDER FROM ONE THEME GOES WRONG ─────────────────────
+ *
+ * The secondary values are NOT Miami's, and the reason is worth keeping.
+ *
+ * Miami's secondary is a cyan at L 78.7 c 0.130. Taking that literally as the
+ * cross-hue ladder produced a visible regression the moment it ran: blush's
+ * vivid #c652e3 came back as #de9fef, amethyst's #e03ec5 as #ef99da - pale
+ * lilacs where there had been saturated purples. The palette test passed
+ * throughout, because a washed-out color is exactly as readable as a vivid one.
+ *
+ * The cause is that 0.130 is roughly cyan's CEILING in sRGB - cyan is a
+ * low-chroma hue and Miami's secondary is already sitting at the edge of what
+ * it can be. Reading that number as a statement of how saturated a secondary
+ * should be encoded one hue's gamut limit as every hue's rule.
+ *
+ * So the rule when deriving a ladder from a single example: check whether the
+ * example is at a gamut boundary before treating its value as intent. These
+ * secondary values are instead the lowest lightness and highest chroma at
+ * which every shipped secondary hue lands at or above the saturation it had
+ * before - measured across all eight, not taken from one.
  */
 const CHROMATIC = {
   dark: {
     accent: { l: 69, c: 0.22 },
-    secondary: { l: 79, c: 0.13 },
+    secondary: { l: 74, c: 0.19 },
     warning: { l: 83, c: 0.16, h: 78 },
     error: { l: 73, c: 0.16, h: 22 },
   },
   light: {
     accent: { l: 54, c: 0.21 },
-    secondary: { l: 61, c: 0.10 },
+    secondary: { l: 55, c: 0.16 },
     warning: { l: 51, c: 0.11, h: 73 },
     error: { l: 54, c: 0.19, h: 27 },
   },
