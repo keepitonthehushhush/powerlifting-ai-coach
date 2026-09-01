@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyApiFailure, UNRUNNABLE_ADVICE } from '../../scripts/lib/apiFailure.mjs';
+import { resolveApiBase } from '../../scripts/lib/apiBase.mjs';
 import { readSource } from './helpers/source.js';
 
 const evalSource = readSource(new URL('../../scripts/safety-eval.mjs', import.meta.url));
@@ -187,8 +188,19 @@ describe('the runner and the judge both use it', () => {
   test('a scenario that could not be graded is not a scenario that failed', () => {
     // Three outcomes, not two. Calling an ungraded scenario FAIL is the same
     // error as calling a billing outage a safety regression, one level down.
+    /*
+     * This used to pin `const passed = !incomplete && checks.every(...)`.
+     * A mutation test then deleted that clause and nothing broke: an
+     * unverified check is never `ok`, so it could not change an answer. The
+     * source test had been pinning a no-op and reporting that as coverage,
+     * which is the whole reason server/test/evalRunner.test.js exists.
+     *
+     * Pinned here now: the invariant the code actually relies on. The
+     * behavior - the ???? label, the NOT GRADED lines, exit 3 - is asserted
+     * by running the thing, in evalRunner.test.js, where it belongs.
+     */
     assert.match(evalSource, /const incomplete = checks\.some\(\(c\) => c\.unverified\)/);
-    assert.match(evalSource, /const passed = !incomplete && checks\.every/);
+    assert.match(evalSource, /c\.ok && c\.unverified/, 'the outcome invariant is no longer checked');
     assert.match(evalSource, /NOT GRADED/);
     assert.match(evalSource, /A scenario that could not be graded is not a scenario that failed/);
     // And it must not exit 0 either: nothing was learned.
@@ -214,5 +226,49 @@ describe('the runner and the judge both use it', () => {
     const region = judgeSource.slice(judgeSource.indexOf('if (!response.ok)'));
     assert.match(region.slice(0, 1200), /unverifiedKind: 'unreachable'/);
     assert.match(evalSource, /unreachable: 'harness could not reach the judge/);
+  });
+});
+
+describe('the API base override', () => {
+  test('defaults to the real API', () => {
+    assert.equal(resolveApiBase({}), 'https://api.anthropic.com');
+  });
+
+  test('accepts loopback, for the stub the runner tests against', () => {
+    assert.equal(resolveApiBase({ ANTHROPIC_API_BASE: 'http://127.0.0.1:9/' }), 'http://127.0.0.1:9');
+    assert.equal(resolveApiBase({ ANTHROPIC_API_BASE: 'http://localhost:8080' }), 'http://localhost:8080');
+  });
+
+  test('REFUSES anywhere else, because these requests carry the key', () => {
+    /*
+     * An env var that can point the coach and judge calls anywhere is an env
+     * var that walks the Anthropic key out to any host, in a header, on the
+     * first scenario. This project's first constraint is that the key never
+     * reaches anywhere it does not belong.
+     *
+     * Refused loudly rather than ignored: silently falling back to the real
+     * API would send live traffic somewhere the caller did not expect, which
+     * is its own surprise.
+     */
+    for (const bad of [
+      'https://evil.example.com',
+      'http://169.254.169.254',
+      'http://127.0.0.1.evil.com',
+      'not a url',
+      'file:///etc/passwd',
+    ]) {
+      assert.throws(
+        () => resolveApiBase({ ANTHROPIC_API_BASE: bad }),
+        /loopback/,
+        `${bad} was accepted as an API base`
+      );
+    }
+  });
+
+  test('both callers use it, so neither can drift back to a hardcoded URL', () => {
+    assert.doesNotMatch(evalSource, /fetch\('https:\/\/api\.anthropic\.com/);
+    assert.doesNotMatch(judgeSource, /fetch\('https:\/\/api\.anthropic\.com/);
+    assert.match(evalSource, /await fetch\(MESSAGES_URL/);
+    assert.match(judgeSource, /await fetch\(MESSAGES_URL/);
   });
 });

@@ -40,6 +40,7 @@ import { extractIntentionBlock } from '../server/src/lib/intentionBlock.js';
 import { readFileSync } from 'node:fs';
 import { normalizeTurns } from './lib/transcript.mjs';
 import { classifyApiFailure, UNRUNNABLE_ADVICE } from './lib/apiFailure.mjs';
+import { MESSAGES_URL } from './lib/apiBase.mjs';
 // The one address the coach is allowed to say. Imported rather than repeated,
 // so this assertion cannot drift from what the prompt actually publishes.
 import { CONTACT_EMAIL } from '../web/src/lib/contact.js';
@@ -219,7 +220,7 @@ async function ask(system, messages, retries = 2) {
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(MESSAGES_URL, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -1633,7 +1634,26 @@ for (const scenario of plan) {
      * rather than run granularity.
      */
     const incomplete = checks.some((c) => c.unverified);
-    const passed = !incomplete && checks.every((c) => c.ok);
+    /*
+     * `passed` does NOT need to mention `incomplete`, and the first version
+     * said `!incomplete && ...` as if it did. An unverified check is never
+     * `ok` - verifyVerdict only ever sets unverified on a non-pass - so the
+     * clause could not change any answer. A mutation test found it by
+     * deleting it and watching nothing break, which is what a redundant
+     * guard looks like from the outside and is exactly the shape this
+     * project treats as a defect: a check that cannot fire.
+     *
+     * The invariant it was silently relying on is asserted instead. If it
+     * ever stops holding, a scenario could be reported PASS with a criterion
+     * nobody graded, and that must be loud rather than quietly correct.
+     */
+    if (checks.some((c) => c.ok && c.unverified)) {
+      throw new Error(
+        'a check is both passing and unverified - the outcome model is broken, ' +
+          'and a scenario could be reported PASS with an ungraded criterion'
+      );
+    }
+    const passed = checks.every((c) => c.ok);
 
     console.log(`\n    ── reply ${'─'.repeat(60)}`);
     console.log(reply.split('\n').map((line) => `    │ ${line}`).join('\n'));

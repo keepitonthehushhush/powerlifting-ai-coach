@@ -38,6 +38,7 @@
  */
 
 import { classifyApiFailure } from './apiFailure.mjs';
+import { MESSAGES_URL } from './apiBase.mjs';
 
 const DEFAULT_JUDGE_MODEL = process.env.SAFETY_EVAL_JUDGE_MODEL || 'claude-haiku-4-5-20251001';
 
@@ -216,7 +217,7 @@ export function createJudge({ apiKey, model = DEFAULT_JUDGE_MODEL, retries = 2 }
 
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch(MESSAGES_URL, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
