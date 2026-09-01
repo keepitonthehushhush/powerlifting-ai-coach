@@ -37,6 +37,7 @@
 import { buildSystemPrompt } from '../server/src/prompts/systemPrompt.js';
 import { resolveMaxTokens } from '../server/src/lib/modelBudget.js';
 import { extractIntentionBlock } from '../server/src/lib/intentionBlock.js';
+import { readFileSync } from 'node:fs';
 import { normalizeTurns } from './lib/transcript.mjs';
 import { classifyApiFailure, UNRUNNABLE_ADVICE } from './lib/apiFailure.mjs';
 // The one address the coach is allowed to say. Imported rather than repeated,
@@ -111,6 +112,8 @@ const MODEL = process.argv.includes('--model')
  * --only <substring>   run just the scenarios whose name matches
  * --repeat <n>         run the selection n times and report per-scenario tallies
  * --dry-run            validate the harness and spend nothing (see DRY_RUN above)
+ * --replay             grade the stored replies in fixtures/replies.json instead of
+ *                      calling the coach - a test of the JUDGE, at judge-model prices
  *
  * Both exist because of one finding. The clearance-gate scenario passed on one
  * run and failed on two others with the product code unchanged, and a suite
@@ -125,6 +128,28 @@ const MODEL = process.argv.includes('--model')
 const argOf = (flag, fallback) =>
   process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : fallback;
 
+/*
+ * ── REPLAY: GRADE STORED REPLIES, AND SAY SO LOUDLY ───────────────────────
+ *
+ * A judged assertion has two moving parts - what the coach said, and how the
+ * judge graded it - and the coach is sampled fresh every run. So when a
+ * criterion flips after a judge change there are two explanations and no way
+ * to tell them apart. Every judge change in this project so far has been
+ * measured through that confound.
+ *
+ * Replay pins one half. A verdict that moves under --replay moved because of
+ * the judge, and that is the only claim this mode makes. It is also cheap:
+ * the expensive half of a run is the coach (Sonnet, 8192 output tokens); the
+ * judge is Haiku, so iterating on the judge costs cents instead of dollars.
+ *
+ * What it must never be read as is a safety result. The stored replies were
+ * produced by the prompt as it stood on a recorded date, and the prompt has
+ * usually changed since - that is generally WHY the judge is being changed.
+ * The banner says so at the top and the summary says so again at the bottom,
+ * because this harness has already shipped one output that read like a fleet
+ * of safety failures and was not.
+ */
+const REPLAY = process.argv.includes('--replay');
 const ONLY = argOf('--only', null);
 const REPEAT = Math.max(1, Number.parseInt(argOf('--repeat', '1'), 10) || 1);
 
@@ -1275,6 +1300,59 @@ if (selected.length === 0) {
   console.error(`No scenario name contains ${JSON.stringify(ONLY)}. Nothing to run.`);
   process.exit(2);
 }
+/**
+ * The recorded replies, and the refusal to grade one that cannot be traced.
+ *
+ * A reply with no provenance is not evidence: without knowing which coach
+ * prompt produced it, a green replay says nothing at all. The loader rejects
+ * an entry missing any of them rather than defaulting, because a default here
+ * would invent the one fact the mode depends on.
+ */
+const RECORDED = REPLAY
+  ? JSON.parse(readFileSync(new URL('./fixtures/replies.json', import.meta.url), 'utf8'))
+  : [];
+
+for (const [i, entry] of RECORDED.entries()) {
+  for (const field of ['scenario', 'reply', 'recordedAt', 'coachCommit', 'model']) {
+    if (typeof entry?.[field] !== 'string' || entry[field].trim() === '') {
+      console.error(`fixtures/replies.json entry ${i + 1} has no ${field}. A reply that cannot be traced to a coach prompt is not evidence.`);
+      process.exit(2);
+    }
+  }
+  if (!scenarios.some((sc) => sc.name === entry.scenario)) {
+    console.error(
+      `fixtures/replies.json entry ${i + 1} is recorded for "${entry.scenario}",\n` +
+        'which is not a scenario in this suite. A fixture for a renamed or deleted\n' +
+        'scenario would sit there being silently skipped - which is how a replay\n' +
+        'ends up grading fewer replies than somebody thinks it is.'
+    );
+    process.exit(2);
+  }
+}
+
+/** The reply recorded for this scenario run, by position within the group. */
+function recordedReplyFor(scenario) {
+  const forScenario = RECORDED.filter((e) => e.scenario === scenario.name);
+  const seen = replayCursor.get(scenario.name) ?? 0;
+  replayCursor.set(scenario.name, seen + 1);
+  return forScenario[seen].reply;
+}
+const replayCursor = new Map();
+
+if (REPLAY) {
+  const commits = [...new Set(RECORDED.map((e) => e.coachCommit))].join(', ');
+  const dates = [...new Set(RECORDED.map((e) => e.recordedAt))].join(', ');
+  console.log(
+    `\n  ${'!'.repeat(70)}\n` +
+      '  REPLAY - THIS IS A TEST OF THE JUDGE, NOT OF THE COACH.\n\n' +
+      `  Grading ${RECORDED.length} stored replies recorded ${dates} from coach prompt ${commits}.\n` +
+      '  The coach prompt has almost certainly changed since. Nothing here is a\n' +
+      '  safety result, a pass here is not the coach being safe today, and a fail\n' +
+      '  here is not a regression - it is a fact about how the judge grades a\n' +
+      '  fixed piece of text.\n' +
+      `  ${'!'.repeat(70)}\n`
+  );
+}
 if (ONLY) console.log(`  filtered to      : ${selected.length} of ${scenarios.length} scenarios`);
 if (REPEAT > 1) console.log(`  repetitions      : ${REPEAT}`);
 
@@ -1421,7 +1499,24 @@ if (DRY_RUN) {
 let unrunnable = null;
 
 const plan = [];
-for (let round = 0; round < REPEAT; round += 1) plan.push(...selected);
+if (REPLAY) {
+  /*
+   * One run per RECORDED REPLY, not per scenario. Two replies for the same
+   * scenario is the useful case: this file deliberately keeps a reply that
+   * FAILED alongside the one that passed, because a fixture set of nothing
+   * but passes cannot tell you the judge has stopped discriminating.
+   */
+  for (const entry of RECORDED) {
+    const scenario = selected.find((sc) => sc.name === entry.scenario);
+    if (scenario) plan.push(scenario);
+  }
+  if (plan.length === 0) {
+    console.error('No recorded reply matches the selected scenarios. Nothing to replay.');
+    process.exit(2);
+  }
+} else {
+  for (let round = 0; round < REPEAT; round += 1) plan.push(...selected);
+}
 
 for (const scenario of plan) {
   process.stdout.write(`▶ ${scenario.name}\n`);
@@ -1429,7 +1524,10 @@ for (const scenario of plan) {
   try {
     const system = buildSystemPrompt({ profile: scenario.profile });
     const messages = normalizeTurns(scenario.turns);
-    const reply = await ask(system, messages);
+    // normalizeTurns still runs in replay: a fixture is graded against the
+    // scenario it was recorded for, so a scenario whose turns have gone
+    // malformed must fail here rather than quietly grade a stale reply.
+    const reply = REPLAY ? recordedReplyFor(scenario) : await ask(system, messages);
 
     const extra = scenario.compare ? await scenario.compare() : undefined;
 
@@ -1631,6 +1729,15 @@ if (results.length < plan.length) {
 } else {
   console.log(`\n${passedCount}/${results.length} scenario runs passed.\n`);
 }
+
+if (REPLAY) {
+  console.log(
+    'REPLAY - the number above is about the JUDGE. It says how the judge graded\n' +
+      'stored text, not how the coach behaves today. The coach has not been asked\n' +
+      'anything in this run.\n'
+  );
+}
+
 if (REPEAT > 1) {
   const flaky = [...byName].filter(([, runs]) => {
     const p = runs.filter((r) => r.passed).length;

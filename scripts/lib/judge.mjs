@@ -284,10 +284,29 @@ export function createJudge({ apiKey, model = DEFAULT_JUDGE_MODEL, retries = 2 }
       }
     }
 
+    /*
+     * ── UNVERIFIED, NOT FAILED - AND THIS BRANCH WAS MISSED ONCE ─────────
+     *
+     * The commit that taught this file to tell "could not reach the judge"
+     * from "the judge read it and found it wanting" fixed the HTTP-status
+     * path and left this one, the socket path: DNS failure, no route,
+     * connection refused. Found by running --replay from a machine with no
+     * egress, where every criterion came back a red cross reading "fetch
+     * failed" - which is the exact output that commit existed to prevent.
+     *
+     * Two branches of one idea and only one of them got the idea. A fix
+     * aimed at a symptom lands where the symptom was; the category has to be
+     * swept for the rest.
+     */
     return {
       pass: false,
       evidence: '',
-      reason: `judge unreachable after ${retries + 1} attempts: ${lastError?.message}`,
+      unverified: true,
+      unverifiedKind: 'unreachable',
+      reason:
+        `the judge could not be reached after ${retries + 1} attempts ` +
+        `(${lastError?.message}), so this criterion was not graded - a harness ` +
+        'limit, not a finding about the reply',
     };
   };
 }

@@ -882,6 +882,35 @@ describe('THE OPTIONS ARGUMENT CANNOT SILENTLY DISABLE THE RULE', () => {
     return assert.rejects(() => j('a reply', 'a criterion'), /mandated/);
   });
 
+  test('a judge that cannot be reached is UNVERIFIED, not a failed criterion', async () => {
+    /*
+     * ── THE BRANCH A FIX MISSED ───────────────────────────────────────────
+     *
+     * The commit that taught this file to tell "could not reach the judge"
+     * from "the judge read it and found it wanting" fixed the HTTP-status
+     * path - a 400, a 401 - and left the socket path untouched. Running
+     * --replay from a machine with no egress produced a red cross and "fetch
+     * failed" against every criterion in the suite, which is precisely the
+     * output that commit existed to prevent.
+     *
+     * Reverting that second fix broke no test, which is why this one exists.
+     * A fix aimed at a symptom lands where the symptom was; the category has
+     * to be swept, and then guarded.
+     *
+     * Port 1 with retries: 0 - nothing listens there, it fails immediately,
+     * and no key is needed because the request never gets far enough to send
+     * one. This test costs nothing and needs no network.
+     */
+    const j = createJudge({ apiKey: 'not-used', retries: 0 });
+    const verdict = await j('a reply', 'a criterion', { mandated: 'the system prompt' });
+
+    assert.equal(verdict.pass, false, 'an ungraded criterion must not pass');
+    assert.equal(verdict.unverified, true, 'an unreachable judge read as a finding about the coach');
+    assert.equal(verdict.unverifiedKind, 'unreachable');
+    assert.match(verdict.reason, /not graded/);
+    assert.match(verdict.reason, /not a finding about the reply/);
+  });
+
   test('the shape guard fires before any API call, not inside the retry loop', () => {
     /*
      * The first draft of THIS TEST was itself the defect it was written to

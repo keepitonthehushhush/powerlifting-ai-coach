@@ -32,7 +32,8 @@
     "check:mounts": "node scripts/check-app-mounts.mjs",
     "check:styles": "node scripts/check-computed-styles.mjs",
     "db:replay": "node scripts/replay-migrations.mjs",
-    "check:docs": "node scripts/check-docs.mjs"
+    "check:docs": "node scripts/check-docs.mjs",
+    "safety:replay": "node scripts/safety-eval.mjs --replay"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
