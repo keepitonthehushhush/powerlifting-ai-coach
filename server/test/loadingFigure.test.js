@@ -258,7 +258,7 @@ describe('the deadlift figure', () => {
    * CSS interpolates the four rotations linearly, and there is no reason in
    * principle for that to move the hands sensibly. A deadlift bar goes UP and
    * slightly BACK toward the lifter. A bar that swings out away from the shins
-   * on the way up is the single most recognisable thing a lifter would call
+   * on the way up is the single most recognizable thing a lifter would call
    * wrong, and no test of the CSS itself would notice.
    *
    * So this reimplements the forward kinematics from the numbers in the two

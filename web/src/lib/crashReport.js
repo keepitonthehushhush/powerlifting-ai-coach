@@ -19,7 +19,7 @@
  * A report from this module carries where a failure happened and never what
  * was in scope when it did:
  *
- *   errorName  the constructor name, from a FIXED list. Anything unrecognised
+ *   errorName  the constructor name, from a FIXED list. Anything unrecognized
  *              becomes 'Other' rather than being passed through - a name is
  *              usually a constructor, but nothing stops code from building one
  *              out of a value, and a whitelist costs nothing.

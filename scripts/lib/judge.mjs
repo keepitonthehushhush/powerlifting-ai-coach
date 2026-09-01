@@ -92,7 +92,7 @@ quote throws away a correct verdict. These are the rules that check applies:
 
 - COPY, DO NOT RETYPE. The quote must match the reply word for word.
   Formatting is forgiven - markdown such as ** or *, curly quotes, and line
-  breaks are normalised away - but words are not. One substituted, added or
+  breaks are normalized away - but words are not. One substituted, added or
   omitted word and the quote fails to anchor.
 - LENGTH FLOOR: at least ${MIN_WORDS} words AND at least ${MIN_CHARS}
   characters. A shorter quote is rejected however accurate it is, because a

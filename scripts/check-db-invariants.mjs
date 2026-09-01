@@ -121,7 +121,7 @@ const CHECKS = [
   },
   {
     name: 'THE RETENTION SWEEP IS ACTUALLY SCHEDULED',
-    why: 'A retention policy that is written down and never runs is worse than none: the privacy policy states periods the database does not honour. This asserts the cron job exists and is active, which is the only thing that makes the promise true.',
+    why: 'A retention policy that is written down and never runs is worse than none: the privacy policy states periods the database does not honor. This asserts the cron job exists and is active, which is the only thing that makes the promise true.',
     sql: `select count(*) = 1 as ok
             from cron.job
            where jobname = 'apply-retention' and active`,

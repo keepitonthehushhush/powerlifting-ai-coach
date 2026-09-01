@@ -159,8 +159,8 @@ describe('the mechanics', () => {
     assert.match(styles, /border-left: 3px solid var\(--warning\)/);
   });
 
-  test('and the notice does not rely on colour alone to carry its meaning', () => {
+  test('and the notice does not rely on color alone to carry its meaning', () => {
     // The reasoning lives in the stylesheet, next to the rule it constrains.
-    assert.match(styles, phrase('Colour is not carrying the meaning on its own'));
+    assert.match(styles, phrase('Color is not carrying the meaning on its own'));
   });
 });

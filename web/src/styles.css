@@ -6,9 +6,9 @@
    A dusk-and-neon scheme: deep indigo night, hot magenta, and a cyan-teal.
    The family is the one an eighties Florida evening is remembered in, and it
    was chosen because a training app is opened on a phone in a gym next to a
-   dozen others - being immediately recognisable is worth real money.
+   dozen others - being immediately recognizable is worth real money.
 
-   ON THE TRADEMARK QUESTION. A colour, or a pairing of colours, can be
+   ON THE TRADEMARK QUESTION. A color, or a pairing of colors, can be
    protected only by acquiring secondary meaning within a specific product
    category (the standard example is John Deere's green-and-yellow, for farm
    equipment), and that protection does not reach across unrelated industries.
@@ -17,19 +17,19 @@
    nowhere in this product - not in a class, not in a comment, not in the UI.
    These values are also our own steps rather than sampled from anything.
 
-   ON MEMORABILITY VERSUS READABILITY. Colour does measurably affect
+   ON MEMORABILITY VERSUS READABILITY. Color does measurably affect
    cognition - Mehta & Zhu (Science, 2009) found red improved performance on
    detail-oriented tasks including memory retrieval by up to 31% against blue,
    while blue roughly doubled creative output. A coach whose job is recalling
-   cues and numbers wants the warm end, which is why the primary action colour
+   cues and numbers wants the warm end, which is why the primary action color
    is magenta rather than the cyan. But that effect is small next to simply
    being able to read the screen, so every pair below was run through a
    contrast check rather than chosen by eye. The lowest ratio anywhere in the
    scheme is 5.60:1, against a 4.5:1 requirement for body text.
 
-   Chart colours are NOT these. They live further down, next to the charts, and
-   are validated separately for colour-vision separation - a requirement that
-   brand colours do not have to meet and these would fail. */
+   Chart colors are NOT these. They live further down, next to the charts, and
+   are validated separately for color-vision separation - a requirement that
+   brand colors do not have to meet and these would fail. */
 
 :root {
   --bg: #0f0d1a;
@@ -91,15 +91,15 @@
    than a picture - no edges, no shapes, nothing for the eye to catch on and
    nothing that moves.
 
-   IT IS MEASURED, NOT ADMIRED. A gradient has no single colour, so the only
+   IT IS MEASURED, NOT ADMIRED. A gradient has no single color, so the only
    honest check is text contrast at the EXTREME of each wash, where the
    background is furthest from base. Worst case anywhere: secondary text over
    the magenta wash in light mode at 5.74:1, against a 4.5:1 requirement.
    Cards are opaque, so anything inside one is unaffected either way.
 
    Painted on a FIXED pseudo-element rather than with background-attachment:
-   fixed, which iOS Safari does not honour and which repaints on every scroll
-   frame elsewhere. The base colour lives on html so that this layer, at
+   fixed, which iOS Safari does not honor and which repaints on every scroll
+   frame elsewhere. The base color lives on html so that this layer, at
    z-index -1, has something to sit above - a body with its own background
    would paint straight over it. */
 html { background: var(--bg); }
@@ -120,7 +120,7 @@ body::before {
   pointer-events: none;
   /* Fading to an alpha-zero version of the SAME hue, never to the `transparent`
      keyword. `transparent` is transparent BLACK, so a gradient running to it
-     interpolates through grey and leaves a visible dirty band with a hard edge
+     interpolates through gray and leaves a visible dirty band with a hard edge
      - which is exactly what appeared in the bottom right corner the first time
      this was rendered. */
   background:
@@ -190,7 +190,7 @@ h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
   align-items: center;
   gap: 0.15rem;
 }
-/* Separated from each other too, not only from the form: two centred pairs
+/* Separated from each other too, not only from the form: two centered pairs
    stacked with nothing between them still read as one block. */
 .auth-alternative + .auth-alternative {
   padding-top: 0.9rem;
@@ -260,7 +260,7 @@ textarea { resize: vertical; }
       100ms a change reads as a direct consequence of the click rather than as
       a response to it, which is the whole difference being reported here.
    3. Nothing animates layout. Only transform, opacity, stroke-dashoffset and
-      colour, so no frame costs a reflow.
+      color, so no frame costs a reflow.
 
    The hit target is the label, which is at least 44px tall - the size a thumb
    actually needs, and larger than the box it toggles. */
@@ -283,7 +283,7 @@ input[type='checkbox'] {
   transition: background-color 90ms ease-out, border-color 90ms ease-out;
 }
 /* The tick, drawn with a border rather than a background image so it inherits
-   colour and needs no asset. Scaled from 0 and un-hidden on check. */
+   color and needs no asset. Scaled from 0 and un-hidden on check. */
 input[type='checkbox']::before {
   content: '';
   width: 0.72rem;
@@ -327,7 +327,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   font-weight: 600;
 }
 
-/* Links carry the cool colour rather than the muted ink they used to. Two
+/* Links carry the cool color rather than the muted ink they used to. Two
    reasons: a link that looks exactly like body text is a link people do not
    know they can press, and a scheme only registers as an identity if it is
    present in the parts of a page people actually look at. Cool rather than
@@ -433,7 +433,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
    Worse, `.composer` is a <form> and the send button is a direct child of it,
    so it matched `form > button.primary { min-width: min(320px, 100%) }` - a
-   rule written for the submit button at the bottom of a centred form. In a
+   rule written for the submit button at the bottom of a centered form. In a
    flex row that min-width is a floor no shrinking can get under, so the button
    claimed the whole row and the textarea collapsed to 24px on a 390px phone,
    with the row overflowing the viewport. That is the "chat box is to the left
@@ -529,7 +529,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
    Built from the same tokens as .draft-banner so the two read as one family,
    and given a left rule rather than a full fill: a subscription notice sits
    next to body copy and a filled box next to body copy reads as an advert.
-   Colour is not carrying the meaning on its own - the sentence does - which is
+   Color is not carrying the meaning on its own - the sentence does - which is
    what keeps it legible to somebody who cannot see the hue. */
 .notice {
   margin: 0;
@@ -574,7 +574,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 
 /* Password requirement checklist.
-   State is conveyed three ways - glyph, colour, and text hidden from sight but
+   State is conveyed three ways - glyph, color, and text hidden from sight but
    not from assistive technology - because any one of them alone excludes
    somebody. */
 .checklist { list-style: none; padding: 0; margin: 0.4rem 0; }
@@ -617,10 +617,10 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 
 /* ── Charts ────────────────────────────────────────────────────────────────
-   Colours here are validated, not chosen, and they are deliberately NOT the
-   brand colours. Magenta and cyan look striking together and fail colour-vision
+   Colors here are validated, not chosen, and they are deliberately NOT the
+   brand colors. Magenta and cyan look striking together and fail color-vision
    separation; so does the red-and-green pairing tried first, at ΔE 2.7 under
-   deuteranopia, which is invisible to anyone with normal colour vision and is
+   deuteranopia, which is invisible to anyone with normal color vision and is
    exactly why it gets shipped.
 
    Teal and amber clear the check at ΔE 18.0 (dark, ΔE 27.1 tritan) and 17.3
@@ -657,14 +657,14 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   stroke-linejoin: round;
   stroke-linecap: round;
 }
-/* A 2px ring in the surface colour so overlapping markers stay countable. */
+/* A 2px ring in the surface color so overlapping markers stay countable. */
 .chart-dot {
   fill: var(--chart-line);
   stroke: var(--surface);
   stroke-width: 2;
 }
-/* Missed sets differ by SHAPE as well as colour - hollow, not filled - because
-   colour alone is never allowed to carry the one distinction that changes what
+/* Missed sets differ by SHAPE as well as color - hollow, not filled - because
+   color alone is never allowed to carry the one distinction that changes what
    the chart means. */
 .chart-dot-missed {
   fill: var(--surface);
@@ -901,20 +901,22 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .page-title { margin: 0.6rem 0 0.15rem; font-size: 1.45rem; letter-spacing: -0.02em; }
 
-/* ── What is centred, and what is deliberately not ─────────────────────────
-   The ask was "centre all the text so it looks better on every device". Half
+/* ── What is centered, and what is deliberately not ─────────────────────────
+   The ask was `centre all the text so it looks better on every device` -
+   backticked because it is quoted verbatim, and somebody's own words are not
+   ours to respell. Half
    of that is right and half of it would make the app harder to read, so this
    is the line the stylesheet draws.
 
-   CENTRED: the page column itself, every page title and subtitle, empty
+   CENTERED: the page column itself, every page title and subtitle, empty
    states, loading text, the sign-in card, and the submit row. These are short,
-   they are the first thing the eye lands on, and centring them is what makes a
+   they are the first thing the eye lands on, and centering them is what makes a
    screen look composed rather than pinned to the left edge - which is the
    actual complaint behind the request.
 
-   NOT CENTRED: anything longer than about two lines. Body copy, the policy
+   NOT CENTERED: anything longer than about two lines. Body copy, the policy
    pages, coaching replies, field hints, the note above the one-rep maxes.
-   Centred paragraphs give every line a different starting x, so at the end of
+   Centered paragraphs give every line a different starting x, so at the end of
    each line the eye has to hunt for where the next one begins instead of
    sweeping back to a fixed margin. The cost grows with line count and with
    line length, and it lands hardest on exactly the readers least able to
@@ -985,8 +987,8 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 [aria-invalid='true'] { border-color: var(--error); border-width: 2px; }
 .field-error { color: var(--error); font-size: 0.85rem; }
 
-/* The submit button of a form sits under a centred title, so it centres too.
-   Full width on a phone, where a centred button with dead space either side
+/* The submit button of a form sits under a centered title, so it centers too.
+   Full width on a phone, where a centered button with dead space either side
    is a smaller target for no reason.
 
    `:not(.composer-row *)` is not needed - .composer-row is not a form - but
@@ -1167,7 +1169,7 @@ form > button.primary {
   body::before { display: none !important; }
 
   /* Navigation, controls and the floating jump button are all noise on paper,
-     and the last one prints as a grey circle over the text. */
+     and the last one prints as a gray circle over the text. */
   .site-nav, .sticky-header, .back-to-top, .nav-jump, .lang, button { display: none !important; }
 
   .page { max-width: none; padding: 0; }
@@ -1239,7 +1241,7 @@ form > button.primary {
 .board th, .board td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
 .board th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
 .board tbody tr:last-child td { border-bottom: 0; }
-/* The reader's own row. A left rule and a wash rather than a colour swap, so
+/* The reader's own row. A left rule and a wash rather than a color swap, so
    it is still findable when the hue is not. */
 .board tr.you td { background: var(--accent-soft); }
 .board tr.you td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
@@ -1374,8 +1376,8 @@ form > button.primary {
       Apple separates them with air. The scale is 8pt with 4pt subdivisions -
       a convention rather than an Apple mandate, and worth following because
       an arbitrary 22px next to a 24px is visible even when nobody can say why.
-   4. CENTRED, AND NARROW ENOUGH TO READ. Centring only works at a short
-      measure; a centred 80-character line is genuinely harder to read than a
+   4. CENTERED, AND NARROW ENOUGH TO READ. Centering only works at a short
+      measure; a centered 80-character line is genuinely harder to read than a
       left-aligned one, because the eye loses the start of the next line.
 
    Everything is prefixed `home-`, and a test parses this block and fails if a
@@ -1428,7 +1430,7 @@ form > button.primary {
   --plate-black: oklch(0.300 0.012 300);
   --plate-silver: oklch(0.700 0.014 250);
 
-  /* The bar. Warm-neutral rather than grey, because steel is. */
+  /* The bar. Warm-neutral rather than gray, because steel is. */
   --steel-high: oklch(0.800 0.010 250);
   --steel-mid: oklch(0.660 0.013 250);
   --steel-low: oklch(0.470 0.014 250);
@@ -1572,7 +1574,7 @@ form > button.primary {
  *    file had before was rgba(0, 0, 0, 0.35), which is exactly that smudge.
  *
  * 2. Layered rather than single, with the blur roughly doubling and the
- *    opacity falling as it grows. A single large blur is a uniform grey halo.
+ *    opacity falling as it grows. A single large blur is a uniform gray halo.
  *    Stacked blurs approximate how light actually falls off, which is why the
  *    result reads as a raised object rather than a glow behind a rectangle.
  *
@@ -1610,7 +1612,7 @@ form > button.primary {
   line-height: 1.5;
 }
 
-/* The one row that is not centred: a wordmark belongs at the edge it starts
+/* The one row that is not centered: a wordmark belongs at the edge it starts
    from, and the language switcher opposite it. */
 .home-top {
   display: flex;
@@ -1677,7 +1679,7 @@ form > button.primary {
   margin: 0 0 var(--space-2);
 }
 
-/* Centred, and narrow. A centred line much past this is harder to read than a
+/* Centered, and narrow. A centered line much past this is harder to read than a
    left-aligned one, because the eye loses where the next line starts. */
 .home-section > p {
   max-width: 46ch;
@@ -1687,7 +1689,7 @@ form > button.primary {
 }
 
 /* Three across on a laptop, stacked on a phone. The numerals are the ordering,
-   which is the argument: it cannot programme for a gym it has not asked about,
+   which is the argument: it cannot program for a gym it has not asked about,
    and it cannot adjust a block it has not seen you train. */
 .home-steps {
   list-style: none;
@@ -1759,8 +1761,8 @@ form > button.primary {
   /* 50ch, inside the 45-75 character range that is the usual readability
      guidance. At 46 the English disclaimer broke to four lines and left
      "training." alone on the last one; a one-word final line is the thing that
-     makes centred prose look like an accident. Measured, not guessed - but the
-     range is what is being honoured, not the exact break, which moves with the
+     makes centered prose look like an accident. Measured, not guessed - but the
+     range is what is being honored, not the exact break, which moves with the
      translation anyway. */
   max-width: 50ch;
   margin: 0 auto;
@@ -1880,7 +1882,7 @@ form > button.primary {
    The first version wrote `.lift-body line { stroke-width: 7 }` instead, and
    every one of the exceptions silently lost: `.lift-body line` is one class
    plus one type, `.lift-plate-1` is one class, so the general rule outranked
-   all four plate widths AND the belt's colour. The plates came out a uniform
+   all four plate widths AND the belt's color. The plates came out a uniform
    thickness and the belt drew in the lifter's own cyan at the lifter's own
    width, which is a very good way to make a belt invisible. Nothing errored;
    the stylesheet was valid and the widths were simply never used.
@@ -1899,7 +1901,7 @@ form > button.primary {
 }
 
 /* A lifting belt: the only equipment the figure wears, and the one place the
-   two colours meet on the body. It sits at the waist rather than the hip
+   two colors meet on the body. It sits at the waist rather than the hip
    because at lockout the bar is AT the hip, and two parallel magenta strokes
    nine units apart read as one thick bar rather than as a belt. */
 .lift-belt {

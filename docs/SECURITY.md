@@ -41,7 +41,7 @@ The key is server-side only and reaches the browser through no path.
   cannot reach a deploy through a merge.
 
 Sourcemaps are deliberately emitted so the scanner can inspect them: a secret
-can survive minification unrecognisably but sit in plain text in a `.map` file.
+can survive minification unrecognizably but sit in plain text in a `.map` file.
 
 ### No browser-to-Anthropic calls
 
