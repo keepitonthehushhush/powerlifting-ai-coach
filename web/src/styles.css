@@ -1402,6 +1402,62 @@ form > button.primary {
   --text-caption: 0.8125rem;
 }
 
+/* ── PLATES ────────────────────────────────────────────────────────────────
+ *
+ * NOT themed, for the same reason the chart line is not: these are not brand
+ * colors, they are a governing body's. The IPF Technical Rules Book requires
+ * 25 kg red, 20 kg blue and 15 kg yellow on a competition platform, and an
+ * athlete who has been to a meet reads them faster than any label. Re-deriving
+ * them from whichever hue somebody picked for a holiday theme would turn a
+ * convention the reader already knows into decoration.
+ *
+ * The rulebook says "any color" at 10 kg and under; the green, white and black
+ * are the near-universal convention rather than a rule, and plates.js marks
+ * which is which so nobody later cites this file as authority for the wrong one.
+ *
+ * Color is never the only channel. The plates are ordered and sized as well as
+ * colored, and the loadout is written out in words beside every drawing, so
+ * none of this is load-bearing for a reader who cannot tell red from green.
+ */
+:root {
+  --plate-red: oklch(0.545 0.205 27);
+  --plate-blue: oklch(0.505 0.170 258);
+  --plate-yellow: oklch(0.820 0.165 92);
+  --plate-green: oklch(0.575 0.155 150);
+  --plate-white: oklch(0.940 0.004 300);
+  --plate-black: oklch(0.300 0.012 300);
+  --plate-silver: oklch(0.700 0.014 250);
+
+  /* The bar. Warm-neutral rather than grey, because steel is. */
+  --steel-high: oklch(0.800 0.010 250);
+  --steel-mid: oklch(0.660 0.013 250);
+  --steel-low: oklch(0.470 0.014 250);
+}
+
+.plate-bar {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+}
+/* In the printed sheet the drawing is decoration and the words are the
+   instruction, so the ink goes on the words. */
+@media print {
+  .plate-bar { display: none; }
+}
+
+.plate-words {
+  font-variant-numeric: tabular-nums;
+}
+
+.plate-figure {
+  margin: var(--space-3) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
 /* ── ELEVATION ─────────────────────────────────────────────────────────────
  *
  * This stylesheet barely uses shadows, and that is deliberate: surfaces are

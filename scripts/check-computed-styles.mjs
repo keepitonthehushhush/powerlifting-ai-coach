@@ -124,6 +124,15 @@ const SYNTHETIC = [
   { name: 'token:--elev-1', property: 'boxShadow', declaration: 'box-shadow: var(--elev-1)' },
   { name: 'token:--elev-2', property: 'boxShadow', declaration: 'box-shadow: var(--elev-2)' },
   { name: 'token:--elev-tint', property: 'backgroundColor', declaration: 'background-color: var(--elev-tint)' },
+  // The plate colors. Fixed rather than themed - they are the IPF's, not ours -
+  // and written in oklch(), so a browser that cannot parse them would draw a
+  // barbell of invisible discs with nothing anywhere reporting a problem.
+  { name: 'token:--plate-red', property: 'backgroundColor', declaration: 'background-color: var(--plate-red)' },
+  { name: 'token:--plate-blue', property: 'backgroundColor', declaration: 'background-color: var(--plate-blue)' },
+  { name: 'token:--plate-yellow', property: 'backgroundColor', declaration: 'background-color: var(--plate-yellow)' },
+  { name: 'token:--plate-green', property: 'backgroundColor', declaration: 'background-color: var(--plate-green)' },
+  { name: 'token:--plate-black', property: 'backgroundColor', declaration: 'background-color: var(--plate-black)' },
+  { name: 'token:--steel-mid', property: 'backgroundColor', declaration: 'background-color: var(--steel-mid)' },
 ];
 
 /**
@@ -169,7 +178,59 @@ const PROBE = `<script>
   var WATCHED = ${JSON.stringify(WATCHED)};
   var PROPS = ${JSON.stringify(PROPS)};
   var SYNTHETIC = ${JSON.stringify(SYNTHETIC)};
-  setTimeout(function () {
+
+  /*
+   * WAIT FOR THE PAINT, DO NOT GUESS AT IT.
+   *
+   * The first version read styles on a fixed timer and was flaky, which is
+   * worse than not checking: it reported .home-link as light-mode muted in a
+   * dark capture, because applyTheme had not yet written its inline custom
+   * properties onto the root element. The stylesheet's own
+   * prefers-color-scheme block was still answering, so the page was caught
+   * mid-dress.
+   *
+   * applyTheme sets --text inline on documentElement and stamps data-theme
+   * when it is done, so that pair is the readiness signal the app already
+   * publishes. Poll for it, and FAIL rather than capture if it never arrives -
+   * a snapshot of an unpainted page is not a smaller truth, it is a wrong one.
+   */
+  function painted() {
+    var root = document.documentElement;
+    return Boolean(root.getAttribute('data-theme')) &&
+      root.style.getPropertyValue('--text').trim() !== '' &&
+      document.getElementById('root') &&
+      document.getElementById('root').childNodes.length > 0;
+  }
+
+  /*
+   * FREEZE BEFORE MEASURING.
+   *
+   * getComputedStyle returns the INTERPOLATED value while a transition is
+   * running, not the destination. .home-link carries
+   * a 120ms color transition, so applying the theme starts a fade
+   * from the stylesheet's pre-paint color to the painted one - and a
+   * measurement taken inside that window reads a value that depends on how
+   * busy the machine was. That is what made this check flap between
+   * rgb(93, 84, 112) and rgb(168, 158, 196) on the same build.
+   *
+   * Transitions and animations are switched off, then a layout is forced so
+   * the new rule is in effect, and only then is anything read. The values
+   * recorded are destinations rather than moments.
+   */
+  function freeze() {
+    var style = document.createElement('style');
+    style.textContent =
+      '*, *::before, *::after {' +
+      ' transition: none !important;' +
+      ' animation: none !important;' +
+      ' caret-color: transparent !important; }';
+    document.head.appendChild(style);
+    // Reading offsetHeight forces the style and layout to be recomputed now.
+    void document.documentElement.offsetHeight;
+  }
+
+  function capture() {
+    freeze();
     var out = {};
     for (var s = 0; s < SYNTHETIC.length; s++) {
       var probe = document.createElement('div');
@@ -185,15 +246,43 @@ const PROBE = `<script>
       var el = document.querySelector(WATCHED[i]);
       if (!el) continue;
       var cs = getComputedStyle(el);
-      var row = {};
-      for (var j = 0; j < PROPS.length; j++) row[PROPS[j]] = cs[PROPS[j]];
-      out[WATCHED[i]] = row;
+      var row2 = {};
+      for (var j = 0; j < PROPS.length; j++) row2[PROPS[j]] = cs[PROPS[j]];
+      out[WATCHED[i]] = row2;
     }
+    return out;
+  }
+
+  function write(id, text) {
     var pre = document.createElement('pre');
-    pre.id = '__styles';
-    pre.textContent = JSON.stringify(out);
+    pre.id = id;
+    pre.textContent = text;
     document.documentElement.appendChild(pre);
-  }, ${BUDGET_MS - 2000});
+  }
+
+  var waited = 0;
+  var STEP = 50;
+  var LIMIT = ${BUDGET_MS - 2500};
+  (function poll() {
+    if (painted()) {
+      /*
+       * A short settle before measuring, so any style recalculation the paint
+       * queued has run. Deliberately setTimeout and not requestAnimationFrame:
+       * under --virtual-time-budget rAF does not fire, so the first version of
+       * this gate wrote nothing at all and reported "did the app mount?" three
+       * runs in a row against an app that had mounted perfectly.
+       */
+      setTimeout(function () { write('__styles', JSON.stringify(capture())); }, 100);
+      return;
+    }
+    waited += STEP;
+    if (waited >= LIMIT) {
+      write('__unpainted', 'data-theme=' + document.documentElement.getAttribute('data-theme') +
+        ' --text=' + JSON.stringify(document.documentElement.style.getPropertyValue('--text')));
+      return;
+    }
+    setTimeout(poll, STEP);
+  })();
 })();
 </script>`;
 
@@ -266,6 +355,12 @@ function decodeEntities(v) {
 }
 
 function readProbe(dom) {
+  const unpainted = dom.match(/<pre id="__unpainted">([\s\S]*?)<\/pre>/);
+  if (unpainted) {
+    throw new Error(
+      `the app never finished painting its theme, so nothing was measured.\n  ${decodeEntities(unpainted[1])}`,
+    );
+  }
   const match = dom.match(/<pre id="__styles">([\s\S]*?)<\/pre>/);
   if (!match) return null;
   try { return JSON.parse(decodeEntities(match[1])); } catch { return null; }

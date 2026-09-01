@@ -259,3 +259,26 @@ export function greedyMinimalityReport(denominations = []) {
   }
   return { minimal: counterexamples.length === 0, counterexamples };
 }
+
+/**
+ * The denominations a particular gym actually stocks.
+ *
+ * The profile records one number - the smallest plate PAIR the athlete has
+ * access to - because that is the only equipment question a beginner can
+ * reliably answer about a room they are standing in. Everything heavier is
+ * assumed present, which is true of every commercial gym and wrong only in
+ * garages, where the athlete will notice immediately and can say so.
+ *
+ * A null or unusable value means "we do not know", and the honest answer to
+ * that is the full standard set rather than a guess at a smaller one:
+ * over-stating what is available produces a loadout the athlete cannot build
+ * and will spot, while under-stating it silently withholds weights they could
+ * have used.
+ */
+export function platesAvailable(smallestPlatePair, units = 'lb') {
+  const unit = units === 'kg' ? 'kg' : 'lb';
+  const all = PLATE_DENOMINATIONS[unit];
+  const smallest = Number(smallestPlatePair);
+  if (!Number.isFinite(smallest) || smallest <= 0) return all;
+  return all.filter((plate) => plate >= smallest - 1e-9);
+}

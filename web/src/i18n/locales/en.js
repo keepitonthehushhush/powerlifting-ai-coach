@@ -285,6 +285,11 @@ export const en = {
       not_logged: 'nothing logged',
     },
     supersededNote: 'This is the program Coach most recently wrote you. Ask for changes in the conversation and a new version replaces it here; the old ones are kept below.',
+    platesPerSide: '{plates} per side',
+    platesBarLabel: 'A barbell loaded to {weight} {units}: {plates} per side.',
+    platesNotLoadable: 'Cannot be built from your plates — nearest is {nearest} {units}.',
+    platesBarOnly: 'Empty bar ({weight} {units})',
+    platesHeaviest: 'Heaviest bar today · {weight} {units}',
     previous: 'Earlier programs ({count})',
   },
   intake: {

@@ -246,6 +246,11 @@ export const es = {
       not_logged: 'sin registrar',
     },
     supersededNote: 'Este es el programa más reciente que te ha escrito el entrenador. Pide cambios en la conversación y una versión nueva sustituirá a esta; las anteriores se conservan abajo.',
+    platesPerSide: '{plates} por lado',
+    platesBarLabel: 'Una barra cargada a {weight} {units}: {plates} por lado.',
+    platesNotLoadable: 'No se puede armar con tus discos: lo más cercano es {nearest} {units}.',
+    platesBarOnly: 'Barra vacía ({weight} {units})',
+    platesHeaviest: 'Barra más pesada de hoy · {weight} {units}',
     previous: 'Programas anteriores ({count})',
   },
   intake: {

@@ -9,6 +9,24 @@
     "token:--elev-tint": {
       "backgroundColor": "oklab(0.0641295 0.00354168 -0.00958556)"
     },
+    "token:--plate-red": {
+      "backgroundColor": "oklch(0.545 0.205 27)"
+    },
+    "token:--plate-blue": {
+      "backgroundColor": "oklch(0.505 0.17 258)"
+    },
+    "token:--plate-yellow": {
+      "backgroundColor": "oklch(0.82 0.165 92)"
+    },
+    "token:--plate-green": {
+      "backgroundColor": "oklch(0.575 0.155 150)"
+    },
+    "token:--plate-black": {
+      "backgroundColor": "oklch(0.3 0.012 300)"
+    },
+    "token:--steel-mid": {
+      "backgroundColor": "oklch(0.66 0.013 250)"
+    },
     "body": {
       "color": "rgb(245, 243, 247)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
@@ -430,9 +448,9 @@
       "letterSpacing": "-0.17px"
     },
     ".home-link": {
-      "color": "rgb(93, 84, 112)",
+      "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
+      "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "8px",
       "fontSize": "13px",
@@ -519,6 +537,24 @@
     },
     "token:--elev-tint": {
       "backgroundColor": "oklab(0.0641295 0.00354168 -0.00958556)"
+    },
+    "token:--plate-red": {
+      "backgroundColor": "oklch(0.545 0.205 27)"
+    },
+    "token:--plate-blue": {
+      "backgroundColor": "oklch(0.505 0.17 258)"
+    },
+    "token:--plate-yellow": {
+      "backgroundColor": "oklch(0.82 0.165 92)"
+    },
+    "token:--plate-green": {
+      "backgroundColor": "oklch(0.575 0.155 150)"
+    },
+    "token:--plate-black": {
+      "backgroundColor": "oklch(0.3 0.012 300)"
+    },
+    "token:--steel-mid": {
+      "backgroundColor": "oklch(0.66 0.013 250)"
     },
     "body": {
       "color": "rgb(245, 243, 247)",
@@ -930,6 +966,24 @@
     },
     "token:--elev-tint": {
       "backgroundColor": "oklab(0.36689 0.00072503 -0.00241879)"
+    },
+    "token:--plate-red": {
+      "backgroundColor": "oklch(0.545 0.205 27)"
+    },
+    "token:--plate-blue": {
+      "backgroundColor": "oklch(0.505 0.17 258)"
+    },
+    "token:--plate-yellow": {
+      "backgroundColor": "oklch(0.82 0.165 92)"
+    },
+    "token:--plate-green": {
+      "backgroundColor": "oklch(0.575 0.155 150)"
+    },
+    "token:--plate-black": {
+      "backgroundColor": "oklch(0.3 0.012 300)"
+    },
+    "token:--steel-mid": {
+      "backgroundColor": "oklch(0.66 0.013 250)"
     },
     "body": {
       "color": "rgb(26, 21, 38)",
@@ -1441,6 +1495,24 @@
     },
     "token:--elev-tint": {
       "backgroundColor": "oklab(0.36689 0.00072503 -0.00241879)"
+    },
+    "token:--plate-red": {
+      "backgroundColor": "oklch(0.545 0.205 27)"
+    },
+    "token:--plate-blue": {
+      "backgroundColor": "oklch(0.505 0.17 258)"
+    },
+    "token:--plate-yellow": {
+      "backgroundColor": "oklch(0.82 0.165 92)"
+    },
+    "token:--plate-green": {
+      "backgroundColor": "oklch(0.575 0.155 150)"
+    },
+    "token:--plate-black": {
+      "backgroundColor": "oklch(0.3 0.012 300)"
+    },
+    "token:--steel-mid": {
+      "backgroundColor": "oklch(0.66 0.013 250)"
     },
     "body": {
       "color": "rgb(26, 21, 38)",

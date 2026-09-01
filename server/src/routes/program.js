@@ -19,7 +19,11 @@ programRouter.get('/', async (req, res, next) => {
   try {
     // No .eq('user_id', ...): req.supabase carries the caller's JWT and RLS
     // scopes this inside Postgres. Same reasoning as everywhere else here.
-    const [{ data, error }, { data: sessionRows, error: sessionError }] = await Promise.all([
+    const [
+      { data, error },
+      { data: sessionRows, error: sessionError },
+      { data: profileRow },
+    ] = await Promise.all([
       req.supabase
         .from('workout_programs')
         .select('id, week_number, phase, program_data, is_active, created_at')
@@ -32,6 +36,21 @@ programRouter.get('/', async (req, res, next) => {
         .select('date, exercises')
         .order('date', { ascending: false })
         .limit(40),
+      /*
+       * Two columns, and deliberately only two.
+       *
+       * The page needs to turn "squat 160" into "two 25s, a 15 and a 2.5 per
+       * side", which takes the unit system and the smallest plate the gym
+       * stocks and nothing else. user_profile also holds injuries,
+       * restrictions and body composition - health information - and a route
+       * that selected * would be shipping all of it to the browser to render
+       * a plate count. Naming the columns is the guard.
+       *
+       * No error is destructured. A profile that cannot be read is not a
+       * reason to fail the program page; the plate readout simply does not
+       * appear, which is the correct degradation for a convenience.
+       */
+      req.supabase.from('user_profile').select('units, smallest_plate_pair').maybeSingle(),
     ]);
 
     if (error) throw new Error(error.message);
@@ -51,6 +70,14 @@ programRouter.get('/', async (req, res, next) => {
       // last month is the context that makes this month's numbers mean
       // something, and a view that cannot see it can only show the present.
       history: programs.filter((p) => !p.is_active),
+      // What the athlete can actually load, so the page can say which plates
+      // make each prescribed weight. Null when the profile is unreadable.
+      equipment: profileRow
+        ? {
+            units: profileRow.units === 'kg' ? 'kg' : 'lb',
+            smallestPlatePair: profileRow.smallest_plate_pair ?? null,
+          }
+        : null,
     });
   } catch (err) {
     next(err);
