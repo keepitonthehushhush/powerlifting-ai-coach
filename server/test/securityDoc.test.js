@@ -139,26 +139,80 @@ test('the controls it describes are the controls that exist', async (t) => {
      * document exists to make visible - and it is how the list drifted from
      * two to seven without anybody noticing.
      *
-     * Scoped to functions that grant EXECUTE to authenticated, because the
-     * private-schema ones are unreachable by users and are covered by 0004.
+     * Scoped to functions that grant EXECUTE to a user-facing role, because
+     * the private-schema ones are unreachable by users and are covered by
+     * 0004.
+     *
+     * ── THE HOLE THIS USED TO HAVE, AND WHY IT WAS THE WORST ONE ─────────
+     *
+     * The role test was `to authenticated` - a literal substring. Every grant
+     * in this schema reads `to authenticated;` except the two that read
+     * `to anon, authenticated;`, where the substring does not occur. So the
+     * check skipped precisely the functions that ANONYMOUS callers can reach,
+     * which are the ones a security document most needs to name.
+     *
+     * `record_auth_failure` had been undocumented since 0043 because of it,
+     * and this test passed every run. Asked of the live catalogue on
+     * 2026-09-01: twelve user-callable definer functions, of which the check
+     * could see eleven.
+     *
+     * The roles are parsed out of the grant now rather than matched inside
+     * it, and `anon` gets its own assertion, because "signed-in users can
+     * call this" and "anybody on the internet can call this" are different
+     * facts and only one of them was being checked.
      */
     const section = doc.slice(doc.indexOf('## 9. Accepted linter warnings'));
     const definers = new Set(
       [...sql.matchAll(/function public\.([a-z_]+)\s*\([^)]*\)[\s\S]{0,400}?security definer/gi)]
         .map(([, fn]) => fn)
     );
-    const userCallable = [...definers].filter((fn) =>
-      new RegExp(`grant execute on function public\\.${fn}[^;]*to authenticated`, 'i').test(sql)
-    );
+
+    /** The roles a function's `grant execute` names, whatever order they are in. */
+    const grantedTo = (fn) => {
+      const roles = new Set();
+      const pattern = new RegExp(
+        `grant execute on function public\\.${fn}\\s*\\([^)]*\\)\\s*to\\s+([^;]+);`,
+        'gi'
+      );
+      for (const [, list] of sql.matchAll(pattern)) {
+        for (const role of list.split(',')) roles.add(role.trim().toLowerCase());
+      }
+      return roles;
+    };
+
+    const userCallable = [...definers].filter((fn) => {
+      const roles = grantedTo(fn);
+      return roles.has('authenticated') || roles.has('anon');
+    });
     assert.ok(userCallable.length >= 5, `only found ${userCallable.length} user-callable definer functions`);
+
+    // The property that proves the role parser works. If this ever drops to
+    // zero the split above has stopped splitting, and the check has quietly
+    // gone back to being blind to exactly the functions it most needs to see.
+    const anonCallable = userCallable.filter((fn) => grantedTo(fn).has('anon')).sort();
+    assert.ok(
+      anonCallable.length >= 1,
+      'no anon-callable definer function found - the grant list is not being parsed'
+    );
 
     const undocumented = userCallable.filter((fn) => !section.includes(`public.${fn}(`)).sort();
     assert.deepEqual(
       undocumented,
       [],
-      `these run with owner rights, are callable by any signed-in user, and are absent ` +
-        `from SECURITY.md section 9: ${undocumented.join(', ')}`
+      `these run with owner rights, are callable without an account or by any signed-in ` +
+        `user, and are absent from SECURITY.md section 9: ${undocumented.join(', ')}`
     );
+
+    // And the anon ones must be named AS anon-callable, not merely listed.
+    for (const fn of anonCallable) {
+      const where = section.indexOf(`public.${fn}(`);
+      const nearby = section.slice(Math.max(0, where - 700), where + 900);
+      assert.match(
+        nearby,
+        /\banon\b/,
+        `${fn} can be executed without an account and section 9 does not say so near where it lists it`
+      );
+    }
   });
 
   await t.test('the third-party requests it names are the ones the browser makes', () => {

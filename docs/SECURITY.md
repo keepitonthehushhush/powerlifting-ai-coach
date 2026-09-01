@@ -605,9 +605,14 @@ that can break the application it monitors is worse than no monitoring tool.
 
 The Supabase security advisor reports one warning per `SECURITY DEFINER`
 function in `public` that `authenticated` may execute. There were two when this
-was written. Asked of the catalogue on 2026-08-29 there were seven, and the
-guardian consent flow brings it to **ten** — nine callable by `authenticated`
-and one, described below, callable by `anon` on purpose:
+was written. Asked of the LIVE catalogue on 2026-09-01 there are **twelve**,
+every one callable by `authenticated` and two of them — `record_auth_failure`
+and `record_guardian_consent` — also by `anon`, each for a reason given below.
+
+This number has now been wrong here twice: it read seven while the list held
+nine, and ten while the catalogue held twelve. A count written from memory is a
+claim nobody checked, and the test that pins this section pins the LIST. Read
+the list as the fact and the number as commentary.
 
 - `public.consume_rate_limit(text)`
 - `public.delete_my_account()`
@@ -615,6 +620,15 @@ and one, described below, callable by `anon` on purpose:
 - `public.record_error_event(...)`
 - `public.record_client_error_event(...)`
 - `public.mfa_satisfied()`
+- `public.record_auth_failure(text)` — also executable by `anon`, deliberately.
+  A failed sign-in has no session by definition, so the one caller that needs
+  this is unauthenticated; the advisor flags it for that reason and the answer
+  is that it is the point. It writes a code and a timestamp, takes no user id
+  and returns nothing, and `anon` holds no table grant anywhere in this schema,
+  so the function is the whole of the reach it confers. Undocumented here since
+  `0043`, because the test that should have caught it matched the literal
+  string `to authenticated` and this grant reads `to anon, authenticated` — see
+  the note in `server/test/securityDoc.test.js`.
 
 `delete_my_account()` and `set_leaderboard_opt_in()` call `mfa_satisfied()`
 themselves. RLS does not apply to a `SECURITY DEFINER` function, so the
