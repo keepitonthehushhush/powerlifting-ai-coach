@@ -38,7 +38,7 @@ import { useMarkTaps } from './EasterEggs.jsx';
  * accent doing one job while everything else recedes.
  *
  * Underline-on-hover returns for pointer users because a nav item that only
- * changes colour is a poor affordance, and the focus ring is never removed.
+ * changes color is a poor affordance, and the focus ring is never removed.
  */
 
 /**

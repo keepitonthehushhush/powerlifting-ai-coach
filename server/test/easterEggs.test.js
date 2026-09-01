@@ -11,7 +11,7 @@ const es = readRaw(new URL('../../web/src/i18n/locales/es.js', import.meta.url))
 
 /**
  * An easter egg that fires by accident is not a joke, it is a bug with a sense
- * of humour. These assert the rules that keep it the former.
+ * of humor. These assert the rules that keep it the former.
  */
 describe('nothing fires by accident', () => {
   test('the key sequence is ignored while the athlete is typing', () => {

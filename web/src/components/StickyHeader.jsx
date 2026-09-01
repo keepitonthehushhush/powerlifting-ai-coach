@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
  * or a long coaching conversation - getting back to the navigation meant
  * scrolling all the way to the top by hand.
  *
- * The behaviour is the one people already know from mobile browsers: scrolling
+ * The behavior is the one people already know from mobile browsers: scrolling
  * DOWN means "I am reading, go away", so the header condenses; scrolling UP
  * means "I am looking for something", so it returns at full size. It never
  * disappears entirely, because a navigation bar you cannot see is one you
@@ -130,7 +130,7 @@ export function StickyHeader({ children }) {
  * Appears once the page is long enough to have lost you, and not before.
  *
  * Deliberately a real <button> rather than an anchor to #top: it must be
- * reachable by keyboard, announce itself, and honour reduced motion. An
+ * reachable by keyboard, announce itself, and honor reduced motion. An
  * `href="#top"` also writes a history entry, so Back would then mean "scroll
  * down again" rather than "go to the previous page".
  */

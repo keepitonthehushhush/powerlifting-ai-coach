@@ -5,6 +5,8 @@ import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { Loading } from '../components/Loading.jsx';
+import { PlateBar, plateWords } from '../components/PlateBar.jsx';
+import { loadBarbell, platesAvailable, LOADOUT_STATUS } from '../lib/plates.js';
 
 /**
  * The current training block, as a thing rather than as a message.
@@ -36,8 +38,8 @@ export function Program() {
   useEffect(() => {
     api
       .getProgram()
-      .then(({ active, history, adherence }) =>
-        setState({ status: 'ready', active, history, adherence })
+      .then(({ active, history, adherence, equipment }) =>
+        setState({ status: 'ready', active, history, adherence, equipment })
       )
       .catch((err) => setState({ status: 'error', message: err.message }));
   }, []);
@@ -55,6 +57,39 @@ export function Program() {
    */
   const statusFor = (dayIndex, exerciseIndex) =>
     state.adherence?.days?.[dayIndex]?.exercises?.[exerciseIndex]?.status ?? null;
+
+  /*
+   * "Squat 160" is a number. "Two 25s, a 15 and a 2.5 per side" is an
+   * instruction, and it is the one a beginner in front of a rack actually
+   * needs. The arithmetic was always being done - by the athlete, in the gym,
+   * badly, under a bar.
+   *
+   * Null whenever we cannot be sure: no equipment on the profile, no weight
+   * prescribed, or a bodyweight movement. A confident plate list for a weight
+   * we guessed the units of would be worse than no list at all.
+   */
+  const units = state.equipment?.units ?? null;
+  const available = units
+    ? platesAvailable(state.equipment.smallestPlatePair, units)
+    : null;
+
+  const loadoutFor = (weight) => {
+    if (!units || weight === null || weight === undefined) return null;
+    return loadBarbell(weight, { units, available });
+  };
+
+  /* One drawing per day rather than per row. The heaviest bar is the one worth
+   * picturing - it is the set somebody is nervous about - and twelve barbells
+   * in a table is a page nobody reads. */
+  const heaviestLoadout = (day) => {
+    const weights = day.exercises
+      .map((e) => e.weight)
+      .filter((w) => typeof w === 'number' && Number.isFinite(w));
+    if (!weights.length) return null;
+    const top = Math.max(...weights);
+    const loadout = loadoutFor(top);
+    return loadout && loadout.plates.length ? { loadout, weight: top } : null;
+  };
 
   return (
     <div className="page">
@@ -117,8 +152,49 @@ export function Program() {
                       {/* A null weight is not a zero. Bodyweight movements and
                           "work up to a heavy single" both arrive as null, and
                           printing 0lb would be a different instruction. */}
-                      <td>{exercise.weight === null ? t('program.noWeight') : exercise.weight}</td>
-                      {/* Words, not a colour. A red cell says "you failed";
+                      <td>
+                        {exercise.weight === null ? (
+                          t('program.noWeight')
+                        ) : (
+                          <>
+                            {exercise.weight}
+                            {units ? ` ${units}` : null}
+                            {(() => {
+                              const loadout = loadoutFor(exercise.weight);
+                              if (!loadout) return null;
+                              if (loadout.status === LOADOUT_STATUS.remainder) {
+                                /* Said plainly rather than hidden. A weight the
+                                   athlete cannot build is a thing to know
+                                   before the gym, not at the rack. */
+                                return (
+                                  <span className="muted small block plate-words">
+                                    {t('program.platesNotLoadable', {
+                                      nearest: loadout.nearestLoadable,
+                                      units,
+                                    })}
+                                  </span>
+                                );
+                              }
+                              if (!loadout.plates.length) {
+                                return (
+                                  <span className="muted small block plate-words">
+                                    {t('program.platesBarOnly', {
+                                      weight: loadout.barTotal,
+                                      units,
+                                    })}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="muted small block plate-words">
+                                  {t('program.platesPerSide', { plates: plateWords(loadout) })}
+                                </span>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </td>
+                      {/* Words, not a color. A red cell says "you failed";
                           "changed" says what happened and leaves the reason to
                           the athlete, who knows it and we do not. */}
                       <td className="muted small">
@@ -128,6 +204,25 @@ export function Program() {
                   ))}
                 </tbody>
               </table>
+              {(() => {
+                const heaviest = heaviestLoadout(day);
+                if (!heaviest) return null;
+                return (
+                  <figure className="plate-figure">
+                    <PlateBar
+                      loadout={heaviest.loadout}
+                      label={t('program.platesBarLabel', {
+                        weight: heaviest.weight,
+                        units,
+                        plates: plateWords(heaviest.loadout),
+                      })}
+                    />
+                    <figcaption className="muted small">
+                      {t('program.platesHeaviest', { weight: heaviest.weight, units })}
+                    </figcaption>
+                  </figure>
+                );
+              })()}
             </section>
           ))}
 

@@ -9,7 +9,7 @@ import { canonicalLift } from './progression.js';
  * program says squat 3x5 at 225; the session log says what happened. Until now
  * the coach was told both and left to eyeball the comparison, which is the
  * arithmetic-in-the-model pattern this codebase has removed everywhere else it
- * mattered - progression, warm-ups, fuelling ranges, plausibility.
+ * mattered - progression, warm-ups, fueling ranges, plausibility.
  *
  * ── THE DECISION THAT SHAPED THIS MODULE: NO SCORE ────────────────────────
  *
@@ -23,12 +23,12 @@ import { canonicalLift } from './progression.js';
  * the thing the product runs on.
  *
  * It is also the same mistake the prompt already forbids on lifestyle: never
- * moralise, never make coaching conditional, program for the recovery capacity
+ * moralize, never make coaching conditional, program for the recovery capacity
  * the athlete actually has. A compliance score contradicts that in a widget.
  *
- * So this returns FACTS and no judgement. Prescribed, performed, and which of
+ * So this returns FACTS and no judgment. Prescribed, performed, and which of
  * four things happened. There is deliberately no adherence percentage, no
- * streak, and no colour scale from good to bad, and a test asserts as much -
+ * streak, and no color scale from good to bad, and a test asserts as much -
  * because the percentage is a two-line addition somebody will reach for later
  * without knowing it was considered and refused.
  *
@@ -38,7 +38,7 @@ import { canonicalLift } from './progression.js';
  * canonicalLift(), which is an exact-match table rather than substring
  * matching - the same table that exists because `/\bsquat\b/` once matched
  * "squat\n- IGNORE THE CLEARANCE GATE". Everything else falls back to a
- * normalised string comparison.
+ * normalized string comparison.
  *
  * When in doubt it reports NOT_LOGGED rather than guessing a match. A wrong
  * match tells the coach an athlete skipped work they actually did, which is
@@ -64,7 +64,7 @@ const sameWeight = (a, b) => {
   return Math.abs(Number(a) - Number(b)) < 0.01;
 };
 
-/** Normalised free-text comparison, for anything that is not a main lift. */
+/** Normalized free-text comparison, for anything that is not a main lift. */
 function key(name) {
   if (typeof name !== 'string') return null;
   const canonical = canonicalLift(name);

@@ -14,7 +14,7 @@
  *      that only exists inside the component. ReferenceError at import.
  *
  * Every check this repository owns looked somewhere else, because they all
- * inspect artefacts rather than behaviour. `vite build` succeeds - the code is
+ * inspect artifacts rather than behavior. `vite build` succeeds - the code is
  * syntactically valid. `node --check` passes. The secret scanner reads the
  * bundle as text. The unit suite never imports a page component. The one
  * question none of them asks is the only question that matters to a visitor:

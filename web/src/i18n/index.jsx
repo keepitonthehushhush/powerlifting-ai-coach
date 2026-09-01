@@ -48,7 +48,7 @@ function detectLocale() {
   return FALLBACK;
 }
 
-/** Resolve a dotted path such as 'intake.units.label' against a catalogue. */
+/** Resolve a dotted path such as 'intake.units.label' against a catalog. */
 function lookup(catalogue, key) {
   return key.split('.').reduce((node, part) => (node == null ? undefined : node[part]), catalogue);
 }

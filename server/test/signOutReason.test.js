@@ -1,5 +1,12 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import {
+  SIGN_OUT_REASONS,
+  declareSignOutIntent,
+  describeSignOut,
+  sessionIsDead,
+  takeSignOutIntent,
+} from '../../web/src/lib/signOutReason.js';
 import { readSource } from './helpers/source.js';
 import { readFileSync } from 'node:fs';
 
@@ -41,15 +48,27 @@ describe('the sign-out breadcrumb', () => {
     assert.doesNotMatch(module_, /localStorage/);
   });
 
-  test('every access is wrapped, because storage throws outright in some browsers', () => {
-    // A private window and a browser set to block site data both throw on the
-    // accessor itself. A diagnostic that breaks the sign-in page it is
-    // diagnosing would be a poor trade.
+  test('every function that TOUCHES storage wraps it', () => {
+    /*
+     * A private window and a browser set to block site data both throw on the
+     * accessor itself. A diagnostic that breaks the sign-in page it is
+     * diagnosing would be a poor trade.
+     *
+     * This used to assert `bodies.length === 3` - "expected exactly read,
+     * record and clear" - and blocked the two pure functions added later,
+     * neither of which goes near storage. Counting exports was never the
+     * property; guarding the ones that touch it is. Derived from the bodies
+     * now, so a new storage-touching function is covered the day it is
+     * written and a new pure one is not asked to catch nothing.
+     */
     const bodies = module_.split('export function').slice(1);
-    assert.equal(bodies.length, 3, 'expected exactly read, record and clear');
-    for (const body of bodies) {
-      assert.match(body, /try \{/, `an exported function does not guard storage`);
-      assert.match(body, /catch/, `an exported function does not catch`);
+    assert.ok(bodies.length >= 3, 'the module lost its exports');
+    const touching = bodies.filter((body) => /sessionStorage/.test(body));
+    assert.ok(touching.length >= 3, 'read, record and clear must all still be here');
+    for (const body of touching) {
+      const name = body.slice(0, body.indexOf('(')).trim();
+      assert.match(body, /try \{/, `${name} does not guard storage`);
+      assert.match(body, /catch/, `${name} does not catch`);
     }
   });
 
@@ -61,9 +80,51 @@ describe('the sign-out breadcrumb', () => {
     assert.match(auth, /hadSession\.current = Boolean\(next\)/);
   });
 
-  test('a sign-out the person asked for is not reported as a fault', () => {
-    const signOut = auth.slice(auth.indexOf('signOut:'), auth.indexOf('signOut:') + 260);
-    assert.match(signOut, /clearSignOutReason\(\)/);
+  test('A SIGN-OUT THE PERSON ASKED FOR IS NOT REPORTED AS A FAULT', () => {
+    /*
+     * Reported on 2026-08-31: signing out of the iPhone app and back in showed
+     * "we are not sure why (SIGNED_OUT)". Every deliberate sign-out did.
+     *
+     * The old assertion passed the whole time. It checked that signOut()
+     * calls clearSignOutReason(), which it did - and then supabase.auth
+     * .signOut() fired SIGNED_OUT, the listener saw a session become null, and
+     * it wrote the breadcrumb straight back a few milliseconds later. Both
+     * halves were correct and the ORDER was wrong, which no assertion about
+     * one half could see.
+     *
+     * So the property is asserted end to end now: the intent is declared
+     * before the call, and the listener consults it instead of the event.
+     */
+    const signOut = auth.slice(auth.indexOf('signOut:'), auth.indexOf('signOut:') + 700);
+    assert.match(signOut, /declareSignOutIntent\(SIGN_OUT_REASONS\.deliberate\)/);
+    assert.match(auth, /takeSignOutIntent\(\)/, 'the listener still guesses from the event');
+    assert.match(
+      auth,
+      /declared === SIGN_OUT_REASONS\.deliberate\) clearSignOutReason\(\)/,
+      'a declared deliberate sign-out must leave no notice'
+    );
+  });
+
+  test('the declared reason survives the event that follows it', () => {
+    // The trap is that supabase.auth.signOut() fires SIGNED_OUT and the
+    // listener runs LAST. A specific diagnosis written before the call would
+    // be replaced by the generic event name; a declaration is not.
+    declareSignOutIntent(SIGN_OUT_REASONS.serverRejected);
+    assert.equal(takeSignOutIntent(), SIGN_OUT_REASONS.serverRejected);
+  });
+
+  test('reading it clears it, so a later unrelated sign-out is not mislabeled', () => {
+    // A refresh token genuinely expiring an hour afterwards must not be
+    // reported as the thing that was declared this morning.
+    declareSignOutIntent(SIGN_OUT_REASONS.deliberate);
+    assert.equal(takeSignOutIntent(), SIGN_OUT_REASONS.deliberate);
+    assert.equal(takeSignOutIntent(), null, 'the declaration outlived its transition');
+  });
+
+  test('the fetch wrapper declares rather than writes, for the same reason', () => {
+    const api = read('../../web/src/lib/api.js');
+    assert.match(api, /declareSignOutIntent\(SIGN_OUT_REASONS\.serverRejected\)/);
+    assert.doesNotMatch(api, /recordSignOut\(/, 'writing it here loses to the listener');
   });
 
   test('signing in clears it', () => {
@@ -76,15 +137,65 @@ describe('the sign-out breadcrumb', () => {
     assert.match(login, /useState\(\(\) => lastSignOut\?\.\(\) \?\? null\)/);
   });
 
-  test('the notice is translated, not hardcoded English', () => {
-    assert.match(login, /t\('auth\.sessionEnded'\)/);
+  test('the notice is translated, and every reason has a sentence in both locales', () => {
+    /*
+     * This used to pin `t('auth.sessionEnded')`, the one key that existed when
+     * the notice was a single message. It now depends on why the session
+     * ended, so the assertion is derived: ask describeSignOut what keys it can
+     * produce, and require every one of them to exist in every locale.
+     *
+     * A new reason added without a translation fails here rather than
+     * rendering its own key at somebody.
+     */
+    assert.match(login, /t\(describeSignOut\(/, 'the notice must go through i18n');
+
+    const reasons = [
+      SIGN_OUT_REASONS.serverRejected,
+      'SIGNED_OUT',
+      'TOKEN_REFRESHED',
+      'something nobody has seen yet',
+      undefined,
+    ];
+    const keys = [...new Set(reasons.map((reason) => describeSignOut(reason)))];
+    assert.ok(keys.length >= 2, 'describeSignOut collapsed every reason into one message');
+
     for (const locale of ['en', 'es']) {
-      assert.match(
-        read(`../../web/src/i18n/locales/${locale}.js`),
-        /sessionEnded:/,
-        `${locale} has no sessionEnded string`
-      );
+      const catalogue = read(`../../web/src/i18n/locales/${locale}.js`);
+      for (const key of keys) {
+        const leaf = key.split('.').pop();
+        assert.match(catalogue, new RegExp(`${leaf}:`), `${locale} has no ${key} string`);
+      }
     }
+  });
+
+  test('the raw event name is not shown to a person, and is still readable by a developer', () => {
+    // "You were signed out and we are not sure why (SIGNED_OUT)" was correct
+    // while this was an instrument. It reads as the operator being confused,
+    // which is not a thing to put in front of somebody who wants to log a
+    // squat. The code moves to an attribute rather than being thrown away.
+    assert.doesNotMatch(login, /\(\{endedSession\.reason\}\)/, 'the code is still on screen');
+    assert.match(login, /data-reason=\{endedSession\.reason\}/, 'the code was discarded entirely');
+  });
+
+  test('a rejected session is distinguished from an unfinished one', () => {
+    // Both are 401. Signing out on mfa_required would throw away a correct
+    // login and send somebody back to a password field they had just used.
+    assert.equal(sessionIsDead({ status: 401, code: 'auth_required' }), true);
+    assert.equal(sessionIsDead({ status: 401, code: 'mfa_required' }), false);
+    assert.equal(sessionIsDead({ status: 403, code: 'auth_required' }), false);
+    assert.equal(sessionIsDead({ status: 500, code: 'coach_refused' }), false);
+    for (const bad of [undefined, null, {}, { status: 401 }]) {
+      assert.equal(sessionIsDead(bad), false, `${JSON.stringify(bad)} was read as a dead session`);
+    }
+  });
+
+  test('and the API actually acts on it, rather than only being able to', () => {
+    // The decision is pure and testable; the acting on it is in api.js, and a
+    // decision nothing calls is a comment.
+    const api = read('../../web/src/lib/api.js');
+    assert.match(api, /sessionIsDead\(/, 'nothing consults the decision');
+    assert.match(api, /signOut\(\{ scope: 'local' \}\)/, 'a dead session is not dropped');
+    assert.match(api, /endingSession/, 'a burst of 401s would produce a burst of sign-outs');
   });
 });
 

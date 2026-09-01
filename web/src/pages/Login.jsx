@@ -7,6 +7,10 @@ import { checkPassword, MIN_LENGTH } from '../lib/passwordPolicy.js';
 import { checkPwned } from '../lib/pwnedPassword.js';
 import { Turnstile, resetTurnstile } from '../components/Turnstile.jsx';
 import { enabled as captchaEnabled } from '../lib/turnstile.js';
+import { cleanEmailInput, hadInvisibleCharacters, describeEmailProblem } from '../lib/emailInput.js';
+import { describeSignOut } from '../lib/signOutReason.js';
+import { classifyAuthError, authErrorMessageKey, shouldRecord } from '../lib/authErrors.js';
+import { supabase } from '../lib/supabase.js';
 
 export function Login() {
   const { session, signIn, signUp, resetPassword, lastSignOut } = useAuth();
@@ -16,7 +20,7 @@ export function Login() {
    *
    * The landing page's primary button says "create your account", and until
    * this existed it produced the SIGN-IN form - the same class of untruth as a
-   * field labelled "Username or Email" on a form that only accepts email.
+   * field labeled "Username or Email" on a form that only accepts email.
    *
    * Validated against the three modes this component knows rather than trusted
    * as a string, so `?mode=` cannot put the form into a state that does not
@@ -28,6 +32,20 @@ export function Login() {
     return requested === 'signup' ? 'signup' : 'signin';
   });
   const [email, setEmail] = useState('');
+  /*
+   * Whether the last keystroke contained something invisible that was removed.
+   * Fixing it silently is right; fixing it silently AND saying nothing means
+   * somebody whose address keeps arriving mangled never learns why.
+   */
+  const [emailRepaired, setEmailRepaired] = useState(false);
+  /*
+   * Our own verdict on the address, replacing the browser's. See
+   * lib/emailInput.js for why the native one had to go: it blocked submission
+   * on a field that visibly contained an address and said "Enter an email
+   * address", which names the only thing that was not wrong and reports
+   * nothing back to us.
+   */
+  const [emailProblem, setEmailProblem] = useState(null);
   const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaBlocked, setCaptchaBlocked] = useState(false);
@@ -107,6 +125,18 @@ export function Login() {
     event.preventDefault();
     if (isReset) return handleReset(event);
 
+    /*
+     * Our own address check, first, because the browser's no longer runs. It
+     * has to name the problem: a person told "enter an email address" while
+     * looking at their own address learns nothing and can do nothing, which is
+     * exactly how this cost two rounds of "same thing".
+     */
+    const problem = describeEmailProblem(email);
+    if (problem) {
+      setEmailProblem(problem);
+      return;
+    }
+
     // Checked here as well as by disabling the button: a submit can still
     // arrive by keyboard, and this branch is the one that decides.
     //
@@ -162,7 +192,41 @@ export function Login() {
     }
 
     if (error) {
-      setStatus({ kind: 'error', text: error.message });
+      /**
+       * ── WHY THE PROVIDER'S OWN SENTENCE NEVER REACHES THE PERSON ────────
+       *
+       * This line used to be `text: error.message`, and on 2026-08-29 that
+       * showed somebody trying to make an account:
+       *
+       *   "captcha protection: request disallowed (no captcha_token found)"
+       *
+       * CAPTCHA had been switched on in Supabase while the deployed bundle
+       * carried no site key, so no token was ever sent. The ordering was the
+       * operational mistake; this sentence was ours. It is addressed to an
+       * operator, names a thing the reader cannot see, and offers no action -
+       * so they do not retry, do not write in, and do not come back.
+       *
+       * classifyAuthError also needs to know what the CLIENT had available,
+       * because a CAPTCHA rejection means three different things and only the
+       * client can tell them apart: no key built in is OUR misconfiguration,
+       * a blocked script is their network, and a spent token is neither.
+       */
+      const code = classifyAuthError(error, {
+        captchaConfigured: captchaEnabled(),
+        captchaBlocked,
+      });
+      setStatus({ kind: 'error', text: t(authErrorMessageKey(code)) });
+
+      /**
+       * Best effort, and deliberately not awaited into the person's path: a
+       * telemetry write must never become the reason somebody sees a second
+       * error on the page they are already stuck on. A failed sign-up has no
+       * session, so this goes through record_auth_failure (migration 0043),
+       * which takes a code and nothing else.
+       */
+      if (shouldRecord(code)) {
+        supabase.rpc('record_auth_failure', { p_code: code }).catch(() => {});
+      }
       return;
     }
     if (mode === 'signup' && !data.session) {
@@ -190,23 +254,79 @@ export function Login() {
             being guessed at on the strength of a hypothesis; this is the
             instrument that decides which fix is the right one. */}
         {endedSession && (
-          <p className="warning">
-            {t('auth.sessionEnded')}{' '}
-            <span className="muted small">({endedSession.reason})</span>
+          /*
+           * The raw event name used to be printed after this sentence, in
+           * brackets. That was right while this was an instrument for a bug
+           * with three indistinguishable causes - the code WAS the diagnostic.
+           * It is wrong now that the causes are known: "we are not sure why
+           * (SIGNED_OUT)" shows somebody the inside of the machine and tells
+           * them the operator is confused.
+           *
+           * The code still ships, on data-reason, where a developer reading
+           * devtools finds it and a person reading the page does not.
+           */
+          <p className="warning" data-reason={endedSession.reason}>
+            {t(describeSignOut(endedSession.reason))}
           </p>
         )}
 
-        <form onSubmit={handleSubmit} className="stack">
+        {/*
+          noValidate: the browser's constraint UI is replaced, not disabled in
+          spirit. The field stays type=email so an iPhone still offers the @
+          key; only the refusal changes hands, to something that can say WHICH
+          character is wrong - including one nobody can see.
+        */}
+        <form onSubmit={handleSubmit} className="stack" noValidate>
           <label>
             {t('auth.email')}
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              /*
+               * Cleaned on the way in, not checked on the way out. A phone can
+               * put a non-breaking space or a zero-width character into this
+               * field - from a QuickType suggestion, a contact-card autofill,
+               * or a paste - and the browser then refuses to submit with
+               * "Enter an email address." while a correct-looking address sits
+               * in front of the user. Reported from an iPhone; nothing reached
+               * the server, because nothing was ever sent.
+               *
+               * See lib/emailInput.js: ASCII spaces are stripped by the
+               * browser itself, which is why the obvious suspect was innocent.
+               */
+              onChange={(e) => {
+                setEmailRepaired(hadInvisibleCharacters(e.target.value));
+                setEmail(cleanEmailInput(e.target.value));
+                setEmailProblem(null);
+              }}
+              aria-invalid={emailProblem ? 'true' : undefined}
+              aria-describedby={emailProblem ? 'email-problem' : undefined}
               autoComplete="email"
+              /*
+               * iOS capitalizes and autocorrects text fields by default. None
+               * of these break validation on their own, but an address the
+               * user did not type is an address that does not match the one on
+               * the account, and the failure that produces is a login screen
+               * that just says no.
+               */
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="email"
             />
           </label>
+          {emailProblem && (
+            <p className="error small" id="email-problem" role="alert">
+              {emailProblem.codePoint
+                ? t('auth.emailProblem.character', { code: emailProblem.codePoint })
+                : t(`auth.emailProblem.${emailProblem.code}`)}
+            </p>
+          )}
+          {emailRepaired && !emailProblem && (
+            <p className="muted small" role="status">
+              {t('auth.emailCleaned')}
+            </p>
+          )}
           {!isReset && (
           <label>
             {t('auth.password')}
@@ -233,7 +353,7 @@ export function Login() {
               <ul className="checklist">
                 {policy.results.map(({ id, satisfied }) => (
                   <li key={id} className={satisfied ? 'met' : 'unmet'}>
-                    {/* The tick is decorative - colour and shape alone do not
+                    {/* The tick is decorative - color and shape alone do not
                         reach a screen reader, so the state is repeated as text
                         that is hidden visually but present in the accessibility
                         tree. */}

@@ -92,7 +92,14 @@ export const ProgramData = z
  */
 export function extractProgramBlock(text) {
   if (typeof text !== 'string' || !text.includes(OPEN)) {
-    return { reply: typeof text === 'string' ? text : '', program: null, problem: null };
+    /*
+     * No open tag is the ordinary case - most replies carry no program - but
+     * it is not the same as "no tags at all". A model that hallucinates a
+     * lone `</program_data>` used to have it printed verbatim, because this
+     * returned before anything looked. stripAll removes a stray close and
+     * leaves the prose around it; with no tags at all it is a trim.
+     */
+    return { reply: typeof text === 'string' ? stripAll(text) : '', program: null, problem: null };
   }
 
   const opens = text.split(OPEN).length - 1;
@@ -133,14 +140,41 @@ export function extractProgramBlock(text) {
   return { reply, program: result.data, problem: null };
 }
 
-/** Removes every tag and anything between the first open and the last close. */
+/**
+ * Removes every tag and anything between the first open and the last close.
+ *
+ * ── THE TRUNCATED BLOCK, AND WHY IT REACHED SOMEBODY'S SCREEN ─────────────
+ *
+ * Reported with a screenshot on 2026-08-31. A reply hit the output ceiling
+ * partway through the program block, so the text carried one open tag and no
+ * close. That lands in the `opens !== 1 || closes !== 1` branch above and
+ * comes here - and the old last line removed only the TAG CHARACTERS, leaving
+ * the half-written JSON in the reply. The athlete was shown
+ *
+ *     {"phase":"intermediate","week":20,"summary":"Push/lower-
+ *
+ * followed by the app's own "this reply stops early" note. Machine output, in
+ * a coaching conversation, immediately under a paragraph about bracing.
+ *
+ * Nothing failed. `problem` was set and logged exactly as designed, the
+ * program was correctly not saved, and the reply was returned - with the
+ * wreckage still in it, because "strip the tags" and "strip the block" are
+ * different operations and only one of them was implemented for this case.
+ *
+ * An open tag with no close after it means the reply was cut off inside the
+ * block. There is nothing after it to keep, so everything from the tag to the
+ * end goes.
+ */
 function stripAll(text) {
   const first = text.indexOf(OPEN);
   const last = text.lastIndexOf(CLOSE);
   if (first !== -1 && last > first) {
     return (text.slice(0, first) + text.slice(last + CLOSE.length)).trim();
   }
-  return text.split(OPEN).join('').split(CLOSE).join('').trim();
+  // Opened and never closed: the rest of the text IS the partial block.
+  if (first !== -1) return text.slice(0, first).trim();
+  // A stray close with no open. Drop the tag; the prose around it is real.
+  return text.split(CLOSE).join('').trim();
 }
 
 /**

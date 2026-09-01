@@ -6,7 +6,7 @@
  * `phase` has been stored on every program since migration 0001 and nothing
  * has ever changed it. The coach picks a value when it writes a block, which
  * means the transition that matters most in a lifter's first two years - the
- * one where adding weight every session stops working and the programme has to
+ * one where adding weight every session stops working and the program has to
  * change shape - depended on a model noticing.
  *
  * The progression engine has known the answer per-lift for a while: it returns
@@ -22,7 +22,7 @@
  * deadlift scheme, not a new training age.
  *
  * The squat is the bellwether instead. It is trained most often, it drives the
- * programme, and Starting Strength's own guidance treats running out of squat
+ * program, and Starting Strength's own guidance treats running out of squat
  * resets as the signal to move on. So:
  *
  *   - squat exhausted                      -> intermediate
@@ -33,7 +33,7 @@
  *
  * A separate and more common case. Somebody who reports at intake that the bar
  * has not gone up in months is not a novice, and handing them a novice linear
- * programme means watching them fail reps for three weeks to prove something
+ * program means watching them fail reps for three weeks to prove something
  * they already told us. `progress_cadence` exists precisely to catch this, and
  * until now nothing read it for this purpose.
  *
@@ -46,19 +46,19 @@
  * Unlike the clearance gate, which is re-checked in code and overrides the
  * model outright. The difference is what a wrong answer costs: a gated athlete
  * who gets a program is a safety failure, while an athlete on the wrong phase
- * gets a worse programme and stalls. That is bad coaching, not danger, and
+ * gets a worse program and stalls. That is bad coaching, not danger, and
  * there are legitimate reasons a coach might hold somebody on linear
- * progression for another fortnight - a missed week, a bad sleep run, a move.
+ * progression for another two weeks - a missed week, a bad sleep run, a move.
  *
  * So this produces a strong directive and the chat route logs it when the
- * stored program disagrees. Visibility without taking the judgement away.
+ * stored program disagrees. Visibility without taking the judgment away.
  *
  * ── AND IT NEVER DEMOTES ──────────────────────────────────────────────────
  *
  * Detraining genuinely restores linear progression, so novice programming after
  * a long layoff is correct. Automating that is a different and harder problem -
  * it needs to distinguish a layoff from a deload from a holiday from somebody
- * who simply stopped logging - and getting it wrong resets a working programme.
+ * who simply stopped logging - and getting it wrong resets a working program.
  * Left to the coach, deliberately.
  */
 

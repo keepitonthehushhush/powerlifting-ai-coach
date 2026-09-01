@@ -1,5 +1,5 @@
 -- =============================================================================
--- 0036 — Coaching 13 to 17 year olds: the database half
+-- 0054 — Coaching 13 to 17 year olds: the database half
 --
 -- The design, the reasoning and the law behind it are in docs/UNDER_18.md.
 -- This migration builds the storage and the invariants. It does NOT switch
@@ -11,8 +11,38 @@
 --   1. `guardian_consent` becomes a consent type in the existing ledger.
 --   2. The ledger learns one new column - the guardian's email - under a
 --      constraint that stops it becoming a general-purpose PII column.
---   3. That email gets a retention period and a line in the nightly sweep.
+--   3. That email gets a retention period. The sweep itself is defined in 0055.
 --   4. A minor cannot join the leaderboard, enforced in the database.
+--
+-- ── RENUMBERED FROM 0036, AND WHY THAT WAS NOT COSMETIC ─────────────────────
+--
+-- This was written as 0036 and never applied anywhere; main went to 0053 while
+-- it sat on a branch. Renumbering it to the top is not tidiness. Migrations
+-- reach production by hand, pasted into the SQL editor in the order somebody
+-- opens the files, so a file numbered 0036 arriving at a database that is
+-- already at 0053 runs LAST while claiming to run seventeenth.
+--
+-- Two things in the original would have been silently undone by that:
+--
+--   set_leaderboard_opt_in()  0052 put the second-factor gate inside it. This
+--                             file restated the function without it.
+--   apply_retention()         0053 added the training-intention sweep. This
+--                             file restated the function without it.
+--
+-- Neither would have failed. `create or replace function` replaces rather than
+-- merges and reports success either way, and a retention sweep that stops
+-- clearing a column produces no error - just a column that stops being
+-- cleared, behind a privacy policy that still promises it is.
+--
+-- Worse than either: the numbers made the two paths to a schema disagree. A
+-- rebuild from this directory applies 0036 before 0052 and gets the gate; a
+-- production database applies it after and loses it. The schema fingerprint
+-- exists to catch exactly that divergence, and it would have caught this one
+-- AFTER it shipped.
+--
+-- Both reversions are repaired in place below and in 0055, and each carries a
+-- comment saying where it came from, because the next person reading a minors
+-- migration has no reason to expect an MFA check inside it.
 -- =============================================================================
 
 -- ── 1. A new consent type ────────────────────────────────────────────────────
@@ -44,7 +74,7 @@ on conflict (consent_type) do update set version = excluded.version, effective_a
 --
 -- This is personal data about a THIRD PARTY who never signed up for anything,
 -- which is the most sensitive kind of thing this table could hold. It gets the
--- same treatment as everything else: minimised to one field, never logged,
+-- same treatment as everything else: minimized to one field, never logged,
 -- covered by the existing RLS, in the export, and in the retention sweep.
 --
 -- The CHECK is the important part. Without it this is simply a nullable text
@@ -80,93 +110,22 @@ insert into public.retention_periods (category, months, note) values
 on conflict (category) do update
   set months = excluded.months, note = excluded.note;
 
-create or replace function private.apply_retention()
-returns table (category text, affected bigint)
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $fn$
-declare
-  m_health int := (select rp.months from public.retention_periods rp where rp.category = 'health_restrictions');
-  m_glp1   int := (select rp.months from public.retention_periods rp where rp.category = 'glp1_status');
-  m_msgs   int := (select rp.months from public.retention_periods rp where rp.category = 'conversation_messages');
-  m_audit  int := (select rp.months from public.retention_periods rp where rp.category = 'audit_events');
-  m_usage  int := (select rp.months from public.retention_periods rp where rp.category = 'usage_events');
-  m_stripe int := (select rp.months from public.retention_periods rp where rp.category = 'stripe_events');
-  m_errors int := (select rp.months from public.retention_periods rp where rp.category = 'error_events');
-  m_guard  int := (select rp.months from public.retention_periods rp where rp.category = 'guardian_email');
-  n bigint;
-begin
-  update public.user_profile
-     set health_restrictions = null,
-         health_restrictions_updated_at = null,
-         -- Not null: the column forbids it, and "has not answered yet" is false.
-         cleared_to_train = false
-   where health_restrictions is not null
-     and health_restrictions_updated_at < now() - make_interval(months => m_health);
-  get diagnostics n = row_count;
-  category := 'health_restrictions'; affected := n; return next;
+-- ── THE NIGHTLY SWEEP IS NOT RESTATED HERE ───────────────────────────────────
+--
+-- The original of this migration restated private.apply_retention() in full, to
+-- add the guardian_email line above. Two migrations later 0055 restates it
+-- again for guardian_consent_requests, so the definition here would have lived
+-- for exactly one file - and in the meantime it would have been WRONG, because
+-- it was written before 0053 added the training-intention sweep and `create or
+-- replace` replaces rather than merges.
+--
+-- The retention period above is a row, and rows accumulate. The function is a
+-- definition, and definitions overwrite. So the row goes in here and the
+-- function is defined once, in 0055, with every category that exists by then.
+-- Nothing sweeps guardian_email between this file and that one; both are
+-- pasted in the same sitting, and a column that has never been written to has
+-- nothing to sweep.
 
-  update public.user_profile
-     set glp1_status = null,
-         glp1_status_updated_at = null
-   where glp1_status is not null
-     and glp1_status_updated_at < now() - make_interval(months => m_glp1);
-  get diagnostics n = row_count;
-  category := 'glp1_status'; affected := n; return next;
-
-  with trimmed as (
-    select c.id,
-           coalesce(jsonb_agg(msg order by ord), '[]'::jsonb) as kept,
-           jsonb_array_length(c.messages) as before_count
-      from public.conversations c
-      cross join lateral jsonb_array_elements(c.messages) with ordinality as t(msg, ord)
-     where jsonb_array_length(c.messages) > 0
-       and (
-             (msg ? 'at' and (msg->>'at')::timestamptz >= now() - make_interval(months => m_msgs))
-          or (not (msg ? 'at') and c.created_at >= now() - make_interval(months => m_msgs))
-           )
-     group by c.id, c.messages
-  )
-  update public.conversations c
-     set messages = t.kept
-    from trimmed t
-   where c.id = t.id
-     and jsonb_array_length(t.kept) < t.before_count;
-  get diagnostics n = row_count;
-  category := 'conversation_messages'; affected := n; return next;
-
-  delete from public.audit_events ae where ae.created_at < now() - make_interval(months => m_audit);
-  get diagnostics n = row_count;
-  category := 'audit_events'; affected := n; return next;
-
-  delete from public.usage_events ue where ue.created_at < now() - make_interval(months => m_usage);
-  get diagnostics n = row_count;
-  category := 'usage_events'; affected := n; return next;
-
-  -- The consent stays; only the third party's address goes. UPDATE rather than
-  -- DELETE for exactly that reason: deleting the row would destroy the record
-  -- that a guardian once agreed, which is the thing the ledger exists to keep.
-  update public.consent_records cr
-     set guardian_email = null
-   where cr.guardian_email is not null
-     and cr.created_at < now() - make_interval(months => m_guard);
-  get diagnostics n = row_count;
-  category := 'guardian_email'; affected := n; return next;
-
-  delete from public.stripe_events se where se.received_at < now() - make_interval(months => m_stripe);
-  get diagnostics n = row_count;
-  category := 'stripe_events'; affected := n; return next;
-
-  delete from public.error_events ee where ee.created_at < now() - make_interval(months => m_errors);
-  get diagnostics n = row_count;
-  category := 'error_events'; affected := n; return next;
-end;
-$fn$;
-
--- `create or replace function` silently drops these unless they are restated.
--- The deployed catalogue is the fact; this file is only the intent.
-revoke all on function private.apply_retention() from public, anon, authenticated;
 
 -- ── 4. A minor cannot join the leaderboard ───────────────────────────────────
 --
@@ -196,6 +155,19 @@ declare
 begin
   if uid is null then
     raise exception 'set_leaderboard_opt_in() requires an authenticated caller';
+  end if;
+
+  -- ── RESTORED FROM 0052, NOT WRITTEN HERE ──────────────────────────────────
+  --
+  -- This file was authored against a database at 0035. 0052 then gated this
+  -- function behind the second factor, because RLS does not apply inside a
+  -- SECURITY DEFINER function and a stolen password could otherwise publish an
+  -- athlete's name and numbers. `create or replace function` replaces rather
+  -- than merges, so pasting the original file into a database at 0052 would
+  -- have taken that gate back out - and the migration that did it reads as
+  -- though it only concerns minors.
+  if not public.mfa_satisfied() then
+    raise exception 'second factor required' using errcode = '42501';
   end if;
 
   -- Before every other check. Leaving is always available.

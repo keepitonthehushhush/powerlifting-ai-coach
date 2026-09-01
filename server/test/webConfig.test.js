@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
  * body stayed empty. Diagnosing it required comparing asset hashes between two
  * builds — the app itself gave no signal at all.
  *
- * These assert on source text rather than behaviour because the modules use
+ * These assert on source text rather than behavior because the modules use
  * `import.meta.env`, which only Vite can resolve. A crude test that pins the
  * property is better than no test: the failure it guards against cost an hour
  * and produced zero error messages.

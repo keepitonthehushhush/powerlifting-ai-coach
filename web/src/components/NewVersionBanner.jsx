@@ -31,8 +31,32 @@ export function NewVersionBanner() {
 
     check();
     document.addEventListener('visibilitychange', check);
+
+    /*
+     * ── AND ON A TIMER, WHICH IT DID NOT HAVE ─────────────────────────────
+     *
+     * Reported as: the app never tells you to reload after an update.
+     *
+     * It did, but only at two moments - first paint, and coming back to a
+     * backgrounded tab. Neither of those happens to somebody who has the app
+     * open and is using it, which is exactly the person running old code
+     * against a new API. An installed app on a phone can stay in the
+     * foreground for an entire session; the banner would not have appeared
+     * once.
+     *
+     * Fifteen minutes because the check is a single JSON request that the
+     * health endpoint answers without touching the database, and because the
+     * window that matters is "somebody is mid-session when a deploy lands",
+     * which is measured in minutes rather than seconds. `check` already
+     * returns early when the document is hidden, so a backgrounded app costs
+     * nothing.
+     */
+    const POLL_MS = 15 * 60 * 1000;
+    const timer = setInterval(check, POLL_MS);
+
     return () => {
       cancelled = true;
+      clearInterval(timer);
       document.removeEventListener('visibilitychange', check);
     };
   }, []);

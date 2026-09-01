@@ -102,6 +102,17 @@ export const ERROR_CODES = Object.freeze({
   payment_required: { id: 14, status: 402, retryable: false },
   billing_unavailable: { id: 15, status: 503, retryable: false },
   auth_required: { id: 16, status: 401, retryable: false },
+  /**
+   * The session is real and weaker than the account requires: a verified
+   * second factor exists and this token is still aal1.
+   *
+   * A 401 and not a 403, and the distinction matters to the client. 403 means
+   * "you may not"; this means "you have not finished". Supabase's own guidance
+   * is to send somebody to the code screen rather than to an error page:
+   * the likely causes are a closed tab mid-enrollment and a tab left open for
+   * a week, not an attack.
+   */
+  mfa_required: { id: 22, status: 401, retryable: false },
   /** A 409 rather than a 400: the request was fine, the account already had one. */
   already_subscribed: { id: 17, status: 409, retryable: false },
   /**
@@ -125,7 +136,11 @@ export const ERROR_CODES = Object.freeze({
    * day somebody flips a variable, and it would send the next person debugging
    * this to the router instead of to the configuration.
    */
-  not_available: { id: 22, status: 403, retryable: false },
+  // 24, not 22: this was written on a branch while 22 was free, and
+  // mfa_required took it on main in the meantime. The id is what a person
+  // reads off a screen and quotes back, so the one already in front of users
+  // keeps its number and the unshipped one moves.
+  not_available: { id: 24, status: 403, retryable: false },
   /**
    * The guardian consent request was stored and the email did not go.
    *
@@ -136,11 +151,11 @@ export const ERROR_CODES = Object.freeze({
    * unconfigured SMTP, a provider outage - are both transient from the
    * caller's side.
    */
-  email_unavailable: { id: 23, status: 503, retryable: true },
+  email_unavailable: { id: 25, status: 503, retryable: true },
   /**
    * The worst one in the list, and the reason it has a code of its own: a
    * consent withdrawal was recorded and the health data it governed was NOT
-   * removed. Somebody exercised a right and the system half-honoured it. If
+   * removed. Somebody exercised a right and the system half-honored it. If
    * this ever appears in error_events it is the first thing to look at.
    */
   withdrawal_incomplete: { id: 20, status: 502, retryable: false },

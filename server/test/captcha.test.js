@@ -35,7 +35,7 @@ const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.ur
 
 describe('it is inert until a site key exists', () => {
   test('NO SITE KEY MEANS NO WIDGET AND NO TOKEN', () => {
-    // Byte-for-byte the behaviour before this existed, which is the only
+    // Byte-for-byte the behavior before this existed, which is the only
     // reason it is safe to deploy this before flipping the Supabase toggle.
     assert.match(lib, /export function enabled\(\)/);
     assert.match(lib, /SITE_KEY !== 'undefined'/);
@@ -122,7 +122,7 @@ describe('when the challenge cannot load', () => {
     // indistinguishable from the site being broken.
     // Asserted as "the unavailable path notifies the parent", not as the exact
     // call text - which changed when the callbacks moved into refs, and failed
-    // this test on a fix that did not touch the behaviour at all. Third time a
+    // this test on a fix that did not touch the behavior at all. Third time a
     // test pinned to an expression has blocked a correct change.
     assert.match(widget, /onUnavailable(Ref\.current)?\?\.\(\)/);
     assert.match(login, /captchaBlocked/);

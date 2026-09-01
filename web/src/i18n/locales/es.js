@@ -1,5 +1,5 @@
 /**
- * Spanish catalogue.
+ * Spanish catalog.
  *
  * Translated with the domain in mind rather than word-for-word: powerlifting
  * terminology is largely borrowed in Spanish-speaking gyms ("press banca",
@@ -26,6 +26,41 @@ export const es = {
     working: 'Procesando…',
     signOut: 'Cerrar sesión',
     language: 'Idioma',
+  },
+
+  mfa: {
+    heading: 'Inicio de sesión en dos pasos',
+    intro:
+      'Pide un código de una aplicación de autenticación además de tu contraseña. Tu historial de entrenamiento y todo lo que le has contado al entrenador sobre tu salud están detrás de esta cuenta, así que vale la pena los seis segundos extra.',
+    checking: 'Comprobando…',
+    on: 'El inicio de sesión en dos pasos está activado.',
+    off: 'El inicio de sesión en dos pasos está desactivado.',
+    turnOn: 'Activar el inicio de sesión en dos pasos',
+    turnOff: 'Desactivar el inicio de sesión en dos pasos',
+    turnOffWarning:
+      'Solo puedes hacerlo mientras tengas la sesión iniciada con un código. Si pierdes tu autenticador, nadie en Coach Diaz puede desactivarlo sin comprobar antes tu identidad.',
+    step1: 'Abre tu aplicación de autenticación: Google Authenticator, 1Password, Authy o la que uses.',
+    step2: 'Escanea el cuadro de abajo, o escribe el código que aparece debajo si lo estás configurando en el mismo teléfono.',
+    step3: 'Introduce los seis dígitos que muestra tu aplicación.',
+    orTypeIt: 'O escribe esto en tu aplicación:',
+    codeLabel: 'Código de seis dígitos',
+    confirm: 'Confirmar',
+    cancel: 'Cancelar la configuración',
+    verify: 'Verificar',
+    verifying: 'Comprobando…',
+    codeRejected:
+      'Ese código no se aceptó. Los códigos cambian cada treinta segundos: espera al siguiente e inténtalo de nuevo.',
+    setupFailed: 'No se pudo iniciar la configuración. Inténtalo de nuevo en un momento.',
+    removeFailed: 'No se pudo desactivar. Inténtalo de nuevo en un momento.',
+    removed: 'El inicio de sesión en dos pasos está desactivado.',
+    enrolledOtherSessionsEnded:
+      'El inicio de sesión en dos pasos está activado. Se ha cerrado tu sesión en todos los demás sitios: es deliberado, para que una sesión antigua no pueda saltarse el nuevo paso.',
+    challengeHeading: 'Un paso más',
+    challengeIntro: 'Introduce el código de tu aplicación de autenticación para terminar de iniciar sesión.',
+    noFactorFound:
+      'Tu cuenta espera un código pero no hay ningún autenticador registrado. Cierra sesión y ponte en contacto para resolverlo.',
+    lostDevice:
+      '¿Perdiste tu autenticador? Cierra sesión y contáctanos: comprobaremos tu identidad antes de desactivarlo.',
   },
 
   medical: {
@@ -73,6 +108,8 @@ export const es = {
       'Puedes borrar tu cuenta y todo lo asociado a ella desde la página de Cuenta, al instante y sin escribirle a nadie.',
 
     terms: 'Condiciones',
+
+    privacy: 'Politica de privacidad',
     healthPolicy: 'Datos de salud',
 
     // Cortas y paralelas, como en inglés: en un pie de página se escanea.
@@ -82,9 +119,24 @@ export const es = {
   },
 
   auth: {
-    sessionEnded: 'Se cerró tu sesión y no sabemos con certeza por qué; vuelve a iniciar sesión. Si sigue pasando, el código entre paréntesis nos dice qué falló.',
+    signedOutRevoked:
+      'Tu sesión en este dispositivo ya no es válida, así que se ha cerrado. Es normal justo después de activar el inicio de sesión en dos pasos, que finaliza todas las demás sesiones. Vuelve a iniciar sesión para continuar.',
+    signedOutPlain: 'Has cerrado sesión. Vuelve a iniciar sesión para continuar donde lo dejaste.',
+    signedOutGeneric: 'Has cerrado sesión. Vuelve a iniciar sesión para continuar donde lo dejaste.',
     tagline: 'Programación estructurada de powerlifting que se adapta a lo que realmente levantas.',
     email: 'Correo electrónico',
+    emailCleaned: 'Se elimino un caracter invisible que agrego tu teclado. Se usara la direccion de arriba.',
+    emailProblem: {
+      empty: 'Escribe tu correo electronico.',
+      noAt: 'A esa direccion le falta el signo @.',
+      manyAt: 'Esa direccion tiene mas de un signo @.',
+      noLocal: 'No hay nada antes del signo @.',
+      noDomain: 'No hay nada despues del signo @.',
+      noDot: 'La parte despues del @ necesita un punto, como gmail.com.',
+      badDot: 'Hay un punto en el lugar equivocado despues del signo @.',
+      character:
+        'Hay un caracter oculto o inusual en esa direccion ({code}). Borra la direccion y escribela de nuevo en vez de pegarla.',
+    },
     password: 'Contraseña',
     signIn: 'Iniciar sesión',
     createAccount: 'Crear cuenta',
@@ -92,6 +144,28 @@ export const es = {
     newHerePrompt: '¿Eres nuevo aquí?',
     haveAccountPrompt: '¿Ya tienes una cuenta?',
     confirmEmail: 'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
+    errors: {
+      captcha_misconfigured:
+        'Lo sentimos: el acceso a las cuentas no está disponible temporalmente por un problema nuestro, no tuyo. Ya nos han avisado. Vuelve a intentarlo en un rato.',
+      captcha_unavailable:
+        'No se pudo cargar la comprobación antibots, así que no pudimos confirmar que eres una persona. Puede que un bloqueador de anuncios, una extensión de privacidad o un filtro de red esté bloqueando challenges.cloudflare.com. Permite esa dirección, o prueba con otro navegador u otra red.',
+      captcha_rejected:
+        'La comprobación antibots caducó antes de que enviaras el formulario. Inténtalo una vez más: ya se ha cargado una nueva.',
+      invalid_credentials:
+        'Ese correo y esa contraseña no coinciden con ninguna cuenta. Revisa ambos, o restablece la contraseña si no estás seguro.',
+      email_already_registered:
+        'Ya existe una cuenta con ese correo electrónico. Prueba a iniciar sesión, o restablece la contraseña.',
+      password_rejected:
+        'Esa contraseña fue rechazada. Elige una que cumpla los requisitos indicados arriba.',
+      auth_rate_limited:
+        'Demasiados intentos en poco tiempo. Espera unos minutos y vuelve a intentarlo: tu cuenta no tiene ningún problema.',
+      email_rejected:
+        'No se aceptó esa dirección de correo. Compruébala por si hay algún error, o prueba con otra.',
+      session_expired:
+        'Se cerró tu sesión. Vuelve a iniciar sesión.',
+      auth_unexpected:
+        'Algo falló por nuestra parte y no pudimos completar la operación. Ya nos han avisado. Vuelve a intentarlo en un rato.',
+    },
     captcha: {
       why: 'Una comprobación rápida de que no eres un bot. Normalmente se resuelve sola.',
       blocked:
@@ -172,6 +246,11 @@ export const es = {
       not_logged: 'sin registrar',
     },
     supersededNote: 'Este es el programa más reciente que te ha escrito el entrenador. Pide cambios en la conversación y una versión nueva sustituirá a esta; las anteriores se conservan abajo.',
+    platesPerSide: '{plates} por lado',
+    platesBarLabel: 'Una barra cargada a {weight} {units}: {plates} por lado.',
+    platesNotLoadable: 'No se puede armar con tus discos: lo más cercano es {nearest} {units}.',
+    platesBarOnly: 'Barra vacía ({weight} {units})',
+    platesHeaviest: 'Barra más pesada de hoy · {weight} {units}',
     previous: 'Programas anteriores ({count})',
   },
   guardian: {
@@ -347,17 +426,40 @@ export const es = {
   },
 
   chat: {
+    showEarlier: 'Mostrar {count} mensajes anteriores',
     characterCount: '{count} de {limit} caracteres',
     emptyPrompt:
       'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',
     you: 'Tú',
     coach: 'Coach',
+    programSaved: 'La semana {week} está guardada: {days} días, lista para seguir.',
+    programSavedLink: 'Abrir tu programa',
     thinking: 'Pensando…',
+    thinkingElapsed: 'Escribiendo tu respuesta… {seconds} s',
+    thinkingLong: 'Todavía escribiendo. Una semana completa de entrenamiento tarda alrededor de un minuto.',
+    sendingUndo: 'Enviando en {seconds}…',
+    undo: 'Deshacer',
+    undone: 'No se envió. Tu mensaje volvió al cuadro de texto.',
     placeholder: '¿Cómo fue esa sesión?',
     send: 'Enviar',
     inputLabel: 'Escribir a Coach Diaz',
     loadFailed: 'No se pudo cargar tu conversación.',
     rateLimited: 'Has enviado muchos mensajes recientemente. Inténtalo de nuevo en un momento.',
+  },
+
+  chatSettings: {
+    heading: 'Cómo se comporta la conversación con el coach',
+    intro: 'Se guardan solo en este dispositivo, así puedes tener una configuración en el teléfono y otra en la computadora.',
+    sendKeyLegend: 'Enviar un mensaje',
+    sendKey: {
+      enter: 'Enter envía',
+      modifier: 'Enter agrega una línea; Cmd o Ctrl + Enter envía',
+    },
+    sendKeyHint: 'Shift + Enter siempre agrega una línea, en cualquier caso.',
+    undoLegend: 'Retener los mensajes antes de enviarlos',
+    undoOff: 'Desactivado: enviar de inmediato',
+    undoSeconds: '{seconds} segundos para deshacer',
+    undoHint: 'Una pausa breve antes de que salga el mensaje, para poder recuperar y corregir un error. No se envía ni se cobra nada hasta que termina la pausa.',
   },
 
   consent: {
@@ -402,6 +504,45 @@ export const es = {
     },
   },
 
+  /*
+   * Paquetes de temas. Los nombres describen la paleta, no a quien deberia
+   * elegirla - ver la nota en en.js.
+   *
+   * Los nombres propios de los temas se dejan sin traducir a proposito: son
+   * etiquetas de marca, y traducirlas rompe la conversacion entre una persona
+   * que dice "estoy usando Cobalt" y otra que busca "Cobalto".
+   */
+  themes: {
+    heading: 'Tema',
+    intro: 'Elige como se ve la aplicacion. Tu eleccion te sigue en cualquier dispositivo donde inicies sesion.',
+    saving: 'Guardando...',
+    saved: 'Guardado',
+    failed: 'No se pudo guardar. Lo estas viendo, pero no llego a tu cuenta.',
+    names: {
+      miami: 'Miami',
+      blush: 'Blush',
+      cobalt: 'Cobalt',
+      ember: 'Ember',
+      moss: 'Moss',
+      amethyst: 'Amethyst',
+      copper: 'Copper',
+      slate: 'Slate',
+      mono: 'Mono',
+      sunrise: 'Sunrise',
+    },
+    blurbs: {
+      miami: 'Turquesa y magenta sobre indigo profundo. El original.',
+      blush: 'Rosa calido con acento violeta.',
+      cobalt: 'Azul profundo, frio y tranquilo.',
+      ember: 'Naranja quemado y rojo.',
+      moss: 'Verde bosque con filo lima.',
+      amethyst: 'Morado y orquidea.',
+      copper: 'Bronce y ambar.',
+      slate: 'Gris casi neutro con acento azul.',
+      mono: 'Sin color. Contraste maximo.',
+      sunrise: 'Oro y arcilla.',
+    },
+  },
   account: {
     title: 'Tus datos',
     exportHeading: 'Descarga todo lo que guardamos sobre ti',
@@ -539,6 +680,19 @@ export const es = {
     colWeight: 'Peso',
     colReps: 'Repeticiones',
     colResult: 'Resultado',
+    e1rmHeading: 'Máximo estimado de una repetición',
+    e1rmIntro: 'Lo que cada sesión predice que podrías levantar a una repetición. La banda es el rango entre las dos ecuaciones estándar: muestra que esto es una predicción, no una medición. No es un margen de error.',
+    e1rmTitle: '{lift} · máximo estimado',
+    e1rmChartLabel: '{lift}: máximo estimado de una repetición, últimamente entre {low} y {high} {units}',
+    e1rmLatest: 'Última: {low}–{high} {units}, a partir de {weight} {units} por {reps}.',
+    e1rmNone: 'Aún no hay series en un rango del que se pueda estimar. Se usan series de ocho repeticiones o menos.',
+    milestoneHeading: 'Tu próxima marca de discos',
+    milestoneIntro: 'Lo cerca que está el próximo número redondo, medido desde el último que alcanzaste y no desde cero, porque \'entre dos y tres discos\' es como ya lo piensas.',
+    milestoneTo: 'para',
+    milestoneFrom: 'Desde {floor} {units}. Mejor hasta ahora {best} {units}.',
+    milestoneLabel: 'faltan {remaining} {units} para llegar a {target} {units}',
+    milestoneAllDone: 'Ya has superado todas las marcas que seguimos para este levantamiento.',
+    milestoneNone: 'Registra una sentadilla, press de banca o peso muerto completado y aquí aparecerá la próxima marca.',
     lift: {
       squat: 'Sentadilla',
       bench: 'Press de banca',

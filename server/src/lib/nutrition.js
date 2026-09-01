@@ -1,5 +1,5 @@
 /**
- * Evidence-based fuelling ranges, computed for one athlete's bodyweight.
+ * Evidence-based fueling ranges, computed for one athlete's bodyweight.
  *
  * ── WHY THIS EXISTS, AND WHY IT IS CAREFUL ────────────────────────────────
  *

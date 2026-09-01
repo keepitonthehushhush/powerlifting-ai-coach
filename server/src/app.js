@@ -7,6 +7,8 @@ import { rateLimit } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { chatRouter } from './routes/chat.js';
 import { profileRouter } from './routes/profile.js';
+import { preferencesRouter } from './routes/preferences.js';
+import { clientErrorsRouter } from './routes/clientErrors.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { programRouter } from './routes/program.js';
 import { libraryRouter } from './routes/library.js';
@@ -50,7 +52,7 @@ export function createApp() {
    * PAYWALL_ENABLED with no Stripe configuration - is an error rather than a
    * warning: it means somebody intended to charge and cannot, and the app has
    * silently kept everyone on the free product to avoid locking a door with no
-   * handle. That is the right behaviour and the wrong situation.
+   * handle. That is the right behavior and the wrong situation.
    */
   if (config.paywall.testKeysInProduction) {
     logger.error('paywall.test_keys_in_production', {
@@ -166,14 +168,61 @@ export function createApp() {
    * The client compares this against the id compiled into its own bundle. When
    * they differ, the person is looking at a page built by an older deployment
    * - which is exactly the situation where a refresh mid-fix produces
-   * behaviour nobody can explain, because the JavaScript in the tab and the
+   * behavior nobody can explain, because the JavaScript in the tab and the
    * API answering it are from different commits.
    *
    * Unauthenticated on purpose: it is already the maintenance page's poll
    * target, and a deployment id is not a secret.
    */
   app.get('/api/health', (_req, res) =>
-    res.json({ status: 'ok', deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev' }));
+    res.json({
+      status: 'ok',
+      deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev',
+      /*
+       * ── WHICH COMMIT IS ACTUALLY SERVING ──────────────────────────────────
+       *
+       * On 2026-08-31 a login fix was deployed at 16:44 and, one minute later,
+       * a REDEPLOY of a commit from the previous day took the coachdiaz.app
+       * alias. Production silently reverted a day's work. The user reinstalled
+       * the app twice, on the reasonable assumption that a fix he had been
+       * told was live was live.
+       *
+       * Nothing could have told him otherwise. verify:deployment downloads the
+       * real assets and checks them for secrets and for public config - both
+       * of which yesterday's build passes, because yesterday's build was fine.
+       * It just was not the one anybody meant to be running. deploymentId
+       * changes on every redeploy, so it cannot answer "which CODE is this?"
+       * either.
+       *
+       * A commit sha can. It is not a secret - the repository is public, and
+       * the sha is already in every deployment record Vercel shows - and it
+       * turns "is my fix live?" from an investigation into one comparison.
+       */
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev',
+      /*
+       * ── WHY THE OUTPUT BUDGET IS PUBLISHED HERE ───────────────────────────
+       *
+       * On 2026-08-30 the safety evaluation was found to be running at
+       * max_tokens 2048 while production ran on ANTHROPIC_MAX_TOKENS. Five of
+       * its sixteen scenarios failed as a result, one of them on a real
+       * assertion, because replies were being cut off before they reached the
+       * part the assertion was about. Reading the same variable fixed it and
+       * the suite went to 48/48.
+       *
+       * That fix is only half of one. The eval reads the budget from the
+       * developer's .env; production reads it from the Vercel project. Nothing
+       * compares the two, so the suite can go green against a budget the
+       * deployed coach does not have - which is the same defect wearing a
+       * different hat.
+       *
+       * A token ceiling is an operational number, not a secret: it says how
+       * long a reply may be. It reveals nothing about the prompt, the key or
+       * any athlete, and deploymentId - already here - is the same kind of
+       * fact. scripts/verify-deployment.mjs reads this and compares it against
+       * the local value, so the two can no longer drift in silence.
+       */
+      maxOutputTokens: config.anthropic.maxTokens,
+    }));
 
   // Everything past this line requires a verified session. Applying requireAuth
   // to the whole /api surface at once, rather than route by route, means a new
@@ -196,6 +245,8 @@ export function createApp() {
   // Adding a bucket means changing the function, not the call site.
   app.use('/api/achievements', rateLimit('write'), achievementsRouter);
   app.use('/api/profile', rateLimit('write'), profileRouter);
+  app.use('/api/preferences', rateLimit('write'), preferencesRouter);
+  app.use('/api/client-errors', rateLimit('write'), clientErrorsRouter);
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
   app.use('/api/program', programRouter);
   app.use('/api/library', libraryRouter);

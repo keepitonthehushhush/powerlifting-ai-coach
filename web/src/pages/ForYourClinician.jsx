@@ -3,14 +3,14 @@ import { PolicyFooter } from '../components/PolicyFooter.jsx';
 import { InfoHeader } from '../components/InfoHeader.jsx';
 
 /**
- * A page an athlete can hand to their doctor or physiotherapist.
+ * A page an athlete can hand to their doctor or physical therapist.
  *
  * ── WHY THIS EXISTS ───────────────────────────────────────────────────────
  *
  * The clearance gate tells an injured athlete to go and get seen, and helps
  * them prepare what to describe. Then they arrive at the appointment and have
  * to explain what has been programming their training - to a clinician who has
- * every reason to be sceptical of "an AI told me to squat".
+ * every reason to be skeptical of "an AI told me to squat".
  *
  * This is that explanation, written for the clinician rather than for the
  * athlete. It answers the three questions a doctor actually has: what is this
@@ -20,12 +20,12 @@ import { InfoHeader } from '../components/InfoHeader.jsx';
  * ── PUBLIC ON PURPOSE ─────────────────────────────────────────────────────
  *
  * No auth. A page you must create an account to read is useless to a
- * physiotherapist holding a phone in a treatment room, and requiring a login
+ * physical therapist holding a phone in a treatment room, and requiring a login
  * to read what the product refuses to do would be its own kind of answer.
  *
  * ── AND IT HAS TO BE TRUE ─────────────────────────────────────────────────
  *
- * Every behavioural claim here is a claim about the system, made to somebody
+ * Every behavioral claim here is a claim about the system, made to somebody
  * who may rely on it clinically. So the tests hold this page to the system
  * prompt rather than to itself: if the clearance gate stops forbidding
  * something this page says it forbids, the suite fails. That is the whole

@@ -63,7 +63,7 @@ export const BELT_THRESHOLDS = Object.freeze({
   'overhead press': 0.75,
 });
 
-/** Normalise a weight to pounds, since the thresholds are ratios anyway. */
+/** Normalize a weight to pounds, since the thresholds are ratios anyway. */
 function toLb(weight, units) {
   if (!Number.isFinite(weight) || weight <= 0) return null;
   return units === 'kg' ? weight * LB_PER_KG : weight;

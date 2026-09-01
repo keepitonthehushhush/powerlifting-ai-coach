@@ -91,11 +91,36 @@ describe('when it prompts, and when it refuses to', () => {
     assert.match(version, /timeoutMs = 5000/);
   });
 
-  test('it checks on focus rather than polling', () => {
-    // A background tab cannot be confused by a deploy. The moment that matters
-    // is somebody returning to a page they left open.
-    assert.match(banner, /visibilitychange/);
-    assert.ok(!/setInterval/.test(banner), 'it polls on a timer');
+  test('it notices a deploy without needing the page to be left and returned to', () => {
+    /*
+     * ── THIS ASSERTION USED TO SAY THE OPPOSITE, AND WAS WRONG ────────────
+     *
+     * It read: "it checks on focus rather than polling", forbidding
+     * setInterval outright, on the reasoning that "a background tab cannot be
+     * confused by a deploy - the moment that matters is somebody returning to
+     * a page they left open."
+     *
+     * Half of that is true and the half it left out is the reported bug. The
+     * person actually running old code against a new API is the one who never
+     * leaves: an installed app on a phone can hold the foreground for a whole
+     * session, fire no visibilitychange, and never see the banner. Reported on
+     * 2026-08-31 as "the app doesn't tell them to reload if an update
+     * occurred".
+     *
+     * It was also the wrong SHAPE of assertion - it pinned the implementation
+     * (`no setInterval`) rather than the property, and that is now the fourth
+     * correct change in this repo blocked by a test written that way. So it
+     * asserts the two properties that actually matter instead: the banner has
+     * some way to notice without a focus change, and it never spends a request
+     * on a page nobody is looking at.
+     */
+    assert.match(banner, /visibilitychange/, 'it still checks on return');
+    assert.match(banner, /setInterval/, 'a foreground session would never be told');
+    assert.match(
+      banner,
+      /visibilityState !== 'visible'\s*\)\s*return/,
+      'polling without this guard costs a request on every hidden tab'
+    );
   });
 
   test('a declined prompt stays declined', () => {

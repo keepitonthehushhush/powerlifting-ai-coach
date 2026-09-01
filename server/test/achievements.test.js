@@ -13,12 +13,12 @@ const log = (date, lift, weight, completed = true) => ({ date, lift, weight, rep
 
 describe('THE ACHIEVEMENTS THIS PRODUCT REFUSES TO GIVE', () => {
   /**
-   * The point of an achievement system is that it changes behaviour, which is
+   * The point of an achievement system is that it changes behavior, which is
    * exactly why the choice of what to reward is a coaching decision. The
    * default set every fitness app ships is consecutive-day streaks, and a
    * streak is an instruction to train tomorrow whatever happened today - which
    * on a barbell means training on a tweaked back and skipping the deload the
-   * programme called for.
+   * program called for.
    */
   test('there is no streak, anywhere', () => {
     for (const banned of ['streak', 'consecutive', 'in a row', 'dayStreak']) {

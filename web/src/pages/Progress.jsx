@@ -5,6 +5,10 @@ import { useI18n } from '../i18n/index.jsx';
 import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { LiftChart } from '../components/LiftChart.jsx';
+import { OneRepMaxChart } from '../components/OneRepMaxChart.jsx';
+import { oneRepMaxSeries } from '../lib/oneRepMax.js';
+import { MilestoneStack } from '../components/MilestoneStack.jsx';
+import { milestoneProgress, bestCompleted, MILESTONE_LIFTS } from '../lib/milestones.js';
 import { topSetPerDay, trend } from '../lib/chartData.js';
 import { Loading } from '../components/Loading.jsx';
 
@@ -22,7 +26,7 @@ const CHARTED = [
  * Four separate charts rather than four lines on one axis. A deadlift at 405
  * and a press at 95 do not share a scale usefully - together, the press is a
  * flat line along the bottom - and the alternative, two y-axes, makes the
- * crossing point of the lines an artefact of where the axes were placed rather
+ * crossing point of the lines an artifact of where the axes were placed rather
  * than a fact about the training.
  *
  * The table underneath is not a fallback for when the charts fail. It is the
@@ -48,15 +52,60 @@ export function Progress() {
   const series = useMemo(() => {
     if (!logs) return [];
     return CHARTED.map(({ key, matches }) => {
-      // Normalise on the way in so 'Bench Press' and 'bench' land in one series.
+      // Normalize on the way in so 'Bench Press' and 'bench' land in one series.
       const normalised = logs.map((row) => ({
         ...row,
         lift: matches.includes(String(row.lift ?? '').trim().toLowerCase().replace(/\s+/g, ' ')) ? key : row.lift,
       }));
       const points = topSetPerDay(normalised, key);
-      return { key, points, trend: trend(points) };
+      /*
+       * Computed from the SAME rows the weight chart reads, so the two charts
+       * for a lift can never disagree about which sessions they describe. A
+       * second pass over the raw logs would be one spelling variant away from a
+       * page showing four weight charts and three estimate charts.
+       */
+      const estimates = oneRepMaxSeries(normalised, key);
+      return { key, points, estimates, trend: trend(points) };
     }).filter((s) => s.points.length > 0);
   }, [logs]);
+
+  /*
+   * The estimate charts are their own section rather than a second card beside
+   * each weight chart. They answer a different question - what a session
+   * PREDICTS rather than what was lifted - and interleaving them would read as
+   * eight charts of the same thing rather than two views of four lifts.
+   */
+  const estimated = series.filter((s) => s.estimates.length > 0);
+
+  /*
+   * Measured against what was actually LIFTED, not against the estimate. A
+   * milestone is a thing you stood up with, and a stack filling on the
+   * strength of a projection would be awarding somebody a plate they have not
+   * pulled - which is the one thing this feature must never do, because its
+   * whole value is that it is true.
+   *
+   * Only the three lifts with milestone tables. The overhead press is charted
+   * and has no milestones, and inventing some to fill the row would be making
+   * up targets nobody set.
+   */
+  const milestones = useMemo(() => {
+    if (!logs) return [];
+    return MILESTONE_LIFTS.map((key) => {
+      const matched = CHARTED.find((c) => c.key === key);
+      if (!matched) return null;
+      const rows = logs.map((row) => ({
+        ...row,
+        lift: matched.matches.includes(
+          String(row.lift ?? '').trim().toLowerCase().replace(/\s+/g, ' '),
+        )
+          ? key
+          : row.lift,
+      }));
+      const best = bestCompleted(rows, key);
+      if (best === null) return null;
+      return { key, progress: milestoneProgress(best, key, units) };
+    }).filter((m) => m && m.progress);
+  }, [logs, units]);
 
   return (
     <div className="page">
@@ -95,6 +144,47 @@ export function Progress() {
               </div>
             ))}
           </div>
+
+          <section className="stack" aria-labelledby="milestone-heading">
+            <h2 className="h3" id="milestone-heading">{t('progress.milestoneHeading')}</h2>
+            <p className="muted small measure">{t('progress.milestoneIntro')}</p>
+            {milestones.length === 0 ? (
+              <p className="muted small">{t('progress.milestoneNone')}</p>
+            ) : (
+              <div className="card">
+                <div className="milestone-grid">
+                  {milestones.map(({ key, progress }) => (
+                    <MilestoneStack
+                      key={`milestone-${key}`}
+                      lift={t(`progress.lift.${key}`)}
+                      progress={progress}
+                      units={units}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="stack" aria-labelledby="e1rm-heading">
+            <h2 className="h3" id="e1rm-heading">{t('progress.e1rmHeading')}</h2>
+            <p className="muted small measure">{t('progress.e1rmIntro')}</p>
+            {estimated.length === 0 ? (
+              <p className="muted small">{t('progress.e1rmNone')}</p>
+            ) : (
+              <div className="chart-grid-layout">
+                {estimated.map(({ key, estimates }) => (
+                  <div className="card" key={`e1rm-${key}`}>
+                    <OneRepMaxChart
+                      title={t('progress.e1rmTitle', { lift: t(`progress.lift.${key}`) })}
+                      points={estimates}
+                      units={units}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           <button type="button" className="link" onClick={() => setShowTable((v) => !v)}>
             {showTable ? t('progress.hideTable') : t('progress.showTable')}

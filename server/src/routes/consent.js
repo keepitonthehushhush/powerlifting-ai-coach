@@ -149,6 +149,9 @@ consentRouter.post('/', async (req, res, next) => {
           gender_self_described: null,
           glp1_status: null,
           glp1_status_updated_at: null,
+          training_obstacle: null,
+          training_if_then: null,
+          training_intention_updated_at: null,
         })
         .eq('user_id', req.user.id);
 

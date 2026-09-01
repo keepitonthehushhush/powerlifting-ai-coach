@@ -84,10 +84,17 @@ const SENT_TO_THE_MODEL = {
   nutrition_notes: 'nutrition notes',
   health_restrictions: 'Injuries and medical conditions',
   cleared_to_train: 'cleared to train',
+  training_obstacle: 'the obstacle you named as the thing that actually stops you',
+  training_if_then: 'the if-then plan you made against it',
 };
 
 /** Columns on user_profile that never reach renderProfile, and why. */
 const NOT_SENT = {
+  training_intention_updated_at:
+    'when the obstacle or the if-then plan last changed, used only to expire ' +
+    'them after 12 months (migration 0053). Not sent, for the same reason as ' +
+    'the injury timestamp: how old a plan is tells the model nothing it can ' +
+    'coach on, while being one more fact about somebody in a third-party request.',
   user_id: 'the row key',
   smallest_plate_pair: 'feeds the computed loads rather than being stated to the model',
   display_name:
@@ -212,6 +219,8 @@ describe('the health data policy lists what is stored under that consent', () =>
     nicotine_use: 'whether you use nicotine',
     nutrition_notes: 'anything you choose to write about how you eat',
     gender: 'your gender, if you give it',
+    training_obstacle: 'the obstacle you name as the thing that actually stops you',
+    training_if_then: 'the if-then plan you make against it',
   };
 
   test('each health field the schema holds is named in the policy', () => {
@@ -280,18 +289,68 @@ describe('the export contains everything, which is what it says it contains', ()
     rate_limit_counters: 'holds a request count and a timestamp, and is listed in not_included',
   };
 
+  /**
+   * Tables the export reaches through a function instead of a select, with the
+   * call that proves it. Not an exemption - the table must still be in the
+   * document - only a different spelling of how it gets there.
+   *
+   * leaderboard_entries is here because 0039 revoked user_id from
+   * `authenticated`, so the export cannot filter on it and goes through
+   * my_leaderboard_entry() instead (0042).
+   */
+  const EXCLUDED_BY_RPC = {
+    leaderboard_entries: "rpc\\('my_leaderboard_entry'\\)",
+  };
+
+  /**
+   * The export document only, not the whole route file.
+   *
+   * ── WHY THAT DISTINCTION IS THE WHOLE TEST ────────────────────────────────
+   *
+   * This used to match `from('<table>')` anywhere in account.js, and account.js
+   * also holds GET /api/account/activity, which reads audit_events. So the
+   * assertion "the export includes audit_events" was satisfied by a completely
+   * different endpoint reading it for a completely different purpose, and
+   * audit_events was absent from the export for as long as both existed.
+   *
+   * A test that accepts any mention of a name in a file is asking whether the
+   * word appears, not whether the export contains the table.
+   */
+  const exportHandler = account.slice(
+    account.indexOf("accountRouter.get('/export'"),
+    account.indexOf('const DeleteRequest')
+  );
+
   test('every user-scoped table is either exported or explicitly excused', () => {
+    /**
+     * `if not exists` is optional in the DDL and was not optional in this
+     * regex, so three tables were invisible: audit_events, error_events and
+     * leaderboard_entries. Two of them were fine by luck. leaderboard_entries
+     * was not - somebody's published handle and lifts were absent from their
+     * own subject access request, and this test reported the export complete.
+     *
+     * Second time a checker in this repository has looked at the right artifact
+     * and asked a question narrower than the thing it was guarding; the health
+     * data column comments were the first, three days ago.
+     */
     const tables = new Set(
-      [...migrations.matchAll(/create table public\.([a-z_]+)\s*\(([\s\S]*?)\n\);/g)]
+      [...migrations.matchAll(/create table (?:if not exists )?public\.([a-z_]+)\s*\(([\s\S]*?)\n\);/g)]
         .filter(([, , body]) => /user_id/.test(body))
         .map(([, name]) => name)
     );
-    assert.ok(tables.size >= 7, `only found ${tables.size} user-scoped tables - the parser has drifted`);
+    assert.ok(tables.size >= 11, `only found ${tables.size} user-scoped tables - the parser has drifted`);
+
+    // The ones the old regex could not see, named individually. If the parser
+    // is ever loosened again, a generic count will not notice losing these.
+    for (const table of ['audit_events', 'error_events', 'leaderboard_entries']) {
+      assert.ok(tables.has(table), `the parser stopped seeing ${table}`);
+    }
+
     for (const table of tables) {
       if (table in EXCLUDED) continue;
       assert.match(
-        account,
-        new RegExp(`from\\('${table}'\\)`),
+        exportHandler,
+        new RegExp(`from\\('${table}'\\)|${EXCLUDED_BY_RPC[table] ?? '\\0'}`),
         `${table} holds user rows and the data export does not include it`
       );
     }
@@ -354,7 +413,7 @@ describe('the terms describe the age rule the code actually enforces', () => {
 
   test('there is a route back for a parent, and it is acted on', () => {
     // COPPA and the state statutes turn on ACTUAL KNOWLEDGE. A takedown path
-    // that is honoured is worth more than any wording that is not.
+    // that is honored is worth more than any wording that is not.
     assert.match(termsPage, phrase('If you are a parent or guardian', 'i'));
     assert.match(termsPage, phrase('we do not knowingly provide this service to', 'i'));
   });
@@ -369,18 +428,40 @@ describe('the terms describe the age rule the code actually enforces', () => {
 
   test('the deletion promise matches the cascade that delivers it', () => {
     // Every user-scoped table hangs off auth.users with ON DELETE CASCADE, so
-    // "nothing is kept back" is a claim the schema makes true rather than a
-    // claim the route has to remember.
+    // the sweep is a claim the schema makes true rather than one the route has
+    // to remember.
     const cascades = [...migrations.matchAll(/references auth\.users \(id\) on delete cascade/g)];
     assert.ok(cascades.length >= 8, 'a user-scoped table may have been added without a cascade');
-    assert.match(termsPage, phrase('Nothing is kept back for our own records'));
+  });
+
+  test('and it no longer promises more than the schema delivers', () => {
+    /*
+     * ── THE PROMISE THIS TEST USED TO PIN ─────────────────────────────────
+     *
+     * It asserted the Terms say "Nothing is kept back for our own records",
+     * and treated the cascade count as proof of it. The cascades are real; the
+     * sentence was not. Migration 0030 keeps audit_events after deletion with
+     * user_id set to NULL, and Stripe keeps its own transaction records under
+     * its own obligations - neither of which a cascade on auth.users touches.
+     * The internal review flagged it as A7 and the sentence stayed for two
+     * more weeks because a passing test sat on top of it.
+     *
+     * A test that pins a false claim is worse than no test: it converts a
+     * documentation error into a thing you have to argue with CI about. So
+     * this one now pins the opposite - that the overclaim is gone, and that
+     * the two survivors are named where a reader will see them.
+     */
+    assert.doesNotMatch(termsPage, phrase('Nothing is kept back for our own records'));
+    assert.match(termsPage, phrase('Two things survive', 'i'));
+    assert.match(termsPage, /audit trail/i);
+    assert.match(termsPage, /Stripe/);
   });
 });
 
 describe('every policy page dates its own change', () => {
   test('each carries a changelog for the version it is stamped with', () => {
     for (const [page, version] of [
-      [termsPage, 'tos-2026-08-27b'],
+      [termsPage, 'tos-2026-08-31b'],
       [aiPage, 'aip-2026-08-27c'],
       [healthPage, 'chd-2026-08-27b'],
     ]) {
@@ -391,5 +472,57 @@ describe('every policy page dates its own change', () => {
       // bug and one that looks like an explanation.
       assert.match(page, phrase('you will be asked to agree again', 'i'));
     }
+  });
+});
+
+test('one unreachable source does not destroy the whole export', async (t) => {
+  /**
+   * ── THE OUTAGE THIS PREVENTS ──────────────────────────────────────────
+   *
+   * On 2026-08-30 the export gained a call to my_leaderboard_entry()
+   * (migration 0042). The code was merged and deployed; the migration was not
+   * applied to production. A function that does not exist errors like anything
+   * else, and the export threw on the first error - so every subject access
+   * request returned 500. Profile, programs, sessions, every logged lift,
+   * withheld because one optional row could not be read.
+   *
+   * The deploy order was the mistake. This is the fragility that turned it
+   * into an outage, and it is the kind an export should never have: this is
+   * the one endpoint where "most of your data, plus an honest note about the
+   * rest" beats "nothing".
+   */
+  const account = readSource(new URL('../src/routes/account.js', import.meta.url));
+  const handler = account.slice(
+    account.indexOf("accountRouter.get('/export'"),
+    account.indexOf('const DeleteRequest')
+  );
+
+  await t.test('it no longer throws on the first failing source', () => {
+    assert.ok(
+      !/for \(const result of \[profile[^\]]*\]\)\s*\{\s*if \(result\.error\) throw/.test(handler),
+      'the export still fails entirely when any one source errors'
+    );
+  });
+
+  await t.test('but a missing profile is still fatal', () => {
+    // An export with no profile is not a partial export, it is a different
+    // document, and returning one would misrepresent what we hold.
+    assert.match(handler, /if \(profile\.error\)/);
+    assert.match(handler, /throw codedError\('storage_unavailable'/);
+  });
+
+  await t.test('and anything unreadable is NAMED in the document', () => {
+    /**
+     * The property that makes degrading acceptable. A subject access request
+     * that silently omits a table is worse than one that fails, because the
+     * person cannot tell which they got.
+     */
+    assert.match(handler, /could_not_be_included/);
+    assert.match(handler, /couldNotInclude/);
+    assert.match(handler, phrase('Nothing has been deleted'));
+  });
+
+  await t.test('and it is logged, so we find out rather than the user', () => {
+    assert.match(handler, /account\.export_incomplete/);
   });
 });

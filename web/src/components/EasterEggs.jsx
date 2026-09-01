@@ -8,7 +8,7 @@ import { Logo } from './Logo.jsx';
  * ── THE RULES THEY BOTH FOLLOW ────────────────────────────────────────────
  *
  * An easter egg that fires by accident is not a joke, it is a bug with a
- * sense of humour. Both of these need deliberate, improbable input, neither
+ * sense of humor. Both of these need deliberate, improbable input, neither
  * takes the athlete anywhere without being asked, and both close on Escape.
  *
  *   1. NEVER FIRES WHILE TYPING. The sequence below is mostly arrow keys and
@@ -17,9 +17,9 @@ import { Logo } from './Logo.jsx';
  *      somebody mid-message, which is precisely the interruption the jump
  *      button was moved out of the way to avoid.
  *   2. NOTHING NAVIGATES ON ITS OWN. The outbound link is a button the person
- *      chooses to press, labelled with where it goes. A surprise that hijacks
+ *      chooses to press, labeled with where it goes. A surprise that hijacks
  *      the page is the bad version of this.
- *   3. REDUCED MOTION IS HONOURED. Somebody who has asked the operating system
+ *   3. REDUCED MOTION IS HONORED. Somebody who has asked the operating system
  *      to stop animating things has not opted out of jokes, only of movement.
  *   4. NO LYRICS. The link points at the rights holder's official upload; not
  *      a word of the song is reproduced anywhere in this application. Music
@@ -121,7 +121,7 @@ function EggPanel({ variant, onClose }) {
 
         <div className="egg-actions">
           {track && (
-            // Rule 2: a link the person presses, labelled with where it goes.
+            // Rule 2: a link the person presses, labeled with where it goes.
             // New tab here on purpose - unlike the exercise library, this is a
             // detour the athlete chose, and losing their place would be the
             // actual annoyance.

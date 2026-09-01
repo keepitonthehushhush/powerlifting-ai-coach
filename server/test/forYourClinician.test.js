@@ -21,7 +21,7 @@ describe('the clinician page is pinned to the system, not to itself', () => {
   /**
    * ── WHY THESE TESTS ARE SHAPED THIS WAY ──────────────────────────────────
    *
-   * Every behavioural claim on that page is a claim about this system, made to
+   * Every behavioral claim on that page is a claim about this system, made to
    * somebody who may rely on it clinically. The usual way a document like this
    * goes wrong is not that it was written badly - it is that it was written
    * accurately and then the product moved.
@@ -39,7 +39,7 @@ describe('the clinician page is pinned to the system, not to itself', () => {
   });
 
   test('the claim that the gate is decided in code is true', () => {
-    // This is the load-bearing sentence for a sceptical clinician, and the
+    // This is the load-bearing sentence for a skeptical clinician, and the
     // one it would be most tempting to write without checking.
     assert.match(page, /decided in code, not by the model, so it cannot be talked out of it/);
     const ungated = buildSystemPrompt({
@@ -113,7 +113,7 @@ describe('the clinician page is pinned to the system, not to itself', () => {
 
 describe('it is usable by somebody who is not the patient', () => {
   test('it is readable without an account', () => {
-    // A page you must sign up to read is useless to a physiotherapist holding
+    // A page you must sign up to read is useless to a physical therapist holding
     // a phone in a treatment room.
     const route = app.slice(app.indexOf('path="/about"'));
     assert.doesNotMatch(route.slice(0, 120), /ProtectedRoute/);
@@ -143,7 +143,7 @@ describe('it is usable by somebody who is not the patient', () => {
     const print = css.slice(css.indexOf('@media print'));
     assert.ok(print.length > 0, 'there are no print rules');
     // A screen stylesheet printed unchanged gives a dark background and a
-    // floating grey circle over the text.
+    // floating gray circle over the text.
     assert.match(print, /background: #fff !important/);
     assert.match(print, /\.back-to-top[^}]*display: none !important/s);
     // Link targets, because paper cannot be clicked.

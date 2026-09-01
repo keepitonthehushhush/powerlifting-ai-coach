@@ -14,7 +14,7 @@ import { es } from '../../web/src/i18n/locales/es.js';
  * comparison answers each name somebody who should use the competitor, the
  * coach is forbidden from claiming a belt prevents injury. A landing page is
  * where all of that quietly stops applying, because a landing page is the one
- * artefact whose purpose is persuasion.
+ * artifact whose purpose is persuasion.
  *
  * So the assertions below are the same guard rails, pointed at the front door:
  * every claim is one a document already makes at the same strength; nothing
@@ -124,7 +124,7 @@ describe('every claim is one the documents already make', () => {
   });
 
   test('the clearance gate is described as the product behaves', () => {
-    // It stops writing PROGRAMMES and keeps answering questions. Saying it
+    // It stops writing PROGRAMS and keeps answering questions. Saying it
     // "stops" would be wrong in the direction that makes somebody not sign up.
     assert.match(en.home.honestDoctor, /stops writing programs until/i);
     assert.match(faq, phrase('it stops writing you programs until you confirm'));

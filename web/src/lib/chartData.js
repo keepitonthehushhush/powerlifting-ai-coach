@@ -10,7 +10,7 @@
  * need. Four line charts is a few dozen lines of SVG.
  *
  * The bigger reason is testability. Everything below is a pure function over
- * arrays of numbers, so the interesting behaviour - an empty series, a single
+ * arrays of numbers, so the interesting behavior - an empty series, a single
  * point, every weight identical, a miss at the top of the range - is asserted
  * in the test suite rather than checked by squinting at a screenshot. That is
  * the same argument as progression.js, applied to pixels.
@@ -21,10 +21,10 @@
  * together and the press is a flat line along the bottom, unreadable, while the
  * deadlift owns the whole range. The alternative - two y-scales - is the single
  * most misleading thing a chart can do, because the crossing point of the two
- * lines is an artefact of where you chose to put the axes.
+ * lines is an artifact of where you chose to put the axes.
  *
  * So: small multiples. One chart per lift, each scaled to its own data. Every
- * chart carries one series, which also means no chart needs a colour legend to
+ * chart carries one series, which also means no chart needs a color legend to
  * say which line is which - the title says it.
  */
 
@@ -114,7 +114,7 @@ export function niceScale(values, tickCount = 4) {
  * three weeks off should not see their history squeezed into the left edge.
  * The date is still on the tooltip, which is where it is actually read.
  */
-export function buildChart(points, { width = 320, height = 160, tickCount = 4 } = {}) {
+export function buildChart(points, { width = 320, height = 160, tickCount = 4, extend = [] } = {}) {
   const plot = {
     left: PADDING.left,
     top: PADDING.top,
@@ -122,7 +122,17 @@ export function buildChart(points, { width = 320, height = 160, tickCount = 4 } 
     height: Math.max(height - PADDING.top - PADDING.bottom, 1),
   };
 
-  const scale = niceScale(points.map((p) => p.weight), tickCount);
+  /*
+   * `extend` widens the y range to cover values the caller draws but does not
+   * plot as points - the edges of the estimated-max band, which sit above and
+   * below the line they surround. Without it the scale is computed from the
+   * midline alone and the band is clipped at the top of the plot, which reads
+   * as a ceiling the athlete has hit rather than as a chart that is too short.
+   */
+  const scale = niceScale(
+    [...points.map((p) => p.weight), ...extend.filter((v) => Number.isFinite(v))],
+    tickCount,
+  );
   const span = scale.max - scale.min || 1;
 
   const x = (i) => (points.length <= 1 ? plot.left + plot.width / 2 : plot.left + (i / (points.length - 1)) * plot.width);
@@ -136,7 +146,7 @@ export function buildChart(points, { width = 320, height = 160, tickCount = 4 } 
 
   const yTicks = scale.ticks.map((value) => ({ value, y: round(y(value)) }));
 
-  // Only the ends are labelled. A date under every point is unreadable at this
+  // Only the ends are labeled. A date under every point is unreadable at this
   // width and tells the reader nothing the shape of the line does not.
   const xLabels =
     dots.length === 0

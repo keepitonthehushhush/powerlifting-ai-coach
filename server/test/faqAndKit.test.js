@@ -107,7 +107,7 @@ describe('WHAT THE COACH IS ALLOWED TO SAY ABOUT A BELT', () => {
   });
 
   test('it is suppressed while the clearance gate is up', () => {
-    // "Buy a belt" next to "see a physiotherapist" reads as a way to train
+    // "Buy a belt" next to "see a physical therapist" reads as a way to train
     // through the thing the gate exists to stop.
     const gated = buildSystemPrompt({
       profile: {
@@ -161,7 +161,7 @@ describe('the FAQ', () => {
   });
 
   test('it does not overpromise beyond the documents', () => {
-    // A friendly summary that is stronger than the policy it summarises is
+    // A friendly summary that is stronger than the policy it summarizes is
     // worse than no summary. Every data answer points at the governing page.
     assert.match(faqCode, /to="\/policies\/health-data"/);
     assert.match(faqCode, /to="\/policies\/terms"/);

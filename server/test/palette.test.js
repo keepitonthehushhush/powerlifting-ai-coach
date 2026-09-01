@@ -2,6 +2,7 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readSource } from './helpers/source.js';
+import { contrast, AA_TEXT, AA_LARGE } from '../../web/src/lib/contrast.js';
 
 /**
  * Comments stripped: this file makes several ABSENCE assertions, and a regex
@@ -11,31 +12,21 @@ import { readSource } from './helpers/source.js';
 const css = readSource(new URL('../../web/src/styles.css', import.meta.url));
 
 /**
- * Colour choices are computable, so they get computed.
+ * Color choices are computable, so they get computed.
  *
  * This file exists because a comment in the stylesheet asserted that a link
- * colour reached 4.98:1 when it actually reached 3.48 - a claim that looked
+ * color reached 4.98:1 when it actually reached 3.48 - a claim that looked
  * authoritative, was written in good faith, and was wrong. A number in a
  * comment is a memory; a number from a function is a measurement.
  */
 
-const AA_TEXT = 4.5;
-const AA_LARGE = 3;
-
-function channel(c) {
-  const v = c / 255;
-  return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-}
-
-function luminance(hex) {
-  const [r, g, b] = hex.replace('#', '').match(/../g).map((h) => parseInt(h, 16));
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-}
-
-function contrast(a, b) {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
+/*
+ * The math moved to web/src/lib/contrast.js and is imported rather than
+ * repeated. It is no longer test-only: the theme generator uses the same
+ * functions to BUILD palettes that clear these thresholds, so a second copy
+ * here would be a second definition of "readable" - and this project has twice
+ * paid for two copies of one rule drifting apart.
+ */
 
 /**
  * Split the stylesheet into base declarations and light-mode overrides.
@@ -178,7 +169,7 @@ describe('the palette is readable, measured rather than asserted', () => {
   }
 
   test('the background washes are quiet enough to read over', () => {
-    // A gradient has no single colour, so the honest check is the extreme of
+    // A gradient has no single color, so the honest check is the extreme of
     // each wash. Keeping the alpha low is what keeps that true; a test on the
     // alpha is a proxy for a contrast measurement that cannot be taken from a
     // stylesheet alone. Measured at those extremes when written: worst case
@@ -205,15 +196,52 @@ describe('the palette is readable, measured rather than asserted', () => {
 });
 
 describe('the scheme does not borrow a name it has no right to', () => {
-  test('the stylesheet names no television series', () => {
-    // A colour pairing can only be protected by acquiring secondary meaning
-    // within a product category, and nobody owns teal-and-magenta for strength
-    // software. The NAME of the show that made the palette famous is a
-    // different matter, so it appears nowhere - not in a class, not in a
-    // comment, not in the UI.
-    const files = [css, readFileSync(new URL('../../web/src/i18n/locales/en.js', import.meta.url), 'utf8')];
+  test('nothing names the television series', () => {
+    /*
+     * ── WHAT THIS GUARDS, AND WHAT IT DELIBERATELY NO LONGER DOES ─────────
+     *
+     * A color pairing can only be protected by acquiring secondary meaning
+     * within a product category, and nobody owns teal-and-magenta for strength
+     * software. The NAME of the show that made the palette famous is a
+     * different matter, and that is what this forbids.
+     *
+     * It used to forbid the bare city name too, which meant the default theme
+     * could not be CALLED anything a user would recognize. That was narrowed
+     * on purpose, with the owner's decision on record:
+     *
+     *   - A bare city name is normally refused registration as primarily
+     *     geographically descriptive (Lanham Act s2(e)(2)), which makes it a
+     *     weak mark that others may generally use.
+     *   - The two-word series title is the thing that is actually protected,
+     *     and it is still forbidden here - in a class, a comment, a string, or
+     *     a theme name.
+     *
+     * Nobody involved in writing this is a lawyer and none of it is legal
+     * advice. It is the reasoning behind a product decision, written down so
+     * the next person changing this file knows a decision was made rather than
+     * assuming the rule was arbitrary.
+     */
+    const files = [
+      css,
+      readFileSync(new URL('../../web/src/i18n/locales/en.js', import.meta.url), 'utf8'),
+      readFileSync(new URL('../../web/src/i18n/locales/es.js', import.meta.url), 'utf8'),
+      readFileSync(new URL('../../web/src/lib/themes.js', import.meta.url), 'utf8'),
+    ];
+    // Whitespace-tolerant, because "Miami  Vice" and a line break between the
+    // two words are the same borrowed name and a literal string would miss
+    // both. This is the formatting-defeated-guard class this project keeps
+    // finding, so it is written not to be one.
+    const SERIES = /miami\s+vice/i;
     for (const file of files) {
-      assert.doesNotMatch(file, /miami/i, 'the product must not borrow a trademarked name');
+      assert.doesNotMatch(file, SERIES, 'the product must not borrow the series name');
     }
+  });
+
+  test('and the check can actually fail', () => {
+    // The guard on the guard. A regex that matches nothing would make the
+    // assertion above vacuously true forever, which is exactly how a check
+    // ends up answering confidently without looking.
+    assert.match('a theme called Miami   Vice', /miami\s+vice/i);
+    assert.doesNotMatch('a theme called Miami', /miami\s+vice/i);
   });
 });

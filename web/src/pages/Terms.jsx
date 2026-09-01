@@ -42,7 +42,7 @@ import { CONTACT_EMAIL, contactIsUsable, removalMailto } from '../lib/contact.js
 export function Terms() {
   return (
     <div className="page">
-      <InfoHeader title="Terms of Service" version="Version tos-2026-08-27b" />
+      <InfoHeader title="Terms of Service" version="Version tos-2026-08-31b" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -54,6 +54,20 @@ export function Terms() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>tos-2026-08-31b.</strong> Governing law and venue corrected from Florida to
+          Michigan, which is where this service is actually operated from. The previous version
+          named the wrong state.
+        </p>
+        <p className="small">
+          <strong>tos-2026-08-31a.</strong> The clauses a contract is normally expected to have,
+          and did not: governing law and where a dispute would be heard, a limit on liability, a
+          warranty disclaimer, indemnity, severability and the rest of the standard closing
+          section. Subscription and payment terms have been added ahead of paid plans, including
+          how automatic renewal works and how to cancel it. An accessibility statement and a
+          copyright complaints route have been added. One sentence about deletion was corrected:
+          it said nothing is kept back, and two things are.
+        </p>
         <p className="small">
           <strong>tos-2026-08-27b.</strong> The under-18 rule is now enforced rather than only
           stated. Talking to Coach requires a date of birth showing you are 18 or over, and the
@@ -170,8 +184,16 @@ export function Terms() {
           account itself, and every row attached to it goes with it: your profile — including
           anything you told us about injuries — your programs, your logged sessions and individual
           sets, your conversations with Coach, your record of consents, and the usage rows counting
-          what your replies cost. Nothing is kept back for our own records. It is not recoverable,
-          so export first if you want a copy.
+          what your replies cost. It is not recoverable, so export first if you want a copy.
+        </p>
+        <p>
+          Two things survive, and it is more honest to name them than to say
+          &ldquo;everything&rdquo;. Entries in the security audit trail remain, with the account
+          identifier removed so they no longer point at you — they are what would answer a
+          question like &ldquo;who asserted that a doctor cleared this account to train&rdquo;
+          after the account is gone. And if you ever paid, Stripe keeps its own transaction records
+          under its own obligations; that copy is Stripe&rsquo;s, requestable from Stripe, and not
+          ours to delete.
         </p>
 
         <h2 className="h3">What you may not do</h2>
@@ -207,6 +229,214 @@ export function Terms() {
         <p>
           You can stop using the service and delete your account whenever you like. We may suspend
           an account that is being used to attack the service or other users.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Paid plans</h2>
+        <p>
+          Parts of Coach Diaz may require a paid subscription. If you subscribe, this section
+          applies. If you never do, it does not.
+        </p>
+        <p>
+          <strong>What you are agreeing to.</strong> Before any charge, the checkout page states
+          the price, the billing period, and that the subscription renews automatically. You will
+          be asked to agree to those specific terms — not merely to these Terms in general — and
+          the charge does not happen until you do.
+        </p>
+        <p>
+          <strong>Automatic renewal.</strong> Subscriptions renew automatically at the end of each
+          billing period, at the price shown when you subscribed, until you cancel. We will email
+          you a receipt for each charge. If the price changes, or the renewal terms change, we will
+          tell you in advance and ask you to agree again before the new price applies.
+        </p>
+        <p>
+          <strong>Cancelling.</strong> You can cancel at any time from the Account page, in the
+          app, in a few clicks and with nothing to justify. There is no phone call, no retention
+          offer you have to decline, and no email you have to send. Cancelling stops the next
+          charge; you keep access until the end of the period you have already paid for.
+        </p>
+        <p>
+          <strong>Refunds.</strong> A charge you did not intend — a renewal you meant to cancel, a
+          duplicate — will be refunded if you write to us within 30 days. Beyond that, refunds are
+          at our discretion, and we would rather give one than argue about it. Deleting your
+          account does not automatically refund the current period; ask, and we will sort it out.
+        </p>
+        <p>
+          <strong>Payment handling.</strong> Payments are processed by Stripe. Card details are
+          entered on Stripe&rsquo;s pages and never reach this site or its database. What we store
+          is your subscription status and the identifiers needed to look it up.
+        </p>
+        <p>
+          <strong>Free access.</strong> Some accounts are marked free permanently. That is a gift,
+          not a contract; it can be withdrawn on notice, and it does not entitle anybody else to
+          the same.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Assumption of risk</h2>
+        <p>
+          Resistance training carries a genuine risk of injury, including serious and permanent
+          injury. That risk exists whoever writes the program and however carefully it is written.
+          It is greater when you train while injured, ill, under-recovered, or beyond your current
+          ability, and greater again when a lift is performed with poor technique — which this
+          service cannot see and cannot correct.
+        </p>
+        <p>
+          <strong>
+            You train at your own risk, and you are responsible for deciding whether any particular
+            session, lift, or load is safe for you on any particular day.
+          </strong>{' '}
+          Nothing here is medical advice or clearance to train. Stop, and get a professional
+          opinion, if something hurts.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">No warranty</h2>
+        <p>
+          The service is provided <strong>&ldquo;as is&rdquo; and &ldquo;as available&rdquo;</strong>,
+          without warranties of any kind, whether express, implied, or statutory. To the fullest
+          extent permitted by law we disclaim the implied warranties of merchantability, fitness
+          for a particular purpose, title, and non-infringement.
+        </p>
+        <p>
+          We do not warrant that the service will be uninterrupted, error-free, or available at any
+          particular time, that it will suit your goals, or that anything the coach writes is
+          correct. It is generated by a language model, and language models produce confident text
+          including when they are mistaken. Some jurisdictions do not allow the exclusion of
+          certain implied warranties, so parts of this may not apply to you.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Limitation of liability</h2>
+        <p>
+          To the fullest extent permitted by law, we are not liable for indirect, incidental,
+          special, consequential, exemplary, or punitive damages, or for lost profits, lost data,
+          or loss of goodwill, arising out of or relating to the service — whether the claim is
+          brought in contract, in tort, or on any other basis, and even if we were told such
+          damages were possible.
+        </p>
+        <p>
+          <strong>
+            Our total liability for all claims relating to the service is limited to the greater of
+            the amount you paid us in the twelve months before the claim arose, or one hundred US
+            dollars.
+          </strong>
+        </p>
+        <p>
+          These limits do not apply to liability that cannot lawfully be limited — which, depending
+          on where you live, may include death or personal injury caused by negligence, fraud, or
+          fraudulent misrepresentation. Some jurisdictions do not allow some of these limits, so
+          parts of this may not apply to you. Where a limit is unenforceable, it is reduced to what
+          the law allows rather than discarded.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Indemnity</h2>
+        <p>
+          You agree to indemnify and hold us harmless from claims, damages, losses, and reasonable
+          legal costs arising from your use of the service in breach of these terms, your violation
+          of the law or of somebody else&rsquo;s rights, or content you submitted. We will tell you
+          promptly about any such claim and will not settle it in a way that admits fault on your
+          behalf without your agreement.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Governing law and disputes</h2>
+        <p>
+          These terms are governed by the laws of the State of Michigan, United States, without
+          regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal
+          courts located in Michigan, and both of us consent to the jurisdiction of those courts.
+        </p>
+        <p>
+          <strong>There is no arbitration clause and no class-action waiver</strong>, which is a
+          deliberate choice rather than an omission. If either of us has a problem, the sensible
+          first step is an email to{' '}
+          <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
+            {CONTACT_EMAIL}
+          </a>
+          . Most things end there.
+        </p>
+        <p>
+          Nothing in this section takes away a right you have under the consumer law of the place
+          you live, including the right to bring a claim in a small claims court where one is
+          available to you.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Copyright complaints</h2>
+        <p>
+          The exercise library links out to demonstration videos hosted by other people. Nothing is
+          mirrored or re-hosted here. If you believe something on this service infringes your
+          copyright, write to{' '}
+          <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
+            {CONTACT_EMAIL}
+          </a>{' '}
+          with enough detail to identify the work and the material complained of, where it is, how
+          to reach you, and a statement that you believe in good faith the use is not authorized.
+          We will remove material that infringes, and we may remove a link rather than argue about
+          it.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">Accessibility</h2>
+        <p>
+          This service aims to meet the Web Content Accessibility Guidelines 2.2 at level AA. Some
+          of that is verified automatically: every color pair in every theme is measured against
+          the contrast thresholds by a test, and a theme that fails does not ship. Other parts are
+          not yet verified, and we are not claiming conformance we have not checked.
+        </p>
+        <p>
+          If any part of this service is difficult to use with a screen reader, a keyboard, or any
+          assistive technology, tell us at{' '}
+          <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
+            {CONTACT_EMAIL}
+          </a>{' '}
+          and we will fix it. That is a faster route to a fix than it sounds — the whole thing is
+          maintained by one person.
+        </p>
+      </div>
+
+      <div className="card prose">
+        <h2 className="h3">The rest</h2>
+        <p>
+          <strong>Severability.</strong> If any part of these terms is held unenforceable, that
+          part is limited or removed to the minimum extent necessary and the rest stays in force.
+        </p>
+        <p>
+          <strong>Entire agreement.</strong> These terms, together with the privacy policy, the
+          consumer health data policy, the AI processing disclosure, and the leaderboard policy,
+          are the whole agreement between us about the service.
+        </p>
+        <p>
+          <strong>No waiver.</strong> If we do not enforce something straight away, we have not
+          given up the right to enforce it later.
+        </p>
+        <p>
+          <strong>Assignment.</strong> You may not transfer your account or your rights under these
+          terms. We may transfer them to a successor if the service changes hands, and will tell
+          you if that happens.
+        </p>
+        <p>
+          <strong>Force majeure.</strong> Neither of us is liable for a failure caused by something
+          genuinely outside our control, including the failure of a provider this service depends
+          on.
+        </p>
+        <p>
+          <strong>Survival.</strong> The sections on assumption of risk, warranties, liability,
+          indemnity, and governing law survive the end of your account.
+        </p>
+        <p>
+          <strong>Relationship.</strong> Using this service does not make either of us the
+          other&rsquo;s employee, agent, or partner, and does not create a coach-client
+          relationship of the kind a licensed professional has with a patient.
         </p>
       </div>
 

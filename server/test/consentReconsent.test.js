@@ -22,7 +22,7 @@ import { POLICY_VERSIONS, CONSENT_TYPES } from '../src/lib/policyVersions.js';
  *      homework. What changed, what they agreed to, and when is information.
  *
  *   3. The database has to agree with the screen. has_active_consent()
- *      ignored policy_version, so a superseded agreement went on authorising
+ *      ignored policy_version, so a superseded agreement went on authorizing
  *      health-data writes while the panel showed an empty box.
  */
 

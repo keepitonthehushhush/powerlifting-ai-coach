@@ -16,7 +16,7 @@ import { useI18n } from '../i18n/index.jsx';
  *   Leaderboard           "Back to the FAQ"             -> /faq
  *   For your clinician    "Back to Coach Diaz"          -> /login
  *
- * The first two are the ones worth staring at. A control labelled "Back" that
+ * The first two are the ones worth staring at. A control labeled "Back" that
  * goes somewhere the reader has never been is not a mislabel, it is a lie
  * about what the button does - and it is exactly what was reported: "when you
  * click on a link on FAQ and then back, it takes you to your privacy

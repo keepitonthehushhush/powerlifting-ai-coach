@@ -10,7 +10,7 @@ import { POLICY_DOCUMENTS } from '../../web/src/lib/policyDocuments.js';
 /**
  * The guardian consent round trip.
  *
- * 0036 built the storage and left the flow as a paragraph in docs/UNDER_18.md.
+ * 0054 built the storage and left the flow as a paragraph in docs/UNDER_18.md.
  * This is the flow, and it has two halves with opposite security models: the
  * athlete asks while authenticated, and the guardian answers with no account at
  * all. Nearly everything below is about keeping that second half narrow.
@@ -26,7 +26,7 @@ const decisionPage = readSource(new URL('../../web/src/pages/GuardianDecision.js
 const migration = latestDefinition('function public.record_guardian_consent').body;
 const requestFn = latestDefinition('function public.request_guardian_consent').body;
 const migrationRaw = readRaw(
-  new URL('../../supabase/migrations/0045_guardian_consent_round_trip.sql', import.meta.url)
+  new URL('../../supabase/migrations/0055_guardian_consent_round_trip.sql', import.meta.url)
 );
 
 test('the token', async (t) => {
@@ -201,8 +201,8 @@ test('the document exists, and is reachable', async (t) => {
   });
 
   await t.test('and the migration seeds the same version', () => {
-    const seed = readRaw(new URL('../../supabase/migrations/0036_guardian_consent.sql', import.meta.url));
-    assert.ok(seed.includes(GUARDIAN_CONSENT_VERSION), '0036 seeds a different version than the code records');
+    const seed = readRaw(new URL('../../supabase/migrations/0054_guardian_consent.sql', import.meta.url));
+    assert.ok(seed.includes(GUARDIAN_CONSENT_VERSION), '0054 seeds a different version than the code records');
   });
 
   await t.test('it is mapped to a route, and the route exists', () => {
@@ -245,7 +245,7 @@ test('the athlete can actually start the flow', async (t) => {
   /**
    * ── WHY THIS TEST EXISTS ──────────────────────────────────────────────
    *
-   * Migration 0045 built the token, both endpoints and the guardian's page,
+   * Migration 0055 built the token, both endpoints and the guardian's page,
    * and NOTHING in the application called POST /api/guardian/request. The
    * refusal told a thirteen-year-old to "ask them to give us their email
    * address on your profile page" and there was no field on the profile page.
@@ -296,7 +296,7 @@ test('the athlete can actually start the flow', async (t) => {
   });
 
   await t.test('it never asks for the token hash', () => {
-    // 0045 does not grant that column, so selecting it fails the whole request
+    // 0055 does not grant that column, so selecting it fails the whole request
     // rather than omitting the column - the leaderboard lesson from 0039.
     const select = route.slice(route.indexOf("from('guardian_consent_requests')"));
     assert.ok(!/token_hash/.test(select.slice(0, 400)), 'the status route selects token_hash');

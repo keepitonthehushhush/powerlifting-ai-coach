@@ -179,7 +179,7 @@ describe('what the directive actually says', () => {
    * Being fifteen is not a programming variable a gate can switch off. The
    * body-composition rule and the supervision line apply to every sentence
    * the coach writes, including the one telling them to see a doctor - so
-   * unlike the phase and the fuelling directives, this one is never
+   * unlike the phase and the fueling directives, this one is never
    * suppressed while the clearance gate is up.
    */
   test('it survives the medical clearance gate', () => {

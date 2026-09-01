@@ -1,6 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource } from './helpers/source.js';
+import { readSource, readRaw } from './helpers/source.js';
 import { buildSystemBlocks, buildSystemPrompt, COACH_ROLE } from '../src/prompts/systemPrompt.js';
 
 const chatRoute = readSource(new URL('../src/routes/chat.js', import.meta.url));
@@ -90,7 +90,7 @@ describe('nothing about an athlete is in the shared cache entry', () => {
      * This caught a real one, and not the kind it was written for: a new
      * prompt section illustrated a correction with "that was 225, not 275" and
      * put 275 into the cached prefix. Invented, not leaked - and the check
-     * cannot tell the difference, which is the correct behaviour for it and
+     * cannot tell the difference, which is the correct behavior for it and
      * the reason the prompt now writes its examples in plates.
      *
      * The one number that IS allowed through is the weight in the
@@ -127,5 +127,44 @@ describe('the split changed how it is sent, not what it says', () => {
   test('the route sends blocks rather than a string', () => {
     assert.match(chatRoute, /buildSystemBlocks\(context\)/);
     assert.doesNotMatch(chatRoute, /buildSystemPrompt\(/);
+  });
+});
+
+describe('THE UNEXPLAINED EIGHT THOUSAND TOKENS', () => {
+  /*
+   * The first unit-economics measurement put uncached input at 46% of what a
+   * reply costs - more than the output. The cached block measures ~12,300
+   * tokens and matches cache_creation_input_tokens exactly; the athlete-state
+   * block measures under 2,000 even loaded with five sessions, sixty logs and
+   * an active program. Production still reports 11,000-13,000 uncached input
+   * tokens on turn one, when the only uncached content is that block plus one
+   * user message.
+   *
+   * Nothing in this repository accounts for the difference, so chat.js now
+   * logs the lengths of the exact strings it sent. These tests pin the shape
+   * of that instrumentation - that it exists, and that it stayed lengths.
+   */
+  const chat = readRaw(new URL('../src/routes/chat.js', import.meta.url));
+
+  test('the prompt reports its own size next to what it cost', () => {
+    for (const key of ['cachedBlockChars', 'athleteStateChars', 'messagesChars']) {
+      assert.match(chat, new RegExp(key), `${key} is not logged`);
+    }
+    // Without these two the log line cannot tell a cache hit from a miss, and
+    // a miss is the more expensive turn by a factor of 1.7.
+    assert.match(chat, /cacheReadTokens: reply\.usage\?\.cache_read_input_tokens/);
+    assert.match(chat, /cacheWriteTokens: reply\.usage\?\.cache_creation_input_tokens/);
+  });
+
+  test('IT LOGS LENGTHS, NEVER THE STRINGS THEMSELVES', () => {
+    // The athlete-state block is the densest health data in the product -
+    // injuries, restrictions, GLP-1 status, every logged set. Its length is a
+    // fact about our prompt. Its contents are not ours to write down.
+    const line = chat.slice(chat.indexOf("logger.info('chat.completed'"), chat.indexOf('historyReplayed') + 400);
+    assert.match(line, /system\[0\]\?\.text\?\.length/);
+    assert.match(line, /system\[1\]\?\.text\?\.length/);
+    assert.doesNotMatch(line, /system\[1\]\?\.text[,\s}]/, 'the athlete-state block itself is being logged');
+    assert.doesNotMatch(line, /content:\s*m\.content[,\s}]/, 'message bodies are being logged');
+    assert.match(line, /m\.content\?\.length/);
   });
 });

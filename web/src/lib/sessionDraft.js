@@ -2,7 +2,7 @@
  * Turning a half-filled form into something the API will accept.
  *
  * Extracted from the component for the same reason as the other rules in this
- * codebase: the interesting behaviour is in the edge cases — a blank RPE, a
+ * codebase: the interesting behavior is in the edge cases — a blank RPE, a
  * row the lifter started and abandoned, a weight of zero that genuinely means
  * zero — and those are miserable to verify by clicking and trivial to verify
  * in a test.

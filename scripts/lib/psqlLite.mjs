@@ -78,7 +78,7 @@ export function expandPsql(source) {
   // bodies. The first version of this check did not, and reported `:true` as an
   // unexpanded variable - it had found the JSON literal '{"forged":true}' in a
   // fixture. psql does not expand inside quotes either, so masking is both the
-  // fix and the faithful behaviour.
+  // fix and the faithful behavior.
   const leftover = mask(sql).match(/(?<![:\w]):[A-Za-z_]\w*/g);
   if (leftover) {
     // An unexpanded variable would become a Postgres parameter placeholder or

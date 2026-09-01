@@ -196,7 +196,7 @@ export function adultGateDecision(profile, options = {}) {
   }
 
   // 13 to 17. Until the switch is thrown this is indistinguishable from the
-  // old behaviour, deliberately: same refusal, same reason code.
+  // old behavior, deliberately: same refusal, same reason code.
   if (!minorsEnabled) return { allowed: false, isMinor: true, reason: 'too_young' };
 
   return guardianConsent

@@ -6,7 +6,7 @@
  * Somebody opens the app, leaves the tab, and a deploy lands. Their tab is now
  * running JavaScript from the previous commit against an API from the current
  * one. Nothing crashes. What happens instead is worse: a field the old client
- * does not send, an error code it does not recognise, a response shape it
+ * does not send, an error code it does not recognize, a response shape it
  * mis-reads - and a person reporting that "it did something weird" with no way
  * for either of us to reproduce it, because a refresh silently fixes it.
  *

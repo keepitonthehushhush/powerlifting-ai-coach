@@ -44,6 +44,12 @@ const SENSITIVE_KEYS = [
   // it. Whether somebody takes a prescription drug is health data by any
   // reading, and naming it explicitly is cheaper than being clever.
   'glp1', 'glp_1', 'semaglutide', 'tirzepatide', 'ozempic', 'wegovy', 'mounjaro', 'zepbound',
+  // Added with migration 0053. The obstacle field asks somebody to name what
+  // actually stops them, and the honest answers are frequently medical - "my
+  // back seizes on squat day", "the meds leave me too tired". The if-then plan
+  // names the obstacle it answers, so it carries the same content. Both are in
+  // private.health_fingerprint() and both belong here.
+  'obstacle', 'if_then', 'ifthen', 'intention',
   // Added 2026-08-29, auditing the policy documents against the code. Migration
   // 0024 declares gender health data ("Health data. woman | man | nonbinary |
   // self_described | prefer_not_to_say"), the consumer health data policy lists

@@ -1,0 +1,60 @@
+{
+  "private.apply_retention()": {
+    "owner": "0055_guardian_consent_round_trip.sql",
+    "alsoIn": [
+      "0031_retention.sql",
+      "0033_body_composition.sql",
+      "0034_error_events.sql",
+      "0035_three_things_the_replay_found.sql",
+      "0053_the_obstacle_is_named_before_the_plan.sql"
+    ]
+  },
+  "private.health_fingerprint(p public.user_profile)": {
+    "owner": "0053_the_obstacle_is_named_before_the_plan.sql",
+    "alsoIn": [
+      "0012_lifestyle_factors.sql",
+      "0024_gender_and_pronouns.sql",
+      "0035_three_things_the_replay_found.sql"
+    ]
+  },
+  "private.require_health_data_consent()": {
+    "owner": "0035_three_things_the_replay_found.sql",
+    "alsoIn": [
+      "0012_lifestyle_factors.sql",
+      "0013_consent_trigger_can_reach_its_helper.sql",
+      "0033_body_composition.sql"
+    ]
+  },
+  "private.stamp_health_restrictions()": {
+    "owner": "0033_body_composition.sql",
+    "alsoIn": [
+      "0031_retention.sql"
+    ]
+  },
+  "public.delete_my_account()": {
+    "owner": "0052_a_definer_function_does_not_see_a_policy.sql",
+    "alsoIn": [
+      "0035_three_things_the_replay_found.sql"
+    ]
+  },
+  "public.has_active_consent(p_consent_type text)": {
+    "owner": "0027_consent_must_be_current.sql",
+    "alsoIn": [
+      "0010_consent_ledger_monotonic_ordering.sql"
+    ]
+  },
+  "public.record_audit_event(p_action text, p_detail jsonb default '{}'::jsonb)": {
+    "owner": "0041_clearance_is_a_claim_somebody_makes.sql",
+    "alsoIn": [
+      "0030_audit_events.sql"
+    ]
+  },
+  "public.set_leaderboard_opt_in(opt_in boolean)": {
+    "owner": "0054_guardian_consent.sql",
+    "alsoIn": [
+      "0026_leaderboard.sql",
+      "0028_leaderboard_consent.sql",
+      "0052_a_definer_function_does_not_see_a_policy.sql"
+    ]
+  }
+}

@@ -23,7 +23,7 @@ leaderboardRouter.get('/', async (req, res, next) => {
       .from('leaderboard_entries')
       // The five published columns, and only those. `updated_at` used to be
       // here, was used by nothing, and is no longer readable by this JWT at
-      // all - migration 0039 revoked the table-wide grant in favour of a
+      // all - migration 0039 revoked the table-wide grant in favor of a
       // column grant, so asking for it now fails the whole request.
       .select('display_name, best_squat, best_bench, best_deadlift, units');
     if (error) throw codedError('storage_unavailable', 'Could not load the leaderboard.', { cause: error.code });

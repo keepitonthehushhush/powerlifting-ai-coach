@@ -69,8 +69,12 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription] = await Promise.all([
+    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board, guardianRequests] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
+      // Interface preferences are personal data too. Small, dull, and still
+      // the subject's - an export that quietly omits a table is an export
+      // that is wrong, and nothing was checking that until now.
+      req.supabase.from('user_preferences').select('*').maybeSingle(),
       req.supabase.from('workout_programs').select('*').order('created_at'),
       req.supabase.from('workout_sessions').select('*').order('date'),
       req.supabase.from('progress_logs').select('*').order('date'),
@@ -85,10 +89,101 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       // request. It is a mirror of what Stripe holds; Stripe's own copy is
       // requestable from Stripe, and `not_included` says so.
       req.supabase.from('subscriptions').select('*').maybeSingle(),
+      /**
+       * The audit trail. It was browsable at GET /api/account/activity and
+       * absent from here, which is the wrong way round: the endpoint shows the
+       * most recent hundred rows in a page, and an access request is for
+       * everything, in a file the subject keeps.
+       *
+       * It matters more since migration 0041, which records every assertion
+       * that a professional cleared the athlete to train. That is the trail
+       * answering "I never told it a doctor had cleared me", and a record used
+       * to answer somebody must be a record that somebody can read.
+       */
+      req.supabase.from('audit_events').select('*').order('seq'),
+      /**
+       * The published leaderboard row, through a definer function rather than a
+       * select, because 0039 revoked user_id from `authenticated` so this query
+       * can no longer filter on it. See migration 0042.
+       */
+      req.supabase.rpc('my_leaderboard_entry'),
+      /**
+       * Guardian consent requests: who was asked, when, and what they said.
+       *
+       * A record ABOUT the athlete that the athlete did not write, which is
+       * the kind an access request exists for. It also names a third party -
+       * the guardian's address - and that is theirs as much as it is the
+       * athlete's, so it is here for the same reason it is in the retention
+       * sweep rather than kept indefinitely.
+       *
+       * Named columns, not `select('*')`. Migration 0055 grants SELECT on
+       * seven columns and withholds token_hash, and a star select asks for
+       * every column the table has - so it would fail the whole request the
+       * moment it ran, exactly as the leaderboard star select did in 0039.
+       */
+      req.supabase
+        .from('guardian_consent_requests')
+        .select('id, user_id, guardian_email, created_at, expires_at, decided_at, decision')
+        .order('created_at'),
     ]);
 
-    for (const result of [profile, programs, sessions, logs, conversations, consents, usage, errors, subscription]) {
-      if (result.error) throw codedError('storage_unavailable', 'Could not assemble your data export.');
+    /**
+     * ── WHY ONE UNREACHABLE SOURCE NO LONGER DESTROYS THE WHOLE EXPORT ──
+     *
+     * This used to throw on the first error, so any single failing source
+     * returned 500 and the person got nothing.
+     *
+     * That went from theoretical to live on 2026-08-30. The export gained a
+     * call to my_leaderboard_entry() (migration 0042); the code was merged and
+     * deployed; the migration was not applied to production. A function that
+     * does not exist is an error like any other, so the entire subject access
+     * request - profile, programs, sessions, every logged lift - failed because
+     * one optional row could not be read.
+     *
+     * The deploy order was the mistake and is fixed separately. This is the
+     * fragility that turned it into an outage: an export is the one endpoint
+     * where "most of your data plus an honest note" beats "nothing".
+     *
+     * ── AND WHY IT IS NOT SILENT ────────────────────────────────────────
+     *
+     * A subject access request that quietly omits a table is worse than one
+     * that fails, because the person cannot tell. So anything unreadable is
+     * NAMED in the document itself, under `could_not_be_included`, and logged
+     * as an error on our side. They get what we could assemble, they are told
+     * exactly what is missing, and we find out.
+     *
+     * The profile is the exception: an export with no profile is not a partial
+     * export, it is a different document, and returning one would misrepresent
+     * what we hold.
+     */
+    if (profile.error) {
+      logger.error('account.export_failed', { userId: req.user.id, code: profile.error.code });
+      throw codedError('storage_unavailable', 'Could not assemble your data export.');
+    }
+
+    const sources = {
+      workout_programs: programs,
+      workout_sessions: sessions,
+      progress_logs: logs,
+      conversations,
+      consent_records: consents,
+      usage_events: usage,
+      error_events: errors,
+      subscription,
+      audit_events: activity,
+      leaderboard_entry: board,
+      guardian_consent_requests: guardianRequests,
+    };
+
+    const couldNotInclude = Object.entries(sources)
+      .filter(([, result]) => result.error)
+      .map(([name]) => name);
+
+    if (couldNotInclude.length > 0) {
+      logger.error('account.export_incomplete', {
+        userId: req.user.id,
+        missing: couldNotInclude,
+      });
     }
 
     const exportDocument = {
@@ -100,6 +195,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         'health information you provided. Store it somewhere you consider private.',
       data: {
         profile: profile.data,
+        user_preferences: preferences.data,
         workout_programs: programs.data ?? [],
         workout_sessions: sessions.data ?? [],
         progress_logs: logs.data ?? [],
@@ -108,7 +204,22 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         usage_events: usage.data ?? [],
         error_events: errors.data ?? [],
         subscription: subscription.data ?? null,
+        audit_events: activity.data ?? [],
+        // Zero rows when they never joined; one row when they did.
+        leaderboard_entry: (board.data ?? [])[0] ?? null,
+        guardian_consent_requests: guardianRequests.data ?? [],
       },
+      /**
+       * Empty on a healthy export. Named rather than omitted, because a
+       * subject access request the person cannot tell is incomplete is worse
+       * than one that failed outright.
+       */
+      could_not_be_included: couldNotInclude.length === 0 ? [] : couldNotInclude.map((name) => ({
+        source: name,
+        note:
+          'This could not be read when your export was assembled, so it is not included above. ' +
+          'Nothing has been deleted. Please request your export again, and contact us if it keeps happening.',
+      })),
       not_included: [
         'Authentication records held by Supabase Auth (email, password hash, sign-in timestamps) — request these from the auth provider.',
         'Rate limiting counters, which hold only a request count and a timestamp.',
@@ -118,7 +229,8 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
 
     const totalRows =
       (programs.data?.length ?? 0) + (sessions.data?.length ?? 0) + (logs.data?.length ?? 0) +
-      (consents.data?.length ?? 0) + (usage.data?.length ?? 0) + (errors.data?.length ?? 0);
+      (consents.data?.length ?? 0) + (usage.data?.length ?? 0) + (errors.data?.length ?? 0) +
+      (activity.data?.length ?? 0);
 
     // Logged as a count, never as content.
     logger.info('account.exported', {

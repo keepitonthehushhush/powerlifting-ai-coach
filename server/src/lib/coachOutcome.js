@@ -100,7 +100,7 @@ export function describeCoachReply(reply) {
   }
 
   if (!text) {
-    // end_turn, or anything unrecognised, with nothing in it. The one case
+    // end_turn, or anything unrecognized, with nothing in it. The one case
     // where sending the same request again is reasonable advice.
     return {
       ok: false,
@@ -160,7 +160,7 @@ export const TRUNCATION_NOTICE =
  * one is worth waiting out, the other is worth a commit.
  *
  * Timeouts get their own code because they are the one an athlete can act on:
- * a full programme legitimately takes over a minute, and being told it timed
+ * a full program legitimately takes over a minute, and being told it timed
  * out is more useful than being told something went wrong.
  */
 export function coachApiError(err) {

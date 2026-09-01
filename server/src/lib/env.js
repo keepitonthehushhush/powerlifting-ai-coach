@@ -12,6 +12,8 @@
  * meant to assert on.
  */
 
+import { resolveMaxTokens } from './modelBudget.js';
+
 export function required(env, name) {
   const value = env[name];
   if (!value || value.trim() === '') {
@@ -267,7 +269,7 @@ export function buildConfig(env) {
        * happens, and the prompt no longer asks for a whole program when an
        * athlete corrects a single number.
        */
-      maxTokens: Number(optional(env, 'ANTHROPIC_MAX_TOKENS', '8192')),
+      maxTokens: resolveMaxTokens(env),
     },
 
     supabase: {

@@ -90,7 +90,7 @@ describe('the order of the gates', () => {
   test('THE ADULT GATE IS CHECKED BEFORE THE PAYWALL', () => {
     // If a minor reaches this route the answer is that we do not coach them,
     // never an invitation to subscribe. Asserted by position, because that is
-    // what the ordering IS - there is no other artefact to point at.
+    // what the ordering IS - there is no other artifact to point at.
     const adultGate = chat.indexOf('adultGateDecision(context.profile');
     // `if (config.paywall.active` and not `config.paywall.active`: the bare
     // string also matches the SUBSCRIPTION READ higher up the function, which
@@ -308,7 +308,7 @@ describe('the promise made to people who signed up first', () => {
 
   test('AND STILL ENTITLED AFTER A SUBSCRIPTION THEY ONCE HAD LAPSES', () => {
     // The reason the check sits first. Lower down, somebody who subscribed and
-    // later cancelled would fall through to `lapsed` and lose access that was
+    // later canceled would fall through to `lapsed` and lose access that was
     // promised permanently - the promise outranked by a subscription record
     // that should be irrelevant to them.
     const past = new Date(Date.now() - 7 * 864e5).toISOString();

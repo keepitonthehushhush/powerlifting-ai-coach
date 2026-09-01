@@ -1,6 +1,7 @@
 import { createUserScopedClient } from '../lib/supabase.js';
 import { displayCode } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
+import { assuranceLevelOf, describeStepUp, shouldRefuse } from '../lib/assuranceLevel.js';
 
 /**
  * Authenticate the caller and hand the rest of the request an RLS-scoped
@@ -51,7 +52,43 @@ export async function requireAuth(req, res, next) {
       });
     }
 
+    /*
+     * ── AND IS THIS SESSION STRONG ENOUGH FOR THIS ACCOUNT? ─────────────
+     *
+     * A verified second factor with an aal1 token means somebody signed in
+     * with a password and never finished. The UI knows that too, and the UI
+     * is a suggestion: this token works against the API directly whatever the
+     * browser decides to render. See lib/assuranceLevel.js for why an absent
+     * claim is aal1, why an absent factor list is `unknown`, and why
+     * `unknown` deliberately does not refuse here.
+     */
+    const level = assuranceLevelOf(token);
+    const stepUp = describeStepUp({ level, factors: data.user.factors });
+
+    if (shouldRefuse(stepUp)) {
+      logger.warn('auth.step_up_required', { level });
+      return res.status(401).json({
+        error: 'unauthorized',
+        message: 'Enter the code from your authenticator app to finish signing in.',
+        details: { code: 'mfa_required', errorCode: displayCode('mfa_required') },
+      });
+    }
+
+    if (stepUp.anomaly) {
+      /*
+       * Only when the factor list contradicts the assurance level, which
+       * cannot happen while the reading in assuranceLevel.js holds. The first
+       * version of this logged whenever the list was ABSENT, and absent turned
+       * out to be the ordinary state of every account that has not enrolled -
+       * twelve warnings in thirty seconds from one signed-in person. A warning
+       * that fires on the common path is a warning that gets filtered out,
+       * taking the real one with it.
+       */
+      logger.warn('auth.step_up_anomaly', { level, reason: stepUp.anomaly });
+    }
+
     req.user = { id: data.user.id, email: data.user.email };
+    req.auth = { assuranceLevel: level };
     req.supabase = supabase;
     return next();
   } catch (err) {

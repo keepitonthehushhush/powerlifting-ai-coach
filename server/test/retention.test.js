@@ -25,7 +25,7 @@ const migration = readRaw(new URL('../../supabase/migrations/0031_retention.sql'
 /**
  * The sweep AS IT STANDS, not as 0031 wrote it.
  *
- * Reading 0031 for the sweep's behaviour was a mistake this file made for a
+ * Reading 0031 for the sweep's behavior was a mistake this file made for a
  * week. Migration files are append-only: 0033 and 0034 both replaced
  * apply_retention() in full, and nothing they did could have made an assertion
  * about 0031's text fail. The most important assertion in this file - that the
@@ -251,7 +251,7 @@ describe('the policy version moved, so people are asked again', () => {
 describe('the sweep runs whether or not anybody visits', () => {
   test('it is scheduled in the database, and an invariant checks it', () => {
     // A retention policy that is written down and never runs is worse than
-    // none: the policy states periods the database does not honour.
+    // none: the policy states periods the database does not honor.
     assert.match(migration, /cron\.schedule\('apply-retention'/);
     assert.match(invariants, /THE RETENTION SWEEP IS ACTUALLY SCHEDULED/);
   });

@@ -12,7 +12,7 @@
 export const POLICY_VERSIONS = Object.freeze({
   health_data_collection: 'chd-2026-08-29a',
   ai_processing: 'aip-2026-08-28a',
-  terms_of_service: 'tos-2026-08-27b',
+  terms_of_service: 'tos-2026-08-31b',
   /**
    * Publishing your lifts to other users. A separate purpose from coaching,
    * so a separate consent - and deliberately NOT in REQUIRED_CONSENTS below,

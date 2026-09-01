@@ -102,7 +102,7 @@ export async function initMonitoring() {
  * Report an error. A no-op when monitoring is disabled, so call sites need no
  * conditional.
  *
- * `context` passes through the redactor here as well - defence in depth, so a
+ * `context` passes through the redactor here as well - defense in depth, so a
  * call site cannot bypass scrubbing by attaching a profile object directly.
  */
 export function captureError(error, context = {}) {

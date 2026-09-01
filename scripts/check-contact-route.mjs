@@ -14,7 +14,7 @@
  * detectably by somebody trying to reach you - who, by definition, is a person
  * we have told to reach us and who now cannot.
  *
- * A registrar change, a nameserver migration, a free-tier forwarder ageing out
+ * A registrar change, a nameserver migration, a free-tier forwarder aging out
  * an unverified domain, a DNSSEC misconfiguration, an accidental record edit
  * while adding something unrelated - every one of those takes the address down
  * without touching the site, and the site keeps confidently printing it.

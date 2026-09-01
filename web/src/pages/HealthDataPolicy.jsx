@@ -113,6 +113,13 @@ export function HealthDataPolicy() {
           <li>how many alcoholic drinks you have in a typical week;</li>
           <li>whether you use nicotine, and how often;</li>
           <li>anything you choose to write about how you eat;</li>
+          <li>
+            the obstacle you name as the thing that actually stops you, and the if-then plan
+            you make against it. These are free-text boxes and people answer them honestly,
+            which often means medically &mdash; &ldquo;my back seizes up on squat day&rdquo;
+            is a common and useful answer. We treat them as health information for that
+            reason rather than waiting to find out;
+          </li>
           <li>your gender, if you give it.</li>
         </ul>
         <p>

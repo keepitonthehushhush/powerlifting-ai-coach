@@ -165,7 +165,7 @@ describe('the reset path is held to the same rules as sign-up', () => {
     // is deliberately not branched on at all.
     const handler = login.slice(login.indexOf('async function handleReset'));
     const body = handler.slice(0, handler.indexOf('async function handleSubmit'));
-    // Asserted as BEHAVIOUR, not as the literal call. This used to pin
+    // Asserted as BEHAVIOR, not as the literal call. This used to pin
     // `await resetPassword(email);` exactly, and adding a captcha token as a
     // second argument - a change that does not touch enumeration at all -
     // failed it. A test that pins the call text stops the code changing rather
@@ -200,9 +200,9 @@ describe('the reset path is held to the same rules as sign-up', () => {
   test('the way out is offered before somebody has to fail', () => {
     // Asserted against the KEYS the login page renders, not against the
     // English behind them. The first version of this matched a string in the
-    // catalogue - `forgot: 'Forgot your password?'` - which turned out to be a
+    // catalog - `forgot: 'Forgot your password?'` - which turned out to be a
     // string nothing displayed: the page shows auth.forgotPrompt above a
-    // button labelled auth.reset.forgotAction. So the test passed while
+    // button labeled auth.reset.forgotAction. So the test passed while
     // pinning a dead string, and then failed when the dead string was removed.
     // i18n.test.js now guarantees every literal t() key resolves to a real
     // string, which makes the key the stronger thing to assert on: this

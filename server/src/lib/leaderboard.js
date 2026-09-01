@@ -16,7 +16,7 @@
  *
  * ── AND WHY DISPLAY IS CONVERTED, NOT RELABELLED ──────────────────────────
  *
- * Showing a lb lifter a board of kg figures labelled "lb" would be the same
+ * Showing a lb lifter a board of kg figures labeled "lb" would be the same
  * bug wearing a different hat. Converted values are rounded for display and
  * marked, so nobody reads a converted 102.1 kg as somebody's actual logged
  * number.

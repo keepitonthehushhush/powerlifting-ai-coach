@@ -8,6 +8,15 @@ Nothing in this document is aspirational. Where something is verified, the
 verification is named; where something is a known gap, it is listed in
 [Known gaps](#known-gaps) rather than omitted.
 
+**Last checked against the code and the live catalogue: 2026-08-29.** Six claims
+in here had gone stale and one had been false since migration `0031` — this
+document said retention was not implemented while a `pg_cron` job had been
+running nightly for weeks. A security document that is wrong in the direction of
+understating what exists is still wrong, and it is read by people deciding
+whether to trust the thing it describes. `server/test/securityDoc.test.js` now
+pins the claims that can be pinned mechanically, so the next drift fails a build
+instead of waiting for somebody to reread 470 lines.
+
 ---
 
 ## 1. Secret handling
@@ -32,7 +41,7 @@ The key is server-side only and reaches the browser through no path.
   cannot reach a deploy through a merge.
 
 Sourcemaps are deliberately emitted so the scanner can inspect them: a secret
-can survive minification unrecognisably but sit in plain text in a `.map` file.
+can survive minification unrecognizably but sit in plain text in a `.map` file.
 
 ### No browser-to-Anthropic calls
 
@@ -150,19 +159,70 @@ pins that correspondence.
 |---|---|---|
 | Minimum password length | **12** | Length buys more resistance than character variety. Supabase's guidance is that under 8 is not worth having; 12 is the smallest value that still resists offline cracking of a bcrypt hash for any meaningful time. |
 | Required characters | **Lowercase, uppercase, digits, symbols** | Not because variety is powerful on its own, but because without it a 12-character minimum becomes twelve lowercase letters. |
-| Prevent use of leaked passwords | **On, when the plan allows it** | Checks against HaveIBeenPwned. A credential-stuffing list beats any composition rule: `Password1!` satisfies every requirement above and appears in every breach corpus. Pro plan and above. |
+| Prevent use of leaked passwords | **On, if the plan allows** | Supabase's own HaveIBeenPwned check, Pro plan and above. Not available on the free tier, so the same protection is implemented in the browser instead — see below. |
 
 Existing accounts are unaffected by a change to these settings — a password
 already set continues to work. Supabase reports it as a `WeakPasswordError` at
 sign-in, which is the right moment to ask for a change and the wrong moment to
 refuse entry.
 
+### Breached-password checking, done without the paid feature
+
+A credential-stuffing list beats every composition rule: `Password1!` satisfies
+each requirement above and appears in breach corpora hundreds of thousands of
+times. Supabase offers this check on Pro and above; this project is on the free
+tier, so `web/src/lib/pwnedPassword.js` implements it directly.
+
+The password is SHA-1'd **in the browser** and only the **first five hex
+characters** of the hash are sent to `api.pwnedpasswords.com`. The service
+returns several hundred suffixes sharing that prefix and the comparison happens
+on the device, so it learns one of 1,048,576 buckets and nothing else — never
+the password, never the full hash, never an email address, and it is sent no
+cookie. `Add-Padding: true` is set, so response size is not itself a signal
+about which prefix was asked for.
+
+Two honest limits. It is **advisory**: sign-up goes from the browser straight to
+Supabase Auth and this API server is not in that path, so an attacker scripting
+the auth endpoint bypasses it. That is the correct trade — the threat this
+addresses is an honest person reusing a breached password and being
+credential-stuffed later, not an attacker choosing a weak password for an
+account they control. And it **fails open**: a network failure returns `unknown`
+and sign-up proceeds, with the caller required to say "could not check" rather
+than implying a pass.
+
+### Bot defense at sign-in
+
+Cloudflare Turnstile guards the sign-in and sign-up form
+(`web/src/lib/turnstile.js`, `web/src/components/Turnstile.jsx`). It is what
+stands between the auth endpoint and scripted account creation, which the
+per-user rate limiter cannot help with by definition — there is no user yet.
+
+The **site key is public** and ships in the bundle as
+`VITE_TURNSTILE_SITE_KEY`; the **secret key lives only in the Supabase dashboard**
+and must never enter this repository, `.env`, or a commit message.
+
+It is a third party the browser contacts, which is a cost paid deliberately and
+disclosed to users: Cloudflare receives the visitor's IP address, a TLS
+fingerprint, the user-agent header, and the site key with its origin. That is
+named in the Consumer Health Data Privacy Policy (`chd-2026-08-29a`), because a
+disclosure document that omits a third-party request is a document that is
+wrong. Turnstile runs on the sign-in page only — never on the pages where health
+information is entered — and a token is single-use, so it is reset after every
+attempt including failed ones.
+
+Loading it can fail behind a corporate proxy or a privacy extension, which is
+common and handled: the UI says which address is blocked rather than failing
+silently.
+
 ### Not done yet
 
-- **MFA.** Supabase Auth supports TOTP. For an application holding injury
-  history it is the obvious next control, and it is a bigger change than a
-  settings toggle — enrolment UI, a challenge step at sign-in, and recovery.
-- **Leaked-password protection**, which requires a paid plan.
+- ~~**MFA.**~~ Done. TOTP enrollment on the account page, a challenge step in
+  `ProtectedRoute`, `aal` enforced in `requireAuth`, and a restrictive RLS
+  policy on every table holding personal or health data (migration `0050`).
+  Opt-in: the policy demands `aal2` only from accounts that have a verified
+  factor, so nobody who has not enrolled can be locked out by it. Recovery is
+  `scripts/mfa-recovery.mjs`, which needs the service-role key and writes an
+  `audit_events` row with `actor = 'operator'` (migration `0051`).
 
 ---
 
@@ -180,8 +240,22 @@ the shoulder.
 - **Application logs.** All logging passes through
   `server/src/lib/logger.js`, which recursively redacts keys matching
   `health_restrictions`, `injury`, `medical`, `diagnosis`, `medication`,
-  `condition`, plus credentials. The list matches on substrings, so
-  `past_injuries` and `medicalHistory` are covered without anyone updating it.
+  `condition`, `sleep`, `alcohol`, `nicotine`, `nutrition`, `glp1` and the
+  GLP-1 drug names, `gender`, `date_of_birth`, plus credentials. The list
+  matches on substrings, so `past_injuries` and `medicalHistory` are covered
+  without anyone updating it — and so is `gender_self_described`, the free-text
+  one.
+
+  The list has had to be extended **twice**, both times during an audit rather
+  than when the column was added, and both times the promise had been held only
+  by the accident that no call site happened to pass a profile object: sleep,
+  alcohol, nicotine and nutrition on 2026-08-27, and `gender` on 2026-08-29.
+  `server/test/healthWithdrawal.test.js` now derives the set of health columns
+  from the schema's own comments and runs the real redactor over every one, so a
+  new health column is a failing test rather than a third audit.
+
+  `pronouns` is deliberately **not** redacted and deliberately not health data.
+  Being addressed correctly must not be something a person trades privacy for.
 - **Error trackers.** `errorHandler` routes everything it reports through the
   same redactor, and drops error stacks, which routinely embed the request body
   that failed.
@@ -194,14 +268,100 @@ depends on every future contributor remembering which fields are sensitive
 fails the first time someone is in a hurry. Here, leaking would require
 bypassing the logger entirely.
 
-**Deletion.** Every user-scoped table cascades from `auth.users`. Deleting an
-account purges the profile, programs, sessions, progress logs and
-conversations. Verified: after deleting two test accounts, all five tables held
-0 residual rows.
+**Deletion.** Every user-scoped table cascades from `auth.users`. There were
+five when that was written; there are now eleven — the profile, programs,
+sessions, progress logs, conversations, consent records, usage events, error
+events, subscriptions, the leaderboard entry, and the rate limit counters.
+
+One row type deliberately survives: `audit_events` is `ON DELETE SET NULL`
+rather than cascade, so "an account was deleted at this time" outlives the
+account while pointing at nobody. That is the record proving the erasure
+happened, and it is not personal data once the id is gone.
+
+`supabase/tests/rls_isolation_test.sql` asserts zero residual rows rather than a
+count recorded once by hand, because a hand-counted "all five tables" stops
+being true the day a sixth is added and says nothing when it does.
 
 **At the point of collection**, the intake form states plainly that the field is
 visible only to the user's account and is never written to logs or error
 reports.
+
+---
+
+## 3b. Consent is enforced by the database, not by the application
+
+The control this document had never described, and the one that does the most
+work.
+
+Health data **cannot be written at all** without an active, current consent —
+enforced by a trigger on `user_profile`, not by a check in a route that a future
+code path might not call. `private.require_health_data_consent()` compares
+`private.health_fingerprint()` of the old row against the new one and demands
+`public.has_active_consent('health_data_collection')` whenever that value
+changes to something non-null.
+
+Three properties are worth naming because each was learned by getting it wrong:
+
+- **It is version-aware.** `has_active_consent()` requires the latest decision
+  to be a grant *and* to have been made against the version that is current now
+  (migration `0027`). Before that, a policy bump left the screen saying the
+  person had not agreed while the database went on accepting writes under the
+  superseded agreement.
+- **It orders by `seq`, never `created_at`.** `now()` is transaction start time
+  in Postgres, so a grant and a withdrawal written in one transaction carry
+  identical timestamps and sort arbitrarily — which once made a withdrawal read
+  as a grant (`0010`).
+- **It fails closed.** No consent row, or no current version on file, is
+  `false`. The cost of a wrong `false` is being asked again.
+
+**Withdrawal erases.** Withdrawing health-data consent clears every column the
+schema documents as health data, in one statement. It has to be *every* column:
+a clear that misses one leaves a row that still fingerprints as health data, so
+the trigger reads the erasure as a fresh collection, finds the consent just
+withdrawn, and refuses the whole `UPDATE` — erasing nothing rather than
+something. That shipped, for four months, for anybody who had answered the
+gender or GLP-1 question; see migration `0040` and
+`server/test/healthWithdrawal.test.js`.
+
+**A standing invariant** now asserts the condition itself against the rows
+rather than against the code that maintains them: *a withdrawn health consent
+means no health data is still stored.*
+
+---
+
+## 3c. The audit trail
+
+`consent_records` is an append-only ledger. `authenticated` holds `INSERT` and
+`SELECT` on it and **no `UPDATE` and no `DELETE`** — the privilege is the
+control, not a convention — so a decision cannot be revised after the fact by a
+user or by a compromised client. Each row carries the consent type, the
+decision, the policy version agreed to, a `clock_timestamp()` and a monotonic
+`seq`.
+
+`audit_events` is stricter: `SELECT` only for users, written exclusively through
+`public.record_audit_event()`, which carries owner rights and whitelists which
+actions a user may record at all — so a client cannot forge a
+`subscription_changed`, which only the Stripe webhook writes.
+
+| Action | Written by |
+|---|---|
+| `data_exported` | the account holder |
+| `account_deleted` | the account holder, *before* the deletion — `auth.uid()` is gone afterwards |
+| `clearance_asserted` | the account holder, on every assertion that a professional has or has not cleared them to train |
+| `subscription_changed` | the Stripe webhook, the one service-role path (ADR-12) |
+
+`clearance_asserted` (migration `0041`) exists because `cleared_to_train` is the
+safety gate, and until it was added the only trace that somebody asserted it was
+a log line naming which *fields* changed, in a log gone within days. The stored
+value is not a substitute: the retention sweep resets clearance every twelve
+months, so today's `false` says nothing about what was claimed eighteen months
+ago — which is when the injury would have happened. It records an **assertion,
+not a transition**, so re-asserting after a reset is captured rather than
+skipped.
+
+The detail column is whitelisted by a `CHECK`, so the injury text cannot be
+attached to an audit row by a later code path that thought it would be useful
+context.
 
 ---
 
@@ -385,9 +545,37 @@ manipulate; the target is `auth.uid()`. Building erasure this way avoided
 introducing the service role key — which would have undone the architecture's
 central decision (ADR-1) for the sake of one endpoint.
 
-**Retention.** Not yet implemented. Data is kept until the user deletes their
-account. A defined retention period with automated expiry is required before
-operating in the EU at any scale, and is listed below.
+**Retention.** Implemented since migration `0031`, and this document said
+otherwise for weeks. `private.apply_retention()` runs nightly under `pg_cron`
+(`apply-retention`, `17 4 * * *`, verified active in `cron.job`) and expires:
+
+| Category | Period |
+|---|---|
+| Injury and medical notes, and training clearance with them | 12 months |
+| GLP-1 status | 12 months |
+| Conversation messages | 12 months |
+| Account activity records | 24 months |
+| Usage and cost records | 24 months |
+| Guardian contact address | 24 months |
+| Error events | 6 months |
+| Stripe webhook event ids | 3 months |
+
+**Logged training is excluded and never expires.** Sessions, lifts and programs
+are the record the athlete came here to build; only they can delete those.
+
+Two traps this hit, both worth keeping written down. `apply_retention()` reads
+its periods from a table but the `DELETE` for each category is written by hand,
+so adding a row to `retention_periods` prunes nothing — an invariant now asserts
+every category is actually swept. And it once set `cleared_to_train = null` on a
+`NOT NULL` column: plpgsql does not plan a statement until it executes, so the
+function created cleanly, the checks passed, and the cron job succeeded every
+night — because no row had yet aged past the period. The first one that did
+would have raised `23502` and aborted every other category with it. Found by
+replaying it against the preview database (`0035`).
+
+`private.delete_inactive_accounts()` is **built and deliberately not scheduled**
+(`0031`). Deleting somebody's training history because they were away from the
+gym for a year is a product decision, not a hygiene task.
 
 ---
 
@@ -415,24 +603,71 @@ that can break the application it monitors is worse than no monitoring tool.
 
 ## 9. Accepted linter warnings
 
-The Supabase security advisor reports two warnings, both for
-`authenticated_security_definer_function_executable`:
+The Supabase security advisor reports one warning per `SECURITY DEFINER`
+function in `public` that `authenticated` may execute. There were two when this
+was written. Asked of the catalogue on 2026-08-29 there were seven, and the
+guardian consent flow brings it to **ten** — nine callable by `authenticated`
+and one, described below, callable by `anon` on purpose:
 
 - `public.consume_rate_limit(text)`
 - `public.delete_my_account()`
+- `public.record_audit_event(text, jsonb)`
+- `public.record_error_event(...)`
+- `public.record_client_error_event(...)`
+- `public.mfa_satisfied()`
+
+`delete_my_account()` and `set_leaderboard_opt_in()` call `mfa_satisfied()`
+themselves. RLS does not apply to a `SECURITY DEFINER` function, so the
+restrictive policies from `0050` are invisible to every RPC in this schema —
+which meant that with MFA on and a stolen password, an `aal1` session could not
+read a single row of an athlete's history and could still delete the whole
+account. Found by reading the database linter after the deploy; nothing failed.
+The other definer functions are deliberately ungated and migration `0052` says
+why for each one.
+
+- `public.refresh_leaderboard_entry()`
+- `public.set_leaderboard_opt_in(boolean)`
+- `public.my_leaderboard_entry()`
+- `public.request_guardian_consent(text, text, int)`
+
+The guardian round trip adds one more, and it is the only definer function here
+that `anon` may execute:
+
+- `public.record_guardian_consent(text, boolean)`
+
+That is deliberate and it is the whole design. A guardian has no account and
+never will; the single-use token in the emailed link is what authorizes the
+write, and the function takes the token rather than a user id — so a caller who
+does not hold one can name nobody. Its sibling `request_guardian_consent()` is
+the opposite and is revoked from `anon` explicitly, because a function that
+sends mail to an address of the caller's choosing, callable without an account,
+is a mail relay. `check-db-invariants.mjs` asks the live catalogue for both
+halves of that, since a later `grant execute ... to anon` would undo it and no
+migration file would look wrong.
+
+Every `SECURITY DEFINER` function in the `private` schema is executable by
+neither `authenticated` nor `anon` — verified, and the point of `0004`.
 
 **These are accepted, not overlooked.** The lint asks whether signed-in users
 being able to call a `SECURITY DEFINER` function is intentional. Here it is:
-both functions exist precisely so users can call them. Neither can be turned
-against another account —
+each exists precisely so users can call it. None can be turned against another
+account —
 
-- both derive their target from `auth.uid()`, never from an argument;
-- `delete_my_account()` takes no arguments at all;
-- `consume_rate_limit()` takes one, validated against a closed whitelist;
-- both are `set search_path = ''` with fully-qualified references;
-- both explicitly raise when `auth.uid()` is null, since `SECURITY DEFINER`
-  bypasses the RLS that would otherwise refuse an anonymous caller;
-- `EXECUTE` is revoked from `anon` and `public`.
+- every one derives its target from `auth.uid()`, never from an argument;
+- `delete_my_account()` and `my_leaderboard_entry()` take no arguments at all,
+  so there is nothing to point at somebody else;
+- where an argument exists it is validated against a closed whitelist —
+  `consume_rate_limit()`'s bucket, `record_audit_event()`'s action, and the
+  latter's `detail` is additionally constrained by a `CHECK` on the column, so
+  the whitelist is enforced by the table and not only by the function;
+- each pins `search_path` and qualifies its references;
+- each raises or returns nothing when `auth.uid()` is null, since `SECURITY
+  DEFINER` bypasses the RLS that would otherwise refuse an anonymous caller;
+- `EXECUTE` is revoked from `anon` and `public` on all of them.
+
+The count growing from two to seven is the reason this section is now pinned by
+a test rather than maintained by memory: a function added with owner rights and
+no entry here is the shape of the thing this document exists to make visible.
 
 The contrast with migration `0004` is the point. There, the same class of lint
 described a genuine mistake — two trigger functions sitting in `public` where
@@ -444,30 +679,88 @@ outcomes here are different because the situations are.
 
 ## Known gaps
 
-Listed rather than omitted. None is a blocker for the current phase; each is a
-real item.
+Listed rather than omitted. Rewritten 2026-08-29, when four of the nine had
+become false — a stale gap list is worse than none, because it makes the
+document look maintained while pointing at the wrong things.
 
-1. **No audit log.** There is no record of who read or changed what. Any
-   serious health-data posture eventually needs one.
-2. **No automated retention policy.** Deletion, export and consent withdrawal
-   all work; scheduled expiry of dormant accounts does not exist.
-3. **Email/password only.** No MFA, and password policy is whatever Supabase
-   Auth is configured with.
-4. **Rate limit counters are never swept.** Expired windows accumulate. The
-   `DELETE` is written in migration `0006`; it needs a `pg_cron` schedule.
-5. **Bundle scanning is pattern-based.** It catches known secret shapes and the
+1. **MFA is available but not required.** TOTP is implemented and enforced in
+   three places once somebody turns it on — the browser, the API, and a
+   restrictive RLS policy — but turning it on is the athlete's choice, and
+   there is no way to require it of everybody. That is deliberate rather than
+   unfinished: requiring it would lock out every existing account, because
+   enrolling needs a session. The honest statement of the remaining gap is
+   that an account without a second factor is protected by a password alone.
+   Password *policy* is not a gap: 12 characters with mixed classes enforced
+   by Supabase, and a browser-side HaveIBeenPwned check covering the paid
+   feature this plan does not include.
+
+   The recovery path is the sharp edge. Losing an authenticator means losing
+   access, Supabase requires an `aal2` session to unenroll, and there are no
+   built-in recovery codes — so the way back in runs through the operator and
+   the service-role key. `scripts/mfa-recovery.mjs` refuses to act without
+   `--confirm` and audits what it did, but it cannot verify identity and
+   neither can the database. That check is a human one and it has no
+   procedure written for it yet.
+2. **No per-IP rate limiting.** See the next item; this slot is kept so the
+   numbering below does not shift.
+3. **Rate limiting is per-user, not per-IP.** It bounds cost from authenticated
+   abuse. Turnstile now covers the sign-up flood it could never see, but there
+   is still no per-IP limit on the API itself.
+4. **No read logging.** `audit_events` records the operations somebody might
+   dispute — exports, deletions, clearance assertions, subscription changes —
+   and `consent_records` is an append-only ledger of every decision. Neither
+   records *reads*. "Who looked at this profile" has no answer, and for a
+   single-operator application with no admin console that is defensible rather
+   than solved.
+5. **`audit_events` expires at 24 months.** Chosen for exports and deletions.
+   A personal injury claim can be brought later than that in several states, so
+   the `clearance_asserted` evidence could expire inside the window it exists to
+   cover. Deliberately not changed — it is a judgment about limitations periods.
+   Open question for counsel; see `POLICY_REVIEW_2026-08-29.md` §E1.
+6. **The consent ledger records a version string, not the document.** Proving
+   what `tos-2026-08-27b` actually said means producing a git commit — evidence
+   held by the same party relying on it. A content hash stored at consent time
+   would make the record self-authenticating.
+7. **Bundle scanning is pattern-based.** It catches known secret shapes and the
    literal values in the environment. A novel credential format in an
    unexpected place would not be caught.
-6. **Rate limiting is per-user, not per-IP.** It bounds cost from authenticated
-   abuse. It does nothing about signup-flood or credential-stuffing at the auth
-   layer, which is Supabase's to defend and has not been configured.
-7. **The Spanish catalogue has not been reviewed by a native speaker.** It is
-   complete and mechanically verified, which is not the same as being good.
-8. **No terms of service, general privacy policy, or liability waiver.** The
-   Consumer Health Data Privacy Policy exists as a draft pending attorney
-   review; the others do not exist at all. See `LEGAL_CONSIDERATIONS.md`.
-9. **Default table privileges were wrong until migration `0009`.** Supabase
-   grants ALL on new `public` tables to `anon` and `authenticated`; a one-time
-   `REVOKE` does not cover tables created later. Fixed at the default-privilege
-   level, but worth re-auditing whenever a table is added:
-   `select table_name, grantee, privilege_type from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated');`
+8. **The Spanish catalogue has not been reviewed by a native speaker.** It is
+   complete and mechanically verified, which is not the same as being good. The
+   policy documents are deliberately **not** translated at all: a machine
+   translation of a legal document is a different legal document.
+9. **No general privacy policy, and no liability waiver.** Terms of service, the
+   consumer health data policy, the AI processing disclosure and the leaderboard
+   policy all now exist — as drafts pending attorney review. There is still
+   nothing covering the personal data that is *not* health data: email address,
+   password hash, request metadata, Stripe billing records. There is also no
+   governing-law clause, no liability cap, no warranty disclaimer, and no
+   payment terms behind an already-wired Stripe integration. See
+   `POLICY_REVIEW_2026-08-29.md` §C.
+10. **Deletion does not cascade to Anthropic.** Health data is sent to Anthropic
+    on every coaching turn. Washington's MHMDA requires a regulated entity to
+    notify processors and third parties of a deletion request; nothing in this
+    product tells Anthropic when somebody deletes their account. Whether that
+    obligation applies turns on Anthropic's contractual role, which is a
+    question for counsel — but the mechanism does not exist either way.
+11. **Default table privileges were wrong until migration `0009`.** Supabase
+    grants ALL on new `public` tables to `anon` and `authenticated`; a one-time
+    `REVOKE` does not cover tables created later. Fixed at the default-privilege
+    level, and now asserted by an invariant rather than by the query below —
+    though the query is still the fastest way to look:
+    `select table_name, grantee, privilege_type from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated');`
+
+### Closed since the last revision
+
+Recorded rather than deleted, because a gap list that only ever grows tells you
+nothing about whether anything gets fixed.
+
+- **No audit log** — `audit_events` landed in `0030`, extended in `0041`.
+- **No automated retention policy** — `0031`, running nightly since.
+- **Weak password policy** — 12 characters plus a browser-side breach check.
+- **No terms of service** — `tos-2026-08-27b`, drafted and consented to.
+- **Rate limit counters never swept** — `0044`, nightly at `41 4 * * *`. The
+  `DELETE` had been sitting in a comment in migration `0006` since before
+  launch, under the words "belongs in a scheduled job (pg_cron) before launch".
+  It is deliberately NOT a `retention_periods` category: that table holds the
+  retention promises the health-data policy publishes to users, in months, and
+  a two-day operational counter is not one of them.

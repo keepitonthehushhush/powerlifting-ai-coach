@@ -2,6 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SECRET_PATTERNS, findSecrets } from '../../scripts/lib/secretPatterns.mjs';
+import { readRaw } from './helpers/source.js';
 
 /**
  * The deploy gate had no test.
@@ -42,6 +43,10 @@ const FAKES = {
   'Supabase service role JWT': `{"iss":"supabase","${'role'}":"service_role","exp":1}`,
   'Supabase secret key': `sb_${'secret'}_AAAAbbbbCCCCdddd_-11`,
   'Generic private key block': `-----BEGIN RSA ${'PRIVATE'} KEY-----\nnot a key\n`,
+  // Split the same way as the others so this file never contains a string that
+  // looks like a real credential to a scanner reading the repository.
+  'Stripe secret key': `sk_${'live'}_AAAAbbbbCCCCddddEEEEffff`,
+  'Stripe webhook signing secret': `wh${'sec'}_AAAAbbbbCCCCddddEEEEffff`,
 };
 
 /**
@@ -106,7 +111,7 @@ describe('the bundle scanner can actually find a secret', () => {
   });
 
   test('one list, shared by both scanners', () => {
-    // Local build and deployed artefact are different questions and must be
+    // Local build and deployed artifact are different questions and must be
     // judged against one list, or "passes locally" and "passes in production"
     // stop meaning the same thing.
     for (const scanner of ['scan-bundle-for-secrets.mjs', 'verify-deployment.mjs']) {
@@ -120,3 +125,44 @@ describe('the bundle scanner can actually find a secret', () => {
 function readScanner(name) {
   return readFileSync(new URL(`../../scripts/${name}`, import.meta.url), 'utf8');
 }
+
+test('the bundle scan covers every server-side credential we hold', () => {
+  /**
+   * Shape patterns cannot catch a Postmark server token - it is a bare UUID,
+   * and a pattern loose enough to match one would match every React key in the
+   * bundle. So the literal value from the environment is the only thing that
+   * can, and the name has to be on the list for that to happen.
+   *
+   * Added the day before the credential first existed. Every name here is a
+   * secret the server holds; if a new one is added to .env.example without
+   * appearing here, this fails.
+   */
+  const scanner = readRaw(new URL('../../scripts/scan-bundle-for-secrets.mjs', import.meta.url));
+  const example = readRaw(new URL('../../.env.example', import.meta.url));
+
+  const scanned = new Set(
+    [...scanner.matchAll(/'([A-Z][A-Z0-9_]{4,})'/g)].map(([, name]) => name)
+  );
+
+  // Server-side secrets declared in .env.example. VITE_ names are public by
+  // definition and belong in the bundle, so they are excluded rather than
+  // asserted absent.
+  /**
+   * PUBLISHABLE is excluded by name, not by oversight: a publishable key is
+   * public by design and BELONGS in the bundle - verify-deployment.mjs fails
+   * when it is absent. A test that demanded it be scanned for would be asking
+   * for the opposite of the truth.
+   */
+  const SECRET_NAMES = /^(?!VITE_)((?!.*PUBLISHABLE)[A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD))=/gm;
+  const declared = [...example.matchAll(SECRET_NAMES)].map(([, name]) => name);
+  assert.ok(declared.length >= 4, `only found ${declared.length} secret-shaped vars in .env.example`);
+
+  const unscanned = declared.filter(
+    (name) => !scanned.has(name) && !/WEBHOOK_SECRET|TURNSTILE/.test(name)
+  ).sort();
+  assert.deepEqual(
+    unscanned,
+    [],
+    `these are server-side credentials and the bundle scan does not look for them: ${unscanned.join(', ')}`
+  );
+});

@@ -21,7 +21,7 @@ import { readSource, readRaw, latestDefinition, phrase } from './helpers/source.
  * result against production - one difference in the whole schema, and it was
  * this one.
  *
- * The catalogue half of this is in scripts/check-db-invariants.mjs, which
+ * The catalog half of this is in scripts/check-db-invariants.mjs, which
  * checks the live database. This half checks the intent, so a migration that
  * moves it again fails in CI rather than in somebody's erasure request.
  */

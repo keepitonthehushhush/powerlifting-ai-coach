@@ -127,6 +127,51 @@ profileRouter.put('/', async (req, res, next) => {
     // in this object.
     logger.info('profile.updated', { userId: req.user.id, fields: Object.keys(parsed.data) });
 
+    /**
+     * The durable record of the one assertion with an injury attached to it.
+     *
+     * cleared_to_train is the safety gate the Terms describe as "the only
+     * safety mechanism here". Until migration 0041 the only trace that somebody
+     * asserted it was the log line above, which records field NAMES and is gone
+     * in days - so "I never told it a doctor had cleared me" had nothing to
+     * answer it. The current value was not the answer either: the retention
+     * sweep resets clearance every twelve months, so today's `false` says
+     * nothing about what was claimed when the injury happened.
+     *
+     * Recorded on every assertion, including one that repeats the last, rather
+     * than on transitions - see the migration header. Re-asserting after the
+     * sweep reset it is a fresh statement about their health on a new date, and
+     * a transition log is silent about exactly that.
+     *
+     * `undefined` and not falsiness: `cleared_to_train: false` is somebody
+     * saying they have NOT been cleared, which is a statement worth having and
+     * would be dropped by a truthiness check.
+     *
+     * Same try/catch shape as the export audit: a failed audit write must not
+     * deny somebody their save, and must not vanish silently either, which is
+     * what a floating promise does when a serverless function freezes on
+     * response.
+     */
+    if (parsed.data.cleared_to_train !== undefined) {
+      try {
+        const { error: auditError } = await req.supabase.rpc('record_audit_event', {
+          p_action: 'clearance_asserted',
+          p_detail: { cleared: parsed.data.cleared_to_train },
+        });
+        if (auditError) {
+          logger.error('audit.write_failed', {
+            action: 'clearance_asserted',
+            code: auditError.code,
+          });
+        }
+      } catch (auditErr) {
+        logger.error('audit.write_failed', {
+          action: 'clearance_asserted',
+          message: auditErr.message,
+        });
+      }
+    }
+
     res.json({ profile: data });
   } catch (err) {
     next(err);

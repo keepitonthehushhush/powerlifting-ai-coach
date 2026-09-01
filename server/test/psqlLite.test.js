@@ -60,7 +60,7 @@ describe('expandPsql', () => {
     // Found by running this against the real suite, which contains the fixture
     // '{"forged":true}' and was duly reported as using an unexpanded variable
     // called `true`. psql does not expand inside quotes either, so masking is
-    // both the fix and the faithful behaviour.
+    // both the fix and the faithful behavior.
     assert.doesNotThrow(() => expandPsql(`select '{"forged":true}'::jsonb;`));
     const { sql } = expandPsql("\\set A '1'\nselect '{\"k\":A}', :A;");
     assert.match(sql, /\{"k":A\}/, 'the literal was rewritten');

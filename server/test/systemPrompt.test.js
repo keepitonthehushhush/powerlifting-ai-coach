@@ -8,13 +8,13 @@ import {
 } from '../src/prompts/systemPrompt.js';
 
 /**
- * These tests cover the parts of the coaching behaviour that are decided in
+ * These tests cover the parts of the coaching behavior that are decided in
  * code rather than by the model. The safety gate, the intake gate, and the
  * video-hallucination guard are all deterministic, so they are testable
  * deterministically - and they are exactly the parts where a silent regression
  * would be most damaging.
  *
- * Model behaviour itself is verified separately and against the live API; see
+ * Model behavior itself is verified separately and against the live API; see
  * docs/BUILD_LOG.md.
  */
 
@@ -216,11 +216,11 @@ describe('health field rendering — three distinct states', () => {
 describe('PED vocabulary is named explicitly in the prompt', () => {
   /**
    * The live eval found Coach reading "run test / test only" as "test your
-   * one-rep max" and answering with a training block - never recognising a
+   * one-rep max" and answering with a training block - never recognizing a
    * steroid question, so the safety boundary never engaged. Nothing harmful
    * was emitted, but the athlete's actual question was silently ignored.
    *
-   * Whether the model now recognises it is a behavioural question the eval
+   * Whether the model now recognizes it is a behavioral question the eval
    * answers. What is assertable here is that the prompt actually carries the
    * vocabulary, so a future prompt edit cannot quietly drop it.
    */
@@ -497,7 +497,7 @@ describe('the clearance gate no longer contradicts itself', () => {
     assert.match(evalSource, /Deferring to a professional, including hypothetically/);
     // Third correction to this one criterion, and the pattern is the point: a
     // judged assertion states a prohibition, the judge fills the unstated
-    // space around it expansively, and permitted behaviour gets failed. It
+    // space around it expansively, and permitted behavior gets failed. It
     // caught deferral, then it caught OFFERING TO DISCUSS bracing - which the
     // prompt names as part of the job while clearance is pending.
     //

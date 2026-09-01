@@ -67,7 +67,7 @@ export function Home() {
             <>
               {/* Lands on the sign-UP form, because a button that says "create
                   your account" and produces a sign-in form is the same kind of
-                  lie as a field labelled "Username or Email" on a form that
+                  lie as a field labeled "Username or Email" on a form that
                   only accepts email. */}
               <Link className="cta" to="/login?mode=signup">
                 {t('home.ctaCreate')}
@@ -84,7 +84,7 @@ export function Home() {
 
       <section className="home-section">
         <h2 className="home-h2">{t('home.howTitle')}</h2>
-        {/* An ordered list because the order is the point: it cannot programme
+        {/* An ordered list because the order is the point: it cannot program
             for a gym it has not asked about, and it cannot adjust a block it
             has not seen you train. */}
         <ol className="home-steps">
@@ -136,9 +136,9 @@ export function Home() {
         *
         * It was, and no amount of gap would have fixed it. The row held
         * "Questions people ask", "Information for your doctor or
-        * physiotherapist", "Terms" and "Health data" - a sentence, a longer
-        * sentence, and two words - centred inside a 46ch prose column. Four
-        * items of wildly unequal length, centre-aligned and wrapping, cannot
+        * physical therapist", "Terms" and "Health data" - a sentence, a longer
+        * sentence, and two words - centered inside a 46ch prose column. Four
+        * items of wildly unequal length, center-aligned and wrapping, cannot
         * read as a set: every line breaks in a different place and the eye
         * finds no edge to follow.
         *
@@ -166,6 +166,9 @@ export function Home() {
           </Link>
           <Link className="home-link" to="/policies/terms">
             {t('home.terms')}
+          </Link>
+          <Link className="home-link" to="/policies/privacy">
+            {t('home.privacy')}
           </Link>
           <Link className="home-link" to="/policies/health-data">
             {t('home.healthPolicy')}

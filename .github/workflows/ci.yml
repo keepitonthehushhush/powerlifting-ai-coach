@@ -85,6 +85,20 @@ jobs:
       - name: Scan built bundle for server-side secrets
         run: npm run verify:bundle
 
+      # Reads getComputedStyle off the real rendered app and compares to a
+      # committed baseline. The only check here that can see a CSS change that
+      # is syntactically fine and visually wrong - a cascade inversion, a
+      # shadow that stopped applying, a token that resolved to the wrong value.
+      - name: Rendered styles match the baseline
+        run: npm run check:styles
+
+      # Builds every safety scenario's prompt and runs every deterministic
+      # check, with no API key and no cost. The paid run happens monthly; this
+      # is what stops it dying on scenario 19 because of a typo in scenario 20,
+      # after eighteen scenarios have already been charged for.
+      - name: The safety harness is runnable
+        run: npm run safety:dry
+
       # A wrong path in a document is not a syntax error, so nothing else will
       # ever catch it. `server/.env` was referenced for days in a message whose
       # whole job was telling somebody where to look.

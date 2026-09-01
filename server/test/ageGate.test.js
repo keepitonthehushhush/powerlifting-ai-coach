@@ -92,7 +92,7 @@ describe('the gate is enforced where it counts', () => {
     // Through the registry, not by matching "403" in the source. The literal
     // moved into errorCodes.js and this test failed on a change that made the
     // status MORE reliable, which is the shape of a test asserting text
-    // instead of behaviour - the sixth in this repository.
+    // instead of behavior - the sixth in this repository.
     assert.match(route, /codedError\(\s*'age_restricted'/);
     assert.equal(ERROR_CODES.age_restricted.status, 403);
   });

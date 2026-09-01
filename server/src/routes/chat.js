@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
+import { extractIntentionBlock } from '../lib/intentionBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
@@ -270,7 +271,7 @@ chatRouter.post('/', async (req, res, next) => {
      * below is dead and the coaching is free, which is what the FAQ says.
      *
      * entitlement() decides. The rule lives there and nowhere else: past_due
-     * still counts, a cancelled subscription inside its paid period still
+     * still counts, a canceled subscription inside its paid period still
      * counts, and this route does not get an opinion about any of it.
      */
     if (config.paywall.active && !adult.isMinor && requiresSubscription(PAID_FEATURE)) {
@@ -332,6 +333,13 @@ chatRouter.post('/', async (req, res, next) => {
       }
     };
 
+    /*
+     * Timed because the athlete complained about the wait before anything
+     * measured it, and because the client gives up at 150 seconds. A reply of
+     * 6,405 output tokens - one is already in production - takes most of that
+     * budget, so how close this runs to the ceiling is not a curiosity.
+     */
+    const startedAt = Date.now();
     let reply = await ask();
     let outcome = describeCoachReply(reply);
 
@@ -356,10 +364,27 @@ chatRouter.post('/', async (req, res, next) => {
     // worse failure than a missing record.
     const { reply: extracted, program, problem } = extractProgramBlock(reply.text);
 
-    // Appended after the block is stripped, so the notice is never mistaken
+    /*
+     * Run over the ALREADY-STRIPPED prose, not the raw reply. Order matters
+     * only in that each extractor must see text the other has finished with;
+     * running both against reply.text would leave whichever ran second putting
+     * the first one's tags back into what the athlete reads.
+     */
+    const {
+      reply: prose,
+      intention,
+      problem: intentionProblem,
+    } = extractIntentionBlock(extracted);
+
+    // Appended after the blocks are stripped, so the notice is never mistaken
     // for part of the program and never lands inside the JSON.
-    const replyText = outcome.truncated ? `${extracted}${TRUNCATION_NOTICE}` : extracted;
+    const replyText = outcome.truncated ? `${prose}${TRUNCATION_NOTICE}` : prose;
     if (problem) logger.warn('program.block_unusable', { userId: req.user.id, problem });
+    if (intentionProblem) {
+      // The reason and never the content: the obstacle is the athlete's own
+      // words about what stops them, and that is health data.
+      logger.warn('intention.block_unusable', { userId: req.user.id, problem: intentionProblem });
+    }
 
     /**
      * THE GATE IS RE-CHECKED HERE, IN CODE.
@@ -371,7 +396,7 @@ chatRouter.post('/', async (req, res, next) => {
      * the athlete can open tomorrow and follow, long after the conversation
      * that produced it has scrolled away.
      *
-     * So the instruction is the first line of defence and this is the second.
+     * So the instruction is the first line of defense and this is the second.
      * Same reasoning as computing the gate rather than asking the model to
      * apply it - if it matters, it does not live in the prompt alone.
      */
@@ -379,6 +404,55 @@ chatRouter.post('/', async (req, res, next) => {
     if (program && !storable) {
       logger.warn('program.refused_while_gated', { userId: req.user.id });
     }
+
+    /*
+     * ── WHY THE ABSENCE OF A BLOCK IS NOW A RECORDED FACT ─────────────────
+     *
+     * workout_programs is empty. Not sparse - empty, across every user, for
+     * the life of the product, while the coach has plainly been writing
+     * programs in prose. An athlete then said the coach had forgotten which
+     * week he was on, which is exactly what that emptiness predicts: the
+     * program record is the only durable memory in the system, the
+     * conversation window holds 30 messages of a 108-message conversation,
+     * and everything else is gone by definition.
+     *
+     * Three explanations fit and they need completely different fixes: the
+     * model never emitted a block, it emitted one that failed validation, or
+     * the insert was refused. Only the third left any trace, and that trace
+     * was a `logger.warn` in an ephemeral serverless log. The other two were
+     * silent - and the grants and policies on workout_programs check out, so
+     * the third is the one that is ruled out.
+     *
+     * A single word in the completion line separates them. It is not the fix;
+     * it is the thing that says which fix to build.
+     */
+    const programOutcome = program ? (storable ? 'storable' : 'gated') : problem ? 'unusable' : 'absent';
+
+    /**
+     * ── THE COACH CANNOT KNOW WHETHER THE PROGRAM WAS SAVED ───────────────
+     *
+     * On 2026-08-30 the coach told an athlete it had added his program to the
+     * Program page. It had - the first program this product has ever stored.
+     * But the coach had no way to know that. It writes a block into its reply
+     * and the block leaves its hands; whether the row landed depends on the
+     * clearance gate, on the schema accepting it, and on a database write, all
+     * of which happen after the model has finished speaking.
+     *
+     * It was right by luck. Had the write been refused, or the block failed
+     * validation, or the athlete been behind the medical gate, the coach would
+     * have said exactly the same sentence. The athlete noticed the tension and
+     * the coach, to its credit, said it might be wrong and to report it - but
+     * a system whose remedy is "the model warns you it might be lying" has put
+     * the model somewhere it should not be.
+     *
+     * So the route reports what actually happened, and the interface says it.
+     * The app knows; the coach does not have to guess.
+     *
+     * Week and phase only. Not the movements, not the weights - the Program
+     * page fetches those itself under the athlete's own token, and a chat
+     * response is not the place to widen what travels.
+     */
+    let savedProgram = null;
 
     const now = new Date().toISOString();
     const updated = [
@@ -397,14 +471,47 @@ chatRouter.post('/', async (req, res, next) => {
 
     // Token counts and ids only. The message bodies are not logged: they
     // routinely contain the athlete's injury history.
+    /*
+     * ── WHY THE PROMPT'S OWN SIZES ARE LOGGED ─────────────────────────────
+     *
+     * The first unit-economics measurement, on 2026-08-30, put uncached input
+     * at 46% of what a reply costs - the single largest component, ahead of
+     * the output. It could not be accounted for. The cached block measures
+     * ~12,300 tokens and matches `cache_creation_input_tokens` exactly; the
+     * athlete-state block measures under 2,000 even loaded with five sessions,
+     * sixty logs and an active program; the exercise library is four rows. Yet
+     * production reports 11,000-13,000 UNCACHED input tokens on turn one of a
+     * conversation, when the only uncached content is that block plus a single
+     * user message.
+     *
+     * Roughly eight thousand tokens a reply are therefore unexplained, and
+     * they are the most expensive thing in the product. Every serious defect
+     * in this project has been found by measuring where the fact lives rather
+     * than reasoning about it from a file, so these are integers taken from
+     * the exact strings that were sent.
+     *
+     * Character counts, never content. The athlete-state block is dense with
+     * health information - injuries, restrictions, GLP-1 status, every logged
+     * set - and its LENGTH is a number about our prompt, not about them. The
+     * message bodies remain unlogged for the reason the comment below already
+     * gave.
+     */
     logger.info('chat.completed', {
       userId: req.user.id,
       conversationId: conversation.id,
       model: reply.model,
       inputTokens: reply.usage?.input_tokens,
       outputTokens: reply.usage?.output_tokens,
+      cacheReadTokens: reply.usage?.cache_read_input_tokens,
+      cacheWriteTokens: reply.usage?.cache_creation_input_tokens,
       costMicrodollars,
       historyReplayed: window.length,
+      durationMs: Date.now() - startedAt,
+      programOutcome,
+      historyDropped: Math.max(0, history.length - window.length),
+      cachedBlockChars: system[0]?.text?.length ?? 0,
+      athleteStateChars: system[1]?.text?.length ?? 0,
+      messagesChars: apiMessages.reduce((n, m) => n + (m.content?.length ?? 0), 0),
     });
 
     // ── AWAITED, AND THAT IS A CORRECTION ────────────────────────────────
@@ -436,9 +543,9 @@ chatRouter.post('/', async (req, res, next) => {
        * Unlike the clearance gate, this is NOT re-checked and overridden here,
        * and the difference is what a wrong answer costs: a gated athlete who
        * receives a program is a safety failure, while an athlete on the wrong
-       * phase gets a worse programme and stalls. That is bad coaching, not
+       * phase gets a worse program and stalls. That is bad coaching, not
        * danger, and there are legitimate reasons to hold somebody on linear
-       * progression another fortnight - a missed week, a bad sleep run, a move.
+       * progression another two weeks - a missed week, a bad sleep run, a move.
        *
        * Overriding the stored phase would also make the record disagree with
        * the prose the athlete just read, which is worse than either being
@@ -487,10 +594,50 @@ chatRouter.post('/', async (req, res, next) => {
           is_active: true,
         });
         if (error) logger.warn('program.save_failed', { userId: req.user.id, message: error.message });
-        else logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+        else {
+          logger.info('program.saved', { userId: req.user.id, phase: storable.phase, week: storable.week });
+          savedProgram = { week: storable.week, phase: storable.phase, days: storable.days.length };
+        }
       } catch (err) {
         logger.warn('program.save_failed', { userId: req.user.id, message: err.message });
       }
+    }
+
+    /*
+     * ── THE PLAN, RECORDED THE SAME WAY AND GATED THE SAME WAY ────────────
+     *
+     * Re-checked in code rather than trusted to the prompt, for the reason the
+     * program save gives above: the instruction is the first line of defense
+     * and this is the second. An athlete waiting on a doctor should not have an
+     * obstacle recorded and quoted back at them, because the obstacle at that
+     * moment is very likely the injury they are waiting on.
+     *
+     * The write is a profile UPDATE and can be refused by the consent trigger:
+     * these are health columns, and an athlete who never granted health-data
+     * consent has no business having their obstacle stored. That refusal is
+     * correct and is logged as a warning rather than surfaced - the coaching
+     * conversation already happened and was useful, and telling somebody their
+     * plan could not be saved because of a consent setting is a sentence for
+     * the account page, not for the middle of a training discussion.
+     */
+    if (intention && !needsMedicalClearance(context.profile)) {
+      try {
+        const { error } = await req.supabase
+          .from('user_profile')
+          .update({
+            training_obstacle: intention.obstacle,
+            training_if_then: intention.plan,
+          })
+          .eq('user_id', req.user.id);
+        // Never the message: a constraint violation can quote the value, and
+        // the value is health data.
+        if (error) logger.warn('intention.save_failed', { userId: req.user.id, cause: error.code });
+        else logger.info('intention.saved', { userId: req.user.id });
+      } catch {
+        logger.warn('intention.save_failed', { userId: req.user.id, cause: 'threw' });
+      }
+    } else if (intention) {
+      logger.warn('intention.refused_while_gated', { userId: req.user.id });
     }
 
     try {
@@ -513,6 +660,8 @@ chatRouter.post('/', async (req, res, next) => {
       conversationId: conversation.id,
       reply: replyText,
       messages: updated.slice(-config.chat.historyWindow),
+      // null unless a row actually landed. Never "probably".
+      savedProgram,
     });
   } catch (err) {
     next(err);

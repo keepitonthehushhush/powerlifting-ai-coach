@@ -10,12 +10,12 @@ import { readSource, readRaw, phrase } from './helpers/source.js';
  * log. A layout can be completely wrong and perfectly valid.
  *
  *   1. Pressing Save on an incomplete profile appeared to do nothing. Native
- *      constraint validation cancelled the submit and pointed at the first
+ *      constraint validation canceled the submit and pointed at the first
  *      invalid field, somewhere far up the form.
  *   2. The chat composer put a 24px text box beside a send button wider than
  *      the phone, because the button matched a rule written for a different
  *      kind of button.
- *   3. The checkboxes were the browser's, in the browser's colour, with the
+ *   3. The checkboxes were the browser's, in the browser's color, with the
  *      browser's timing.
  */
 
@@ -126,14 +126,21 @@ describe('the chat composer', () => {
   test('THE SEND BUTTON IS NOT A DIRECT CHILD OF THE FORM', () => {
     // This is the whole bug. `.composer` is a <form>, so the send button
     // matched `form > button.primary { min-width: min(320px, 100%) }` - a rule
-    // for the submit button at the bottom of a centred form. min-width is a
+    // for the submit button at the bottom of a centered form. min-width is a
     // floor flex-shrink cannot get under, so the button took the entire row
     // and the textarea collapsed to 24px on a 390px screen.
     const form = chat.slice(chat.indexOf('<form className="composer"'));
     const rowAt = form.indexOf('<div className="composer-row">');
-    const buttonAt = form.indexOf('<button type="submit"');
+    // Whitespace-tolerant, because a line break between `<button` and its
+    // attributes once made this search return -1. The comparison below then
+    // failed for the right reason by luck rather than by design: the guard
+    // could not find the button at all, which is not the same finding as the
+    // button having moved, and the two must not be reported as one.
+    const button = form.match(/<button\s[^>]*type="submit"/);
     const rowEndAt = form.indexOf('</div>');
     assert.ok(rowAt !== -1, 'the controls are no longer wrapped');
+    assert.ok(button, 'the submit button could not be found - this check did not run');
+    const buttonAt = button.index;
     assert.ok(rowAt < buttonAt && buttonAt < rowEndAt, 'the button escaped the row');
   });
 
@@ -174,7 +181,7 @@ describe('the checkbox', () => {
   });
 
   test('nothing that animates costs a reflow', () => {
-    // transform, opacity and colour are compositor work. Animating width,
+    // transform, opacity and color are compositor work. Animating width,
     // height, margin or padding on a control somebody is clicking is how a
     // 90ms interaction turns into a janky one.
     const block = css.slice(

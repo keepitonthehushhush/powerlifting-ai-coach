@@ -1,7 +1,7 @@
 -- =============================================================================
--- 0045_guardian_consent_round_trip.sql
+-- 0055_guardian_consent_round_trip.sql
 --
--- 0036 built the storage for a guardian consent. It did not build the way one
+-- 0054 built the storage for a guardian consent. It did not build the way one
 -- is actually obtained, and docs/UNDER_18.md describes the flow as proposed:
 -- "the minor enters a guardian email; the guardian receives a message ...;
 -- consent is recorded when they follow the link."
@@ -68,7 +68,7 @@ create table if not exists public.guardian_consent_requests (
 );
 
 comment on table public.guardian_consent_requests is
-  'Outstanding and answered guardian consent links. Holds the SHA-256 of the token, never the token. Written only by the security-definer functions below: the athlete may read their own row to see whether a guardian has answered, and may read no token hash. See migration 0045.';
+  'Outstanding and answered guardian consent links. Holds the SHA-256 of the token, never the token. Written only by the security-definer functions below: the athlete may read their own row to see whether a guardian has answered, and may read no token hash. See migration 0055.';
 
 create index if not exists guardian_consent_requests_user_idx
   on public.guardian_consent_requests (user_id, created_at desc);
@@ -194,7 +194,7 @@ begin
     from public.policy_versions v where v.consent_type = 'guardian_consent';
   if current_version is null then
     raise exception 'guardian_consent_version_missing'
-      using hint = 'policy_versions has no row for guardian_consent; migration 0036 seeds it.';
+      using hint = 'policy_versions has no row for guardian_consent; migration 0054 seeds it.';
   end if;
 
   -- The ledger is append-only: a withdrawal is a new row, never an edit.
@@ -218,7 +218,7 @@ grant execute on function public.record_guardian_consent(text, boolean) to anon,
 -- ── 3. Retention ────────────────────────────────────────────────────────────
 --
 -- The address on a REQUEST is the same third-party personal data as the address
--- on the consent record, and 0036 gave that 24 months. This is the other copy
+-- on the consent record, and 0054 gave that 24 months. This is the other copy
 -- of it, and a retention promise that covers one copy is not a retention
 -- promise. Requests are deleted outright rather than blanked: unlike the
 -- ledger, a request row is not an audit trail, it is a pending errand.
@@ -235,7 +235,7 @@ on conflict (category) do update
 -- check-db-invariants.mjs asserts the two agree, so a period without a sweep is
 -- a failing check rather than a promise nothing keeps.
 --
--- Taken from 0036's definition verbatim and extended by one declaration and one
+-- Taken from 0054's ancestor verbatim and extended by one declaration and one
 -- statement, rather than retyped. Retyping this function is how
 -- stripe_events.created_at replaced received_at in 0034 and how
 -- cleared_to_train was set to null on a NOT NULL column in 0033 - both of which
@@ -256,6 +256,7 @@ declare
   m_stripe int := (select rp.months from public.retention_periods rp where rp.category = 'stripe_events');
   m_errors int := (select rp.months from public.retention_periods rp where rp.category = 'error_events');
   m_guard  int := (select rp.months from public.retention_periods rp where rp.category = 'guardian_email');
+  m_intent int := (select rp.months from public.retention_periods rp where rp.category = 'training_intention');
   m_greq   int := (select rp.months from public.retention_periods rp where rp.category = 'guardian_consent_requests');
   n bigint;
 begin
@@ -276,6 +277,28 @@ begin
      and glp1_status_updated_at < now() - make_interval(months => m_glp1);
   get diagnostics n = row_count;
   category := 'glp1_status'; affected := n; return next;
+
+  -- ── RESTORED FROM 0053, NOT WRITTEN HERE ──────────────────────────────────
+  --
+  -- This migration was authored against a database at 0035 and restates
+  -- apply_retention() in full. 0053 added the training-intention sweep in the
+  -- meantime, and `create or replace function` does not merge - it replaces.
+  -- Pasting the original file into a database at 0053 would have removed this
+  -- block and left the obstacle and if-then columns to accumulate forever,
+  -- with nothing failing and the privacy policy still promising otherwise.
+  --
+  -- Both columns and their shared timestamp go together: a plan without the
+  -- obstacle it answers is a sentence with the subject removed, and a
+  -- timestamp left behind would record that somebody once named a health
+  -- obstacle, which is itself an inference about health.
+  update public.user_profile
+     set training_obstacle = null,
+         training_if_then = null,
+         training_intention_updated_at = null
+   where training_intention_updated_at is not null
+     and training_intention_updated_at < now() - make_interval(months => m_intent);
+  get diagnostics n = row_count;
+  category := 'training_intention'; affected := n; return next;
 
   with trimmed as (
     select c.id,

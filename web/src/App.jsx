@@ -4,6 +4,8 @@ import { isPreviewBuild, previewPointsAtProduction } from './lib/environment.js'
 import { ConfigError } from './components/ConfigError.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ConsentProvider } from './context/ConsentContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
+import { MfaProvider } from './context/MfaContext.jsx';
 import { I18nProvider } from './i18n/index.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { ScrollToTop } from './components/ScrollToTop.jsx';
@@ -25,6 +27,7 @@ import { HealthDataPolicy } from './pages/HealthDataPolicy.jsx';
 import { Terms } from './pages/Terms.jsx';
 import { GuardianConsent } from './pages/GuardianConsent.jsx';
 import { GuardianDecision } from './pages/GuardianDecision.jsx';
+import { PrivacyPolicy } from './pages/PrivacyPolicy.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { ForYourClinician } from './pages/ForYourClinician.jsx';
 import { Faq } from './pages/Faq.jsx';
@@ -72,6 +75,8 @@ export function App() {
   return (
     <I18nProvider>
       <AuthProvider>
+        <ThemeProvider>
+        <MfaProvider>
         <ConsentProvider>
           <BrowserRouter>
             {/* Inside the router because it reads the router's own history,
@@ -151,7 +156,7 @@ export function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Public, and that is the point: a page you must create an
-                  account to read is useless to a physiotherapist holding a
+                  account to read is useless to a physical therapist holding a
                   phone in a treatment room. */}
               <Route path="/about" element={<ForYourClinician />} />
 
@@ -161,6 +166,7 @@ export function App() {
                   data is exactly backwards. */}
               <Route path="/faq" element={<Faq />} />
 
+              <Route path="/policies/privacy" element={<PrivacyPolicy />} />
               <Route path="/policies/terms" element={<Terms />} />
               <Route path="/policies/ai-processing" element={<AiProcessing />} />
               <Route path="/policies/health-data" element={<HealthDataPolicy />} />
@@ -208,6 +214,8 @@ export function App() {
             </Routes>
           </BrowserRouter>
         </ConsentProvider>
+        </MfaProvider>
+        </ThemeProvider>
       </AuthProvider>
     </I18nProvider>
   );

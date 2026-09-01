@@ -135,7 +135,7 @@ npm run verify:deployment -- https://coachdiaz.app
 
 `npm run verify:bundle` scans `web/dist` on the machine that ran it. It passed
 on every run while production served a blank page, and it was right to: the
-local artefact was correct. **A local artefact is not evidence about a remote
+local artifact was correct. **A local artifact is not evidence about a remote
 one.**
 
 `scripts/verify-deployment.mjs` downloads what the public downloads and makes
@@ -195,5 +195,5 @@ npm run test:db                  RLS + consent gate, against a real database
 ```
 
 Then, by hand: sign up as a new user, accept consent, complete intake, send one
-message, log one session. The automated checks prove the artefact is correct;
+message, log one session. The automated checks prove the artifact is correct;
 they do not prove the product works.

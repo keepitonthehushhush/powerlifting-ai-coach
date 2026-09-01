@@ -1,24 +1,25 @@
 import { canonicalLift } from './progression.js';
+import { MILESTONES } from '../../../web/src/lib/milestones.js';
 
 /**
  * Achievements, and the ones this product refuses to give.
  *
  * ── WHAT AN ACHIEVEMENT SYSTEM DOES TO A TRAINING APP ─────────────────────
  *
- * It changes behaviour. That is the entire point of building one, which is
+ * It changes behavior. That is the entire point of building one, which is
  * exactly why the choice of what to reward is a coaching decision rather than
  * a product-engagement one.
  *
  * The default set every fitness app ships is CONSECUTIVE-DAY STREAKS, and a
  * streak is an instruction to train tomorrow whatever happened today. Applied
  * to a barbell, that instruction reads: train on a tweaked back, train through
- * a fever, do not take the deload the programme called for, because the number
- * resets. It rewards the single behaviour most likely to injure a novice, and
+ * a fever, do not take the deload the program called for, because the number
+ * resets. It rewards the single behavior most likely to injure a novice, and
  * it punishes the recovery that makes them stronger.
  *
  * So there are no streaks here, no daily-login reward, nothing tied to
  * bodyweight, and nothing that would make somebody feel worse for the week
- * their programme deliberately went light.
+ * their program deliberately went light.
  *
  * ── WHAT IS REWARDED INSTEAD ──────────────────────────────────────────────
  *
@@ -42,12 +43,16 @@ import { canonicalLift } from './progression.js';
 
 const DAY = 86_400_000;
 
-/** Plate milestones, per lift, in each unit. Absolute weight only - never bodyweight-relative. */
-const MILESTONES = {
-  squat:    { lb: [135, 225, 315, 405, 495], kg: [60, 100, 140, 180, 220] },
-  bench:    { lb: [95, 135, 185, 225, 315],  kg: [40, 60, 80, 100, 140] },
-  deadlift: { lb: [225, 315, 405, 495, 585], kg: [100, 140, 180, 220, 260] },
-};
+/*
+ * Plate milestones, per lift, in each unit. Absolute weight only - never
+ * bodyweight-relative.
+ *
+ * Imported rather than declared here since the Progress page needs the same
+ * table to show how far the next one is, and this project has been bitten
+ * twice by two copies of one fact drifting apart. Same direction as
+ * plates.js and crashReport.js: the shared definition lives on the web side
+ * and the server reads it.
+ */
 
 const LIFT_LABEL = { squat: 'squat', bench: 'bench press', deadlift: 'deadlift' };
 

@@ -32,10 +32,10 @@ output is quoted. Where it says "believed," it is reasoning and should be treate
 
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
-| A1 | Withdrawing health-data consent erased **nothing** for anybody who answered the gender or GLP-1 question | Critical | **Fixed** in `91af2e15`, needs deploy |
-| A2 | "One other outbound request exists anywhere in this product" — there are two; Cloudflare Turnstile is the other | High | **Fixed** in `110a08b3`; version bumped to `chd-2026-08-29a` |
-| A3 | "Health information is never written to application logs" — `gender` was not in the redaction list | Medium | **Fixed** in `91af2e15` |
-| A4 | Leaderboard publishes seven columns to signed-in users, not the four the document lists | Medium | **Fixed** in `7ed6136b` (migration 0039, column grant) |
+| A1 | Withdrawing health-data consent erased **nothing** for anybody who answered the gender or GLP-1 question | Critical | **Fixed** in `cc4dc1e0`, needs deploy |
+| A2 | "One other outbound request exists anywhere in this product" — there are two; Cloudflare Turnstile is the other | High | **Fixed** in `b3ce5fdc`; version bumped to `chd-2026-08-29a` |
+| A3 | "Health information is never written to application logs" — `gender` was not in the redaction list | Medium | **Fixed** in `cc4dc1e0` |
+| A4 | Leaderboard publishes seven columns to signed-in users, not the four the document lists | Medium | **Fixed** in `9bc1e984` (migration 0039, column grant) |
 | A5 | Retention section discloses four expiring categories; the database has eight | Low | Document edit |
 | A6 | HIBP "around a thousand candidates" — the implementation says roughly 800 | Low | Document edit |
 | A7 | "Nothing is kept back for our own records" — anonymized audit rows survive deletion | Low | Document edit |
@@ -91,7 +91,7 @@ to the fingerprint. Neither was added to the withdrawal path. The comment sittin
 list claimed `supabase/tests/rls_isolation_test.sql` asserted the two agree — it does not,
 and never did.
 
-**Fixed** in commit `91af2e15`. The clear now covers all eleven columns; verified against the
+**Fixed** in commit `cc4dc1e0`. The clear now covers all eleven columns; verified against the
 preview database that both the control user and a user with gender and GLP-1 set now erase
 with nothing left behind. The new test derives its expectation from the schema's own column
 comments and from the live fingerprint definition rather than restating a list, because a
@@ -143,7 +143,7 @@ and that it runs on the sign-in page rather than on the pages where health infor
 entered. Cloudflare's own documentation on what Turnstile collects should be read before the
 sentence is written rather than after.
 
-**Done** in `110a08b3`. The page now names Turnstile, says what Cloudflare receives — IP
+**Done** in `b3ce5fdc`. The page now names Turnstile, says what Cloudflare receives — IP
 address, TLS fingerprint, user-agent header, and our site key with its origin, per Cloudflare's
 own Turnstile Privacy Addendum, which was read before the paragraph was written — and states
 that it is neither analytics nor advertising and runs on the sign-in page rather than where
@@ -169,7 +169,7 @@ logger's key list did not have it. This is the second occurrence of the same sha
 alcohol, nicotine and nutrition were in the same state until August 27.
 
 No live leak was found: no call site currently passes a profile object to the logger, so the
-promise held by accident rather than by mechanism. **Fixed** in `91af2e15`. `pronouns` stays
+promise held by accident rather than by mechanism. **Fixed** in `cc4dc1e0`. `pronouns` stays
 deliberately un-redacted and un-gated, and the new test pins that so a future broad fix cannot
 quietly take it away.
 
@@ -208,7 +208,7 @@ What is additionally readable:
 - **`updated_at`** — when that athlete's best lift last changed, which is an activity signal
   about a person. It is selected by our API and **never used** by anything.
 
-**Fixed** in `7ed6136b`. Migration 0039 replaces the table-wide grant with a column grant on
+**Fixed** in `9bc1e984`. Migration 0039 replaces the table-wide grant with a column grant on
 the five published columns, and `updated_at` is dropped from the route select where it was
 used by nothing. Verified against the preview database: `user_id`, `updated_at` and
 `select *` all return *permission denied for table leaderboard_entries*, while joining,
@@ -426,32 +426,105 @@ Two commits, both on `fix/health-consent-withdrawal` work committed atop
 `feat/guardian-consent` (see the note in the handover about `git checkout` over the file
 bridge):
 
-- **`84e706fe`** `chore(db): the two health columns the invariant could not see` — migration
+- **`d5a1c9b4`** `chore(db): the two health columns the invariant could not see` — migration
   0037 re-comments `health_restrictions` and `glp1_status` to the convention the invariant
   searches on, documents why `cleared_to_train` stays outside the fingerprint, and adds the
   converse invariant (a column in the fingerprint whose comment does not say so). Coverage
   goes from six columns to eight; both directions verified green against the preview database.
-- **`91af2e15`** `fix(consent): withdrawal did not erase health data, it erased nothing` —
+- **`cc4dc1e0`** `fix(consent): withdrawal did not erase health data, it erased nothing` —
   A1 and A3, with `server/test/healthWithdrawal.test.js` deriving its expectation from the
   schema rather than restating it.
 
 `npm test` — 1606 passing, 0 failing. `npm run lint` — clean.
 
-All six commits, in order:
+On branch `fix/health-consent-withdrawal`, based on `f2e93f45` — which is `main`, which is
+production:
 
 | Commit | What |
 |---|---|
-| `84e706fe` | migration 0037 — the two health columns the invariant could not see |
-| `91af2e15` | **A1 + A3** — withdrawal erased nothing; `gender` unredacted |
-| `0a6c1cc1` | this review |
-| `110a08b3` | **A2** — Turnstile disclosed, `chd-2026-08-29a` |
-| `7ed6136b` | **A4** — migration 0039, leaderboard column grant |
-| `8ea213c3` | **A1 cleanup** — migration 0040 and the standing invariant |
+| `d5a1c9b4` | migration 0037 — the two health columns the invariant could not see |
+| `cc4dc1e0` | **A1 + A3** — withdrawal erased nothing; `gender` unredacted |
+| `b3ce5fdc` | **A2** — Turnstile disclosed, `chd-2026-08-29a` |
+| `9bc1e984` | **A4** — migration 0039, leaderboard column grant |
+| `b3c600d7` | **A1 cleanup** — migration 0040 and the standing invariant |
 
-`npm test` — 1612 passing, 0 failing. `npm run lint` — clean. Four new database invariants,
-all four confirmed to fail against the pre-fix state and pass after.
+plus the audit-trail work in section E below.
+
+`npm test` — 1577 passing, 0 failing. `npm run lint` — clean. Eight new database invariants,
+every one confirmed to fail against the pre-fix state and pass after.
+
+(1577 rather than the 1612 quoted mid-review: that count came from a working tree that also
+held the unmerged `feat/guardian-consent` branch's tests. This branch is based on production,
+so those 35 are not in it. They are not lost — `feat/guardian-consent` is intact.)
 
 Everything in sections **C** and **D** is untouched and is the actual attorney work. **C1** (no
 general privacy policy), **C2** (no payment terms behind a wired Stripe integration), **C12**
 (guardian consent with a version and no document) and **C13** (three documents that go false
 the day the minors flag flips) are the four that block something.
+
+---
+
+# E. The audit trail — added after this review, answering a question it raised
+
+**The question:** should the product keep a record of user actions, for a claim that somebody
+never checked a box or made a decision?
+
+**Mostly it already did, and better than most.** `consent_records` is an append-only ledger:
+`authenticated` holds `INSERT` and `SELECT` on it and **no `UPDATE` and no `DELETE`** — verified
+against the catalogue, not assumed — so neither the user nor a compromised client can revise a
+decision after the fact. Each row carries the consent type, the decision, the policy version
+agreed to, a `clock_timestamp()` (not `now()`, which is transaction start time and once made a
+withdrawal sort as a grant), and a monotonic `seq`. `audit_events` is stricter still:
+`SELECT` only for users, written exclusively through a `SECURITY DEFINER` function that
+whitelists which actions a user may record at all.
+
+**One thing was missing, and it was the one with an injury attached.**
+
+`cleared_to_train` is the safety gate — the Terms call it "the only safety mechanism here."
+Until now the only trace that somebody asserted it was a log line recording which *field names*
+changed, values deliberately excluded because the same object carries the injury note, in a log
+that is gone in days. So *"I never told it a doctor had cleared me"* had nothing to answer it.
+The stored value was not an answer either: the retention sweep resets clearance every twelve
+months, so today's `false` says nothing about what was claimed eighteen months ago — and
+eighteen months ago is when the injury happened.
+
+Migration 0041 records every assertion of clearance to `audit_events`, as an assertion rather
+than a transition: on this date, this account submitted a form saying a professional had (or
+had not) cleared them. Re-asserting after the sweep resets it is a fresh statement on a new
+date, and a transition log is silent about exactly that. Verified on preview that the record is
+written, that the injury text **cannot** be smuggled into the audit detail (refused by the
+whitelist CHECK), that a user cannot forge a `subscription_changed`, and that a user cannot
+rewrite their own audit row.
+
+**And the export that lets somebody check the trail was incomplete.** The test guarding it had
+two holes: its parser matched `create table public.x` but not `create table if not exists
+public.x`, which hid three tables; and it looked for `from('<table>')` anywhere in
+`account.js`, so the browsing endpoint at `GET /api/account/activity` satisfied the assertion
+that the *export* included `audit_events`. Both fixed. `audit_events` and the leaderboard row
+are now in the export — the second through a definer function, because migration 0039 revoked
+`user_id` and the export can no longer filter on it.
+
+## Open questions for counsel on the trail itself
+
+**E1 — `audit_events` expires at 24 months.** That was chosen for exports and deletions. A
+personal injury claim can be brought well after two years in many states, so the clearance
+evidence could expire inside the window it exists to cover. Extending it is a judgment about
+limitations periods, so migration 0041 deliberately does not make it. **This is the one I would
+most like an answer to.**
+
+**E2 — The ledger records a version string, not the document.** To prove what `tos-2026-08-27b`
+actually said, you produce a git commit — evidence that lives outside the system and is held by
+the same party relying on it. Storing a hash of each version's text in the database at consent
+time would make the record self-authenticating. Worth doing if counsel thinks the git history
+is thin.
+
+**E3 — No IP address or user agent is recorded at consent time.** Standard practice in consent
+management, and deliberately absent here: it is more personal data collected about a person, in
+direct tension with the minimization posture the rest of the product takes. A real trade-off
+rather than an oversight, and counsel should pick the side.
+
+**E4 — Account deletion cascades the consent ledger away.** So after an erasure there is no
+record of what the person agreed to; what survives is an `audit_events` row saying an account
+was deleted at a time, with `user_id` set to NULL. That is erasure working correctly, and it is
+also the exact scenario in the question. The tension between the right to erasure and the
+evidentiary value of the record is a legal call, not an engineering one.

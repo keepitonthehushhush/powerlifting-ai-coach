@@ -1,5 +1,5 @@
 /**
- * English source catalogue. This is the reference: every other locale is
+ * English source catalog. This is the reference: every other locale is
  * translated from here, and `t()` falls back to these strings when a key is
  * missing elsewhere.
  *
@@ -33,6 +33,41 @@ export const en = {
     working: 'Working…',
     signOut: 'Sign out',
     language: 'Language',
+  },
+
+  mfa: {
+    heading: 'Two-step sign-in',
+    intro:
+      'Ask for a code from an authenticator app as well as your password. Your training history and everything you have told the coach about your health sit behind this account, so it is worth the extra six seconds.',
+    checking: 'Checking…',
+    on: 'Two-step sign-in is on.',
+    off: 'Two-step sign-in is off.',
+    turnOn: 'Turn on two-step sign-in',
+    turnOff: 'Turn off two-step sign-in',
+    turnOffWarning:
+      'You can only do this while signed in with a code. If you lose your authenticator, nobody at Coach Diaz can turn it off for you without checking who you are first.',
+    step1: 'Open your authenticator app — Google Authenticator, 1Password, Authy, or whichever you use.',
+    step2: 'Scan the square below, or type the code underneath it if you are setting this up on the same phone.',
+    step3: 'Enter the six digits your app shows.',
+    orTypeIt: 'Or type this into your app instead:',
+    codeLabel: 'Six-digit code',
+    confirm: 'Confirm',
+    cancel: 'Cancel setup',
+    verify: 'Verify',
+    verifying: 'Checking…',
+    codeRejected:
+      'That code was not accepted. Codes change every thirty seconds — wait for the next one and try again.',
+    setupFailed: 'Setup could not be started. Try again in a moment.',
+    removeFailed: 'That could not be turned off. Try again in a moment.',
+    removed: 'Two-step sign-in is off.',
+    enrolledOtherSessionsEnded:
+      'Two-step sign-in is on. You have been signed out everywhere else — that is deliberate, so an old session cannot skip the new step.',
+    challengeHeading: 'One more step',
+    challengeIntro: 'Enter the code from your authenticator app to finish signing in.',
+    noFactorFound:
+      'Your account expects a code but no authenticator is registered. Sign out and get in touch so this can be sorted out.',
+    lostDevice:
+      'Lost your authenticator? Sign out and contact us — we will check who you are before turning this off.',
   },
 
   medical: {
@@ -92,6 +127,8 @@ export const en = {
       'You can delete your account and everything attached to it from the Account page, immediately, without emailing anybody.',
 
     terms: 'Terms',
+
+    privacy: 'Privacy policy',
     healthPolicy: 'Health data',
 
     /*
@@ -114,9 +151,24 @@ export const en = {
   },
 
   auth: {
-    sessionEnded: 'You were signed out and we are not sure why — please sign in again. If this keeps happening, the code in brackets tells us what went wrong.',
+    signedOutRevoked:
+      'Your session on this device is no longer valid, so you have been signed out. This is normal right after turning on two-step sign-in, which ends every other session. Sign in again to carry on.',
+    signedOutPlain: 'You have been signed out. Sign in again to pick up where you left off.',
+    signedOutGeneric: 'You have been signed out. Sign in again to pick up where you left off.',
     tagline: 'Structured powerlifting programming that adapts to what you actually lift.',
     email: 'Email',
+    emailCleaned: 'Removed an invisible character your keyboard added. The address above is what will be used.',
+    emailProblem: {
+      empty: 'Enter your email address.',
+      noAt: 'That address is missing an @ sign.',
+      manyAt: 'That address has more than one @ sign.',
+      noLocal: 'There is nothing before the @ sign.',
+      noDomain: 'There is nothing after the @ sign.',
+      noDot: 'The part after the @ needs a dot, like gmail.com.',
+      badDot: 'There is a dot in the wrong place after the @ sign.',
+      character:
+        'There is a hidden or unusual character in that address ({code}). Delete the address and type it again rather than pasting it.',
+    },
     password: 'Password',
     signIn: 'Sign in',
     createAccount: 'Create account',
@@ -127,6 +179,32 @@ export const en = {
     newHerePrompt: 'New here?',
     haveAccountPrompt: 'Already have an account?',
     confirmEmail: 'Check your email to confirm your account, then sign in.',
+    errors: {
+      /* Ours, not theirs. The build and the dashboard disagree and no action
+         by the reader can fix it, so this apologizes rather than instructs -
+         and says we know, because "try again later" with no acknowledgement
+         reads as being brushed off. */
+      captcha_misconfigured:
+        'Sorry — account sign-in is temporarily unavailable because of a problem on our end, not yours. We have been notified. Please try again in a little while.',
+      captcha_unavailable:
+        'The bot check could not load, so we could not confirm you are a person. An ad blocker, a privacy extension or a network filter may be blocking challenges.cloudflare.com. Allow that address, or try a different browser or network.',
+      captcha_rejected:
+        'The bot check expired before you submitted. Please try once more — a fresh check has already loaded.',
+      invalid_credentials:
+        'That email and password do not match an account. Check both, or reset your password if you are not sure.',
+      email_already_registered:
+        'There is already an account with that email address. Try signing in instead, or reset the password.',
+      password_rejected:
+        'That password was refused. Please choose one that meets the requirements listed above.',
+      auth_rate_limited:
+        'Too many attempts in a short time. Please wait a few minutes and try again — nothing is wrong with your account.',
+      email_rejected:
+        'That email address was not accepted. Please check it for typos, or try a different address.',
+      session_expired:
+        'You were signed out. Please sign in again.',
+      auth_unexpected:
+        'Something went wrong on our end and we could not complete that. We have been notified. Please try again in a little while.',
+    },
     captcha: {
       why: 'A quick check that you are not a bot. It usually resolves on its own.',
       blocked:
@@ -207,6 +285,11 @@ export const en = {
       not_logged: 'nothing logged',
     },
     supersededNote: 'This is the program Coach most recently wrote you. Ask for changes in the conversation and a new version replaces it here; the old ones are kept below.',
+    platesPerSide: '{plates} per side',
+    platesBarLabel: 'A barbell loaded to {weight} {units}: {plates} per side.',
+    platesNotLoadable: 'Cannot be built from your plates — nearest is {nearest} {units}.',
+    platesBarOnly: 'Empty bar ({weight} {units})',
+    platesHeaviest: 'Heaviest bar today · {weight} {units}',
     previous: 'Earlier programs ({count})',
   },
   guardian: {
@@ -387,12 +470,35 @@ export const en = {
       'Say hello and Coach Diaz will take it from there — it will ask what it needs before writing anything.',
     you: 'You',
     coach: 'Coach',
+    programSaved: 'Week {week} is saved — {days} days, ready to follow.',
+    programSavedLink: 'Open your program',
     thinking: 'Thinking…',
+    thinkingElapsed: 'Writing your reply… {seconds}s',
+    thinkingLong: 'Still writing. A full training week takes a minute or so.',
+    sendingUndo: 'Sending in {seconds}…',
+    undo: 'Undo',
+    undone: 'Not sent. Your message is back in the box.',
     placeholder: 'How did that session go?',
     send: 'Send',
     inputLabel: 'Message Coach Diaz',
+    showEarlier: 'Show {count} earlier messages',
     loadFailed: 'Could not load your conversation.',
     rateLimited: 'You have sent a lot of messages recently. Try again shortly.',
+  },
+
+  chatSettings: {
+    heading: 'How the coach conversation behaves',
+    intro: 'These are saved on this device only, so you can have one answer on your phone and another on your laptop.',
+    sendKeyLegend: 'Sending a message',
+    sendKey: {
+      enter: 'Enter sends',
+      modifier: 'Enter adds a line, Cmd or Ctrl + Enter sends',
+    },
+    sendKeyHint: 'Shift + Enter always adds a line, either way.',
+    undoLegend: 'Hold messages before sending',
+    undoOff: 'Off — send right away',
+    undoSeconds: '{seconds} seconds to take it back',
+    undoHint: 'A short pause before the message goes, so a typo can be pulled back and edited. Nothing is sent or charged until the pause ends.',
   },
 
   consent: {
@@ -437,6 +543,48 @@ export const en = {
     },
   },
 
+  /*
+   * Theme packs.
+   *
+   * The names are deliberately about the palette rather than about who is
+   * supposed to pick it. A theme labeled for a demographic tells everyone else
+   * it is not for them, and there is no version of that which makes the
+   * product better - anybody can want the pink one.
+   *
+   * A theme's `id` is what the database stores and never changes; these
+   * strings can be reworded or translated freely without a migration.
+   */
+  themes: {
+    heading: 'Theme',
+    intro: 'Pick how the app looks. Your choice follows your account to any device you sign in on.',
+    saving: 'Saving...',
+    saved: 'Saved',
+    failed: 'Could not save that. Your pick is showing, but it did not reach your account.',
+    names: {
+      miami: 'Miami',
+      blush: 'Blush',
+      cobalt: 'Cobalt',
+      ember: 'Ember',
+      moss: 'Moss',
+      amethyst: 'Amethyst',
+      copper: 'Copper',
+      slate: 'Slate',
+      mono: 'Mono',
+      sunrise: 'Sunrise',
+    },
+    blurbs: {
+      miami: 'Teal and magenta on deep indigo. The original.',
+      blush: 'Warm pink with a violet accent.',
+      cobalt: 'Deep blue, cool and quiet.',
+      ember: 'Burnt orange and red.',
+      moss: 'Forest green with a lime edge.',
+      amethyst: 'Purple and orchid.',
+      copper: 'Bronze and amber.',
+      slate: 'Near-neutral gray with a blue accent.',
+      mono: 'No color at all. Maximum contrast.',
+      sunrise: 'Gold and clay.',
+    },
+  },
   account: {
     title: 'Your data',
     exportHeading: 'Download everything we hold about you',
@@ -574,6 +722,19 @@ export const en = {
     colWeight: 'Weight',
     colReps: 'Reps',
     colResult: 'Result',
+    e1rmHeading: 'Estimated one-rep max',
+    e1rmIntro: 'What each session predicts you could lift for a single. The band is the range between the two standard equations — it shows that this is a prediction, not a measurement. It is not a margin of error.',
+    e1rmTitle: '{lift} · estimated max',
+    e1rmChartLabel: '{lift}: estimated one-rep max, most recently between {low} and {high} {units}',
+    e1rmLatest: 'Latest: {low}–{high} {units}, from {weight} {units} for {reps}.',
+    e1rmNone: 'No sets in a range an estimate can be made from yet. Sets of eight reps or fewer are used.',
+    milestoneHeading: 'Your next plate milestone',
+    milestoneIntro: 'How close the next round number is, measured from the last one you hit rather than from zero — because \'between two and three plates\' is how you already think about it.',
+    milestoneTo: 'to',
+    milestoneFrom: 'From {floor} {units}. Best so far {best} {units}.',
+    milestoneLabel: '{remaining} {units} to go to reach {target} {units}',
+    milestoneAllDone: 'Every milestone we track for this lift is behind you.',
+    milestoneNone: 'Log a completed squat, bench or deadlift and the next milestone appears here.',
     lift: {
       squat: 'Squat',
       bench: 'Bench press',

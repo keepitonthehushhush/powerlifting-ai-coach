@@ -47,7 +47,7 @@
  *
  * ── WHERE THE SUGGESTED TEXT LIVES, AND WHY NOT HERE ──────────────────────
  *
- * In the web i18n catalogue, under intake.gymEquipment. It is prose shown to a
+ * In the web i18n catalog, under intake.gymEquipment. It is prose shown to a
  * person and it has to be translatable, so it belongs with the other prose
  * shown to a person. Keeping a second copy here would be two sources of truth
  * for the same sentences, and the copy nobody looks at is the one that goes

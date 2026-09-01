@@ -16,7 +16,7 @@
  * `past_due` COUNTS AS PAID here, deliberately. It means a renewal charge
  * failed - an expired card, a bank declining a foreign transaction - and
  * Stripe is retrying on a schedule that runs for days. The person has not
- * cancelled and in the overwhelming majority of cases has not even noticed.
+ * canceled and in the overwhelming majority of cases has not even noticed.
  * Cutting off their coaching the hour their card expired, on a product they
  * are mid-training-block on, would be a punishment for a bank's decision. They
  * get a banner, not a locked door. When the retries are exhausted Stripe moves
@@ -60,7 +60,7 @@ export function entitlement(subscription, options = {}) {
    * dates, before anything Stripe knows.
    *
    * Position matters here. Anywhere lower and a grandfathered athlete who once
-   * subscribed and later cancelled would fall through to `lapsed` and lose
+   * subscribed and later canceled would fall through to `lapsed` and lose
    * access they were promised permanently - the promise silently outranked by
    * a subscription record that should be irrelevant to them.
    *
@@ -85,7 +85,7 @@ export function entitlement(subscription, options = {}) {
     };
   }
 
-  // Cancelled or unpaid, but the period they bought has not run out. They keep
+  // Canceled or unpaid, but the period they bought has not run out. They keep
   // it. See the note above: err towards the person who paid.
   if (withinPaidPeriod) return { entitled: true, reason: 'grace' };
 
