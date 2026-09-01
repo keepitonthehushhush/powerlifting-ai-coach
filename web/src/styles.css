@@ -1450,6 +1450,50 @@ form > button.primary {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── THE ESTIMATED-MAX BAND ────────────────────────────────────────────────
+ *
+ * Drawn under its own line and under the dots, deliberately. The band is
+ * context for the midline, not a second series competing with it - it says
+ * "this is a prediction" and then gets out of the way.
+ *
+ * It uses the chart line color at low opacity rather than a color of its own.
+ * A third hue on a chart that already distinguishes completed from missed sets
+ * would be a new thing to decode for no new information, and the chart palette
+ * was validated for color-vision separation as a PAIR; adding to it would
+ * invalidate that measurement.
+ */
+.e1rm-band {
+  fill: var(--chart-line);
+  fill-opacity: 0.16;
+  stroke: none;
+}
+/* One session has an extent but no area. Drawn as a rule so a single logged
+   set still shows its range rather than rendering as nothing at all. */
+.e1rm-band-single {
+  stroke: var(--chart-line);
+  stroke-opacity: 0.45;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.e1rm-line {
+  fill: none;
+  stroke: var(--chart-line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.e1rm-dot { fill: var(--chart-line); }
+/* The most recent estimate is the one being read. A ring rather than a bigger
+   dot, so it reads as "here" rather than as a heavier value. */
+.e1rm-dot--latest {
+  fill: var(--surface);
+  stroke: var(--chart-line);
+  stroke-width: 2.5;
+}
+
+/* Prose that has to stay readable beside a chart. */
+.measure { max-width: 62ch; }
+
 .plate-figure {
   margin: var(--space-3) 0 0;
   display: flex;

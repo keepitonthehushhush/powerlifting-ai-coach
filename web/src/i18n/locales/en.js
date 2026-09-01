@@ -704,6 +704,12 @@ export const en = {
     colWeight: 'Weight',
     colReps: 'Reps',
     colResult: 'Result',
+    e1rmHeading: 'Estimated one-rep max',
+    e1rmIntro: 'What each session predicts you could lift for a single. The band is the range between the two standard equations — it shows that this is a prediction, not a measurement. It is not a margin of error.',
+    e1rmTitle: '{lift} · estimated max',
+    e1rmChartLabel: '{lift}: estimated one-rep max, most recently between {low} and {high} {units}',
+    e1rmLatest: 'Latest: {low}–{high} {units}, from {weight} {units} for {reps}.',
+    e1rmNone: 'No sets in a range an estimate can be made from yet. Sets of eight reps or fewer are used.',
     lift: {
       squat: 'Squat',
       bench: 'Bench press',

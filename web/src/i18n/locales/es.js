@@ -662,6 +662,12 @@ export const es = {
     colWeight: 'Peso',
     colReps: 'Repeticiones',
     colResult: 'Resultado',
+    e1rmHeading: 'Máximo estimado de una repetición',
+    e1rmIntro: 'Lo que cada sesión predice que podrías levantar a una repetición. La banda es el rango entre las dos ecuaciones estándar: muestra que esto es una predicción, no una medición. No es un margen de error.',
+    e1rmTitle: '{lift} · máximo estimado',
+    e1rmChartLabel: '{lift}: máximo estimado de una repetición, últimamente entre {low} y {high} {units}',
+    e1rmLatest: 'Última: {low}–{high} {units}, a partir de {weight} {units} por {reps}.',
+    e1rmNone: 'Aún no hay series en un rango del que se pueda estimar. Se usan series de ocho repeticiones o menos.',
     lift: {
       squat: 'Sentadilla',
       bench: 'Press de banca',

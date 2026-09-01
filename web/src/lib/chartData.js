@@ -114,7 +114,7 @@ export function niceScale(values, tickCount = 4) {
  * three weeks off should not see their history squeezed into the left edge.
  * The date is still on the tooltip, which is where it is actually read.
  */
-export function buildChart(points, { width = 320, height = 160, tickCount = 4 } = {}) {
+export function buildChart(points, { width = 320, height = 160, tickCount = 4, extend = [] } = {}) {
   const plot = {
     left: PADDING.left,
     top: PADDING.top,
@@ -122,7 +122,17 @@ export function buildChart(points, { width = 320, height = 160, tickCount = 4 } 
     height: Math.max(height - PADDING.top - PADDING.bottom, 1),
   };
 
-  const scale = niceScale(points.map((p) => p.weight), tickCount);
+  /*
+   * `extend` widens the y range to cover values the caller draws but does not
+   * plot as points - the edges of the estimated-max band, which sit above and
+   * below the line they surround. Without it the scale is computed from the
+   * midline alone and the band is clipped at the top of the plot, which reads
+   * as a ceiling the athlete has hit rather than as a chart that is too short.
+   */
+  const scale = niceScale(
+    [...points.map((p) => p.weight), ...extend.filter((v) => Number.isFinite(v))],
+    tickCount,
+  );
   const span = scale.max - scale.min || 1;
 
   const x = (i) => (points.length <= 1 ? plot.left + plot.width / 2 : plot.left + (i / (points.length - 1)) * plot.width);

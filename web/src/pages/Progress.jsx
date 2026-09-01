@@ -5,6 +5,8 @@ import { useI18n } from '../i18n/index.jsx';
 import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { LiftChart } from '../components/LiftChart.jsx';
+import { OneRepMaxChart } from '../components/OneRepMaxChart.jsx';
+import { oneRepMaxSeries } from '../lib/oneRepMax.js';
 import { topSetPerDay, trend } from '../lib/chartData.js';
 import { Loading } from '../components/Loading.jsx';
 
@@ -54,9 +56,24 @@ export function Progress() {
         lift: matches.includes(String(row.lift ?? '').trim().toLowerCase().replace(/\s+/g, ' ')) ? key : row.lift,
       }));
       const points = topSetPerDay(normalised, key);
-      return { key, points, trend: trend(points) };
+      /*
+       * Computed from the SAME rows the weight chart reads, so the two charts
+       * for a lift can never disagree about which sessions they describe. A
+       * second pass over the raw logs would be one spelling variant away from a
+       * page showing four weight charts and three estimate charts.
+       */
+      const estimates = oneRepMaxSeries(normalised, key);
+      return { key, points, estimates, trend: trend(points) };
     }).filter((s) => s.points.length > 0);
   }, [logs]);
+
+  /*
+   * The estimate charts are their own section rather than a second card beside
+   * each weight chart. They answer a different question - what a session
+   * PREDICTS rather than what was lifted - and interleaving them would read as
+   * eight charts of the same thing rather than two views of four lifts.
+   */
+  const estimated = series.filter((s) => s.estimates.length > 0);
 
   return (
     <div className="page">
@@ -95,6 +112,26 @@ export function Progress() {
               </div>
             ))}
           </div>
+
+          <section className="stack" aria-labelledby="e1rm-heading">
+            <h2 className="h3" id="e1rm-heading">{t('progress.e1rmHeading')}</h2>
+            <p className="muted small measure">{t('progress.e1rmIntro')}</p>
+            {estimated.length === 0 ? (
+              <p className="muted small">{t('progress.e1rmNone')}</p>
+            ) : (
+              <div className="chart-grid-layout">
+                {estimated.map(({ key, estimates }) => (
+                  <div className="card" key={`e1rm-${key}`}>
+                    <OneRepMaxChart
+                      title={t('progress.e1rmTitle', { lift: t(`progress.lift.${key}`) })}
+                      points={estimates}
+                      units={units}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           <button type="button" className="link" onClick={() => setShowTable((v) => !v)}>
             {showTable ? t('progress.hideTable') : t('progress.showTable')}
