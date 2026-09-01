@@ -668,6 +668,13 @@ export const es = {
     e1rmChartLabel: '{lift}: máximo estimado de una repetición, últimamente entre {low} y {high} {units}',
     e1rmLatest: 'Última: {low}–{high} {units}, a partir de {weight} {units} por {reps}.',
     e1rmNone: 'Aún no hay series en un rango del que se pueda estimar. Se usan series de ocho repeticiones o menos.',
+    milestoneHeading: 'Tu próxima marca de discos',
+    milestoneIntro: 'Lo cerca que está el próximo número redondo, medido desde el último que alcanzaste y no desde cero, porque \'entre dos y tres discos\' es como ya lo piensas.',
+    milestoneTo: 'para',
+    milestoneFrom: 'Desde {floor} {units}. Mejor hasta ahora {best} {units}.',
+    milestoneLabel: 'faltan {remaining} {units} para llegar a {target} {units}',
+    milestoneAllDone: 'Ya has superado todas las marcas que seguimos para este levantamiento.',
+    milestoneNone: 'Registra una sentadilla, press de banca o peso muerto completado y aquí aparecerá la próxima marca.',
     lift: {
       squat: 'Sentadilla',
       bench: 'Press de banca',

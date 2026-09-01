@@ -1450,6 +1450,59 @@ form > button.primary {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── THE NEXT MILESTONE ────────────────────────────────────────────────────
+ *
+ * Deliberately does NOT use the plate colors. Those mean specific weights - red
+ * is 25 kg and nothing else - and these segments are steps along an interval
+ * rather than plates of a denomination. Borrowing the convention to mean
+ * something it does not is how a convention stops being readable.
+ */
+.milestone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.milestone__lift {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+.milestone__stack {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 3.25rem;
+  margin-block: var(--space-1);
+}
+.milestone__disc {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-bottom: none;
+}
+.milestone__disc--done {
+  background: var(--accent);
+  border-style: solid;
+  border-color: var(--accent);
+}
+.milestone__numbers {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-body);
+}
+.milestone__numbers strong { font-weight: 600; }
+.milestone-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 40rem) {
+  .milestone-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
 /* ── THE ESTIMATED-MAX BAND ────────────────────────────────────────────────
  *
  * Drawn under its own line and under the dots, deliberately. The band is

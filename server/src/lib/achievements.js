@@ -1,4 +1,5 @@
 import { canonicalLift } from './progression.js';
+import { MILESTONES } from '../../../web/src/lib/milestones.js';
 
 /**
  * Achievements, and the ones this product refuses to give.
@@ -42,12 +43,16 @@ import { canonicalLift } from './progression.js';
 
 const DAY = 86_400_000;
 
-/** Plate milestones, per lift, in each unit. Absolute weight only - never bodyweight-relative. */
-const MILESTONES = {
-  squat:    { lb: [135, 225, 315, 405, 495], kg: [60, 100, 140, 180, 220] },
-  bench:    { lb: [95, 135, 185, 225, 315],  kg: [40, 60, 80, 100, 140] },
-  deadlift: { lb: [225, 315, 405, 495, 585], kg: [100, 140, 180, 220, 260] },
-};
+/*
+ * Plate milestones, per lift, in each unit. Absolute weight only - never
+ * bodyweight-relative.
+ *
+ * Imported rather than declared here since the Progress page needs the same
+ * table to show how far the next one is, and this project has been bitten
+ * twice by two copies of one fact drifting apart. Same direction as
+ * plates.js and crashReport.js: the shared definition lives on the web side
+ * and the server reads it.
+ */
 
 const LIFT_LABEL = { squat: 'squat', bench: 'bench press', deadlift: 'deadlift' };
 

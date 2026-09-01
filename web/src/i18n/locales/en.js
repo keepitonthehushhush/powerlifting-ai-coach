@@ -710,6 +710,13 @@ export const en = {
     e1rmChartLabel: '{lift}: estimated one-rep max, most recently between {low} and {high} {units}',
     e1rmLatest: 'Latest: {low}–{high} {units}, from {weight} {units} for {reps}.',
     e1rmNone: 'No sets in a range an estimate can be made from yet. Sets of eight reps or fewer are used.',
+    milestoneHeading: 'Your next plate milestone',
+    milestoneIntro: 'How close the next round number is, measured from the last one you hit rather than from zero — because \'between two and three plates\' is how you already think about it.',
+    milestoneTo: 'to',
+    milestoneFrom: 'From {floor} {units}. Best so far {best} {units}.',
+    milestoneLabel: '{remaining} {units} to go to reach {target} {units}',
+    milestoneAllDone: 'Every milestone we track for this lift is behind you.',
+    milestoneNone: 'Log a completed squat, bench or deadlift and the next milestone appears here.',
     lift: {
       squat: 'Squat',
       bench: 'Bench press',
