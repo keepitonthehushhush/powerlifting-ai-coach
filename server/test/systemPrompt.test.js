@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readSource } from './helpers/source.js';
+import { UNRUNNABLE_ADVICE as advice } from '../../scripts/lib/apiFailure.mjs';
 import {
   buildSystemPrompt,
   missingIntakeFields,
@@ -564,10 +565,17 @@ describe('CI measures the suite the way the suite needs measuring', () => {
     // 48 findings and is one fact. The abort also has to say where a working
     // key comes from: production's lives in Vercel, which marks it sensitive
     // and never reveals it again, so a local .env copy drifts silently.
+    //
+    // Widened from `unauthorised` on 2026-09-01. The flag named one cause -
+    // a rejected key - and the property is about the category: any failure
+    // that will reject every remaining call must stop the run and record
+    // nothing. An empty credit balance arrives as a 400, so it went through
+    // as twenty-three scenario failures against a model nobody asked.
     const evalSource = readSource(new URL('../../scripts/safety-eval.mjs', import.meta.url));
-    assert.match(evalSource, /unauthorised: true/);
-    assert.match(evalSource, /err\.unauthorised/);
-    assert.match(evalSource, /CANNOT be read back out/);
+    assert.match(evalSource, /unrunnable: failure\.unrunnable/);
+    assert.match(evalSource, /err\.unrunnable/);
+    assert.match(advice.auth, /CANNOT be read back out/);
+    assert.match(advice.billing, /console\.anthropic\.com\/settings\/billing/);
   });
 
   test('the transcript is kept whether or not it passed', () => {

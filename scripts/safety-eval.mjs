@@ -38,6 +38,7 @@ import { buildSystemPrompt } from '../server/src/prompts/systemPrompt.js';
 import { resolveMaxTokens } from '../server/src/lib/modelBudget.js';
 import { extractIntentionBlock } from '../server/src/lib/intentionBlock.js';
 import { normalizeTurns } from './lib/transcript.mjs';
+import { classifyApiFailure, UNRUNNABLE_ADVICE } from './lib/apiFailure.mjs';
 // The one address the coach is allowed to say. Imported rather than repeated,
 // so this assertion cannot drift from what the prompt actually publishes.
 import { CONTACT_EMAIL } from '../web/src/lib/contact.js';
@@ -205,24 +206,23 @@ async function ask(system, messages, retries = 2) {
 
       if (!response.ok) {
         const body = await response.text();
-        if (response.status === 401 || response.status === 403) {
-          /*
-           * Not a scenario failure and not worth retrying: every remaining
-           * call will be rejected the same way. Marked so the runner can stop
-           * the whole evaluation at the first one instead of printing the same
-           * line 48 times, which is what it did.
-           */
-          throw Object.assign(new Error(`Anthropic API ${response.status}: ${body.slice(0, 200)}`), {
-            fatal: true,
-            unauthorised: true,
-          });
-        }
-        if (response.status < 500 && response.status !== 429) {
-          throw Object.assign(new Error(`Anthropic API ${response.status}: ${body.slice(0, 300)}`), {
-            fatal: true,
-          });
-        }
-        throw new Error(`Anthropic API ${response.status}`);
+        const failure = classifyApiFailure(response.status, body);
+        if (failure.retryable) throw new Error(`Anthropic API ${response.status}`);
+        /*
+         * ── EVERY NON-RETRYABLE 4xx IS AN UNRUN EVALUATION ────────────────
+         *
+         * This used to name 401 and 403 specifically, and let everything else
+         * in 4xx through as an ordinary scenario failure. On 2026-09-01 the
+         * account ran out of credit; that arrives as a 400, so the run
+         * reported the coach failing twenty-three safety scenarios it was
+         * never asked. The rule was written for two status codes rather than
+         * for the category they belong to.
+         */
+        throw Object.assign(new Error(`Anthropic API ${response.status}: ${body.slice(0, 300)}`), {
+          fatal: true,
+          unrunnable: failure.unrunnable,
+          unrunnableKind: failure.kind,
+        });
       }
 
       const json = await response.json();
@@ -1504,36 +1504,28 @@ for (const scenario of plan) {
 
     results.push({ name: scenario.name, passed, checks });
   } catch (err) {
-    if (err.unauthorised) {
-      /*
-       * ── WHY THIS ABORTS RATHER THAN CARRYING ON ─────────────────────────
-       *
-       * A rejected key rejects every call. The first version ran all 48
-       * scenarios anyway and printed "Anthropic API 401: Unauthorized" 48
-       * times, which reads like 48 findings and is one fact.
-       *
-       * The message matters as much as the abort. A 401 here is almost never
-       * a broken script: the key in a local .env goes stale, and production's
-       * key cannot be copied back out of Vercel, which marks it sensitive and
-       * never reveals it again. Somebody hitting this needs to know where a
-       * working key comes from, not that the request was unauthorised.
-       */
+    if (err.unrunnable) {
       console.log(`    ❌ ${err.message}\n`);
+      /*
+       * ── WHY THIS ABORTS, AND WHY IT IS NOT A RESULT ─────────────────────
+       *
+       * Whatever rejected this call rejects every call. Running the remaining
+       * scenarios prints the same fact twenty-two more times and reads like
+       * twenty-two findings.
+       *
+       * More importantly, nothing is recorded. These scenarios are not
+       * failures and must not be counted as any kind of result - the summary
+       * says how many RAN, and the answer here is none. A safety evaluation
+       * that reports a billing error as a fleet of safety failures is worse
+       * than one that reports nothing, because somebody acts on it.
+       */
+      console.error(`\nStopping. NOTHING WAS TESTED - this is not a result about the coach.\n`);
+      console.error(UNRUNNABLE_ADVICE[err.unrunnableKind] ?? UNRUNNABLE_ADVICE.unknown);
       console.error(
-        'Stopping: the API key was rejected, so every remaining scenario would be too.\n\n' +
-          'This is a key problem, not a prompt problem. To be sure, send a key you KNOW is\n' +
-          'invalid and compare - identical responses mean the real one is genuinely\n' +
-          'unrecognized rather than mis-sent:\n\n' +
-          '  curl -s -o /dev/null -w "%{http_code}\\n" https://api.anthropic.com/v1/models \\\n' +
-          '    -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01"\n\n' +
-          'Where a working key comes from:\n' +
-          '  - locally, .env, from https://console.anthropic.com/settings/keys\n' +
-          '  - in CI, the ANTHROPIC_API_KEY repository secret\n' +
-          '  - in production, the Vercel environment variable - which is marked sensitive\n' +
-          '    and CANNOT be read back out, so a local .env copy drifts silently and this\n' +
-          '    is how you find out.'
+        `\n${results.length} of ${plan.length} scenarios had already run before this;` +
+          ' their results are above and stand.\n'
       );
-      process.exit(2);
+      process.exit(3);
     }
     console.log(`    ❌ ERROR: ${err.message}\n`);
     results.push({ name: scenario.name, passed: false, error: err.message });
@@ -1565,6 +1557,8 @@ for (const result of results) {
  * for a run.
  */
 const UNVERIFIED_NOTES = {
+  unreachable: 'harness could not reach the judge - this criterion was NOT graded',
+  unstated: 'judge claimed absence without saying what came closest',
   tooShort: 'harness could not check the quote - too short to anchor',
   mandated: 'harness could not check the quote - the judge quoted text the prompt mandates',
 };
@@ -1595,7 +1589,22 @@ for (const [name, runs] of byName) {
   }
 }
 
-console.log(`\n${passedCount}/${results.length} scenario runs passed.\n`);
+/*
+ * "scenario runs passed" over results.length was fine while every scenario
+ * ran. It is a lie the moment one does not: an aborted run recorded nothing,
+ * so the denominator was the scenarios that HAD run and the numerator zero -
+ * "0/23 scenario runs passed" for an evaluation that asked the model nothing.
+ * The count is against the plan now, and says how many ran.
+ */
+if (results.length < plan.length) {
+  console.log(
+    `\n${passedCount} passed, ${results.length - passedCount} failed, ` +
+      `${plan.length - results.length} NEVER RAN.\n` +
+      'The scenarios that never ran are not results. Nothing is known about them.\n'
+  );
+} else {
+  console.log(`\n${passedCount}/${results.length} scenario runs passed.\n`);
+}
 if (REPEAT > 1) {
   const flaky = [...byName].filter(([, runs]) => {
     const p = runs.filter((r) => r.passed).length;

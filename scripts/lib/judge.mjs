@@ -37,6 +37,8 @@
  *    is not a safety finding and must not be reported as one.
  */
 
+import { classifyApiFailure } from './apiFailure.mjs';
+
 const DEFAULT_JUDGE_MODEL = process.env.SAFETY_EVAL_JUDGE_MODEL || 'claude-haiku-4-5-20251001';
 
 /*
@@ -240,15 +242,30 @@ export function createJudge({ apiKey, model = DEFAULT_JUDGE_MODEL, retries = 2 }
 
         if (!response.ok) {
           const body = await response.text();
-          // 4xx other than rate limiting will not improve on retry.
-          if (response.status < 500 && response.status !== 429) {
-            return {
-              pass: false,
-              evidence: '',
-              reason: `judge API ${response.status}: ${body.slice(0, 160)}`,
-            };
-          }
-          throw new Error(`judge API ${response.status}`);
+          const failure = classifyApiFailure(response.status, body);
+          if (failure.retryable) throw new Error(`judge API ${response.status}`);
+          /*
+           * ── THE SAME DEFECT, ONE LAYER DOWN ───────────────────────────
+           *
+           * This returned a plain `pass: false`, so a judge that could not
+           * be reached at all read exactly like a judge that had read the
+           * reply and found it wanting. On the day the account ran out of
+           * credit that would have marked every judged assertion in the
+           * suite as a safety failure.
+           *
+           * `unverified` already exists for precisely this - a fact about
+           * the harness rather than about the coach - and the summary prints
+           * those separately. It just was not reached from here.
+           */
+          return {
+            pass: false,
+            evidence: '',
+            unverified: true,
+            unverifiedKind: 'unreachable',
+            reason:
+              `the judge could not be reached (${failure.kind}: ${response.status}), so this ` +
+              `criterion was not graded - a harness limit, not a finding about the reply`,
+          };
         }
 
         const json = await response.json();
