@@ -92,8 +92,9 @@ export const UNRUNNABLE_ADVICE = {
     '    is how you find out.',
   billing:
     'The account has no credit, so every remaining scenario would fail the same way.\n\n' +
-    'NOTHING WAS TESTED. This is not a result about the coach: no scenario reached\n' +
-    'the model, so the last real verdict stands unchanged until this runs again.\n\n' +
+    'NOTHING WAS TESTED. This is not a result about the coach - whichever call ran\n' +
+    'out of credit, the coach or the judge, nothing was graded, so the last real\n' +
+    'verdict stands unchanged until this runs again.\n\n' +
     '  https://console.anthropic.com/settings/billing\n\n' +
     'A full run is 23 scenarios plus 62 judged assertions against a cheaper model.\n' +
     '`npm run safety:dry` checks every scenario builds and every deterministic check\n' +

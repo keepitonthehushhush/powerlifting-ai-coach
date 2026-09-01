@@ -262,6 +262,19 @@ export function createJudge({ apiKey, model = DEFAULT_JUDGE_MODEL, retries = 2 }
             evidence: '',
             unverified: true,
             unverifiedKind: 'unreachable',
+            /*
+             * `unrunnable` travels so the RUNNER can stop. Marking the verdict
+             * unverified was right and was not enough: a billing 400 here is
+             * the same fact for every remaining assertion, and a replay run
+             * made eighteen more calls to learn it eighteen more times, then
+             * printed FAIL against five scenarios and "0/5 passed".
+             *
+             * Third place this same fact needed handling - the coach call, the
+             * verdict, and now the run. Each fix landed exactly where the
+             * symptom was.
+             */
+            unrunnable: failure.unrunnable,
+            unrunnableKind: failure.kind,
             reason:
               `the judge could not be reached (${failure.kind}: ${response.status}), so this ` +
               `criterion was not graded - a harness limit, not a finding about the reply`,

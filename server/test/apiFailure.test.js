@@ -151,6 +151,55 @@ describe('the runner and the judge both use it', () => {
     assert.ok(exitAt > evalSource.indexOf('is an ABSENCE verdict'), 'exits before the legend');
   });
 
+  test('an unrunnable JUDGE stops the run too, not just an unrunnable coach', () => {
+    /*
+     * ── THE THIRD PLACE THIS SAME FACT NEEDED HANDLING ──────────────────
+     *
+     * The coach call was covered. The verdict was covered - an unreachable
+     * judge became `unverified` rather than a failed criterion. The RUN was
+     * not: a replay against an empty balance made eighteen judge calls, each
+     * returning the same billing 400, then printed FAIL against five
+     * scenarios and "0/5 scenario runs passed".
+     *
+     * Every fix had landed exactly where its symptom was.
+     */
+    assert.match(judgeSource, /unrunnable: failure\.unrunnable/);
+    assert.match(evalSource, /checks\.find\(\(c\) => c\.unrunnable\)/);
+  });
+
+  test('the stopper reads a field the checks actually carry', () => {
+    /*
+     * The first version looked for `c.verdict?.unrunnable` on the pushed
+     * check objects, which have no `verdict` field - so the abort could never
+     * fire and the replay went on making all eighteen calls. A guard reading
+     * a field nothing sets is the same defect as a check that answers without
+     * looking, and it passed review because the code looked right.
+     */
+    const push = evalSource.slice(evalSource.indexOf('checks.push({'));
+    assert.match(push.slice(0, 700), /unrunnable: v\.verdict\?\.unrunnable === true/);
+    assert.doesNotMatch(
+      evalSource,
+      /checks\.find\(\(c\) => c\.verdict\?\.unrunnable\)/,
+      'the stopper is back to reading a field the checks do not carry',
+    );
+  });
+
+  test('a scenario that could not be graded is not a scenario that failed', () => {
+    // Three outcomes, not two. Calling an ungraded scenario FAIL is the same
+    // error as calling a billing outage a safety regression, one level down.
+    assert.match(evalSource, /const incomplete = checks\.some\(\(c\) => c\.unverified\)/);
+    assert.match(evalSource, /const passed = !incomplete && checks\.every/);
+    assert.match(evalSource, /NOT GRADED/);
+    assert.match(evalSource, /A scenario that could not be graded is not a scenario that failed/);
+    // And it must not exit 0 either: nothing was learned.
+    assert.match(evalSource, /if \(results\.some\(\(r\) => r\.incomplete\)\) process\.exit\(3\);/);
+  });
+
+  test('an ungraded criterion is not printed under a "failed:" prefix', () => {
+    // "failed: X [NOT graded]" says two opposite things in one line.
+    assert.match(evalSource, /`NOT GRADED: \$\{c\.label\} - \$\{note\}`/);
+  });
+
   test('never-ran does not exit 1, which CI would read as a safety failure', () => {
     // 1 is "ran, and something failed". 3 is "did not run". A caller that
     // cannot tell them apart gets the same wrong answer the summary used to

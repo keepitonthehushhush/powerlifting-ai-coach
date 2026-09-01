@@ -1594,10 +1594,46 @@ for (const scenario of plan) {
         ok: v.ok,
         unverified: v.verdict?.unverified === true,
         unverifiedKind: v.verdict?.unverifiedKind,
+        /*
+         * Carried, because the abort below looks for it HERE. The first
+         * version read `c.verdict?.unrunnable` off these pushed objects,
+         * which never had a `verdict` field - so the abort could not fire and
+         * the replay went on making eighteen doomed calls exactly as before.
+         * A guard reading a field that is never set is the same defect as a
+         * check that answers without looking.
+         */
+        unrunnable: v.verdict?.unrunnable === true,
+        unrunnableKind: v.verdict?.unrunnableKind,
       });
     }
 
-    const passed = checks.every((c) => c.ok);
+    /*
+     * ── A JUDGE THAT CANNOT RUN STOPS THE RUN ───────────────────────────
+     *
+     * Not just the assertion. The first replay against an empty balance made
+     * eighteen judge calls, each returning the same billing 400, and then
+     * reported five scenarios FAIL and "0/5 passed" - the exact output two
+     * earlier commits existed to prevent, arriving through the one path
+     * neither of them covered.
+     */
+    const stopper = checks.find((c) => c.unrunnable);
+    if (stopper) {
+      throw Object.assign(
+        new Error(`the judge could not be reached (${stopper.unrunnableKind})`),
+        { unrunnable: true, unrunnableKind: stopper.unrunnableKind }
+      );
+    }
+
+    /*
+     * ── THREE OUTCOMES, NOT TWO ─────────────────────────────────────────
+     *
+     * A scenario whose assertions could not be graded did not fail. It was
+     * not evaluated, and calling that FAIL is the same error as calling a
+     * billing outage a safety regression - just at scenario granularity
+     * rather than run granularity.
+     */
+    const incomplete = checks.some((c) => c.unverified);
+    const passed = !incomplete && checks.every((c) => c.ok);
 
     console.log(`\n    ── reply ${'─'.repeat(60)}`);
     console.log(reply.split('\n').map((line) => `    │ ${line}`).join('\n'));
@@ -1607,7 +1643,7 @@ for (const scenario of plan) {
     }
     console.log(`    ${'─'.repeat(68)}\n`);
 
-    results.push({ name: scenario.name, passed, checks });
+    results.push({ name: scenario.name, passed, incomplete, checks });
   } catch (err) {
     if (err.unrunnable) {
       console.log(`    ❌ ${err.message}\n`);
@@ -1689,9 +1725,24 @@ const UNVERIFIED_NOTES = {
 
 for (const [name, runs] of byName) {
   const passes = runs.filter((r) => r.passed).length;
+  const ungraded = runs.filter((r) => r.incomplete).length;
+  /*
+   * INCOMPLETE is its own word because it is its own fact. A scenario whose
+   * assertions could not be graded is not a scenario that failed, and the
+   * summary is where that distinction has to survive - it is the only part of
+   * a long run most people read.
+   */
   const verdict =
-    runs.length === 1 ? (passes === 1 ? 'PASS' : 'FAIL') : `${passes}/${runs.length}`.padEnd(4);
-  console.log(`${verdict}  ${name}`);
+    runs.length === 1
+      ? passes === 1
+        ? 'PASS'
+        : runs[0].incomplete
+          ? '????'
+          : 'FAIL'
+      : ungraded === runs.length
+        ? '????'
+        : `${passes}/${runs.length}`.padEnd(4);
+  console.log(`${verdict}  ${name}${ungraded > 0 ? '  [NOT GRADED]' : ''}`);
 
   // Every distinct reason it failed, across all runs, counted. A reason that
   // shows up once in five is exactly the kind of intermittent finding a
@@ -1703,13 +1754,15 @@ for (const [name, runs] of byName) {
       // fact about this harness; every other failure is a fact about the
       // coach, and reading one as the other is what cost a day.
       const note = UNVERIFIED_NOTES[c.unverifiedKind] ?? 'harness could not check the quote';
-      const label = c.unverified ? `${c.label} [UNVERIFIED - ${note}]` : c.label;
+      // "failed: X [NOT graded]" says two opposite things in one line. The
+      // prefix has to agree with the tag.
+      const label = c.unverified ? `NOT GRADED: ${c.label} - ${note}` : `failed: ${c.label}`;
       reasons.set(label, (reasons.get(label) ?? 0) + 1);
     }
     if (run.error) reasons.set(`error: ${run.error}`, (reasons.get(`error: ${run.error}`) ?? 0) + 1);
   }
   for (const [reason, count] of reasons) {
-    console.log(`        failed: ${reason}${runs.length > 1 ? ` (${count} of ${runs.length})` : ''}`);
+    console.log(`        ${reason}${runs.length > 1 ? ` (${count} of ${runs.length})` : ''}`);
   }
 }
 
@@ -1727,7 +1780,14 @@ if (results.length < plan.length) {
       'The scenarios that never ran are not results. Nothing is known about them.\n'
   );
 } else {
-  console.log(`\n${passedCount}/${results.length} scenario runs passed.\n`);
+  const ungradedCount = results.filter((r) => r.incomplete).length;
+  console.log(
+    ungradedCount > 0
+      ? `\n${passedCount} passed, ${results.length - passedCount - ungradedCount} failed, ` +
+          `${ungradedCount} NOT GRADED.\n` +
+          'A scenario that could not be graded is not a scenario that failed.\n'
+      : `\n${passedCount}/${results.length} scenario runs passed.\n`
+  );
 }
 
 if (REPLAY) {
@@ -1772,4 +1832,5 @@ console.log(
  * in it that need explaining.
  */
 if (unrunnable) process.exit(3);
+if (results.some((r) => r.incomplete)) process.exit(3);
 process.exit(passedCount === results.length ? 0 : 1);
