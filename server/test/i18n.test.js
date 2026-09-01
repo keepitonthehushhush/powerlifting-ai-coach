@@ -248,3 +248,81 @@ describe('locale sources', () => {
     });
   }
 });
+
+/**
+ * ── THE CLEARANCE REQUIREMENT MUST SURVIVE TRANSLATION ────────────────────
+ *
+ * This product's central safety gate is that an athlete reporting pain or an
+ * injury gets no program until a professional has CLEARED them. Four strings
+ * carry that promise to the user, and a translation can weaken it without
+ * anything failing: the Spanish medical disclaimer said "consulta con un
+ * médico o fisioterapeuta antes de entrenar" - consult a doctor - where the
+ * English says "get clearance from", and where every other Spanish string in
+ * this catalog already said "dar el alta".
+ *
+ * Consulting is not being cleared. A Spanish-speaking athlete was asked for
+ * something weaker than the English asks, in the one string whose whole job
+ * is to state the limit of what this app is.
+ *
+ * RAE glosses `alta` as "autorización que da el médico para que un paciente se
+ * reincorpore a la vida ordinaria", and its own example sentence is a
+ * returning athlete: "El doctor le firmó el alta y hoy ha vuelto a
+ * entrenarse". The term the rest of the catalog used was already right; only
+ * the disclaimer had drifted.
+ *
+ * Checked WITHIN a locale rather than across them, because the right word
+ * differs per language and only a speaker of it can say what that word is.
+ * What this enforces is agreement among the four - which is what would have
+ * caught this one, since three of the four already agreed.
+ */
+describe('the clearance requirement is not weakened by translation', () => {
+  /*
+   * The vocabulary each locale uses for "a professional has cleared you".
+   * A new locale means a new line here, added deliberately with somebody who
+   * speaks it, rather than a catalog quietly inheriting an English
+   * assumption.
+   */
+  const CLEARANCE = {
+    en: /\bclear(ed|ance)\b/i,
+    es: /\balta\b|\bautoriz/i,
+  };
+
+  /** The four strings that carry the promise to the user. */
+  const CARRIERS = [
+    'medical.disclaimer',
+    'home.honestDoctor',
+    'intake.clearedLabel',
+    'intake.clearanceWarning',
+  ];
+
+  const pick = (catalog, path) => path.split('.').reduce((o, k) => o?.[k], catalog);
+
+  for (const [name, catalog] of Object.entries({ en, ...LOCALES })) {
+    describe(name, () => {
+      test('this locale has declared clearance vocabulary', () => {
+        // Without an entry, every assertion below would skip and pass.
+        assert.ok(CLEARANCE[name], `no clearance vocabulary declared for "${name}"`);
+      });
+
+      for (const path of CARRIERS) {
+        test(`${path} says cleared, not merely consulted`, () => {
+          const text = pick(catalog, path);
+          assert.equal(typeof text, 'string', `${path} is missing from ${name}`);
+          assert.match(
+            text,
+            CLEARANCE[name],
+            `${name}.${path} does not use this locale's clearance wording: ${text}`
+          );
+        });
+      }
+    });
+  }
+
+  test('the check can fail: consultation wording alone does not satisfy it', () => {
+    // The exact sentence that was shipping, so writing it again fails here.
+    const weakened =
+      'Si tienes dolor, una lesión o una condición de salud, consulta con un médico o fisioterapeuta antes de entrenar.';
+    assert.doesNotMatch(weakened, CLEARANCE.es, 'the Spanish pattern accepts "consulta con" as clearance');
+    assert.doesNotMatch('please see a doctor before training', CLEARANCE.en);
+  });
+});

@@ -65,7 +65,7 @@ export const es = {
 
   medical: {
     disclaimer:
-      'Coach es una herramienta de IA, no un profesional médico. Si tienes dolor, una lesión o una condición de salud, consulta con un médico o fisioterapeuta antes de entrenar.',
+      'Coach es una herramienta de IA, no un profesional médico. Si tienes dolor, una lesión o una condición de salud, obtén el alta de un médico o fisioterapeuta antes de entrenar.',
   },
 
   home: {
@@ -277,7 +277,7 @@ export const es = {
     pronouns: 'Tus pronombres (opcional)',
     pronounsPlaceholder: 'p. ej. ella, él, elle',
     pronounsHint:
-      'Para que el entrenador se dirija a ti correctamente. Esto no forma parte del consentimiento de datos de salud: que te traten bien no debería costarte privacidad.',
+      'Para que el entrenador se dirija a ti correctamente. Esto no forma parte del consentimiento de datos de salud: que se dirijan a ti correctamente no debería costarte privacidad.',
     gender: 'Género (opcional)',
     genderHint:
       'El entrenador lo usa solo para dos cosas: las categorías de competición y las de peso están separadas por sexo en todas las federaciones, y la recomendación de ingesta mínima de energía difiere. Nunca cambia lo pesado que es tu programa, qué ejercicios haces ni la rapidez con la que se espera que progreses. Se guarda bajo el consentimiento de datos de salud y puedes dejarlo en blanco.',
@@ -553,7 +553,7 @@ export const es = {
     deleteBody:
       'Elimina permanentemente tu cuenta y todos los registros asociados — perfil, programas, sesiones, registros de progreso y conversaciones. Esta acción no se puede deshacer.',
     deleteButton: 'Eliminar mi cuenta',
-    deleteConfirmPrompt: 'Escribe DELETE MY ACCOUNT para confirmar.',
+    deleteConfirmPrompt: 'Escribe DELETE MY ACCOUNT (en inglés, tal cual) para confirmar.',
   },
   billing: {
     title: 'Suscripción',

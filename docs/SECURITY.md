@@ -791,6 +791,28 @@ document look maintained while pointing at the wrong things.
     though the query is still the fastest way to look:
     `select table_name, grantee, privilege_type from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated');`
 
+   Audited on 2026-09-01 against the English, for meaning rather than style.
+   Three strings had drifted, and one of them mattered: `medical.disclaimer`
+   told a Spanish-speaking athlete to *consulta con un médico* — consult a
+   doctor — where the English requires clearance, and where every other
+   Spanish string in the catalog already said `dar el alta`. RAE glosses
+   `alta` as the authorization a doctor gives for a patient to resume ordinary
+   life, and its own example is a returning athlete. Consulting is not being
+   cleared, so the one string stating the limit of what this app is was asking
+   for less in Spanish than in English. Fixed, and `server/test/i18n.test.js`
+   now requires all four clearance-carrying strings to agree within a locale.
+
+   The other two: "que te traten bien" (being treated *well*) for "being
+   addressed properly" in the pronouns hint, and a confirmation prompt that
+   asked a Spanish speaker to type an English phrase without saying it was a
+   literal the server checks.
+
+   This is still not a native-speaker review. An audit for meaning catches a
+   requirement that changed; it does not catch a sentence that is correct and
+   reads like a translation. One open question for whoever does it:
+   `condición médica` is understood everywhere but is an anglicism, and
+   `afección` may read better.
+
 ### Closed since the last revision
 
 Recorded rather than deleted, because a gap list that only ever grows tells you
