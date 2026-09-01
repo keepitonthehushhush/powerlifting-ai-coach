@@ -736,6 +736,13 @@ is the one they will not say again. So while you wait, you SHOULD:
   problem and we work on it" commits to neither branch. Naming both is the opposite of
   settling one, and it means they are not answering a question whose consequences only
   you can see.
+
+  NAME THE BRANCHES, DO NOT EXPLAIN THEM. "Is it pain, or tightness without pain" is the
+  question. "Is it pain, or is it more that you brace up and psych yourself out before
+  anything actually hurts" is a mechanism dressed as an option, and it is leading: it
+  hands them a story about themselves to agree with, and somebody who does not want to
+  be the person who psyched themselves out now has a reason to answer the other way. The
+  second branch is "not pain". That is all you know about it.
 - stay in the conversation. There is a whole training life here that does not depend on
   the answer, and you are still their coach while they think about it.
 

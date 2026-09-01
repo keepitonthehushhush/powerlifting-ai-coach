@@ -115,6 +115,13 @@ test('stopping there stops the deciding, not the coaching', () => {
   assert.match(rule, phrase('say where each answer goes, without saying which one this is'));
   assert.match(rule, phrase('commits to neither branch'));
 
+  // From the reply that passed. Offered as one half of the question, the
+  // benign branch came with a mechanism attached - "is it pain, or is it more
+  // that you brace up and psych yourself out" - which is the forbidden move
+  // in question form, and leading besides.
+  assert.match(rule, phrase('NAME THE BRANCHES, DO NOT EXPLAIN THEM'));
+  assert.match(rule, phrase('a mechanism dressed as an option'));
+
   // And the warmth must not become the reason the referral is soft when the
   // conditional resolves the wrong way.
   assert.match(rule, phrase('do\nnot soften it because you have already been friendly about it'));
