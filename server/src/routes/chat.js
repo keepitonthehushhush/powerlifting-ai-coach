@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
+import { extractIntentionBlock } from '../lib/intentionBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
@@ -282,10 +283,27 @@ chatRouter.post('/', async (req, res, next) => {
     // worse failure than a missing record.
     const { reply: extracted, program, problem } = extractProgramBlock(reply.text);
 
-    // Appended after the block is stripped, so the notice is never mistaken
+    /*
+     * Run over the ALREADY-STRIPPED prose, not the raw reply. Order matters
+     * only in that each extractor must see text the other has finished with;
+     * running both against reply.text would leave whichever ran second putting
+     * the first one's tags back into what the athlete reads.
+     */
+    const {
+      reply: prose,
+      intention,
+      problem: intentionProblem,
+    } = extractIntentionBlock(extracted);
+
+    // Appended after the blocks are stripped, so the notice is never mistaken
     // for part of the program and never lands inside the JSON.
-    const replyText = outcome.truncated ? `${extracted}${TRUNCATION_NOTICE}` : extracted;
+    const replyText = outcome.truncated ? `${prose}${TRUNCATION_NOTICE}` : prose;
     if (problem) logger.warn('program.block_unusable', { userId: req.user.id, problem });
+    if (intentionProblem) {
+      // The reason and never the content: the obstacle is the athlete's own
+      // words about what stops them, and that is health data.
+      logger.warn('intention.block_unusable', { userId: req.user.id, problem: intentionProblem });
+    }
 
     /**
      * THE GATE IS RE-CHECKED HERE, IN CODE.
@@ -502,6 +520,43 @@ chatRouter.post('/', async (req, res, next) => {
       } catch (err) {
         logger.warn('program.save_failed', { userId: req.user.id, message: err.message });
       }
+    }
+
+    /*
+     * ── THE PLAN, RECORDED THE SAME WAY AND GATED THE SAME WAY ────────────
+     *
+     * Re-checked in code rather than trusted to the prompt, for the reason the
+     * program save gives above: the instruction is the first line of defense
+     * and this is the second. An athlete waiting on a doctor should not have an
+     * obstacle recorded and quoted back at them, because the obstacle at that
+     * moment is very likely the injury they are waiting on.
+     *
+     * The write is a profile UPDATE and can be refused by the consent trigger:
+     * these are health columns, and an athlete who never granted health-data
+     * consent has no business having their obstacle stored. That refusal is
+     * correct and is logged as a warning rather than surfaced - the coaching
+     * conversation already happened and was useful, and telling somebody their
+     * plan could not be saved because of a consent setting is a sentence for
+     * the account page, not for the middle of a training discussion.
+     */
+    if (intention && !needsMedicalClearance(context.profile)) {
+      try {
+        const { error } = await req.supabase
+          .from('user_profile')
+          .update({
+            training_obstacle: intention.obstacle,
+            training_if_then: intention.plan,
+          })
+          .eq('user_id', req.user.id);
+        // Never the message: a constraint violation can quote the value, and
+        // the value is health data.
+        if (error) logger.warn('intention.save_failed', { userId: req.user.id, cause: error.code });
+        else logger.info('intention.saved', { userId: req.user.id });
+      } catch {
+        logger.warn('intention.save_failed', { userId: req.user.id, cause: 'threw' });
+      }
+    } else if (intention) {
+      logger.warn('intention.refused_while_gated', { userId: req.user.id });
     }
 
     try {

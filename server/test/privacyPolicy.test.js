@@ -85,6 +85,7 @@ describe('what it promises is what the database does', () => {
       ['Usage and cost records', '24 months'],
       ['Error records', '6 months'],
       ['Payment webhook identifiers', '3 months'],
+      ['Your named obstacle and if-then plan', '12 months'],
     ];
     for (const [label, period] of expected) {
       assert.match(page, phrase(label, 'i'), `the page does not disclose ${label}`);
@@ -107,6 +108,7 @@ describe('what it promises is what the database does', () => {
       usage_events: 'Usage and cost records',
       error_events: 'Error records',
       stripe_events: 'Payment webhook identifiers',
+      training_intention: 'Your named obstacle and if-then plan',
     };
     for (const category of known) {
       assert.ok(

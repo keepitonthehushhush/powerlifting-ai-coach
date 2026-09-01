@@ -84,10 +84,17 @@ const SENT_TO_THE_MODEL = {
   nutrition_notes: 'nutrition notes',
   health_restrictions: 'Injuries and medical conditions',
   cleared_to_train: 'cleared to train',
+  training_obstacle: 'the obstacle you named as the thing that actually stops you',
+  training_if_then: 'the if-then plan you made against it',
 };
 
 /** Columns on user_profile that never reach renderProfile, and why. */
 const NOT_SENT = {
+  training_intention_updated_at:
+    'when the obstacle or the if-then plan last changed, used only to expire ' +
+    'them after 12 months (migration 0053). Not sent, for the same reason as ' +
+    'the injury timestamp: how old a plan is tells the model nothing it can ' +
+    'coach on, while being one more fact about somebody in a third-party request.',
   user_id: 'the row key',
   smallest_plate_pair: 'feeds the computed loads rather than being stated to the model',
   display_name:
@@ -212,6 +219,8 @@ describe('the health data policy lists what is stored under that consent', () =>
     nicotine_use: 'whether you use nicotine',
     nutrition_notes: 'anything you choose to write about how you eat',
     gender: 'your gender, if you give it',
+    training_obstacle: 'the obstacle you name as the thing that actually stops you',
+    training_if_then: 'the if-then plan you make against it',
   };
 
   test('each health field the schema holds is named in the policy', () => {

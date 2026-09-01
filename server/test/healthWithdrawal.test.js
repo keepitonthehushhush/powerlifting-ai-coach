@@ -55,10 +55,22 @@ import { redact } from '../src/lib/logger.js';
 
 const MIGRATIONS = new URL('../../supabase/migrations/', import.meta.url);
 
-/** Every user_profile column the schema itself documents as health data. */
-function documentedHealthColumns() {
+/**
+ * Every user_profile column the schema itself documents as health data.
+ *
+ * `upTo` bounds the scan to migrations numbered at or below a given prefix,
+ * which only one caller needs: migration 0040 was a ONE-TIME reconciliation of
+ * rows a bug had already left behind. Columns added after it cannot have been
+ * left behind by a bug that predates them, and amending an applied migration to
+ * mention them would make the file stop describing what actually ran. The
+ * standing invariant in check-db-invariants.mjs is what covers everything
+ * after - it tests the fingerprint rather than a column list, so it picked up
+ * the new columns with no edit at all.
+ */
+function documentedHealthColumns(upTo = null) {
   const sql = readdirSync(MIGRATIONS)
     .filter((name) => name.endsWith('.sql'))
+    .filter((name) => (upTo === null ? true : name.slice(0, 4) <= upTo))
     .sort()
     .map((name) => readFileSync(new URL(name, MIGRATIONS), 'utf8'))
     .join('\n');
@@ -155,10 +167,20 @@ test('the state the bug left behind is reconciled and then watched', async (t) =
     // reconciliation that misses a column leaves exactly the state it exists
     // to remove, and the trigger would refuse this UPDATE too if it ran as a
     // user rather than as a migration.
-    const missing = [...documentedHealthColumns()]
+    const missing = [...documentedHealthColumns('0040')]
       .filter((column) => !new RegExp(`\\b${column}\\s*=`).test(reconciliation))
       .sort();
     assert.deepEqual(missing, [], `0040 does not clear: ${missing.join(', ')}`);
+  });
+
+  await t.test('the bound is real, so this is not quietly scanning everything', () => {
+    // If these ever match, the `upTo` filter has stopped filtering and the
+    // assertion above has gone back to demanding that a 2026 migration clear
+    // columns invented after it.
+    const then = documentedHealthColumns('0040');
+    const now = documentedHealthColumns();
+    assert.ok(now.size > then.size, 'no health column has been added since 0040 - check the filter');
+    for (const column of then) assert.ok(now.has(column), `${column} stopped being documented`);
   });
 
   await t.test('and it is idempotent, so a re-run moves nobody', () => {

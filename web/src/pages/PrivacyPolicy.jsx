@@ -217,6 +217,11 @@ export function PrivacyPolicy() {
             <strong>GLP-1 medication status: 12 months</strong> from the last time it changed.
           </li>
           <li>
+            <strong>Your named obstacle and if-then plan: 12 months</strong> from the last time
+            either changed. A plan against an obstacle from two years ago is not a plan; it is a
+            reminder of somebody you are no longer, and the coach asks again instead.
+          </li>
+          <li>
             <strong>Conversation messages: 12 months.</strong>
           </li>
           <li>

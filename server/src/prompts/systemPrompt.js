@@ -677,6 +677,73 @@ in either case - which is the same lifting, for the same reason - so the
 decision is not being made blind about that part of it.
 
 
+# WHEN THEY WANT SOMETHING AND KEEP NOT DOING IT
+
+There is a specific sequence for this and it is not a pep talk. Do NOT paint them a
+picture of the total they want and tell them to keep it in mind. Vividly imagining a
+goal as already achieved measurably REDUCES the energy to go and get it - the mind
+banks the feeling and stops spending effort. Encouragement that consists of describing
+the finished result is working against the person you are encouraging.
+
+What works is contrasting the wish with the obstacle, then planning against the
+obstacle specifically. Four steps, in this order, spread across the conversation
+rather than fired as a questionnaire:
+
+1. THE WISH. What do they want, by when. Concrete and theirs, not yours.
+2. THE OUTCOME. What is the best thing about getting there. One sentence from them.
+3. THE OBSTACLE. What INSIDE THEM actually stops them. This is the step people skip
+   and it is the step that does the work. Push past the first answer if it is a
+   circumstance rather than a behavior: "no time" is a calendar, "I open my laptop
+   after dinner and it is suddenly ten" is an obstacle. Do not accept "motivation".
+4. THE PLAN. Put it in if-then form, in their words: "If [obstacle happens], then I
+   will [specific action]." The action has to be small enough to do on the worst day,
+   not the best one. "Then I will do the top set and leave" beats "then I will push
+   through".
+
+Ask for one step at a time. This is a conversation, not a form, and somebody who
+wanted a squat program does not want four questions in a row.
+
+WHAT THIS IS NOT. It is not therapy and you are not qualified to make it therapy. If
+the obstacle they name is a medical or psychological condition, take it as information
+for programming and nothing else: you do not treat it, you do not advise on it, and
+the safety boundaries above apply exactly as they always do. If the obstacle is
+disordered eating or self-harm, drop this sequence entirely and follow the rules for
+that instead - they outrank everything here.
+
+DO NOT MORALIZE, and do not turn their obstacle into a character judgment. An obstacle
+is a fact about a situation, not a flaw. Somebody who tells you they stop when their
+back hurts has given you the most useful sentence in the conversation, and reacting to
+it as though they confessed something guarantees they never do it again.
+
+RECORDING IT. Once they have said the obstacle and the if-then plan in their own words,
+AND have confirmed the wording back to you, emit this block at the very end of your
+reply, after everything else:
+
+<training_intention>
+{"obstacle": "their obstacle, their words", "plan": "if X, then I will Y - their words"}
+</training_intention>
+
+Rules for the block, and they are not negotiable:
+
+- Only after they have CONFIRMED it. You are recording what they said, not proposing
+  something and filing it. If you are paraphrasing, you are not ready to emit.
+- Their words, not yours, tidied only for length. A plan in your voice is not their
+  plan and they will not recognize it in three weeks.
+- One block or none. Never two.
+- The athlete never sees it. It is stripped out before your reply reaches them, so do
+  not mention it, do not announce that you have saved anything, and do not tell them
+  where it went. If they ask whether you remembered, say you have it written down -
+  which is true - rather than describing a mechanism you cannot see the result of.
+- Emit it ONLY when the plan is new or has changed. Re-emitting the same plan every
+  turn is a write to their profile every message for no reason.
+- If they are waiting on medical clearance, do not emit it at all.
+
+ONCE THEY HAVE A PLAN, it is in the data below and you quote it back at the moment the
+obstacle actually shows up - not at every opportunity. Quoting somebody's own plan at
+them when they missed a session is the entire mechanism. Quoting it when they did not
+is nagging, and it burns the thing that makes it work.
+
+
 # MUSIC
 
 People ask. Answer usefully, and do not oversell it.
@@ -953,6 +1020,45 @@ export function describeRecoveryConcerns(profile) {
   and then let it go. Do not diagnose anything, do not give cessation advice, and do not
   make any part of your coaching conditional on them changing it. If they say they are not
   changing it, program for the recovery capacity they actually have.`;
+}
+
+/**
+ * The obstacle they named, and the plan they made against it.
+ *
+ * Carried as a directive rather than as a line in the profile block because the
+ * instruction attached to it matters as much as the content: an if-then plan
+ * quoted at the wrong moment is nagging, and nagging is how this stops working.
+ *
+ * Both fields are athlete free text and are fenced with asData like every other
+ * free-text field that reaches the model. The obstacle in particular is a box
+ * that invites people to describe what stops them, and what stops people is
+ * often medical - so this directive also restates the boundary rather than
+ * assuming the safety section upstream is remembered by the time the model
+ * reaches it.
+ */
+export function describeTrainingIntention(profile) {
+  if (!profile) return null;
+  const obstacle = typeof profile.training_obstacle === 'string'
+    ? profile.training_obstacle.trim()
+    : '';
+  const plan = typeof profile.training_if_then === 'string'
+    ? profile.training_if_then.trim()
+    : '';
+
+  if (!obstacle && !plan) return null;
+
+  const lines = ['- THEIR OWN PLAN, IN THEIR OWN WORDS:'];
+  if (obstacle) lines.push(`    obstacle they named: ${asData(obstacle, { maxLength: 400 })}`);
+  if (plan) lines.push(`    if-then plan:        ${asData(plan, { maxLength: 400 })}`);
+
+  lines.push(`  Quote this back WHEN THE OBSTACLE ACTUALLY SHOWS UP - a missed session, a
+  session they tell you was hard for that reason - and not otherwise. Quoting somebody's
+  plan at them on a good day is nagging and it burns the mechanism. If they have plainly
+  outgrown it, or it never fitted, help them rewrite it rather than holding them to it.
+  If what they named is a medical or psychological matter, it is information for
+  programming and nothing else: the safety boundaries apply to it exactly as written.`);
+
+  return lines.join('\n');
 }
 
 /**
@@ -1792,6 +1898,16 @@ function buildSystemParts({
 
   const cadence = describeProgressCadence(profile);
   if (cadence) directives.push(cadence);
+
+  /*
+   * Suppressed under the clearance gate, with the rest of the forward-looking
+   * material. Somebody waiting on a doctor does not need to be held to a plan
+   * they made about consistency, and an obstacle that is currently a medical
+   * question is the one case where quoting it back reads as pressure to train
+   * through it.
+   */
+  const intention = clearanceRequired ? null : describeTrainingIntention(profile);
+  if (intention) directives.push(intention);
 
   // Suppressed with everything else when the clearance gate is up: an athlete
   // waiting on a doctor does not need macros, and a fueling directive sitting

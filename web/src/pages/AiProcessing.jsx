@@ -102,6 +102,13 @@ export function AiProcessing() {
             to answer. It is sent for one reason: on these medications much of the weight lost is
             muscle rather than fat, and that changes how your training is written.
           </li>
+          <li>
+            If you have worked one out with the coach: <strong>the obstacle you named as the
+            thing that actually stops you</strong>, and <strong>the if-then plan you made
+            against it</strong>. Both go as you wrote them. They are sent because the whole
+            point of a plan you made in advance is that the coach can hand it back to you at
+            the moment the obstacle turns up, and it cannot do that without having read it.
+          </li>
           <li>Your pronouns, and your gender if you gave one. Nothing physiological is inferred from either: where a figure genuinely differs, the coach is told to ask you rather than assume.</li>
           <li>Which gym chains you ticked, and the optional branch note you typed. The note goes as written; it is never turned into an address or a location.</li>
           <li>Reference material of ours that says nothing about you: the coaching instructions, and the exercise library with its links to demonstration videos.</li>
