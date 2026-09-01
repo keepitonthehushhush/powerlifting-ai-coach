@@ -20,6 +20,7 @@
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
     "test:db": "node scripts/run-sql-test.mjs supabase/tests/rls_isolation_test.sql",
+    "safety:dry": "node scripts/safety-eval.mjs --dry-run",
     "safety:eval": "node scripts/safety-eval.mjs",
     "verify:deps": "node scripts/verify-frontend-deps.mjs",
     "verify": "npm run verify:deps && npm run verify:bundle",
