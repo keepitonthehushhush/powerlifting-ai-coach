@@ -2,6 +2,7 @@ import {
   hsl,
   rgbOf,
   solveFromPreferred,
+  solveFromPreferredOklch,
   contrast,
   AA_TEXT,
   AA_NON_TEXT,
@@ -127,12 +128,58 @@ const MIAMI = {
  * minimum. Solving for the minimum is correct for ink and wrong for a brand
  * color - it returns the least extreme value that passes, so a yellow accent
  * comes back as dark olive because yellow clears 4.5:1 while it is still
- * nearly brown. These are the values the palette WANTS; solveFromPreferred
- * moves one only when it does not clear its requirement.
+ * nearly brown. These are the values the palette WANTS; the solvers move one
+ * only when it does not clear its requirement.
+ *
+ * NEUTRALS ARE HSL, CHROMATIC ROLES ARE OKLCH, and that split is measured
+ * rather than aesthetic. Across the nine generated dark themes the neutrals
+ * already land within a few points of each other - bg 17.7 to 19.3, text 93.7
+ * to 96.7 in perceived lightness - because a near-gray barely moves as hue
+ * changes, which is the one case where HSL behaves. The accents do not: at the
+ * old ladder value they spanned 4.07:1 to 12.94:1 against the page. So the
+ * defect was never in the grounds and rewriting them would be churn.
  */
 const LADDER = {
-  dark: { text: 92, muted: 62, accent: 58, secondary: 56, warning: 60, error: 62, field: 46 },
-  light: { text: 18, muted: 38, accent: 42, secondary: 36, warning: 34, error: 44, field: 52 },
+  dark: { text: 92, muted: 62, field: 46 },
+  light: { text: 18, muted: 38, field: 52 },
+};
+
+/*
+ * ── THE OKLCH LADDER IS MIAMI, MEASURED ───────────────────────────────────
+ *
+ * Not chosen by eye. Miami is the default theme and the brand, and its values
+ * are argued for at length in the stylesheet; every generated theme should
+ * carry the same VISUAL WEIGHT as it, differing only in hue. So the ladder is
+ * simply what Miami's own tokens decompose to in OKLCH:
+ *
+ *   dark   accent L 69.2 c 0.220 | secondary L 78.7 c 0.130
+ *          warning L 82.9 c 0.159 | error L 73.5 c 0.163
+ *   light  accent L 54.0 c 0.207 | secondary L 60.6 c 0.104
+ *          warning L 50.8 c 0.108 | error L 53.9 c 0.194
+ *
+ * Because OKLCH lightness means one thing across hues, a generated theme now
+ * inherits that weight instead of drifting around it. Under HSL the same
+ * declared number produced a moss accent at 12.94:1 and an amethyst one at
+ * 4.07:1 - the green shouting, the purple failing AA outright.
+ *
+ * Chroma here is a CEILING, not a promise: oklch() reduces it until the color
+ * exists in sRGB, holding lightness and hue. A hue that cannot carry 0.22 at
+ * L 69 comes back duller and the right weight, which is the correct trade -
+ * weight is what the eye reads first.
+ */
+const CHROMATIC = {
+  dark: {
+    accent: { l: 69, c: 0.22 },
+    secondary: { l: 79, c: 0.13 },
+    warning: { l: 83, c: 0.16, h: 78 },
+    error: { l: 73, c: 0.16, h: 22 },
+  },
+  light: {
+    accent: { l: 54, c: 0.21 },
+    secondary: { l: 61, c: 0.10 },
+    warning: { l: 51, c: 0.11, h: 73 },
+    error: { l: 54, c: 0.19, h: 27 },
+  },
 };
 
 /**
@@ -145,9 +192,8 @@ const LADDER = {
 function generate(seed, mode) {
   const dark = mode === 'dark';
   const L = LADDER[mode];
-  const { hue, secondaryHue, neutralHue: nH, neutralSat: nS } = seed;
-  const accentSat = seed.accentSat ?? (dark ? 88 : 78);
-  const accentL = seed.accentL?.[mode] ?? L.accent;
+  const { accentHue, secondaryHue, neutralHue: nH, neutralSat: nS } = seed;
+  const C = CHROMATIC[mode];
 
   /*
    * Neutral saturation is a CEILING for every neutral, not just the grounds.
@@ -167,18 +213,32 @@ function generate(seed, mode) {
   const from = (h, sat, preferred, target = AA_TEXT) =>
     solveFromPreferred(h, sat, preferred, grounds, target, { lighter });
 
-  const accent = from(hue, accentSat, accentL);
+  const accent = solveFromPreferredOklch(
+    accentHue,
+    seed.accentChroma ?? C.accent.c,
+    seed.accentL?.[mode] ?? C.accent.l,
+    grounds,
+    AA_TEXT,
+    { lighter },
+  );
   /*
    * Black or white on the button, whichever the button can actually carry -
    * measured, not assumed. A gold accent needs dark ink and a navy one needs
    * light ink, and guessing wrong fails the one requirement that is about a
    * control somebody has to read before pressing it.
    */
-  const accentText = [hsl(nH, seed.accentSat === 0 ? 0 : 25, 8), '#ffffff'].reduce((best, ink) =>
+  const accentText = [hsl(nH, seed.accentChroma === 0 ? 0 : 25, 8), '#ffffff'].reduce((best, ink) =>
     contrast(ink, accent) > contrast(best, accent) ? ink : best
   );
 
-  const secondary = from(secondaryHue, seed.secondarySat ?? (dark ? 72 : 68), L.secondary);
+  const secondary = solveFromPreferredOklch(
+    secondaryHue,
+    seed.secondaryChroma ?? C.secondary.c,
+    C.secondary.l,
+    grounds,
+    AA_TEXT,
+    { lighter },
+  );
 
   return {
     bg,
@@ -206,8 +266,8 @@ function generate(seed, mode) {
     'accent-soft': `rgba(${rgbOf(accent)}, ${dark ? 0.14 : 0.1})`,
     secondary,
     link: secondary,
-    warning: from(42, dark ? 92 : 88, L.warning),
-    error: from(2, dark ? 82 : 74, L.error),
+    warning: solveFromPreferredOklch(C.warning.h, C.warning.c, C.warning.l, grounds, AA_TEXT, { lighter }),
+    error: solveFromPreferredOklch(C.error.h, C.error.c, C.error.l, grounds, AA_TEXT, { lighter }),
     'chart-grid': border,
   };
 }
@@ -223,13 +283,13 @@ function generate(seed, mode) {
  */
 export const THEMES = [
   { id: 'miami', tokens: MIAMI, isDefault: true },
-  { id: 'blush', seed: { hue: 336, secondaryHue: 288, neutralHue: 330, neutralSat: 18 } },
-  { id: 'cobalt', seed: { hue: 214, secondaryHue: 190, neutralHue: 220, neutralSat: 24 } },
-  { id: 'ember', seed: { hue: 8, secondaryHue: 32, neutralHue: 12, neutralSat: 20 } },
-  { id: 'moss', seed: { hue: 142, secondaryHue: 96, neutralHue: 150, neutralSat: 16 } },
-  { id: 'amethyst', seed: { hue: 276, secondaryHue: 310, neutralHue: 272, neutralSat: 22 } },
-  { id: 'copper', seed: { hue: 24, secondaryHue: 44, neutralHue: 28, neutralSat: 18 } },
-  { id: 'slate', seed: { hue: 205, secondaryHue: 178, neutralHue: 214, neutralSat: 8 } },
+  { id: 'blush', seed: { accentHue: 3, secondaryHue: 319, neutralHue: 330, neutralSat: 18 } },
+  { id: 'cobalt', seed: { accentHue: 257, secondaryHue: 214, neutralHue: 220, neutralSat: 24 } },
+  { id: 'ember', seed: { accentHue: 32, secondaryHue: 66, neutralHue: 12, neutralSat: 20 } },
+  { id: 'moss', seed: { accentHue: 150, secondaryHue: 136, neutralHue: 150, neutralSat: 16 } },
+  { id: 'amethyst', seed: { accentHue: 307, secondaryHue: 336, neutralHue: 272, neutralSat: 22 } },
+  { id: 'copper', seed: { accentHue: 49, secondaryHue: 88, neutralHue: 28, neutralSat: 18 } },
+  { id: 'slate', seed: { accentHue: 245, secondaryHue: 191, neutralHue: 214, neutralSat: 8 } },
   /*
    * Mono is the one theme whose accent is deliberately not a hue. Zero
    * saturation everywhere, and an accent at the far end of the lightness
@@ -242,16 +302,34 @@ export const THEMES = [
   {
     id: 'mono',
     seed: {
-      hue: 0,
+      accentHue: 0,
       secondaryHue: 0,
       neutralHue: 0,
       neutralSat: 0,
-      accentSat: 0,
-      secondarySat: 0,
-      accentL: { dark: 90, light: 20 },
+      accentChroma: 0,
+      secondaryChroma: 0,
+      // Perceived lightness, so these are not the old HSL 90/20. Measured from
+      // what Mono already shipped: #e6e6e6 is L 92.5 and #333333 is L 32.1.
+      accentL: { dark: 92, light: 32 },
     },
   },
-  { id: 'sunrise', seed: { hue: 46, secondaryHue: 14, neutralHue: 36, neutralSat: 14 } },
+  /*
+   * Sunrise declares a lighter accent, and it is the one hue that has a real
+   * reason to. sRGB's yellow gamut peaks at high lightness - a bright gold IS
+   * a light color - so holding hue 90 to the ladder's L 69 returns #bd9600,
+   * a dark mustard, and a theme called Sunrise stops looking like one.
+   *
+   * The point of the ladder is not that no theme may differ. It is that a
+   * difference has to be DECLARED here, where somebody reading the catalog can
+   * see it and argue with it, rather than emerging silently from the color
+   * space as it did under HSL - where every theme differed and none of them
+   * said so. L 82 puts the accent back at #ecbe24, within a shade of the
+   * #f2c636 this theme shipped with.
+   */
+  {
+    id: 'sunrise',
+    seed: { accentHue: 90, secondaryHue: 37, neutralHue: 36, neutralSat: 14, accentL: { dark: 82 } },
+  },
 ];
 
 export const DEFAULT_THEME_ID = THEMES.find((t) => t.isDefault).id;
