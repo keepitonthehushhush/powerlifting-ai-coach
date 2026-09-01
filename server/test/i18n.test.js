@@ -326,3 +326,117 @@ describe('the clearance requirement is not weakened by translation', () => {
     assert.doesNotMatch('please see a doctor before training', CLEARANCE.en);
   });
 });
+
+/**
+ * ── THE SPANISH IS MEXICAN SPANISH, AND THAT IS CHECKED ───────────────────
+ *
+ * "Spanish" is not one target. This app is run from Michigan for lifters in
+ * the United States, where the largest Spanish-speaking population by far is
+ * of Mexican origin. So peninsular vocabulary is a defect in this catalog
+ * rather than a matter of taste, and the catalog says so in its header.
+ *
+ * Two kinds of entry below, and they are not the same kind of wrong.
+ *
+ * ONE IS NOT REGISTER. `coger` is entirely ordinary in Spain — to take, to
+ * catch, to pick up — and RAE marks sense 31 "vulg. ... Am. Cen., Arg., Bol.,
+ * Méx., Par., R. Dom., Ur. y Ven.: realizar el acto sexual". A translator
+ * reaching for the Spain-normal word ships obscenity to this audience. It is
+ * in this list even though it appears nowhere in the catalog today, because
+ * the day it appears is the day nobody is looking.
+ *
+ * THE REST ARE REGISTER, and they are listed as such honestly: `pulsar` a
+ * button, `rellenar` a form, `introducir` data are all correct Spanish. They
+ * simply read as Spain, the way `whilst` and `programme` read as Britain in
+ * the English catalog — which this project already checks, for the same
+ * reason, in americanEnglish.test.js.
+ *
+ * Enumerated one by one rather than expressed as a pattern, for the reason
+ * that file gives: a check with false positives is a check somebody turns
+ * off.
+ */
+describe('the Spanish catalog is Mexican Spanish', () => {
+  const PENINSULAR = [
+    // Dictionary-backed, and the reason this list exists at all.
+    [/\bcoger|\bcoge\b|\bcojo\b/i, 'coger', 'tomar / agarrar — RAE marks this vulgar in Mexico'],
+    // Verb forms and pronouns that exist only in Spain.
+    [/\bvosotros\b|\bvuestr[oa]s?\b/i, 'vosotros/vuestro', 'ustedes / su'],
+    [/\b\w+([áé]is)\b/i, '-áis/-éis verb forms', 'the ustedes form'],
+    // Everyday vocabulary that differs.
+    [/\bordenador/i, 'ordenador', 'computadora'],
+    [/\bm[óo]vil\b/i, 'móvil', 'celular'],
+    [/\bzumo/i, 'zumo', 'jugo'],
+    [/\bfichero/i, 'fichero', 'archivo'],
+    [/\benhorabuena/i, 'enhorabuena', 'felicidades'],
+    [/\bgafas\b/i, 'gafas', 'lentes'],
+    [/\bpiso\b/i, 'piso', 'departamento'],
+    // UI verbs. Correct Spanish; they read as Spain.
+    [/\bpuls(a|e|ar|ando)\b/i, 'pulsar', 'tocar / seleccionar / presionar'],
+    [/\brellen(a|e|ar|ando)\b/i, 'rellenar', 'llenar'],
+    [/\bintroduc(e|es|ir|iendo|zca)\b/i, 'introducir (data entry)', 'ingresar / escribir'],
+  ];
+
+  /**
+   * The values only. Keys are identifiers and share their names with the
+   * English catalog by design; scanning them would report `deleteButton` as
+   * bad Spanish, which is the shape of false positive that gets a check
+   * switched off.
+   */
+  function spanishCopy() {
+    const flat = (o) =>
+      Object.values(o).flatMap((v) => (v && typeof v === 'object' ? flat(v) : [String(v)]));
+    return flat(es).join('\n');
+  }
+
+  test('there is copy to check at all', () => {
+    // A reader that finds nothing passes every assertion below it.
+    const copy = spanishCopy();
+    assert.ok(copy.length > 8000, `only ${copy.length} characters — the reader is broken`);
+    assert.match(copy, /entrenamiento|entrenador/i, 'that is not the Spanish catalog');
+  });
+
+  for (const [pattern, word, instead] of PENINSULAR) {
+    test(`no "${word}"`, () => {
+      const copy = spanishCopy();
+      const hit = pattern.exec(copy);
+      const context = hit
+        ? copy.slice(Math.max(0, hit.index - 70), hit.index + 70).replace(/\s+/g, ' ')
+        : '';
+      assert.equal(hit, null, `"${word}" is peninsular — use ${instead}. …${context}…`);
+    });
+  }
+
+  test('and the check can fail, on the sentences that were actually in here', () => {
+    /*
+     * The property worth proving. Three of these shipped: "Pulsa una para ir
+     * directamente a ella", "Introduce los seis dígitos", "Marcar una rellena
+     * el cuadro". The fourth never did and must never.
+     */
+    const planted = [
+      ['Pulsa una para ir directamente a ella.', 'pulsar'],
+      ['Introduce los seis dígitos que muestra tu aplicación.', 'introducir (data entry)'],
+      ['Marcar una rellena el cuadro de equipamiento.', 'rellenar'],
+      ['Puedes coger la barra con agarre mixto.', 'coger'],
+      ['¿Qué peso movéis normalmente?', '-áis/-éis verb forms'],
+    ];
+    for (const [sentence, expected] of planted) {
+      const caught = PENINSULAR.filter(([p]) => p.test(sentence)).map(([, w]) => w);
+      assert.ok(caught.includes(expected), `"${sentence}" was not caught as ${expected}`);
+    }
+  });
+
+  test('and does not fire on ordinary Mexican Spanish', () => {
+    // The false-positive half. A check that flags correct copy is a check
+    // somebody deletes.
+    const fine = [
+      'Ingresa los seis dígitos que muestra tu aplicación.',
+      'Selecciona una para ir directamente a ella.',
+      'Llena el cuadro de equipamiento con lo que tenga tu gimnasio.',
+      'Un médico o fisioterapeuta te ha dado el alta para entrenar.',
+      'Registra tus series de sentadilla, press de banca y peso muerto.',
+    ];
+    for (const sentence of fine) {
+      const caught = PENINSULAR.filter(([p]) => p.test(sentence)).map(([, w]) => w);
+      assert.deepEqual(caught, [], `flagged correct copy: "${sentence}"`);
+    }
+  });
+});

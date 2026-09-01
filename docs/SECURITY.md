@@ -807,11 +807,29 @@ document look maintained while pointing at the wrong things.
    asked a Spanish speaker to type an English phrase without saying it was a
    literal the server checks.
 
-   This is still not a native-speaker review. An audit for meaning catches a
-   requirement that changed; it does not catch a sentence that is correct and
-   reads like a translation. One open question for whoever does it:
-   `condición médica` is understood everywhere but is an anglicism, and
-   `afección` may read better.
+   **The variety is Mexican Spanish**, decided rather than defaulted: this is
+   run from Michigan for lifters in the United States, where the largest
+   Spanish-speaking population by far is of Mexican origin. Peninsular
+   vocabulary is therefore a defect in this catalog, and
+   `server/test/i18n.test.js` enumerates it.
+
+   That list has one entry that is not a matter of register. `coger` is
+   entirely ordinary in Spain and RAE marks sense 31 `vulg. ... Méx.` —
+   *realizar el acto sexual*. It is in the list although it appears nowhere in
+   the catalog, because the day it appears is the day nobody is looking. The
+   rest — `pulsar` a button, `rellenar` a form, `introducir` data — are
+   correct Spanish that reads as Spain, exactly as the British spellings
+   read as Britain in the English catalog, which this project already checks
+   for the same reason.
+
+   `condición médica` **stays**, decided by the person who speaks it. It is an
+   anglicism and a peninsular style guide would ask for `afección`; it is also
+   what people say in Mexico and in US Spanish. Written down here so it is not
+   "corrected" later by somebody who does not.
+
+   This is still not a native-speaker review. An audit catches a requirement
+   that changed and a word from the wrong country. It does not catch a
+   sentence that is correct and reads like a translation.
 
 ### Closed since the last revision
 

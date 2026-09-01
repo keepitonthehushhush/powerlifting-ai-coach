@@ -1,5 +1,27 @@
 /**
- * Spanish catalog.
+ * Spanish catalog — MEXICAN SPANISH, for a United States audience.
+ *
+ * ── THE VARIETY IS A DECISION, NOT A DEFAULT ──────────────────────────────
+ *
+ * "Spanish" is not one target. This app is run from Michigan for lifters in
+ * the United States, where the largest Spanish-speaking population by far is
+ * of Mexican origin, so the catalog is written in Mexican Spanish and
+ * peninsular vocabulary is a defect here rather than a matter of taste.
+ *
+ * That has one hard rule and a set of softer ones, and they are different in
+ * kind. The hard rule: `coger` is ordinary in Spain and RAE marks sense 31
+ * "vulg. ... Méx." — realizar el acto sexual. Shipping it to this audience is
+ * not a register slip. The softer ones are register: `pulsar` a button,
+ * `rellenar` a form, `introducir` data are all correct Spanish and all read
+ * as Spain to a Mexican reader, where `tocar`/`seleccionar`, `llenar` and
+ * `ingresar` read as home. server/test/i18n.test.js holds the list.
+ *
+ * `condición médica` STAYS. It is an anglicism and `afección` is what a
+ * peninsular style guide would ask for, and it is also what people actually
+ * say in Mexico and in US Spanish. Decided by the person who speaks it, and
+ * written down here so it does not get "corrected" by somebody who does not.
+ *
+ * ── AND THE DOMAIN ────────────────────────────────────────────────────────
  *
  * Translated with the domain in mind rather than word-for-word: powerlifting
  * terminology is largely borrowed in Spanish-speaking gyms ("press banca",
@@ -7,8 +29,10 @@
  * translation would read as textbook Spanish rather than gym Spanish, the gym
  * usage wins.
  *
- * This should be reviewed by a native speaker before it ships to real users —
- * flagged rather than presented as finished.
+ * Audited against the English for meaning on 2026-09-01 and swept for
+ * peninsular vocabulary. Still not a full native-speaker review: an audit
+ * catches a requirement that changed and a word from the wrong country; it
+ * does not catch a sentence that is correct and reads like a translation.
  */
 export const es = {
   common: {
@@ -41,7 +65,7 @@ export const es = {
       'Solo puedes hacerlo mientras tengas la sesión iniciada con un código. Si pierdes tu autenticador, nadie en Coach Diaz puede desactivarlo sin comprobar antes tu identidad.',
     step1: 'Abre tu aplicación de autenticación: Google Authenticator, 1Password, Authy o la que uses.',
     step2: 'Escanea el cuadro de abajo, o escribe el código que aparece debajo si lo estás configurando en el mismo teléfono.',
-    step3: 'Introduce los seis dígitos que muestra tu aplicación.',
+    step3: 'Ingresa los seis dígitos que muestra tu aplicación.',
     orTypeIt: 'O escribe esto en tu aplicación:',
     codeLabel: 'Código de seis dígitos',
     confirm: 'Confirmar',
@@ -56,7 +80,7 @@ export const es = {
     enrolledOtherSessionsEnded:
       'El inicio de sesión en dos pasos está activado. Se ha cerrado tu sesión en todos los demás sitios: es deliberado, para que una sesión antigua no pueda saltarse el nuevo paso.',
     challengeHeading: 'Un paso más',
-    challengeIntro: 'Introduce el código de tu aplicación de autenticación para terminar de iniciar sesión.',
+    challengeIntro: 'Ingresa el código de tu aplicación de autenticación para terminar de iniciar sesión.',
     noFactorFound:
       'Tu cuenta espera un código pero no hay ningún autenticador registrado. Cierra sesión y ponte en contacto para resolverlo.',
     lostDevice:
@@ -370,7 +394,7 @@ export const es = {
     equipment: '¿A qué equipamiento tienes acceso?',
     gyms: '¿Dónde entrenas?',
     gymsHint:
-      'Opcional. Marcar una rellena el cuadro de equipamiento con lo que esa cadena suele tener, para que lo corrijas en vez de escribirlo desde cero. Son puntos de partida, no hechos: ninguna cadena publica lo que tiene cada gimnasio y varían mucho entre ubicaciones.',
+      'Opcional. Marcar una llena el cuadro de equipamiento con lo que esa cadena suele tener, para que lo corrijas en vez de escribirlo desde cero. Son puntos de partida, no hechos: ninguna cadena publica lo que tiene cada gimnasio y varían mucho entre ubicaciones.',
     gymOptions: {
       planet_fitness: 'Planet Fitness',
       anytime_fitness: 'Anytime Fitness',
@@ -420,7 +444,7 @@ export const es = {
     clearanceWarning:
       'El entrenador no te escribirá un programa hasta que un profesional te haya dado el alta. Mientras tanto seguirá respondiendo preguntas.',
     missingTitle: 'Aún no se ha guardado — faltan algunas respuestas',
-    missingHint: 'El entrenador las necesita para escribirte un programa. Pulsa una para ir directamente a ella.',
+    missingHint: 'El entrenador las necesita para escribirte un programa. Selecciona una para ir directamente a ella.',
     submit: 'Guardar y hablar con el entrenador',
     loadFailed: 'No se pudo cargar tu perfil.',
   },
