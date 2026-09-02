@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from './AuthContext.jsx';
 import { applyTheme, currentMode, watchColorScheme } from '../lib/applyTheme.js';
 import { DEFAULT_THEME_ID, isThemeId } from '../lib/themes.js';
+import { readCachedTheme, cacheTheme, forgetCachedTheme } from '../lib/themeCache.js';
 
 /**
  * Which palette the app is wearing.
@@ -19,22 +20,44 @@ import { DEFAULT_THEME_ID, isThemeId } from '../lib/themes.js';
  * told plainly that it did not reach their account, which is the honest split:
  * the thing they can see is true, and the thing they cannot see is reported.
  *
- * ── ON THE FLASH OF THE DEFAULT PALETTE ───────────────────────────────────
+ * ── ON THE FLASH OF THE DEFAULT PALETTE, WHICH IS NOW GONE ────────────────
  *
- * The stored theme lives on the account, so it cannot be known until the
- * session and one request resolve - which means a moment of Miami first. That
- * is a deliberate trade: the alternative discussed was caching the id in
- * localStorage to paint instantly, which is a second copy of a fact that the
- * account already owns, and this project has been bitten by second copies. If
- * the flash is worth removing later, the cache is about ten lines and belongs
- * here, next to this note.
+ * This note used to say the flash was a deliberate trade: the theme lives on
+ * the account, cannot be known until the session and one request resolve, and
+ * caching the id locally would be a second copy of a fact the account owns -
+ * which this project has been bitten by.
+ *
+ * The trade was worth revisiting once it was measured on a phone rather than a
+ * desktop. iOS evicts a home-screen app's web view aggressively, so re-opening
+ * Coach Diaz after a few minutes away is a COLD start every time: the flash was
+ * not a blink at the start of a session, it was most of what opening the app
+ * looked like. It was reported, correctly, as the app having trouble
+ * remembering what theme it was in.
+ *
+ * The objection was right about a second SOURCE and does not apply to what
+ * lib/themeCache.js writes, because nothing is ever written there that the
+ * server did not just say - not the optimistic paint below, and not a theme
+ * whose save failed. The account is still the only place a theme is decided.
+ *
+ * Two things here follow from that and are easy to get wrong:
+ *
+ *   1. The initial state READS the hint, so React's first render agrees with
+ *      what main.jsx already painted. Starting at the default and correcting
+ *      in an effect would reintroduce the flash one layer up.
+ *   2. The loader waits for auth to finish. `user` is null both when somebody
+ *      is signed out and when the session has not been restored yet, and those
+ *      need opposite behavior - the first must clear the palette and the hint,
+ *      the second must leave both alone. Treating them the same is how a fix
+ *      for this flash becomes the flash again.
  */
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const userId = user?.id ?? null;
-  const [themeId, setThemeId] = useState(DEFAULT_THEME_ID);
+  // Lazy, and reading the same hint main.jsx painted from: a first render that
+  // disagreed with the document would repaint the default over it.
+  const [themeId, setThemeId] = useState(() => readCachedTheme()?.themeId ?? DEFAULT_THEME_ID);
   const [status, setStatus] = useState('idle');
 
   // Read by the color-scheme listener, which must repaint the CURRENT theme
@@ -58,37 +81,71 @@ export function ThemeProvider({ children }) {
   // when they sign out, so the next person at this browser does not inherit
   // a palette from an account they are not in.
   useEffect(() => {
+    // Auth has not answered yet. `user` is null here for the same reason it is
+    // null for a signed-out visitor, and the two need opposite handling - so
+    // this waits rather than guessing, and whatever was painted from the hint
+    // stays on screen.
+    if (loading) return undefined;
+
     if (!userId) {
       setThemeId(DEFAULT_THEME_ID);
+      forgetCachedTheme();
       return undefined;
     }
+
+    // A hint left by a different account. Drop it now rather than showing one
+    // athlete's palette for the length of another athlete's request.
+    const cached = readCachedTheme();
+    if (cached && cached.userId !== userId) {
+      forgetCachedTheme();
+      setThemeId(DEFAULT_THEME_ID);
+    }
+
     let cancelled = false;
     (async () => {
       try {
         const { preferences } = await api.getPreferences();
-        // No row is the normal state for somebody who never opened the picker.
-        if (!cancelled && isThemeId(preferences?.theme)) setThemeId(preferences.theme);
+        if (cancelled) return;
+        // No row is the normal state for somebody who never opened the picker,
+        // and the default is the right answer for them - cached as such, so
+        // their next cold start does not re-ask to find out the same thing.
+        const stored = isThemeId(preferences?.theme) ? preferences.theme : DEFAULT_THEME_ID;
+        setThemeId(stored);
+        cacheTheme(userId, stored);
       } catch {
         // A palette is not worth an error message. The default is a working
         // app, and the picker will report a failure if they try to change it.
+        //
+        // The hint is deliberately NOT cleared here. A request that failed
+        // says nothing about what the account holds, and throwing the hint
+        // away on a dropped connection would turn one bad moment on a phone
+        // into a flash on every launch afterwards.
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, loading]);
 
-  const setTheme = useCallback(async (next) => {
-    if (!isThemeId(next)) return;
-    setThemeId(next);
-    setStatus('saving');
-    try {
-      await api.savePreferences({ theme: next });
-      setStatus('saved');
-    } catch {
-      setStatus('failed');
-    }
-  }, []);
+  const setTheme = useCallback(
+    async (next) => {
+      if (!isThemeId(next)) return;
+      setThemeId(next);
+      setStatus('saving');
+      try {
+        await api.savePreferences({ theme: next });
+        setStatus('saved');
+        // Cached only now. The paint above is optimistic and the save is not,
+        // and a hint written before the server agreed could show somebody a
+        // palette their account rejected - which is the second-source-of-truth
+        // failure this cache is built to avoid.
+        if (userId) cacheTheme(userId, next);
+      } catch {
+        setStatus('failed');
+      }
+    },
+    [userId]
+  );
 
   const value = useMemo(() => ({ themeId, setTheme, status }), [themeId, setTheme, status]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
