@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { api, errorText } from '../lib/api.js';
+import { isTransportFailure, recoverExchange } from '../lib/chatRecovery.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
 import { CoachMessage } from '../components/CoachMessage.jsx';
@@ -130,12 +131,46 @@ export function Chat() {
     setBusy(true);
     setError(null);
 
+    /*
+     * Counted from the last state the SERVER confirmed, which is why the
+     * optimistic message is excluded: it exists only in this browser, and
+     * comparing against it would make a recovered exchange look like no
+     * growth at all.
+     */
+    const baselineCount = messages.filter((m) => m !== optimistic).length;
+
     try {
       const result = await api.sendMessage(text, conversationId ?? undefined);
       setConversationId(result.conversationId);
       setMessages(result.messages);
       setSavedProgram(result.savedProgram ?? null);
     } catch (err) {
+      /*
+       * ── THE APP WAS BACKGROUNDED, NOT DISCONNECTED ────────────────────
+       *
+       * Leaving the app while the coach is thinking kills the fetch on this
+       * side; the server carries on and saves BOTH messages before it
+       * replies. So a transport failure is not evidence the message was
+       * lost - it is evidence we stopped listening. Ask the server what
+       * actually happened before telling somebody their message did not
+       * arrive and handing their text back.
+       *
+       * Not a retry. Retrying would send it twice.
+       */
+      if (isTransportFailure(err)) {
+        const outcome = await recoverExchange({
+          fetchConversation: () => api.getConversation(),
+          baselineCount,
+          sentText: text,
+        });
+        if (outcome.recovered) {
+          setConversationId(outcome.conversationId);
+          setMessages(outcome.messages);
+          setError(null);
+          return;
+        }
+      }
+
       setMessages((prev) => prev.filter((m) => m !== optimistic));
       setDraft(text);
       // 429 gets a purpose-written message; the server's own text is used
