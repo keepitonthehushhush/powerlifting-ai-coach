@@ -299,7 +299,7 @@ verification plus a short-lived revocation cache, not dropping the check.
 
 ---
 
-### ADR-5 · Redaction centralised in the logger
+### ADR-5 · Redaction centralized in the logger
 
 **Status:** adopted · **Code:** `server/src/lib/logger.js`
 

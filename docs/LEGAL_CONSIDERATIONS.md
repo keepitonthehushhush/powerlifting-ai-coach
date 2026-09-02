@@ -124,7 +124,7 @@ constraint rather than a stylistic preference.
 | Data minimization | Only fields the coach actually uses |
 | Access control | RLS, verified against 11 attacks (`SECURITY.md`) |
 | Not sent to third parties | Health data goes to Anthropic for coaching only; nothing else |
-| Not in logs or error tracking | Centralised redaction (`lib/logger.js`, `lib/monitoring.js`) |
+| Not in logs or error tracking | Centralized redaction (`lib/logger.js`, `lib/monitoring.js`) |
 | Right to access | `GET /api/account/export` |
 | Right to delete | `DELETE /api/account`, cascade purge verified |
 | No sale of data | No mechanism exists |

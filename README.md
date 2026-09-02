@@ -8,7 +8,7 @@ next block based on real reported performance rather than a static template.
 > **Coach is not a medical professional.** Users who report an injury, pain, or
 > a medical condition are told to get clearance from a doctor or physical
 > therapist, and the system will not write them a program until they confirm it.
-> That gate is enforced in code, not left to the model's judgement.
+> That gate is enforced in code, not left to the model's judgment.
 
 **Status:** Deployed and running at
 [coachdiaz.app](https://coachdiaz.app).
@@ -69,7 +69,7 @@ time could not have caught them.
 6. **A program you can hold.** The coach's program is stored as a record and
    rendered at `/program` as a table built to be printed. A phone in a chalky
    gym is a worse reference than paper.
-7. **Fuelling.** Published population ranges — protein, carbohydrate, fat, rate
+7. **Fueling.** Published population ranges — protein, carbohydrate, fat, rate
    of weight loss — applied to bodyweight as arithmetic, each with its source.
    Never a calorie target, a meal plan, or a macro split prescribed as an
    intervention: that line is the one the profession draws between general
@@ -196,12 +196,12 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 |---|---|
 | Anthropic API key | Server-side only. Never a `VITE_` variable, so it is not in the browser build. `config.js` refuses to boot if a secret carries a browser-visible prefix, and `npm run verify:bundle` greps the actual compiled output before deploy. |
 | Cross-user access | RLS on all seven tables, 21 per-command policies, every one scoped `to authenticated`. Verified by `supabase/tests/rls_isolation_test.sql` against 22 distinct attacks — run it with `npm run test:db`. |
-| Health data | Injuries, medical conditions and lifestyle factors — sleep, alcohol, nicotine, notes on eating — are sensitive, and Washington's MHMDA treats all of them as consumer health data. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralised in `server/src/lib/logger.js` and keyed on field name, so it cannot be skipped by forgetting at a call site. Storing any of it requires an active MHMDA consent, enforced by a database trigger rather than by application code. |
+| Health data | Injuries, medical conditions and lifestyle factors — sleep, alcohol, nicotine, notes on eating — are sensitive, and Washington's MHMDA treats all of them as consumer health data. Sent to the Anthropic API because that is the product; never written to application logs or error trackers. Redaction is centralized in `server/src/lib/logger.js` and keyed on field name, so it cannot be skipped by forgetting at a call site. Storing any of it requires an active MHMDA consent, enforced by a database trigger rather than by application code. |
 | Two-step sign-in | Optional TOTP, free on Supabase. Turning it on is the athlete's choice; once on, it is enforced in three places and only the last one holds if the code is wrong: the browser renders a code screen (`ProtectedRoute`), the API refuses an `aal1` token from an account with a verified factor (`server/src/lib/assuranceLevel.js`), and a **restrictive** RLS policy on every table holding personal or health data requires `aal2` (migration `0050`). The policy is opt-in by design — it demands `aal2` only from accounts that have verified a factor, so applying it could not lock out anybody who had not enrolled. Losing an authenticator means losing access: Supabase requires an `aal2` session to unenroll and there are no built-in recovery codes, so the way back in is `scripts/mfa-recovery.mjs`, which needs the service-role key, refuses to act without `--confirm`, and writes an `audit_events` row with `actor = 'operator'`. |
 | Browser crash reports | When the app crashes in someone's browser it reports the failure to `error_events`, and reports a coordinate rather than a description: the error's constructor name, the top stack frame as `bundle.js:line:column`, how deep the stack was, and which build. The error MESSAGE is deliberately never sent — a thrown message is whatever the throwing code interpolated, and this app holds `health_restrictions`. Paths are normalized before they are sent, so an id in a URL becomes `/_id`, and query strings are dropped entirely. This is enforced in three places and only the first is a promise: the browser builds four keys (`web/src/lib/crashReport.js`), the route refuses anything else by schema (`server/src/routes/clientErrors.js`), and the database refuses anything else by CHECK constraint, including a `topFrame` that is not a coordinate (migration `0048`). A modified client cannot put a sentence in the error table. The cost is that diagnosis needs a source map instead of a sentence, which is the trade this project makes every time. |
 | Saying so accurately | The three consent documents are held to the code by `server/test/policyDisclosure.test.js`, not by proofreading: a profile column that reaches the model without a mapped disclosure fails the build and the failure names the column. Written after an audit found four places where the code had moved and a paragraph had not — see ADR-11. |
 | Account deletion | `ON DELETE CASCADE` from `auth.users` throughout. Deleting an account purges every associated row — verified, not assumed. |
-| The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organising question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
+| The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organizing question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
 | Unauthenticated access | The `anon` role holds no table grants and matches no policy — refused before RLS is even consulted. |
 | When it breaks | `web/public/maintenance.html` is a standalone page with no imports, no build step and no external requests, so it survives a broken bundle, a failed deploy or a database refusing connections. It polls `/api/health` and says when the site is back. `ErrorBoundary.jsx` catches a render crash and links to it. Switching it on is one rewrite in `vercel.json` — see [`docs/RUNBOOK.md`](docs/RUNBOOK.md). |
 | Copyright | No video is hosted, embedded or mirrored. `exercise_library.video_url` links out to the rights holder. |
@@ -265,11 +265,11 @@ psql "$DATABASE_URL" -f supabase/tests/rls_isolation_test.sql
 `npm test` takes no environment variables. That is the assertion: nothing under
 test should need a credential in order to be constructed.
 
-The unit tests deliberately cover the parts of coaching behaviour that are
+The unit tests deliberately cover the parts of coaching behavior that are
 deterministic — the clearance gate, intake completeness, prompt fencing, the
 video guard — because those are where a silent regression does real harm.
 
-Model behaviour itself is adversarial, non-deterministic, and tested
+Model behavior itself is adversarial, non-deterministic, and tested
 separately:
 
 ```bash

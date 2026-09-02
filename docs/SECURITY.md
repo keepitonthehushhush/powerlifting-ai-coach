@@ -263,7 +263,7 @@ the shoulder.
   bodies are never logged. `profile.js` logs which fields changed, never their
   values.
 
-Redaction is centralised rather than applied per call site, because a rule that
+Redaction is centralized rather than applied per call site, because a rule that
 depends on every future contributor remembering which fields are sensitive
 fails the first time someone is in a hurry. Here, leaking would require
 bypassing the logger entirely.

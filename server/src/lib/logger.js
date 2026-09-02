@@ -9,7 +9,7 @@
  * The design choice worth defending: redaction happens HERE, in the logger,
  * not at each call site. Relying on every future call site to remember which
  * fields are sensitive is a policy that fails the first time someone is in a
- * hurry. Centralising it means the unsafe thing is hard to do by accident -
+ * hurry. Centralizing it means the unsafe thing is hard to do by accident -
  * you would have to bypass the logger entirely.
  *
  * SENSITIVE_KEYS is deliberately broader than the current schema, so a field

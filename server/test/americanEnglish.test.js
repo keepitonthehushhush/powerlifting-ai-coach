@@ -110,6 +110,15 @@ const BRITISH = [
   [/moralis(e|ed|ing)/i, 'moralise', 'moralize'],
   [/specialis(e|ed|ing)/i, 'specialise', 'specialize'],
   [/\banalys(e|ed|ing)\b/i, 'analyse', 'analyze'],
+  /*
+   * `centralis` joined the list when a sweep for it found three occurrences
+   * that this suite had been passing over: an ADR heading, a paragraph in
+   * SECURITY.md, and the README's own health-data row. Same shape as the
+   * others - the British half sits in the middle of the word - and the same
+   * lesson as the surfaces below it: a word list is only as good as its last
+   * addition, so it gets one every time a sweep finds something.
+   */
+  [/centralis(e|ed|ing|ation)/i, 'centralise', 'centralize'],
 ];
 
 /** Everything between quotes in the locale file: the values, and nothing else. */
@@ -366,8 +375,31 @@ function matchValues(source, pattern) {
   return out;
 }
 
+/**
+ * The README, which is the first thing anybody reads.
+ *
+ * ── WHY IT WAS NOT ALREADY HERE ───────────────────────────────────────────
+ *
+ * The docs reader walks `docs/`. The README is not in `docs/`, so the single
+ * most-read document in this repository was the one document nobody checked -
+ * and it held `centralised` and `organising` while this suite passed. That is
+ * the same defect this file keeps finding in itself: a check that stops one
+ * surface short of where the words are.
+ *
+ * Code spans are dropped for the reason every other reader here drops them. A
+ * check satisfied by renaming an identifier is not a check on prose.
+ */
+function readmeCopy() {
+  const raw = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  return raw
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/)
+    .filter((_, index) => index % 2 === 0)
+    .join(' ');
+}
+
 const SURFACES = [
   ['the UI copy catalogue', localeCopy],
+  ['the README', readmeCopy],
   ['the coach prompt', promptCopy],
   ['the page text', pageCopy],
   ['the documents', docsCopy],
