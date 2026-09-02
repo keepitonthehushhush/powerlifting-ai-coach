@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { costInMicrodollars } from '../lib/pricing.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
+import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE } from '../lib/ageGate.js';
@@ -362,7 +363,7 @@ chatRouter.post('/', async (req, res, next) => {
     // anything else touches the text. The athlete never sees the block, and it
     // is stripped whether or not it parsed - a visible chunk of JSON is a
     // worse failure than a missing record.
-    const { reply: extracted, program, problem } = extractProgramBlock(reply.text);
+    const { reply: extracted, program: emitted, problem } = extractProgramBlock(reply.text);
 
     /*
      * Run over the ALREADY-STRIPPED prose, not the raw reply. Order matters
@@ -400,7 +401,73 @@ chatRouter.post('/', async (req, res, next) => {
      * Same reasoning as computing the gate rather than asking the model to
      * apply it - if it matters, it does not live in the prompt alone.
      */
-    const storable = program && !needsMedicalClearance(context.profile) ? program : null;
+    const gated = needsMedicalClearance(context.profile);
+
+    /**
+     * ── ONE FOLLOW-UP CALL WHEN A SESSION ARRIVES WITH NO BLOCK ───────────
+     *
+     * An athlete was handed a full week of training and the Program page did
+     * not change. The prompt has always asked for the block; asking was not
+     * enough, for the same reason asking was not enough for the clearance
+     * gate. A model that has just written four hundred words of coaching has
+     * spent its attention on the coaching, and the machine-readable copy is
+     * the easiest thing in the reply to drop.
+     *
+     * So when the prose plainly prescribes training and no usable block came
+     * with it, the block is asked for once more, on its own. See
+     * lib/programRepair.js for why this is a transcription rather than a
+     * re-plan, and why it never runs twice.
+     *
+     * THE THREE CONDITIONS ARE EACH LOAD-BEARING:
+     *
+     *   !program              - a block that already parsed is never second-
+     *                           guessed; the repair exists for its absence.
+     *   !gated                - an athlete awaiting medical clearance gets no
+     *                           stored program, so there is nothing to repair
+     *                           and no reason to spend a call finding out.
+     *   prescribesTraining    - most turns are conversation. Repairing those
+     *                           would double the cost of the product to
+     *                           produce NONE.
+     *
+     * And the deadline, because the repair must never cost somebody the reply
+     * it is bookkeeping for.
+     */
+    let repairOutcome = null;
+    let repairUsage = null;
+    let repairModel = null;
+    let program = emitted;
+
+    const repairable = !emitted && !gated && prescribesTraining(prose);
+    const roomForRepair = Date.now() - startedAt < config.chat.programRepairDeadlineMs;
+
+    if (repairable && roomForRepair) {
+      const repair = await repairProgramBlock({
+        callModel: createCoachReply,
+        system,
+        messages: apiMessages,
+        reply: prose,
+      });
+      program = repair.program;
+      repairOutcome = repair.outcome;
+      repairUsage = repair.usage;
+      repairModel = repair.model;
+    } else if (repairable) {
+      repairOutcome = 'skipped_slow';
+      logger.warn('program.repair_skipped', {
+        userId: req.user.id,
+        elapsedMs: Date.now() - startedAt,
+      });
+    }
+
+    /**
+     * THE GATE IS RE-CHECKED HERE, IN CODE.
+     *
+     * (The repair above cannot reach a gated athlete - it does not run for
+     * one - but this is still computed from `gated` rather than from that
+     * fact, because a guard that depends on another guard having been correct
+     * is not a second line of defense.)
+     */
+    const storable = program && !gated ? program : null;
     if (program && !storable) {
       logger.warn('program.refused_while_gated', { userId: req.user.id });
     }
@@ -426,7 +493,18 @@ chatRouter.post('/', async (req, res, next) => {
      * A single word in the completion line separates them. It is not the fix;
      * it is the thing that says which fix to build.
      */
-    const programOutcome = program ? (storable ? 'storable' : 'gated') : problem ? 'unusable' : 'absent';
+    const emittedOutcome = emitted ? (storable ? 'storable' : 'gated') : problem ? 'unusable' : 'absent';
+    /*
+     * The repair's own result replaces the emitted one when it ran, so the
+     * completion line still carries exactly one word for what happened to the
+     * program - and 'absent' now means what it says: no block, and no session
+     * that wanted one. Every other path is named.
+     */
+    const programOutcome = repairOutcome
+      ? repairOutcome === 'repaired'
+        ? 'repaired'
+        : `repair_${repairOutcome}`
+      : emittedOutcome;
 
     /**
      * ── THE COACH CANNOT KNOW WHETHER THE PROGRAM WAS SAVED ───────────────
@@ -467,7 +545,18 @@ chatRouter.post('/', async (req, res, next) => {
       .eq('id', conversation.id);
     if (saveError) throw codedError('reply_not_saved', 'Reply generated but could not be saved.');
 
-    const costMicrodollars = costInMicrodollars(reply.usage, reply.model);
+    /*
+     * Both calls, when there were two. The repair is cheap - the system prompt
+     * is unchanged, so it reads the cache rather than writing it, and the
+     * output is one block of JSON - but "cheap" is a claim, and a claim about
+     * spending belongs in the number rather than in a comment. Folding it in
+     * here means the usage row, the completion line and the monthly total all
+     * say the same thing.
+     */
+    const replyCost = costInMicrodollars(reply.usage, reply.model);
+    const repairCost = repairUsage ? costInMicrodollars(repairUsage, repairModel ?? reply.model) : null;
+    const costMicrodollars =
+      replyCost === null && repairCost === null ? null : (replyCost ?? 0) + (repairCost ?? 0);
 
     // Token counts and ids only. The message bodies are not logged: they
     // routinely contain the athlete's injury history.
@@ -508,6 +597,7 @@ chatRouter.post('/', async (req, res, next) => {
       historyReplayed: window.length,
       durationMs: Date.now() - startedAt,
       programOutcome,
+      repairCostMicrodollars: repairCost,
       historyDropped: Math.max(0, history.length - window.length),
       cachedBlockChars: system[0]?.text?.length ?? 0,
       athleteStateChars: system[1]?.text?.length ?? 0,

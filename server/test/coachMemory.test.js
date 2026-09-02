@@ -27,11 +27,20 @@ describe('THE PROGRAM BLOCK OUTCOME IS RECORDED, INCLUDING WHEN THERE IS NONE', 
     // Three explanations fit an empty table and they need completely
     // different fixes: no block was emitted, one was emitted and failed
     // validation, or the write was refused. Only the third left any trace.
-    assert.match(chat, /const programOutcome = program \?/);
+    //
+    // This used to read the `programOutcome` assignment directly. It now reads
+    // the outcome the EMITTED block produced, because a fifth answer arrived -
+    // the repair - and it overrides the other four when it runs. The four are
+    // still each distinguishable, which is the property this test was written
+    // to hold; see programRepair.test.js for the repair's own answers.
+    assert.match(chat, /const emittedOutcome = emitted \?/);
     for (const outcome of ['storable', 'gated', 'unusable', 'absent']) {
       assert.match(chat, new RegExp(`'${outcome}'`), `${outcome} is not one of the answers`);
     }
     assert.match(chat, /\n\s*programOutcome,/);
+    // And the repair cannot quietly swallow one of them: when it did not run,
+    // the emitted answer is what gets logged.
+    assert.match(chat, /: emittedOutcome;/);
   });
 
   test('"no block at all" is distinguished from "a block that would not parse"', () => {

@@ -394,6 +394,43 @@ gate is re-checked in code before any program is stored — a stored program
 differs in kind from a bad sentence, being a document the athlete can open
 tomorrow and follow.
 
+**Amended 2026-09-02 — there is now a second call, on one path.** The decision
+above said "no second extraction call" and gave a good reason. The evidence
+overturned half of it. `workout_programs` held one row for the life of the
+product while the coach had plainly been writing programs in prose, and an
+athlete reported receiving a week of training that never reached the Program
+page. The route now records which of four things happened to the block, and
+when a reply prescribes training but carries no usable block, it asks once more
+for the block alone.
+
+Three things about that are deliberate. It runs on the failure path only, so
+the ordinary reply still costs one request. It transcribes rather than re-plans
+— it is handed the session the coach already wrote and forbidden to change a
+weight or a rep — so the athlete's reply and the stored record cannot disagree.
+And it never runs twice: a repair that can fail repeatedly is a latency problem
+wearing a correctness costume, and the browser gives up at 150 seconds. It is
+also skipped outright when the first call already spent most of that budget,
+because a program record is not worth the reply it would cost.
+
+**What is unchanged is the part ADR-9 was really about.** The coach still calls
+nothing. The repair is another text completion with the same system prompt; it
+reads no data the first call could not read and takes no action in the world.
+The blast radius of a successful injection is what it was.
+
+**Why this was not solved by asking harder.** The prompt has always asked for
+the block, and it now names the cases that count — a revised week, a single
+session, a swapped movement, a deload — because "a program" reads to a model as
+a twelve-week plan rather than as the session it just wrote. That instruction
+is the first line of defense and it is the same shape as every other one in
+this codebase: if it matters, it does not live in the prompt alone.
+
+**One coupling worth naming.** The app keeps one active program and a new block
+supersedes the last, so a block describing only the day that changed does not
+update the athlete's program — it deletes the rest of it. The prompt therefore
+requires the block to carry the whole program as it now stands, including the
+days the coach did not touch, and the athlete's current program is in the
+prompt so that instruction is one the coach can actually carry out.
+
 ### ADR-10 · The safety eval reports a ratio, not a boolean
 
 **Context.** One adversarial scenario passed a run and failed the next two with

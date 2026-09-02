@@ -169,8 +169,14 @@ describe('a gated athlete cannot end up with a stored program', () => {
     // document the athlete can open tomorrow and follow, long after the
     // message around it has scrolled away. The instruction is the first line
     // of defense; this is the second.
-    assert.match(chatRoute, /needsMedicalClearance\(context\.profile\)/);
-    assert.match(chatRoute, /const storable = program && !needsMedicalClearance/);
+    assert.match(chatRoute, /const gated = needsMedicalClearance\(context\.profile\);/);
+    assert.match(chatRoute, /const storable = program && !gated \? program : null;/);
+    // `gated` is computed from the profile and nothing else. The program-block
+    // repair also refuses to run for a gated athlete, and this line must not
+    // start depending on that: a second line of defense that assumes the first
+    // one worked is one line of defense with extra steps.
+    const gate = chatRoute.slice(chatRoute.indexOf('const gated ='), chatRoute.indexOf('const storable ='));
+    assert.doesNotMatch(gate, /gated =[^;]*repair/i);
     // And what actually gets written is the re-checked value, not the raw one.
     const insert = chatRoute.slice(chatRoute.indexOf("from('workout_programs')"));
     assert.match(insert, /program_data: storable/);
@@ -314,3 +320,4 @@ describe('A REPLY THAT WAS CUT OFF INSIDE THE PROGRAM BLOCK', () => {
     assert.equal(reply, 'Here is week 20.\n\nLog it as you go.');
   });
 });
+

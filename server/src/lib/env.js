@@ -306,6 +306,18 @@ export function buildConfig(env) {
       // window on subsequent turns and paid for each time - it just should not
       // be tight enough to catch ordinary use.
       maxMessageLength: Number(optional(env, 'CHAT_MAX_MESSAGE_LENGTH', '12000')),
+      /*
+       * How late into a request the program-block repair call may still be
+       * started. The browser gives up at 150 seconds, and the repair is a
+       * second full model call - so on a turn that has already spent most of
+       * that budget, attempting it trades a reply the athlete would have
+       * received for a program record they will never see, because the
+       * connection drops before either arrives.
+       *
+       * The reply is the thing that must survive. The repair is worth doing
+       * only when there is comfortable room for it.
+       */
+      programRepairDeadlineMs: Number(optional(env, 'CHAT_PROGRAM_REPAIR_DEADLINE_MS', '75000')),
     },
 
     stripe,
