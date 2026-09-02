@@ -8,7 +8,7 @@ import {
   PROGRAM_TAG,
   PHASES,
 } from '../src/lib/programBlock.js';
-import { COACH_ROLE } from '../src/prompts/systemPrompt.js';
+import { COACH_ROLE, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
 
 const chatRoute = readSource(new URL('../src/routes/chat.js', import.meta.url));
 const migration = readSource(new URL('../../supabase/migrations/0001_initial_schema.sql', import.meta.url));
@@ -321,3 +321,92 @@ describe('A REPLY THAT WAS CUT OFF INSIDE THE PROGRAM BLOCK', () => {
   });
 });
 
+/**
+ * ── AN UPDATE IS A PROGRAM TOO ────────────────────────────────────────────
+ *
+ * "It also didn't update the program. Make sure it updates program whenever
+ * it suggests an update or new workout."
+ *
+ * The rule was already there - emit a block when the reply contains a
+ * program - and a model reading "a program" thinks of a twelve-week plan, not
+ * of the single session it just wrote or the one movement it just swapped.
+ * The fix is to say which cases count, by name, for the same reason the lazy
+ * phrases are banned by name rather than by principle.
+ */
+describe('the coach is told to record every change, not only the first program', () => {
+  const prompt = buildSystemPrompt({ profile: { units: 'lb' } });
+
+  test('the cases that count are listed, not left to judgment', () => {
+    assert.match(prompt, phrase('EVERY REPLY THAT PRESCRIBES TRAINING CARRIES A BLOCK'));
+    for (const change of [
+      'next week, when you move the weights up',
+      'a week you have revised',
+      'a single session, written on its own',
+      'a deload',
+    ]) {
+      assert.ok(prompt.includes(change), `"${change}" is not one of the named cases`);
+    }
+    // The test the coach can apply to its own reply without judgment.
+    assert.match(prompt, phrase('If your reply contains a table of movements, sets and reps, it contains a program'));
+  });
+
+  test('it says why, in terms of what the athlete loses', () => {
+    // A rule with no reason is one a model talks itself out of on the turn
+    // where following it feels redundant.
+    assert.match(prompt, phrase('the Program page is the only thing in this app that remembers'));
+    assert.match(prompt, phrase('exists for one message and then never happened'));
+  });
+});
+
+describe('a block replaces the active program, so it must be the whole program', () => {
+  test('the route supersedes rather than merges - which is what makes this matter', () => {
+    /*
+     * This is the mechanical fact the prompt rule depends on. If the route
+     * ever started merging, the instruction below would be wrong rather than
+     * merely unnecessary, so the two are asserted together.
+     */
+    const save = chatRoute.slice(chatRoute.indexOf("from('workout_programs').update"));
+    assert.match(save, /\.update\(\{ is_active: false \}\)\.eq\('is_active', true\)/);
+    assert.match(save.slice(0, 600), /\.insert\(\{/);
+  });
+
+  test('the prompt says the block carries the unchanged days too', () => {
+    const prompt = buildSystemPrompt({ profile: { units: 'lb' } });
+    assert.match(prompt, phrase('THE BLOCK IS THE WHOLE PROGRAM AS IT NOW STANDS'));
+    assert.match(prompt, phrase('A new block replaces the one before it'));
+    assert.match(prompt, phrase('the unchanged ones written out in full alongside the changed one'));
+    assert.match(prompt, phrase('the rest of their week disappears from the app'));
+  });
+
+  test('and it reconciles that with the rule against padding', () => {
+    /*
+     * "Only what you actually prescribed. Do not pad the block with days you
+     * did not write" and "restate every day of the week" read as a
+     * contradiction, and a contradiction in a prompt is resolved by the model
+     * rather than by us. So the prompt resolves it.
+     */
+    const prompt = buildSystemPrompt({ profile: { units: 'lb' } });
+    assert.match(prompt, phrase('This is not the padding the rule above forbids'));
+    assert.match(prompt, phrase('That rule is about inventing training you never prescribed'));
+    // And the athlete's current program is actually in the prompt, so the
+    // instruction is one the coach can carry out.
+    const withProgram = buildSystemPrompt({
+      profile: { units: 'lb' },
+      activeProgram: {
+        program_data: {
+          phase: 'novice',
+          week: 2,
+          summary: 'Week two.',
+          days: [{ name: 'Day A', exercises: [{ lift: 'squat', sets: 3, reps: 5, weight: 225, notes: null }] }],
+        },
+      },
+    });
+    assert.match(withProgram, /"name": "Day A"/);
+  });
+
+  test('the week number moves with the athlete', () => {
+    const prompt = buildSystemPrompt({ profile: { units: 'lb' } });
+    assert.match(prompt, phrase('Advance the week number when you have moved them forward'));
+    assert.match(prompt, phrase('leave it where it is when you are revising the week they are in'));
+  });
+});

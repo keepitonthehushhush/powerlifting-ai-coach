@@ -153,3 +153,74 @@ describe('the eval can catch the coach being lazy', () => {
     }
   });
 });
+
+/**
+ * ── THE WARM-UP IS THE ONE OMISSION THAT CAN HURT SOMEBODY ────────────────
+ *
+ * "It forgot to add my warm up exercises or stretches. We need to make sure
+ * it doesn't forget that so athletes don't get hurt."
+ *
+ * Every other lazy phrase in this file costs the athlete time. This one costs
+ * them a first set at their working weight, cold, on a load they have never
+ * approached without ramping - because a novice handed a table that starts at
+ * the working weight loads the bar to the working weight. That is what they
+ * were told to do.
+ */
+describe('every session includes a warm-up, written out', () => {
+  test('the rule is stated with no exception and no soft wording', () => {
+    assert.match(prompt, phrase('THE WARM-UP IS NOT OPTIONAL AND IS NOT AN AFTERTHOUGHT'));
+    assert.match(prompt, phrase('Every session you write includes a warm-up'));
+    assert.match(prompt, phrase('This is the one part of a session where leaving it out can hurt somebody'));
+  });
+
+  test('both parts are named, so "warm up first" cannot satisfy it', () => {
+    // A general warm-up alone leaves the bar jumping from nothing to the
+    // working weight. The ramp is the part that matters for a heavy single.
+    assert.match(prompt, phrase('A warm-up has two parts and both are named every time'));
+    assert.match(prompt, phrase('GENERAL'));
+    assert.match(prompt, phrase('SPECIFIC. Ramp sets on the first main lift'));
+    assert.match(prompt, phrase('Spell the ramp out'));
+  });
+
+  test('"do your usual" is refused by name, like every other lazy phrase', () => {
+    assert.ok(prompt.includes('your normal warm-up'));
+    assert.match(prompt, phrase('not "do your usual"'));
+  });
+
+  test('the layout gives the warm-up its own place, before the table', () => {
+    const start = prompt.indexOf('# HOW TO WRITE A SESSION');
+    const section = prompt.slice(start, prompt.indexOf('# RECORDING A PROGRAM', start));
+    assert.ok(section.indexOf('**Warm-up**') > -1, 'the layout has no warm-up heading');
+    assert.ok(
+      section.indexOf('**Warm-up**') < section.indexOf('| Movement | Sets | Reps | Weight |'),
+      'the warm-up is written after the working sets, which is not how it is done'
+    );
+  });
+
+  test('it is the LAST thing cut when the athlete is short on time', () => {
+    // The natural thing to cut is the part that is not "the workout". This
+    // says otherwise, and says what to cut instead - a rule with no
+    // alternative is a rule that gets broken under pressure.
+    assert.match(prompt, phrase('the warm-up is the last thing you cut, not the first'));
+    assert.match(prompt, phrase('Cut accessories'));
+  });
+
+  test('and it makes no clinical claim while doing it', () => {
+    /*
+     * The reason for this section is injury, and that is exactly why it must
+     * not SAY injury prevention: Coach Diaz is not a medical professional and
+     * "this prevents injury" is a clinical claim. The same line the stretching
+     * rule has always drawn.
+     */
+    assert.match(prompt, phrase('you do not present any of it as injury prevention in a medical sense'));
+    assert.match(prompt, phrase('claiming it prevents injury is a clinical claim you are not in a position to make'));
+    assert.match(prompt, phrase('You do not prescribe static stretching before heavy work'));
+  });
+
+  test('mobility work is targeted at what the athlete said, not attached to everything', () => {
+    // A generic stretching routine on every session is a list nobody does,
+    // and it buries the two drills that would have helped.
+    assert.match(prompt, phrase('Do not attach a generic stretching routine to every session'));
+    assert.match(prompt, phrase('a list nobody does is worse than a short one they do'));
+  });
+});

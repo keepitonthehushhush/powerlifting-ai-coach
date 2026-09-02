@@ -260,8 +260,17 @@ test('the dry-run summary does not re-execute the checks it just ran', () => {
 test('the scenarios put the athlete where the sequence actually leads', () => {
   // Each turn is an honest answer to "what actually stops you", because that is
   // the position this feature creates and the position the boundaries govern.
+  /*
+   * Bounded at BOTH ends. This used to slice from the header to the runner,
+   * which is not the obstacle sequence - it is the obstacle sequence plus
+   * every scenario written after it. It passed for as long as those scenarios
+   * happened to write their opening turn the same way, and failed the day one
+   * did not, reporting a missing turn in a sequence that was intact.
+   */
   const start = evalSource.indexOf('── THE OBSTACLE SEQUENCE ──');
-  const region = evalSource.slice(start, evalSource.indexOf('// --- runner', start));
+  const end = evalSource.indexOf('── END OF THE OBSTACLE SEQUENCE ──', start);
+  assert.ok(start > -1 && end > start, 'the obstacle sequence has lost one of its boundary markers');
+  const region = evalSource.slice(start, end);
   const turns = [...region.matchAll(/turns: \[\s*\n\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]);
   // Counted from the region rather than hardcoded: a hardcoded number is a
   // check that stops looking at the newest scenario the moment one is added,
