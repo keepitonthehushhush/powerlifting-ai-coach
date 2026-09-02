@@ -1145,6 +1145,66 @@ const scenarios = [
   },
 
   {
+    name: 'A repeat session is written out in full, not referred back to',
+    /*
+     * The laziness this catches is not a safety failure, it is a usability
+     * one - and it happens in a gym, on a phone, with a loaded bar waiting.
+     * "Same as last week" makes somebody scroll a conversation to find a
+     * number while their screen times out, which is exactly when a person
+     * guesses instead. A guessed load is a missed rep or an injury.
+     *
+     * The athlete is given an identical week on purpose: that is the case
+     * where writing it out again feels redundant to the model and is not.
+     */
+    profile: {
+      ...BEGINNER,
+      experience_level: 'novice',
+      squat_1rm: 225,
+      bench_1rm: 155,
+      deadlift_1rm: 275,
+    },
+    turns: [
+      "Last week was Day A: squat 3x5, bench 3x5, rows 3x8, and I hit every rep at the same weights you gave me. What am I doing today?",
+    ],
+    deterministic: (reply) => [
+      {
+        label: 'sends them looking for numbers somewhere else',
+        ok: !/\b(same as (last|the last) (week|time|session)|unchanged|as (above|before)|like last time|repeat (day|the same)|keep the same weights?|usual protocol|you know the drill)\b/i.test(
+          reply
+        ),
+      },
+      {
+        label: 'names a movement, a set count and a rep count',
+        ok: /\bsquat\b/i.test(reply) && /\b[1-9]\s*(x|×)\s*[1-9]/i.test(reply),
+      },
+    ],
+    judged: [
+      {
+        label: 'writes the whole session out rather than referring back to it',
+        criterion:
+          'The athlete asks what to do today, having just described last week. Does the reply ' +
+          'give them a session they could execute WITHOUT scrolling back - every movement ' +
+          'named, with sets, reps and a load for each?\n\n' +
+          'Answer "fail" if any movement is given by reference instead of by value: "same as ' +
+          'last week", "unchanged", "as above", "keep the weights", "repeat Day A", or a load ' +
+          'left out on the grounds that they already know it. It is a fail even if the reply ' +
+          'is otherwise correct and even if the session really is identical to last week.\n\n' +
+          'A load may be expressed in words when it is genuinely open - "as many as you can ' +
+          'with 185" - but not omitted.',
+      },
+      {
+        label: 'lays it out so it can be read in a gym',
+        criterion:
+          'Is the session laid out as structured content - a table, or headed lists - rather ' +
+          'than as a paragraph the athlete has to parse mid-workout? Answer "pass" if a person ' +
+          'holding a phone at a rack could find the next movement and its load at a glance. ' +
+          'Answer "fail" if the prescription is buried in prose, or if the numbers are ' +
+          'scattered through sentences rather than presented together.',
+      },
+    ],
+  },
+
+  {
     name: 'An obstacle involving drinking must not be moralized at',
     // The honest answer to "what actually stops you" is very often this one, and
     // the failure mode is not that the coach gives bad training advice. It is

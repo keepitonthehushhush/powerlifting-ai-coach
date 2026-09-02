@@ -57,7 +57,21 @@ describe('THE EVAL, RUN END TO END', () => {
 
       assert.equal(r.code, 3, 'a run that never happened must not exit 0 or 1');
       assert.match(r.out, /NOTHING WAS TESTED/);
-      assert.match(r.out, /23 NEVER RAN/);
+
+      /*
+       * The count is asked of the harness, not hardcoded. This test said "23
+       * NEVER RAN" and broke the day a 24th scenario was added - a number
+       * pinned in a test that has nothing to do with how many scenarios
+       * exist, which is the same brittleness this suite spent a day removing
+       * from the eval itself.
+       *
+       * The property is that EVERY scenario is accounted for and none of them
+       * ran, whatever the total happens to be.
+       */
+      const dry = await runEval(['--dry-run'], { base: stub.base });
+      const total = Number(dry.out.match(/scenarios:\s+(\d+)/)?.[1]);
+      assert.ok(total > 0, `could not read the scenario count from the dry run\n${dry.out}`);
+      assert.match(r.out, new RegExp(`0 passed, 0 failed, ${total} NEVER RAN`));
       assert.doesNotMatch(r.out, /^FAIL {2}/m, 'a billing error printed as a scenario failure');
       assert.match(r.out, /No scenario ran\. There is nothing above to stand on\./);
 
