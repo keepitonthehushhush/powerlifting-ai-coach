@@ -150,3 +150,89 @@ export function warmupPlan({ prescriptions = {}, units = 'lb', smallestPlatePair
       'Static stretching belongs here, after training, or in its own session - not before. It improves range of motion just as well afterwards and does not cost you force on the bar.',
   };
 }
+
+/**
+ * The warm-up for a STORED program, day by day.
+ *
+ * ── WHY THE PROGRAM PAGE COMPUTES THIS INSTEAD OF STORING IT ──────────────
+ *
+ * Reported plainly: "the program is not showing the stretch or warm up
+ * exercises." It was not. The coach writes a warm-up into the chat reply, but
+ * the `<program_data>` block has no field for one, so the Program page - the
+ * only durable copy of a session, and the thing an athlete actually reads at
+ * the rack - showed the working sets and nothing before them.
+ *
+ * The obvious fix is a `warmup` field on the block. It was not taken, for
+ * three reasons:
+ *
+ *   1. It is the ADR-2 shape. Warm-up ramps are already computed here rather
+ *      than asked for, because they are percentage arithmetic rounded to
+ *      loadable plates and a model is not a calculator. Storing a copy in the
+ *      block would put a second, hand-written answer next to the computed one
+ *      and invite them to disagree.
+ *   2. A stored field only helps programs written AFTER it exists. Computing
+ *      it means every program already in the database - including the ones
+ *      this athlete is training on today - gains a warm-up the moment the page
+ *      is deployed.
+ *   3. It cannot be forgotten. The model omitting a block field is a silent
+ *      failure of exactly the kind this project keeps finding; a derived value
+ *      has no such failure mode.
+ *
+ * The ramp is derived from the WORKING WEIGHTS ON THE PAGE, so the two can
+ * never disagree - a warm-up that ramps to a number the table does not show is
+ * worse than no warm-up at all.
+ *
+ * ── WHICH MOVEMENTS GET A RAMP ────────────────────────────────────────────
+ *
+ * The ones warmupSets() recognizes, which is the four competition lifts.
+ * Accessories are skipped, and that is the correct answer rather than a
+ * limitation: nobody ramps to their working weight on a barbell row, and a
+ * warm-up listing every movement in the session is the "list nobody does" the
+ * coaching prompt warns about.
+ *
+ * ── DATA ONLY, NO PROSE ───────────────────────────────────────────────────
+ *
+ * The sentences in warmupPlan() above are written for the MODEL, in English,
+ * and they stay there. This returns numbers, because the page that renders
+ * them has a Spanish translation and a route that shipped English prose
+ * straight into it would be an untranslated paragraph in the middle of a
+ * translated page - the same shape as the adherence statuses, which cross the
+ * wire as keys and are worded in the locale file.
+ *
+ * @param {object}   options
+ * @param {object}   options.program  a stored program_data object
+ * @param {string}   options.units
+ * @param {number?}  options.smallestPlatePair
+ * @returns {{units: string, bar: number, days: Array<{name: string, specific: Array<object>}>}|null}
+ *   null when the program prescribes nothing that can be ramped, so the page
+ *   renders no empty heading. The units the ramp was COMPUTED in travel with
+ *   it, rather than being defaulted a second time in the browser - two copies
+ *   of a fallback is how a page ends up labelling kilos as pounds.
+ */
+export function warmupForProgram({ program, units = 'lb', smallestPlatePair = null } = {}) {
+  const days = Array.isArray(program?.days) ? program.days : [];
+
+  const perDay = days.map((day) => {
+    const prescriptions = {};
+    for (const exercise of Array.isArray(day?.exercises) ? day.exercises : []) {
+      // First spelling wins. A day that programs squats twice is warmed up
+      // once, at the load the first entry names.
+      const lift = canonicalLift(exercise?.lift);
+      if (!lift || lift in prescriptions) continue;
+      prescriptions[lift] = { weight: exercise.weight };
+    }
+    const plan = warmupPlan({ prescriptions, units, smallestPlatePair });
+    return { name: day?.name ?? null, specific: plan.specific };
+  });
+
+  if (!perDay.some((day) => day.specific.length)) return null;
+
+  /*
+   * `bar` travels so the page can say "empty bar" instead of a number that
+   * means nothing to a novice. It is the constant this module already uses,
+   * sent rather than re-declared: a browser copy of the bar weight is a second
+   * copy of a fact, and it would be wrong for exactly the athlete who trains
+   * in kilos.
+   */
+  return { units: units === 'kg' ? 'kg' : 'lb', bar: BAR[units] ?? BAR.lb, days: perDay };
+}

@@ -501,6 +501,13 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .h3 { font-size: 1.05rem; margin: 0; font-weight: 600; }
 
+/* One step below .h3, for a heading INSIDE a card that already has one - the
+   warm-up ramp under a training day. It exists so that heading can be an
+   <h3> in the document outline without looking like a second card title; a
+   styled <p> would have read the same and been invisible to a screen reader
+   moving by heading. */
+.h4 { font-size: 0.9rem; margin: 0; font-weight: 600; letter-spacing: 0.01em; }
+
 .page > .card + .card { margin-top: 1.25rem; }
 
 .card.danger { border-color: color-mix(in srgb, var(--error) 45%, var(--border)); }
@@ -1226,6 +1233,18 @@ form > button.primary {
    The movement is a row header rather than a cell, so a screen reader
    announces "squat, sets, 3" instead of leaving the reader to remember which
    row they are in. */
+/* The ramp sits above the day's table and is deliberately quieter than it:
+   the working sets are what the athlete came for, and a warm-up that shouts
+   competes with them. Tabular numerals so the loads line up as a column of
+   figures even though they are running text. */
+.warmup-ramp {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.warmup-ramp p { margin: 0; font-variant-numeric: tabular-nums; }
+
 .program-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 .program-table th, .program-table td {
   text-align: left;
@@ -1258,6 +1277,8 @@ form > button.primary {
   .program-table th, .program-table td { border-bottom: 1px solid #999 !important; }
   /* A day split across a page break is how somebody misses their last set. */
   .program-table, section.card { break-inside: avoid-page; page-break-inside: avoid; }
+  /* And the ramp must not be separated from the sets it ramps to. */
+  .warmup-ramp { border-bottom: 1px solid #999 !important; break-after: avoid; page-break-after: avoid; }
 }
 
 

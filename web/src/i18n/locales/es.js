@@ -276,6 +276,19 @@ export const es = {
     platesBarOnly: 'Barra vacía ({weight} {units})',
     platesHeaviest: 'Barra más pesada de hoy · {weight} {units}',
     previous: 'Programas anteriores ({count})',
+    warmupHeading: 'Antes de levantar',
+    warmupGeneral:
+      'De cinco a diez minutos de cardio suave — bicicleta, remo, caminata rápida — hasta que se te suba la respiración y sudes ligeramente.',
+    warmupMobility:
+      'Movilidad dinámica para las articulaciones que vas a usar en esta sesión: balanceos de pierna, círculos de cadera, sentadillas con tu propio peso hasta la profundidad, aperturas con banda, dislocaciones de hombro. Muévete en todo el rango; no mantengas la posición.',
+    warmupRampHeading: 'Sube de peso hasta tu primera serie',
+    warmupSet: '{weight} {units} × {reps}',
+    warmupBarSet: 'Barra vacía × {reps}',
+    warmupWhy:
+      'Tu primera serie de trabajo no debería ser lo primero pesado que hace tu cuerpo. Esto es para llegar listo a levantar bien.',
+    warmupStretchHeading: 'Los estiramientos van después, no antes',
+    warmupStretchBody:
+      'El estiramiento estático — el que se mantiene — va después de entrenar o en su propia sesión. Mantenerlo antes de levantar reduce la fuerza que puedes producir, y mejora tu rango de movimiento igual de bien si lo haces después.',
   },
   guardian: {
     title: 'Un padre, madre o tutor tiene que dar su permiso',

@@ -38,14 +38,28 @@ export function Program() {
   useEffect(() => {
     api
       .getProgram()
-      .then(({ active, history, adherence, equipment }) =>
-        setState({ status: 'ready', active, history, adherence, equipment })
+      .then(({ active, history, adherence, equipment, warmup }) =>
+        setState({ status: 'ready', active, history, adherence, equipment, warmup })
       )
       .catch((err) => setState({ status: 'error', message: err.message }));
   }, []);
 
   const active = state.active;
   const data = active?.program_data;
+
+  /*
+   * The ramp for one day, BY INDEX rather than by name.
+   *
+   * warmupForProgram() maps over the same `days` array this renders, so index
+   * n is index n. Matching on `day.name` would look safer and be worse: two
+   * days called "Day A" are a thing a model writes, and a name match would put
+   * the first day's loads under both of them.
+   */
+  const rampFor = (dayIndex) => state.warmup?.days?.[dayIndex]?.specific ?? [];
+
+  /* The empty bar, in the athlete's own units, sent by the route that computed
+     the ramp. Declaring 45 here would be wrong for anybody training in kilos. */
+  const barWeight = state.warmup?.bar ?? null;
 
   /**
    * Status per prescribed exercise, keyed the way the server returned it.
@@ -125,9 +139,57 @@ export function Program() {
             {data.summary && <p>{data.summary}</p>}
           </div>
 
+          {/*
+            ── THE WARM-UP, AND WHY IT IS ONE CARD PLUS A BLOCK PER DAY ────
+
+            "The program is not showing the stretch or warm up exercises." It
+            was not: the coach writes one into the chat reply and the stored
+            program has no field for it, so the sheet an athlete reads at the
+            rack began at their working weight.
+
+            The general and mobility halves are identical before every session,
+            so they are said once. The RAMP is not - it is computed from the
+            loads in each day's own table - so it sits inside the day it
+            belongs to, next to the numbers it works up to. Repeating the
+            cardio line under every day would be padding on a page whose whole
+            purpose is to be printed and followed.
+          */}
+          {state.warmup && (
+            <section className="card stack">
+              <h2 className="h3">{t('program.warmupHeading')}</h2>
+              <p>{t('program.warmupGeneral')}</p>
+              <p>{t('program.warmupMobility')}</p>
+              <p className="muted small">{t('program.warmupWhy')}</p>
+              <h3 className="h4">{t('program.warmupStretchHeading')}</h3>
+              <p>{t('program.warmupStretchBody')}</p>
+            </section>
+          )}
+
           {data.days.map((day, index) => (
             <section className="card" key={`${day.name}-${index}`}>
               <h2 className="h3">{day.name}</h2>
+              {rampFor(index).length > 0 && (
+                <div className="stack warmup-ramp">
+                  <h3 className="h4">{t('program.warmupRampHeading')}</h3>
+                  {rampFor(index).map((entry) => (
+                    <p key={entry.lift}>
+                      <strong>{t(`progress.lift.${entry.lift}`)}</strong>
+                      {': '}
+                      {entry.sets
+                        .map((set) =>
+                          set.weight === barWeight
+                            ? t('program.warmupBarSet', { reps: set.reps })
+                            : t('program.warmupSet', {
+                                weight: set.weight,
+                                units: state.warmup.units,
+                                reps: set.reps,
+                              })
+                        )
+                        .join(' · ')}
+                    </p>
+                  ))}
+                </div>
+              )}
               <table className="program-table">
                 <thead>
                   <tr>

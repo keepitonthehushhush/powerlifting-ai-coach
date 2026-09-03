@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { compareToProgram } from '../lib/adherence.js';
+import { warmupForProgram } from '../lib/warmup.js';
 
 export const programRouter = Router();
 
@@ -66,6 +67,32 @@ programRouter.get('/', async (req, res, next) => {
       // everywhere. A page and a coach disagreeing about whether somebody did
       // their squats is a bug nobody would ever think to look for.
       adherence: compareToProgram({ program: active, sessions: sessionRows ?? [] }),
+      /*
+       * ── THE WARM-UP IS DERIVED, NOT STORED ────────────────────────────
+       *
+       * "The program is not showing the stretch or warm up exercises." It was
+       * not: the coach writes one into the chat reply, and `<program_data>`
+       * has no field to carry it, so the only durable copy of a session - the
+       * one an athlete reads at the rack - began at the working weight.
+       *
+       * Computed here rather than added to the block for the same three
+       * reasons the ramp was computed in the first place: it is arithmetic
+       * rounded to loadable plates, a stored copy could disagree with the
+       * table beside it, and a field the model can forget is a silent failure
+       * of the kind this codebase keeps finding. Deriving it also gives a
+       * warm-up to every program ALREADY in the database, which a new field
+       * never could.
+       *
+       * It uses the same `equipment` the plate readout below uses, so the
+       * ramp is loadable on the bar the athlete actually owns.
+       */
+      warmup: active
+        ? warmupForProgram({
+            program: active.program_data,
+            units: profileRow?.units === 'kg' ? 'kg' : 'lb',
+            smallestPlatePair: profileRow?.smallest_plate_pair ?? null,
+          })
+        : null,
       // Superseded blocks are returned too. What the athlete was training on
       // last month is the context that makes this month's numbers mean
       // something, and a view that cannot see it can only show the present.

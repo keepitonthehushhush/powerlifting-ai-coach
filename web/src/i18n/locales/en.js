@@ -291,6 +291,19 @@ export const en = {
     platesBarOnly: 'Empty bar ({weight} {units})',
     platesHeaviest: 'Heaviest bar today · {weight} {units}',
     previous: 'Earlier programs ({count})',
+    warmupHeading: 'Before you lift',
+    warmupGeneral:
+      'Five to ten minutes of easy cardio — bike, rower, brisk walk — until your breathing is up and you have broken a light sweat.',
+    warmupMobility:
+      'Dynamic mobility for the joints this session uses: leg swings, hip circles, bodyweight squats to depth, band pull-aparts, shoulder dislocates. Move through the range; do not hold.',
+    warmupRampHeading: 'Work up to your first set',
+    warmupSet: '{weight} {units} × {reps}',
+    warmupBarSet: 'Empty bar × {reps}',
+    warmupWhy:
+      'The first working set should not be the first hard thing your body does. This is about being ready to lift well.',
+    warmupStretchHeading: 'Stretching goes after, not before',
+    warmupStretchBody:
+      'Static stretching — the kind you hold — belongs after training or in its own session. Held before lifting it reduces the force you can produce, and it improves your range of motion just as well afterwards.',
   },
   guardian: {
     title: 'A parent or guardian needs to agree',
