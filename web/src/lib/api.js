@@ -2,6 +2,17 @@ import { supabase } from './supabase.js';
 import { config } from './config.js';
 import { BUILD_ID } from './version.js';
 import { SIGN_OUT_REASONS, declareSignOutIntent, sessionIsDead } from './signOutReason.js';
+/*
+ * ── WHY THE API LAYER REPORTS, AND THE CRASH LISTENERS CANNOT ─────────────
+ *
+ * A rejected fetch inside this try/catch is not an unhandled rejection, so
+ * window.onunhandledrejection never fires and the crash reporter never hears
+ * about it. Reviewing error_events made that concrete: two rows, both from
+ * the server, none from a browser - while "could not reach the server" is the
+ * failure athletes have actually reported. Handled and invisible are not the
+ * same thing, and the fix belongs where the failure is caught.
+ */
+import { flushPendingReports, noteRequestFailed } from './crashReporter.js';
 
 /**
  * Thin fetch wrapper that attaches the current Supabase access token to every
@@ -122,9 +133,20 @@ async function request(path, options = {}) {
     // AbortError is the timeout; anything else is the network being down or
     // the request being blocked. Both are things a person can act on - wait,
     // check the connection, try again - and neither should be a spinner.
-    throw new ApiError(err?.name === 'AbortError' ? 408 : 0, {
+    const status = err?.name === 'AbortError' ? 408 : 0;
+    /*
+     * Queued, not sent: the report is a request, and requests are what just
+     * failed. It goes out on the next one that works - see crashReporter.js.
+     *
+     * `/api` is put back on the front because that is how the SERVER spells
+     * the same endpoint in this table. A client row saying `/chat` and a
+     * server row saying `/api/chat` would be two names for one thing in one
+     * column, and `origin` is what already distinguishes them.
+     */
+    noteRequestFailed(status, `/api${path}`);
+    throw new ApiError(status, {
       message:
-        err?.name === 'AbortError'
+        status === 408
           ? 'That took too long and was stopped. Your connection may be slow — try again.'
           : 'Could not reach the server. Check your connection and try again.',
     });
@@ -141,6 +163,14 @@ async function request(path, options = {}) {
   if (response.status === 304) return null;
 
   const body = await response.json().catch(() => null);
+
+  /*
+   * Something worked, so anything a failed request could not say can be said
+   * now. Deliberately before the !ok branch: a 4xx is a working connection,
+   * and it is the CONNECTION this queue was waiting for. Not awaited - a
+   * bookkeeping send must never sit in front of somebody's data.
+   */
+  flushPendingReports();
 
   if (!response.ok) {
     // A session the server has finished with cannot be recovered by trying

@@ -1,7 +1,12 @@
 import { supabase } from './supabase.js';
 import { config } from './config.js';
 import { BUILD_ID } from './version.js';
-import { buildReport, shouldReport } from './crashReport.js';
+import {
+  buildReport,
+  pendingReport,
+  queueReport,
+  shouldReport,
+} from './crashReport.js';
 
 /**
  * The edge that actually listens, remembers and sends.
@@ -46,6 +51,28 @@ import { buildReport, shouldReport } from './crashReport.js';
 
 const MARKER = 'cd:page-open';
 
+/**
+ * Failures that could not be reported when they happened.
+ *
+ * ── THE INVERSION, AGAIN ──────────────────────────────────────────────────
+ *
+ * A crash cannot report itself because the renderer is dead. A failed REQUEST
+ * cannot report itself for the mirror-image reason: the report is a request,
+ * and the thing that just failed is requests. Sending one at the moment of
+ * failure is asking a broken network to describe itself.
+ *
+ * So it is written down and sent at the next moment one is known to work -
+ * the next successful API response, or failing that the next page load. That
+ * costs a little delay and buys a report that actually arrives, which is the
+ * same trade the crash marker makes.
+ *
+ * Capped, because somebody on a train can generate these all afternoon and
+ * the queue must not become the problem. sessionStorage rather than memory so
+ * a failure on the last request before a reload is not lost, and per-tab for
+ * the same reason the crash marker is.
+ */
+const PENDING = 'cd:pending-reports';
+
 /** Per page view. Reset by the page going away, which is the point. */
 let state = { sent: [] };
 
@@ -74,6 +101,58 @@ function clearMarker() {
   } catch {
     /* see writeMarker */
   }
+}
+
+function readPending() {
+  try {
+    const raw = window.sessionStorage.getItem(PENDING);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePending(entries) {
+  try {
+    if (entries.length === 0) window.sessionStorage.removeItem(PENDING);
+    else window.sessionStorage.setItem(PENDING, JSON.stringify(entries));
+  } catch {
+    /* No queue means no deferred reports, which is a degraded service. */
+  }
+}
+
+/**
+ * Remember that a request failed, to be reported once something works.
+ *
+ * @param {number} status - 0 for a rejected fetch, 408 for our own timeout.
+ *   Anything else is a real HTTP response and is the SERVER's to record; it
+ *   already does, in the same table with origin 'server'.
+ * @param {string} path - the API path that failed, not the page. Which
+ *   endpoint stopped answering is the fact worth having, and `origin` is what
+ *   tells a client row from a server one.
+ */
+export function noteRequestFailed(status, path) {
+  const entry = pendingReport(status, path, BUILD_ID);
+  if (!entry) return;
+  // Every decision - the code, the dedupe, the cap, whether an entry read back
+  // from storage is even shaped like one - is in crashReport.js, which is pure
+  // and tested. This function holds the storage and no judgment.
+  writePending(queueReport(readPending(), entry));
+}
+
+/**
+ * Send anything that was waiting, now that something has worked.
+ *
+ * The queue is cleared BEFORE the sends are attempted. A flush that put
+ * entries back on failure would retry a report about a broken network over a
+ * network that may still be broken, forever.
+ */
+export function flushPendingReports() {
+  const queued = readPending();
+  if (queued.length === 0) return;
+  writePending([]);
+  for (const entry of queued) void send(entry.code, null, entry.route, entry.build);
 }
 
 /**
@@ -137,6 +216,11 @@ export function installCrashReporting() {
    */
   if (previous) void send('client_session_ended_badly', null, previous.route, previous.build);
   writeMarker(route());
+
+  // Anything a previous page view could not report. The api.js hook usually
+  // gets there first; this is for the tab that failed a request and was then
+  // reloaded rather than retried.
+  flushPendingReports();
 
   const onError = (event) => {
     void send('client_unhandled_error', event?.error ?? null, route());

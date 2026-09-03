@@ -58,6 +58,33 @@ export const CLIENT_ERROR_CODES = Object.freeze([
    * looks identical from in here. See crashReporter.js.
    */
   'client_session_ended_badly',
+  /**
+   * A request never reached the server - the fetch itself rejected.
+   *
+   * ── WHY THE VOCABULARY GREW ───────────────────────────────────────────
+   *
+   * The four codes above are all CRASHES, and reviewing the error table
+   * showed what that leaves out. `error_events` held two rows, both from the
+   * server, and none from a browser - while the single most-reported problem
+   * in this product's history is "could not reach the server. Check your
+   * connection and try again." That message is produced by api.js, shown to
+   * the athlete, and recorded absolutely nowhere: a rejected fetch inside a
+   * try/catch is not an unhandled rejection, so no listener fires.
+   *
+   * So the failure people actually hit was the one failure the reporter
+   * could not see. Handled gracefully and invisible are not the same thing.
+   */
+  'client_request_failed',
+  /**
+   * The request was given up on after the client's own timeout.
+   *
+   * Separate from the one above because the two need opposite fixes: a
+   * request that never left says something about the network, and one that
+   * ran out of time says something about how long we are willing to wait -
+   * and a coaching reply legitimately takes over a minute. Folding them
+   * together would hide whichever is rarer behind whichever is not.
+   */
+  'client_request_timed_out',
 ]);
 
 /**
@@ -157,6 +184,68 @@ export function safeRoute(pathname) {
 
 /** The most a single page view may send. A crash loop must not become a flood. */
 export const MAX_REPORTS_PER_SESSION = 5;
+
+/**
+ * The most failed requests kept waiting to be reported.
+ *
+ * Smaller than MAX_REPORTS_PER_SESSION on purpose: this queue survives page
+ * views, and somebody on a train can fill it all afternoon. Three is enough
+ * to say "several endpoints, not just one" and few enough that the queue
+ * never becomes the problem it is reporting.
+ */
+export const MAX_PENDING_REPORTS = 3;
+
+/**
+ * Which code, if any, a failed request deserves.
+ *
+ * @param {number} status - 0 when the fetch itself rejected, 408 when our own
+ *   AbortController gave up. Anything else came back from the server, which
+ *   means the server is already recording it in the same table with origin
+ *   'server' - and a second row from the browser would double-count it.
+ * @returns {string|null}
+ */
+export function requestFailureCode(status) {
+  if (status === 0) return 'client_request_failed';
+  if (status === 408) return 'client_request_timed_out';
+  return null;
+}
+
+/**
+ * Add a pending report to the queue, or decide it does not belong there.
+ *
+ * Pure, so the decisions live where they can be tested without a browser -
+ * the same split the header of crashReporter.js describes. That file holds
+ * the sessionStorage and none of the judgment.
+ *
+ * Deduplicated on code AND route, for the same reason shouldReport() is: the
+ * same failure on two endpoints is two findings. Deduplicated HERE as well
+ * because this queue crosses page views and shouldReport's state does not.
+ */
+export function queueReport(queue, entry) {
+  const existing = Array.isArray(queue) ? queue.filter(isPendingEntry) : [];
+  if (!isPendingEntry(entry)) return existing;
+  if (existing.some((e) => e.code === entry.code && e.route === entry.route)) return existing;
+  if (existing.length >= MAX_PENDING_REPORTS) return existing;
+  return [...existing, entry];
+}
+
+/** A queue read back from storage is untrusted input like any other. */
+function isPendingEntry(entry) {
+  return (
+    Boolean(entry) &&
+    CLIENT_ERROR_CODES.includes(entry.code) &&
+    typeof entry.route === 'string' &&
+    ROUTE_PATTERN.test(entry.route) &&
+    typeof entry.build === 'string'
+  );
+}
+
+/** Build one, with the route normalized and the build stamped. */
+export function pendingReport(status, path, build) {
+  const code = requestFailureCode(status);
+  if (!code) return null;
+  return { code, route: safeRoute(path), build: typeof build === 'string' ? build.slice(0, 40) : 'unknown' };
+}
 
 /**
  * Should this report be sent, given what has already been sent?
