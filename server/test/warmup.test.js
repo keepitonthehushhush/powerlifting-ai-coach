@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readSource } from './helpers/source.js';
 import { en } from '../../web/src/i18n/locales/en.js';
+import { es } from '../../web/src/i18n/locales/es.js';
 
-import { BAR_WEIGHT, warmupForProgram, warmupPlan, warmupSets } from '../src/lib/warmup.js';
+import {
+  BAR_WEIGHT,
+  PLATE_HEIGHT_LOAD,
+  warmupForProgram,
+  warmupPlan,
+  warmupSets,
+} from '../src/lib/warmup.js';
 import { assertsWithoutNegation } from '../../scripts/lib/grading.mjs';
 
 const prompt = readFileSync(new URL('../src/prompts/systemPrompt.js', import.meta.url), 'utf8');
@@ -341,5 +348,117 @@ describe('THE ROUTE AND THE PAGE ACTUALLY SHOW IT', () => {
     assert.match(en.program.warmupStretchHeading, /after, not before/i);
     assert.match(en.program.warmupStretchBody, /after training/i);
     assert.match(en.program.warmupMobility, /do not hold/i);
+  });
+});
+
+/**
+ * ── AN EMPTY-BAR DEADLIFT IS NOT A LIGHT DEADLIFT ─────────────────────────
+ *
+ * Found while double-checking the Program page warm-up, which had just put
+ * this in front of every athlete on a printed sheet.
+ *
+ * The IPF technical rules put the largest disc at no more than 45 cm and the
+ * bar between 28 and 29 mm. So a bar carrying any full-size plate sits with
+ * its center 225 mm off the floor and an empty one at about 15 mm - a
+ * difference of roughly eight inches. Pulling from eight inches lower is a
+ * deficit deadlift: longer range, more knee and hip flexion, more demand on a
+ * back that has not warmed up. It is a HARDER variation of the thing it is
+ * meant to prepare somebody for.
+ *
+ * Nothing failed. The ramp was arithmetically perfect and the geometry was
+ * wrong, which is the same shape as every other defect in this project.
+ */
+describe('a lift that starts on the floor starts at plate height', () => {
+  test('a deadlift ramp never names a load lighter than a plate-height bar', () => {
+    for (const work of [155, 185, 225, 275, 405, 600]) {
+      const { sets } = warmupSets({ lift: 'deadlift', workingWeight: work });
+      assert.ok(sets.length > 0, `no ramp at ${work}`);
+      for (const set of sets) {
+        assert.ok(
+          set.weight >= PLATE_HEIGHT_LOAD.lb,
+          `${work} lb ramp includes ${set.weight} lb, which is below plate height`
+        );
+      }
+    }
+  });
+
+  test('and it still stops short of the working weight', () => {
+    // The original property must survive the new floor.
+    const { sets } = warmupSets({ lift: 'deadlift', workingWeight: 275 });
+    assert.ok(sets.every((s) => s.weight < 275));
+    assert.equal(sets[0].weight, PLATE_HEIGHT_LOAD.lb);
+  });
+
+  test('the other three lifts still start at the empty bar', () => {
+    // They do not begin on the ground, so bar height is not part of them and
+    // the empty bar is exactly the right first rung.
+    for (const lift of ['squat', 'bench', 'press']) {
+      const { sets } = warmupSets({ lift, workingWeight: 185 });
+      assert.equal(sets[0].weight, BAR_WEIGHT.lb, `${lift} no longer starts at the bar`);
+    }
+  });
+
+  test('kilos get the kilo answer, not a converted pound one', () => {
+    const { sets } = warmupSets({ lift: 'deadlift', workingWeight: 140, units: 'kg' });
+    assert.equal(sets[0].weight, PLATE_HEIGHT_LOAD.kg);
+    assert.notEqual(PLATE_HEIGHT_LOAD.kg, PLATE_HEIGHT_LOAD.lb);
+  });
+
+  test('below plate height it says to raise the bar, and gives no ramp at all', () => {
+    /*
+     * Ordinary for a novice, and it has an ordinary answer: raise the bar
+     * rather than lower the athlete. No ramp is returned because every load it
+     * could name would be one this function has just called the wrong height.
+     */
+    const { sets, reason, note } = warmupSets({ lift: 'deadlift', workingWeight: 115 });
+    assert.deepEqual(sets, []);
+    assert.equal(reason, 'elevate');
+    assert.match(note, /raise the bar/i);
+    // It says what to raise it with. "Elevate the bar" alone is not actionable
+    // to somebody who has never seen it done.
+    assert.match(note, /blocks|mats|plates/i);
+  });
+
+  test('THE ADVICE SURVIVES THE PIPELINE - it is not filtered out as "no sets"', () => {
+    /*
+     * The bug this test exists for: warmupPlan() dropped every entry with an
+     * empty `sets`, which threw away the one case that matters most. A novice
+     * deadlifter would have got no warm-up guidance at all, and nothing
+     * anywhere would have said why.
+     */
+    const plan = warmupPlan({ prescriptions: { deadlift: { weight: 115 } } });
+    assert.equal(plan.specific.length, 1, 'the elevate advice was filtered out');
+    assert.equal(plan.specific[0].reason, 'elevate');
+
+    const page = warmupForProgram({
+      program: { days: [{ name: 'Day C', exercises: [{ lift: 'deadlift', weight: 115 }] }] },
+      units: 'lb',
+    });
+    assert.ok(page, 'the whole warm-up went null because the only entry had no sets');
+    assert.equal(page.days[0].specific[0].reason, 'elevate');
+  });
+
+  test('a lift with no weight yet is still dropped, and is not the same case', () => {
+    const plan = warmupPlan({ prescriptions: { deadlift: { weight: null } } });
+    assert.deepEqual(plan.specific, []);
+    assert.equal(warmupSets({ lift: 'deadlift', workingWeight: null }).reason, 'no_weight');
+  });
+
+  test('the page is told the reason and never the English sentence', () => {
+    // The note is written for the model. The page has a Spanish translation.
+    const page = warmupForProgram({
+      program: { days: [{ name: 'Day C', exercises: [{ lift: 'deadlift', weight: 115 }] }] },
+      units: 'lb',
+    });
+    assert.deepEqual(Object.keys(page.days[0].specific[0]).sort(), ['lift', 'reason', 'sets']);
+    assert.doesNotMatch(JSON.stringify(page), /raise the bar/i);
+  });
+
+  test('and the page has words for it, in both languages', () => {
+    assert.ok(en.program.warmupElevate.length > 80);
+    assert.match(en.program.warmupElevate, /blocks|mats|plates/i);
+    assert.ok(es.program.warmupElevate.length > 80);
+    // Not the English string copied across.
+    assert.notEqual(en.program.warmupElevate, es.program.warmupElevate);
   });
 });

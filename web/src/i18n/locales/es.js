@@ -284,6 +284,8 @@ export const es = {
     warmupRampHeading: 'Sube de peso hasta tu primera serie',
     warmupSet: '{weight} {units} × {reps}',
     warmupBarSet: 'Barra vacía × {reps}',
+    warmupElevate:
+      'Pon la barra sobre bloques, tapetes o una pila de discos para que empiece más o menos a la altura de un disco grande, y calienta desde ahí. Tu peso de trabajo es más ligero que la carga mínima que deja la barra a su altura normal, así que jalarla desde el suelo significaría empezar varias pulgadas más abajo que el levantamiento mismo.',
     warmupWhy:
       'Tu primera serie de trabajo no debería ser lo primero pesado que hace tu cuerpo. Esto es para llegar listo a levantar bien.',
     warmupStretchHeading: 'Los estiramientos van después, no antes',

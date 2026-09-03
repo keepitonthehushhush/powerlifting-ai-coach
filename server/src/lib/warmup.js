@@ -65,6 +65,41 @@ export const RAMP = Object.freeze([
 export const RAMP_THRESHOLD_MULTIPLE = 1.5;
 
 /**
+ * Lifts that start on the floor, where the BAR'S HEIGHT is part of the lift.
+ *
+ * ── WHY AN EMPTY-BAR DEADLIFT IS NOT A LIGHT DEADLIFT ─────────────────────
+ *
+ * The IPF technical rules put the largest disc at no more than 45 cm across
+ * and the bar between 28 and 29 mm. So a bar loaded with any full-size plate
+ * sits with its center 225 mm off the floor, and an EMPTY bar sits at about
+ * 15 mm - a difference of roughly 210 mm, or eight inches.
+ *
+ * Pulling from eight inches lower is a deficit deadlift: more knee and hip
+ * flexion to reach the bar, a longer range, and more demand on a lower back
+ * that has not warmed up yet. It is a harder variation than the working sets
+ * it is supposed to prepare somebody for, which is the wrong way round.
+ *
+ * This was shipped for a while and was visible on the Program page before
+ * anybody noticed, because "start the ramp at the empty bar" is correct for
+ * every lift that does not begin on the ground and nothing distinguished
+ * them.
+ */
+const FLOOR_LIFTS = new Set(['deadlift']);
+
+/**
+ * The lightest load that puts the bar at its real height, per side pair.
+ *
+ * A 45 lb / 20 kg plate is the only commonly stocked iron plate at full
+ * diameter - a 35 is smaller, a 25 smaller again - so in a gym without bumper
+ * plates this is the floor whatever change plates they own. Bumpers would
+ * allow lighter, and we do not know whether a given gym has them, so the
+ * conservative number is the one used: being told to start heavier than
+ * necessary costs a warm-up set, being told to pull from a deficit costs a
+ * back.
+ */
+export const PLATE_HEIGHT_LOAD = { lb: 135, kg: 60 };
+
+/**
  * Warm-up sets for one lift.
  *
  * @returns {{lift: string|null, sets: Array<{weight: number, reps: number}>, note: string}}
@@ -75,13 +110,19 @@ export function warmupSets({ lift, workingWeight, units = 'lb', smallestPlatePai
   const work = Number(workingWeight);
 
   if (!canonical || !Number.isFinite(work) || work <= 0) {
-    return { lift: canonical, sets: [], note: 'No working weight, so no ramp can be computed.' };
+    return {
+      lift: canonical,
+      sets: [],
+      reason: 'no_weight',
+      note: 'No working weight, so no ramp can be computed.',
+    };
   }
 
   if (work <= bar) {
     return {
       lift: canonical,
       sets: [{ weight: bar, reps: 5 }],
+      reason: 'ramped',
       note: 'The working weight is at or below the empty bar, so the bar itself is the warm-up.',
     };
   }
@@ -93,19 +134,60 @@ export function warmupSets({ lift, workingWeight, units = 'lb', smallestPlatePai
         { weight: bar, reps: 5 },
         { weight: bar, reps: 5 },
       ],
+      reason: 'ramped',
       note: 'Close enough to the empty bar that two sets with the bar is the whole ramp.',
     };
   }
 
   const step = smallestLoadableIncrement(smallestPlatePair, units);
-  const sets = [{ weight: bar, reps: 5 }];
+
+  /*
+   * For a lift off the floor the lightest rung is not the empty bar, it is the
+   * lightest load that puts the bar at plate height. See FLOOR_LIFTS above:
+   * an empty bar on the ground is an eight-inch deficit, which is a harder
+   * variation of the thing being warmed up for.
+   */
+  const onTheFloor = FLOOR_LIFTS.has(canonical);
+  const lowest = onTheFloor ? PLATE_HEIGHT_LOAD[units] ?? PLATE_HEIGHT_LOAD.lb : bar;
+
+  if (onTheFloor && work <= lowest) {
+    /*
+     * Their working weight is below the height-correct minimum, which is
+     * ordinary for a novice and has an ordinary answer: raise the bar rather
+     * than lower the athlete. Blocks, mats, or the bar resting on a stack of
+     * plates all put it back where a deadlift starts.
+     *
+     * No ramp is returned, because every load it could name would be one this
+     * function has just said is the wrong height.
+     */
+    return {
+      lift: canonical,
+      sets: [],
+      /*
+       * Named, because this is NOT the same as having no ramp. It is a piece
+       * of advice the athlete needs, and an earlier version of warmupPlan()
+       * dropped every entry with no sets - which would have thrown this away
+       * silently, leaving a novice deadlifter with no warm-up guidance at all
+       * and nothing anywhere saying why.
+       */
+      reason: 'elevate',
+      note:
+        'Their working weight is below the lightest load that puts the bar at its normal height, ' +
+        'so warming up on the floor would mean pulling from a deficit. Tell them to raise the bar ' +
+        'to about the height of a full-size plate - blocks, mats, or resting it on plates - and ' +
+        'warm up there.',
+    };
+  }
+
+  const sets = [{ weight: lowest, reps: 5 }];
 
   for (const { fraction, reps } of RAMP) {
     const target = roundToLoadable(work * fraction, step, units);
-    // Skip a rung that rounds onto the bar, or onto a weight already used, or
-    // that has crept up to the working weight itself. A warm-up that repeats
-    // the same number twice reads as a mistake and costs a set of real work.
-    if (target <= bar) continue;
+    // Skip a rung that rounds onto the lowest rung, or onto a weight already
+    // used, or that has crept up to the working weight itself. A warm-up that
+    // repeats the same number twice reads as a mistake and costs a set of real
+    // work.
+    if (target <= lowest) continue;
     if (target >= work) continue;
     if (sets.some((s) => s.weight === target)) continue;
     sets.push({ weight: target, reps });
@@ -114,7 +196,10 @@ export function warmupSets({ lift, workingWeight, units = 'lb', smallestPlatePai
   return {
     lift: canonical,
     sets,
-    note: 'Ramped specific sets in the lift itself, which is the part of a warm-up the evidence supports.',
+    reason: 'ramped',
+    note: onTheFloor
+      ? 'Ramped specific sets from the lightest load that keeps the bar at its normal height.'
+      : 'Ramped specific sets in the lift itself, which is the part of a warm-up the evidence supports.',
   };
 }
 
@@ -131,13 +216,17 @@ export function warmupPlan({ prescriptions = {}, units = 'lb', smallestPlatePair
 
   for (const [lift, p] of Object.entries(prescriptions)) {
     if (!p || p.weight === null || p.weight === undefined) continue;
-    const { sets, note } = warmupSets({
+    const { sets, note, reason } = warmupSets({
       lift,
       workingWeight: p.weight,
       units,
       smallestPlatePair,
     });
-    if (sets.length) perLift.push({ lift, sets, note });
+    // `no_weight` is the only case with nothing to say. An `elevate` entry has
+    // no sets and is the most important thing this module produces for a
+    // novice deadlifter, so the old `if (sets.length)` guard threw exactly the
+    // wrong one away.
+    if (reason !== 'no_weight') perLift.push({ lift, sets, note, reason });
   }
 
   return {
@@ -222,9 +311,20 @@ export function warmupForProgram({ program, units = 'lb', smallestPlatePair = nu
       prescriptions[lift] = { weight: exercise.weight };
     }
     const plan = warmupPlan({ prescriptions, units, smallestPlatePair });
-    return { name: day?.name ?? null, specific: plan.specific };
+    /*
+     * `note` is dropped here on purpose. It is English prose written for the
+     * MODEL, and the page that renders this has a Spanish translation - see
+     * the note above about shipping sentences into a translated page. What
+     * crosses the wire is `reason`, which the page words itself, exactly as
+     * the adherence statuses do.
+     */
+    const specific = plan.specific.map(({ lift, sets, reason }) => ({ lift, sets, reason }));
+    return { name: day?.name ?? null, specific };
   });
 
+  // An `elevate` entry counts: it has no sets and is the whole answer for a
+  // novice deadlifter, so a check that counted SETS would return null for the
+  // one athlete who most needs to read this.
   if (!perDay.some((day) => day.specific.length)) return null;
 
   /*

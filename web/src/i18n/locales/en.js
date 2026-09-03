@@ -299,6 +299,8 @@ export const en = {
     warmupRampHeading: 'Work up to your first set',
     warmupSet: '{weight} {units} × {reps}',
     warmupBarSet: 'Empty bar × {reps}',
+    warmupElevate:
+      'Set the bar on blocks, mats or a stack of plates so it starts at about the height of a full-size plate, and warm up from there. Your working weight is lighter than the smallest load that puts the bar at its normal height, so pulling it off the floor would mean starting several inches lower than the lift itself.',
     warmupWhy:
       'The first working set should not be the first hard thing your body does. This is about being ready to lift well.',
     warmupStretchHeading: 'Stretching goes after, not before',

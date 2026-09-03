@@ -175,17 +175,26 @@ export function Program() {
                     <p key={entry.lift}>
                       <strong>{t(`progress.lift.${entry.lift}`)}</strong>
                       {': '}
-                      {entry.sets
-                        .map((set) =>
-                          set.weight === barWeight
-                            ? t('program.warmupBarSet', { reps: set.reps })
-                            : t('program.warmupSet', {
-                                weight: set.weight,
-                                units: state.warmup.units,
-                                reps: set.reps,
-                              })
-                        )
-                        .join(' · ')}
+                      {/*
+                        A deadlift whose working weight is under the lightest
+                        load that puts the bar at plate height has no ramp to
+                        give - every load it could name would be pulled from a
+                        deficit. The answer is to raise the bar, and it is a
+                        sentence rather than a list of numbers.
+                      */}
+                      {entry.reason === 'elevate'
+                        ? t('program.warmupElevate')
+                        : entry.sets
+                            .map((set) =>
+                              set.weight === barWeight
+                                ? t('program.warmupBarSet', { reps: set.reps })
+                                : t('program.warmupSet', {
+                                    weight: set.weight,
+                                    units: state.warmup.units,
+                                    reps: set.reps,
+                                  })
+                            )
+                            .join(' · ')}
                     </p>
                   ))}
                 </div>
