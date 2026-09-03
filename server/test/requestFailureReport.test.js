@@ -1,6 +1,7 @@
-import test, { describe } from 'node:test';
+import test, { describe, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readSource } from './helpers/source.js';
+import { loadWithStubbedImports } from './helpers/browserModule.js';
 import {
   CLIENT_ERROR_CODES,
   MAX_PENDING_REPORTS,
@@ -29,6 +30,12 @@ import {
 
 const reporter = readSource(new URL('../../web/src/lib/crashReporter.js', import.meta.url));
 const api = readSource(new URL('../../web/src/lib/api.js', import.meta.url));
+
+afterEach(() => {
+  delete globalThis.window;
+  delete globalThis.document;
+  delete globalThis.fetch;
+});
 
 describe('the vocabulary grew to cover it', () => {
   test('both codes exist and are distinct', () => {
@@ -174,5 +181,134 @@ describe('WHERE IT IS WIRED, WHICH IS THE WHOLE DESIGN', () => {
     // Same rule as every other client report: an error message is whatever
     // the throwing code interpolated, and this app holds health_restrictions.
     assert.match(reporter, /void send\(entry\.code, null, entry\.route, entry\.build\)/);
+  });
+});
+
+/**
+ * ── THE PART THAT ONLY INSPECTION HAD COVERED ─────────────────────────────
+ *
+ * Everything above tests the decisions, which are pure, and the wiring, which
+ * is source. What neither reaches is the middle: a report written to storage,
+ * read back on another page view, and actually leaving as an HTTP request.
+ *
+ * Three separate things had to be true for that to work and each was only
+ * checked by reading it - which is precisely the shape of "a check that
+ * answers confidently without looking" this codebase keeps finding. So the
+ * shipped file is loaded with its two imports stubbed and nothing else
+ * changed (asserted, in browserModule.js) and driven end to end.
+ */
+describe('END TO END: queued in one page view, sent in the next', () => {
+  const reporterUrl = new URL('../../web/src/lib/crashReporter.js', import.meta.url);
+
+  /** A sessionStorage that outlives the module, the way a tab's does. */
+  function tab() {
+    const map = new Map();
+    return {
+      map,
+      getItem: (k) => (map.has(k) ? map.get(k) : null),
+      setItem: (k, v) => map.set(k, String(v)),
+      removeItem: (k) => map.delete(k),
+    };
+  }
+
+  async function loadReporter({ storage, token = 'jwt-abc', sent }) {
+    globalThis.window = {
+      sessionStorage: storage,
+      location: { pathname: '/coach' },
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    globalThis.document = {
+      visibilityState: 'visible',
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    globalThis.fetch = async (url, init) => {
+      sent.push({ url, init });
+      return { ok: true };
+    };
+    return loadWithStubbedImports(reporterUrl, [
+      [
+        "import { supabase } from './supabase.js';",
+        `const supabase = { auth: { getSession: async () => ({ data: ${
+          token ? `{ session: { access_token: '${token}' } }` : 'null'
+        } }) } };`,
+      ],
+      [
+        "import { config } from './config.js';",
+        "const config = { apiBaseUrl: 'https://coachdiaz.app' };",
+      ],
+      [
+        "import { BUILD_ID } from './version.js';",
+        "const BUILD_ID = 'dpl_test';",
+      ],
+    ]);
+  }
+
+  test('a failure survives storage and leaves as a real POST', async () => {
+    const storage = tab();
+    const sent = [];
+
+    // Page view one: the request fails. Nothing is sent - the network is the
+    // thing that just broke.
+    const first = await loadReporter({ storage, sent });
+    first.noteRequestFailed(0, '/api/chat');
+    assert.equal(sent.length, 0, 'a report was sent over the network that just failed');
+    assert.ok(storage.map.get('cd:pending-reports'), 'nothing was written down');
+
+    // Page view two: a fresh module, the same tab. The queue is picked up.
+    const second = await loadReporter({ storage, sent });
+    second.flushPendingReports();
+    await new Promise((r) => setTimeout(r, 0));
+
+    assert.equal(sent.length, 1, 'the queued report never left');
+    const [{ url, init }] = sent;
+    assert.equal(url, 'https://coachdiaz.app/api/client-errors');
+    assert.equal(init.method, 'POST');
+    assert.equal(init.keepalive, true);
+    assert.equal(init.headers.authorization, 'Bearer jwt-abc');
+
+    const body = JSON.parse(init.body);
+    assert.equal(body.code, 'client_request_failed');
+    assert.equal(body.route, '/api/chat');
+    assert.equal(body.detail.build, 'dpl_test');
+    // The report is a coordinate, never a description. No message field has
+    // ever been permitted to leave, and this path is no exception.
+    assert.deepEqual(Object.keys(body).sort(), ['code', 'detail', 'route']);
+    assert.deepEqual(Object.keys(body.detail).sort(), ['build', 'errorName', 'frames', 'topFrame']);
+    assert.equal(body.detail.topFrame, null, 'a fabricated coordinate is worse than none');
+
+    // And the queue is empty, so the next success does not send it twice.
+    assert.equal(storage.map.get('cd:pending-reports'), undefined);
+  });
+
+  test('with no session it is not sent, and not silently lost either', async () => {
+    /*
+     * The endpoint requires a session. A failure recorded before sign-in used
+     * to have nowhere to go; it now waits in the tab, which is the whole
+     * reason the queue is per tab rather than per page view.
+     */
+    const storage = tab();
+    const sent = [];
+    const anon = await loadReporter({ storage, token: null, sent });
+    anon.noteRequestFailed(0, '/api/chat');
+    anon.flushPendingReports();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(sent.length, 0, 'a report went out with no token');
+  });
+
+  test('a flush over a still-broken network does not loop', async () => {
+    // The queue is cleared before the send is attempted. A flush that put
+    // entries back would retry a report about a broken network forever.
+    const storage = tab();
+    const sent = [];
+    const mod = await loadReporter({ storage, sent });
+    globalThis.fetch = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+    mod.noteRequestFailed(0, '/api/chat');
+    mod.flushPendingReports();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(storage.map.get('cd:pending-reports'), undefined, 'the queue refilled itself');
   });
 });
