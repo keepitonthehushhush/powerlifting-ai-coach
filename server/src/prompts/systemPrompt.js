@@ -2144,9 +2144,33 @@ ${rows}`;
 export function buildSystemBlocks(input = {}) {
   const [role, athleteState] = buildSystemParts(input);
   return [
-    // The breakpoint. Everything up to and including this block is the cached
-    // prefix; the next block is where all the variation lives.
-    { type: 'text', text: role, cache_control: { type: 'ephemeral' } },
+    /*
+     * The breakpoint. Everything up to and including this block is the cached
+     * prefix; the next block is where all the variation lives.
+     *
+     * ── WHY ONE HOUR AND NOT FIVE MINUTES ─────────────────────────────────
+     *
+     * The default five minutes was written for a busy service. This one has a
+     * handful of athletes, and the shape of their use is a burst on the first
+     * day or two and then a check-in every few days - measured, not assumed.
+     * Between two messages in the same conversation somebody reads a program,
+     * thinks, and answers, which is frequently longer than five minutes; the
+     * entry expires mid-conversation and the next turn pays to write the whole
+     * prefix again.
+     *
+     * Priced against claude-sonnet-5 on the current prompt: writing this block
+     * costs $0.055 at the five-minute rate and $0.089 at the one-hour rate,
+     * and READING it costs $0.004. So the longer TTL is $0.033 more once and
+     * saves $0.051 on every turn that would otherwise have re-written it. It
+     * pays for itself on the second message of a conversation.
+     *
+     * The ttl field sits on the stable type in the installed SDK, but
+     * `extended-cache-ttl-2025-04-11` is still a named beta there - so this is
+     * a request, not a guarantee, and a request that is IGNORED rather than
+     * refused would look exactly like everything working. cacheTtlHonored()
+     * in lib/pricing.js reads the answer back out of the response.
+     */
+    { type: 'text', text: role, cache_control: { type: 'ephemeral', ttl: '1h' } },
     { type: 'text', text: athleteState },
   ];
 }

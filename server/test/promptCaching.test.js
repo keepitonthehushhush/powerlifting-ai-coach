@@ -36,9 +36,19 @@ describe('the cache breakpoint is somewhere that can actually hit', () => {
   test('the first block is exactly COACH_ROLE and carries the breakpoint', () => {
     const [role, state] = buildSystemBlocks(context());
     assert.equal(role.text, COACH_ROLE);
-    assert.deepEqual(role.cache_control, { type: 'ephemeral' });
-    // Exactly one breakpoint. A second on the varying block would write a
-    // fresh entry every request and cost 25% more than not caching at all.
+    /*
+     * The TTL is part of the assertion, not incidental. The default is five
+     * minutes, and on a product where somebody reads a program and thinks
+     * before answering, five minutes expires MID-CONVERSATION - the next turn
+     * then rewrites the whole prefix. Priced on claude-sonnet-5: the longer
+     * TTL costs $0.033 more once and saves $0.051 on every turn that would
+     * have re-written, so it pays for itself on the second message.
+     */
+    assert.deepEqual(role.cache_control, { type: 'ephemeral', ttl: '1h' });
+    // Exactly one breakpoint IN THE SYSTEM BLOCKS. A second on the varying
+    // block would write a fresh entry every request and cost 25% more than not
+    // caching at all. (The conversation carries its own, on the history rather
+    // than on the newest message - see lib/conversationCache.js.)
     assert.equal(state.cache_control, undefined);
   });
 
@@ -143,6 +153,17 @@ describe('THE UNEXPLAINED EIGHT THOUSAND TOKENS', () => {
    * Nothing in this repository accounts for the difference, so chat.js now
    * logs the lengths of the exact strings it sent. These tests pin the shape
    * of that instrumentation - that it exists, and that it stayed lengths.
+   *
+   * ── AND THE INSTRUMENTATION ANSWERED IT ───────────────────────────────
+   *
+   * It was the conversation. The window replays up to thirty messages, and on
+   * the longest live conversation that is about 9,800 tokens - re-sent at full
+   * input price on every single turn, because only the SYSTEM prompt was ever
+   * cached. That is the missing eight thousand, near enough, and it was never
+   * a mystery about the prompt at all.
+   *
+   * It is now cached too, with a breakpoint on the last message of the history
+   * rather than the newest one. See lib/conversationCache.js.
    */
   const chat = readRaw(new URL('../src/routes/chat.js', import.meta.url));
 
@@ -160,11 +181,38 @@ describe('THE UNEXPLAINED EIGHT THOUSAND TOKENS', () => {
     // The athlete-state block is the densest health data in the product -
     // injuries, restrictions, GLP-1 status, every logged set. Its length is a
     // fact about our prompt. Its contents are not ours to write down.
-    const line = chat.slice(chat.indexOf("logger.info('chat.completed'"), chat.indexOf('historyReplayed') + 400);
+    /*
+     * The whole call, found by its own closing brace rather than by a
+     * character count. The previous version sliced a fixed 400 characters
+     * past `historyReplayed` and silently stopped covering the end of the log
+     * line the moment a comment was added inside it - so the assertions below
+     * would have passed while no longer reading the thing they name.
+     */
+    const start = chat.indexOf("logger.info('chat.completed'");
+    const end = chat.indexOf('\n    });', start);
+    assert.ok(start > -1 && end > start, 'the completion log line has moved');
+    const line = chat.slice(start, end);
     assert.match(line, /system\[0\]\?\.text\?\.length/);
     assert.match(line, /system\[1\]\?\.text\?\.length/);
     assert.doesNotMatch(line, /system\[1\]\?\.text[,\s}]/, 'the athlete-state block itself is being logged');
     assert.doesNotMatch(line, /content:\s*m\.content[,\s}]/, 'message bodies are being logged');
-    assert.match(line, /m\.content\?\.length/);
+    /*
+     * Lengths, via a helper rather than inline, because one message now
+     * carries its text in a block array - that is where the cache breakpoint
+     * attaches - and `m.content?.length` on an array counts BLOCKS. The old
+     * expression would have reported the entire history as a single character
+     * and shown a huge improvement that never happened.
+     *
+     * The privacy property is unchanged and is what this test is really for:
+     * messageChars() reads `block.text.length` and never the text.
+     */
+    assert.match(line, /messageChars\(m\)/);
+    const helper = chat.slice(chat.indexOf('function messageChars'), chat.indexOf('export const chatRouter'));
+    assert.match(helper, /block\.text\.length/);
+    // Written first as a lookahead for "return content not followed by
+    // .reduce", which fired on the perfectly correct `return content.length`.
+    // The property is simpler than the clever version: it never hands back
+    // the content itself.
+    assert.doesNotMatch(helper, /return content;/, 'the helper returns content rather than a length');
   });
 });

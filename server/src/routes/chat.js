@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
-import { costInMicrodollars } from '../lib/pricing.js';
+import { cacheTtlHonored, costInMicrodollars } from '../lib/pricing.js';
+import { withHistoryCacheBreakpoint } from '../lib/conversationCache.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
@@ -22,6 +23,14 @@ import { loadSubscription } from '../lib/subscriptions.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
 import { GUARDIAN_CONSENT_VERSION } from '../lib/policyVersions.js';
+
+/** Characters of text in a message, whether it holds a string or blocks. */
+function messageChars(message) {
+  const content = message?.content;
+  if (typeof content === 'string') return content.length;
+  if (!Array.isArray(content)) return 0;
+  return content.reduce((n, block) => n + (typeof block?.text === 'string' ? block.text.length : 0), 0);
+}
 
 export const chatRouter = Router();
 
@@ -298,10 +307,17 @@ chatRouter.post('/', async (req, res, next) => {
     const history = Array.isArray(conversation.messages) ? conversation.messages : [];
     const window = history.slice(-config.chat.historyWindow);
 
-    const apiMessages = [
+    /*
+     * The breakpoint goes on the last message of the REPLAYED HISTORY, never
+     * on the new one - see lib/conversationCache.js. The window is about
+     * 9,800 tokens on the longest live conversation and was being re-sent at
+     * full input price on every turn, which is roughly half of what a warm
+     * reply costs.
+     */
+    const apiMessages = withHistoryCacheBreakpoint([
       ...window.map(({ role, content }) => ({ role, content })),
       { role: 'user', content: message },
-    ];
+    ]);
 
     // Blocks, not a string: the first carries the cache breakpoint. See
     // buildSystemBlocks() for why the breakpoint sits where it does.
@@ -601,7 +617,15 @@ chatRouter.post('/', async (req, res, next) => {
       historyDropped: Math.max(0, history.length - window.length),
       cachedBlockChars: system[0]?.text?.length ?? 0,
       athleteStateChars: system[1]?.text?.length ?? 0,
-      messagesChars: apiMessages.reduce((n, m) => n + (m.content?.length ?? 0), 0),
+      /*
+       * One message now carries its text in a block array rather than a
+       * string, because that is where the cache breakpoint attaches. Summing
+       * `.length` alone would silently count that message as its ARRAY length
+       * - one - and quietly under-report the prompt by the size of the whole
+       * history, which is the number this line exists to watch.
+       */
+      messagesChars: apiMessages.reduce((n, m) => n + messageChars(m), 0),
+      cacheTtlHonored: cacheTtlHonored(reply.usage, '1h'),
     });
 
     // ── AWAITED, AND THAT IS A CORRECTION ────────────────────────────────

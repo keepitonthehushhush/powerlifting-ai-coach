@@ -86,14 +86,35 @@ export function costInMicrodollars(usage, model) {
   const price = priceFor(model);
   if (!price || !usage) return null;
 
-  // Cache writes are billed at a premium and cache reads at a tenth of input.
-  // Both are folded in here rather than ignored, because the moment prompt
-  // caching is switched on - it is on the deferred list - ignoring them would
-  // make the measured cost wrong in the direction that flatters us.
+  // Cache writes are billed at a premium and cache reads at a fraction of
+  // input. Both are folded in here rather than ignored, because ignoring them
+  // would make the measured cost wrong in the direction that flatters us.
+  //
+  // ── THE TWO WRITE PRICES ARE NOT THE SAME PRICE ───────────────────────────
+  //
+  // A 1-hour cache entry costs more to write than a 5-minute one - for
+  // claude-sonnet-5, $4 against $2.50 per million. This used to charge every
+  // write at the 5-minute rate, which was correct while that was the only kind
+  // being made and became a 38% understatement of the largest single line in a
+  // cold reply the moment a 1-hour breakpoint was used.
+  //
+  // `usage.cache_creation` splits them. It is not always present - an older
+  // API version, or a response shape that changes under us - so the total in
+  // `cache_creation_input_tokens` remains the fallback, priced at the CHEAPER
+  // rate. Understating on a missing field is the wrong direction, and it is
+  // chosen deliberately: the alternative is a cost line that jumps when a
+  // field disappears, which reads as a price change rather than a data gap.
+  // `cacheTtlHonored()` below is what actually notices.
+  const creation = usage.cache_creation;
+  const writeDollars = creation
+    ? count(creation.ephemeral_1h_input_tokens) * price.cacheWrite1h +
+      count(creation.ephemeral_5m_input_tokens) * price.cacheWrite5m
+    : count(usage.cache_creation_input_tokens) * price.cacheWrite5m;
+
   const dollars =
     (count(usage.input_tokens) * price.input +
       count(usage.output_tokens) * price.output +
-      count(usage.cache_creation_input_tokens) * price.cacheWrite5m +
+      writeDollars +
       count(usage.cache_read_input_tokens) * price.cacheRead) /
     TOKENS_PER_PRICED_UNIT;
 
@@ -110,4 +131,36 @@ export function formatMicrodollars(micro, { locale = 'en-US' } = {}) {
     minimumFractionDigits: dollars < 0.01 ? 6 : 2,
     maximumFractionDigits: 6,
   });
+}
+
+/**
+ * Did the cache entry we ASKED for actually get made?
+ *
+ * ── WHY THIS IS NOT PARANOIA ──────────────────────────────────────────────
+ *
+ * The 1-hour TTL has lived behind a beta header (`extended-cache-ttl-2025-04-11`
+ * is still a named beta in the installed SDK) even though `ttl` sits on the
+ * stable `CacheControlEphemeral` type. If the field is ignored rather than
+ * refused, nothing fails: the request succeeds, a 5-minute entry is written,
+ * and the only symptom is a cache that keeps missing and a bill that does not
+ * improve. That is this project's whole defect pattern - a control that stops
+ * working and produces no failure - so the request is not trusted, the
+ * RESPONSE is read.
+ *
+ * @param {object} usage - the usage block from the API response.
+ * @param {'5m'|'1h'} requested - the TTL the request asked for.
+ * @returns {boolean|null} true when an entry of the requested kind was made,
+ *   false when a write happened and it was the other kind, and null when
+ *   there was no write at all (a pure cache hit, which says nothing) or the
+ *   breakdown is absent.
+ */
+export function cacheTtlHonored(usage, requested = '1h') {
+  const creation = usage?.cache_creation;
+  if (!creation) return null;
+
+  const oneHour = count(creation.ephemeral_1h_input_tokens);
+  const fiveMinute = count(creation.ephemeral_5m_input_tokens);
+  if (oneHour === 0 && fiveMinute === 0) return null;
+
+  return requested === '1h' ? oneHour > 0 : fiveMinute > 0;
 }
