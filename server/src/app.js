@@ -233,13 +233,32 @@ export function createApp() {
   // Rate limits are applied per router rather than globally, because the
   // buckets differ by cost: a model call is expensive, a profile write is not,
   // and a full data export is expensive in a different way.
-  app.use('/api/chat', rateLimit('chat'), rateLimit('chat_daily'), chatRouter);
+  /*
+   * Three windows, and the monthly one is the only economic limit of the
+   * three. An hour bounds a burst and a day bounds a bad day; neither says
+   * anything about thirty bad days, which is the billing period and therefore
+   * the number that decides whether a subscriber is profitable. See migration
+   * 0056 for the measured usage the three are set from.
+   *
+   * ORDER OF DEPLOY MATTERS HERE. consume_rate_limit() raises on a bucket it
+   * does not know, and the middleware logs that and calls next() - so mounting
+   * 'chat_monthly' before migration 0056 is applied produces an endpoint with
+   * no monthly limit and an error line per request, rather than a failure
+   * anybody would notice. Apply the migration first.
+   */
+  app.use(
+    '/api/chat',
+    rateLimit('chat'),
+    rateLimit('chat_daily'),
+    rateLimit('chat_monthly'),
+    chatRouter
+  );
   // Rate limited on the write bucket: creating checkout sessions is cheap for
   // us and not free for Stripe, and a loop here is somebody's bad afternoon.
   app.use('/api/billing', rateLimit('write'), billingRouter);
   app.use('/api/leaderboard', rateLimit('write'), leaderboardRouter);
-  // 'write', not a new 'read' bucket. consume_rate_limit() knows four buckets -
-  // chat, chat_daily, write, export - and raises on anything else. The
+  // 'write', not a new 'read' bucket. consume_rate_limit() knows five buckets -
+  // chat, chat_daily, chat_monthly, write, export - and raises on anything else. The
   // middleware catches that, logs, and calls next(), so an invented bucket name
   // produces an unlimited endpoint that writes an error line on every request.
   // Adding a bucket means changing the function, not the call site.

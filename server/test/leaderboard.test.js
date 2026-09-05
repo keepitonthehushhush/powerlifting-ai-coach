@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { ERROR_CODES } from '../src/lib/errorCodes.js';
 import { readSource, readRaw, phrase, readProfileApi } from './helpers/source.js';
 import { rankEntries, toKg, fromKg, BOARDS } from '../src/lib/leaderboard.js';
@@ -344,19 +345,68 @@ describe('the page', () => {
   });
 });
 
+/**
+ * The buckets the DATABASE knows, from the newest migration that defines them.
+ *
+ * A migration directory is append-only, so the last file to write the `case`
+ * arms is the only one that describes the live function - the same rule
+ * latestDefinition() exists for.
+ */
+function bucketsFromMigrations() {
+  const dir = new URL('../../supabase/migrations/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+
+  let newest = null;
+  for (const file of files) {
+    const sql = readFileSync(new URL(file, dir), 'utf8');
+    if (sql.includes('function public.consume_rate_limit')) newest = sql;
+  }
+  if (!newest) throw new Error('no migration defines consume_rate_limit');
+
+  return new Set([...newest.matchAll(/when\s+'([a-z_]+)'\s+then\s+v_limit/gi)].map((m) => m[1]));
+}
+
 describe('the rate limit bucket exists', () => {
   const app = readSource(new URL('../src/app.js', import.meta.url));
 
   test('EVERY BUCKET NAMED IN app.js IS ONE consume_rate_limit KNOWS', () => {
-    // The function raises on an unknown bucket, the middleware catches it,
-    // logs, and calls next() - so a typo or an invented name produces an
-    // UNLIMITED endpoint that writes an error line on every request. This was
-    // very nearly shipped as rateLimit('read').
-    const known = new Set(['chat', 'chat_daily', 'write', 'export']);
+    /*
+     * The function raises on an unknown bucket, the middleware catches it,
+     * logs, and calls next() - so a typo or an invented name produces an
+     * UNLIMITED endpoint that writes an error line on every request. This was
+     * very nearly shipped as rateLimit('read').
+     *
+     * The known set is READ OUT OF THE MIGRATIONS rather than restated here.
+     * It used to be a hardcoded list, which is two copies of one fact and
+     * therefore a check that can agree with itself while disagreeing with the
+     * database - the defect this repository keeps finding. It also failed
+     * closed in the wrong direction: adding a real bucket to both the
+     * migration and app.js broke this test, which is the one change it should
+     * have been happy about.
+     */
+    const known = bucketsFromMigrations();
+    assert.ok(known.size >= 4, `only ${known.size} buckets parsed out of the migrations`);
+
     const used = [...app.matchAll(/rateLimit\('([a-z_]+)'\)/g)].map((m) => m[1]);
     assert.ok(used.length >= 6, 'the scan found suspiciously few rate-limited routes');
     for (const bucket of used) {
       assert.ok(known.has(bucket), `app.js uses rateLimit('${bucket}') and consume_rate_limit has no such bucket`);
+    }
+  });
+
+  test('and the chat route is bounded over an hour, a day AND a month', () => {
+    // An hour bounds a burst, a day bounds a bad day, and neither says
+    // anything about thirty bad days - which is the billing period, and so the
+    // only window that decides whether a subscriber is profitable.
+    // Anchored on the path and the router rather than on the exact call
+    // formatting - readSource strips comments, so any anchor that includes
+    // layout is an anchor that moves when somebody adds a note.
+    const start = app.indexOf("'/api/chat'");
+    const end = app.indexOf('chatRouter', start);
+    assert.ok(start > -1 && end > start, 'the chat route is not mounted where this test looks');
+    const chatLine = app.slice(start, end);
+    for (const bucket of ['chat', 'chat_daily', 'chat_monthly']) {
+      assert.ok(chatLine.includes(`rateLimit('${bucket}')`), `/api/chat is not bounded by ${bucket}`);
     }
   });
 });

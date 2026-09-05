@@ -55,6 +55,12 @@
       "0031_retention.sql"
     ]
   },
+  "public.consume_rate_limit(p_bucket text)": {
+    "owner": "0056_the_cap_is_what_the_business_underwrites.sql",
+    "alsoIn": [
+      "0022_rate_limiter_was_never_enforcing.sql"
+    ]
+  },
   "public.delete_my_account()": {
     "owner": "0052_a_definer_function_does_not_see_a_policy.sql",
     "alsoIn": [

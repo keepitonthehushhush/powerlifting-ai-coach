@@ -136,6 +136,17 @@ export function subscriberEconomics({
   replyCost,
   monthlyPrice,
   dailyCap,
+  /**
+   * The monthly bucket, when there is one.
+   *
+   * Added because the worst case was being computed as `dailyCap x 30`, which
+   * silently assumed the daily cap was the only one. Once a monthly bucket
+   * exists that arithmetic overstates the exposure by whichever of the two
+   * never binds - and an exposure number that is wrong in the ALARMING
+   * direction still has to be fixed, because a figure nobody believes is a
+   * figure nobody acts on.
+   */
+  monthlyCap = null,
   daysPerMonth = 30,
   processorPercent = 0.029,
   processorFixed = 0.3,
@@ -146,10 +157,19 @@ export function subscriberEconomics({
   const netRevenue = monthlyPrice * (1 - processorPercent) - processorFixed;
 
   const breakEvenRepliesPerMonth = replyCost > 0 ? netRevenue / replyCost : Infinity;
-  const worstCaseMonthlyCost = replyCost * dailyCap * daysPerMonth;
+
+  // Whichever cap binds first. A subscriber cannot spend past either.
+  const fromDaily = dailyCap * daysPerMonth;
+  const worstCaseReplies = Number.isFinite(monthlyCap) && monthlyCap > 0
+    ? Math.min(fromDaily, monthlyCap)
+    : fromDaily;
+  const worstCaseMonthlyCost = replyCost * worstCaseReplies;
 
   return {
     netRevenue,
+    /** Which of the two caps a capped-out subscriber actually hits. */
+    worstCaseReplies,
+    bindingCap: worstCaseReplies === fromDaily ? 'daily' : 'monthly',
     breakEvenRepliesPerMonth,
     breakEvenRepliesPerDay: breakEvenRepliesPerMonth / daysPerMonth,
     worstCaseMonthlyCost,

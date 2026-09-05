@@ -14,7 +14,7 @@ import {
  * that drifts, and the whole point of this file is that three numbers which
  * live in three places have to be checked against each other.
  */
-function chatDailyCapFromMigrations() {
+function capFromMigrations(bucket) {
   const dir = new URL('../../supabase/migrations/', import.meta.url);
   const files = readdirSync(dir)
     .filter((f) => /^\d{4}_.*\.sql$/.test(f))
@@ -24,7 +24,7 @@ function chatDailyCapFromMigrations() {
   for (const file of files) {
     const sql = readFileSync(new URL(file, dir), 'utf8');
     // Last definition wins, the same way a replay would apply them.
-    for (const match of sql.matchAll(/when\s+'chat_daily'\s+then\s+v_limit\s*:=\s*(\d+)/gi)) {
+    for (const match of sql.matchAll(new RegExp(`when\\s+'${bucket}'\\s+then\\s+v_limit\\s*:=\\s*(\\d+)`, 'gi'))) {
       cap = Number(match[1]);
     }
   }
@@ -84,12 +84,14 @@ describe('COST PER REPLY, FROM MEASURED TOKENS', () => {
 
 describe('WHAT ONE SUBSCRIBER COSTS AGAINST WHAT ONE SUBSCRIBER PAYS', () => {
   const replyCost = costPerReply(MEASURED_PROFILE, MEASURED_PROFILE.model).total;
-  const dailyCap = chatDailyCapFromMigrations();
+  const dailyCap = capFromMigrations('chat_daily');
+  const monthlyCap = capFromMigrations('chat_monthly');
 
-  test('the daily cap is readable from the migrations, not restated here', () => {
-    // If this ever returns null the arithmetic below is meaningless, and it has
+  test('both caps are readable from the migrations, not restated here', () => {
+    // If either returns null the arithmetic below is meaningless, and it has
     // to fail loudly rather than quietly compute with a default.
-    assert.ok(Number.isFinite(dailyCap) && dailyCap > 0, `chat_daily cap not found in migrations`);
+    assert.ok(Number.isFinite(dailyCap) && dailyCap > 0, 'chat_daily cap not found in migrations');
+    assert.ok(Number.isFinite(monthlyCap) && monthlyCap > 0, 'chat_monthly cap not found in migrations');
   });
 
   test('break-even is a small number of replies a day', () => {
@@ -106,16 +108,60 @@ describe('WHAT ONE SUBSCRIBER COSTS AGAINST WHAT ONE SUBSCRIBER PAYS', () => {
     assert.ok(Math.abs(e.netRevenue - (9.99 * 0.971 - 0.3)) < 1e-9);
   });
 
-  test('THE DAILY CAP IS NOT AN ECONOMIC LIMIT', () => {
-    // This is the finding, pinned so it cannot quietly stop being true - in
-    // either direction. A capped-out subscriber costs many months of their own
-    // subscription, which means the cap is what the business underwrites.
-    const e = subscriberEconomics({ replyCost, monthlyPrice: MONTHLY_PRICE, dailyCap });
+  test('THE MONTHLY CAP IS THE ECONOMIC LIMIT, AND THE DAILY ONE IS NOT', () => {
+    /*
+     * ── THIS TEST USED TO SAY THE OPPOSITE, AND IT WAS RIGHT THEN ─────────
+     *
+     * It read `THE DAILY CAP IS NOT AN ECONOMIC LIMIT` and asserted a capped
+     * -out month cost more than twenty months of one subscription. That was
+     * the finding: `chat_daily` was 300, nobody sends 300 messages a day, so
+     * the cap never refused anybody and was quietly the number the business
+     * underwrote.
+     *
+     * Migration 0056 acted on it - daily 300 to 60, and a new monthly bucket -
+     * so the old assertion had to fail, and it did. Its own comment said what
+     * to do about that: "if this has dropped, the cap or the price changed and
+     * the comment above needs rewriting." This is the rewrite, not a relaxed
+     * threshold.
+     *
+     * A daily cap bounds a bad day and says nothing about thirty of them.
+     * Thirty days is the billing period, so the monthly bucket is the only one
+     * of the three that decides whether a subscriber can cost more than they
+     * pay.
+     */
+    const e = subscriberEconomics({ replyCost, monthlyPrice: MONTHLY_PRICE, dailyCap, monthlyCap });
+
+    assert.equal(e.bindingCap, 'monthly', 'the daily cap binds first, so the monthly one does nothing');
+    assert.equal(e.worstCaseReplies, monthlyCap);
     assert.ok(
-      e.worstCaseMonthsOfRevenue > 20,
-      `worst case is ${e.worstCaseMonthsOfRevenue.toFixed(1)} months of revenue - if this has ` +
-        `dropped, the cap or the price changed and the comment above needs rewriting`
+      dailyCap * 30 > monthlyCap,
+      'the daily cap is tighter than the monthly one, which makes the monthly bucket decoration'
     );
+
+    // Still more than one month of revenue - a cap that guaranteed profit
+    // would have to sit below what a real first week uses, and refusing
+    // somebody mid-onboarding costs more than the replies do.
+    assert.ok(e.worstCaseMonthsOfRevenue > 1);
+    // But bounded, which it was not before: this is the whole point of 0056.
+    assert.ok(
+      e.worstCaseMonthsOfRevenue < 10,
+      `worst case is ${e.worstCaseMonthsOfRevenue.toFixed(1)} months of revenue - the caps or ` +
+        `the price moved, and the reasoning above needs rewriting rather than this number`
+    );
+  });
+
+  test('the caps clear the busiest real usage, so they refuse nobody who exists', () => {
+    /*
+     * Measured across every usage_event to date: max 29 replies in an hour,
+     * 38 in a day, and a front-loaded shape - 12 replies on day one and 38 on
+     * day two, then 19 over the following five days.
+     *
+     * A cap set below that first burst would refuse the most valuable
+     * conversation this product ever has with somebody. These are pinned so a
+     * future tightening has to argue with the data rather than with a hunch.
+     */
+    assert.ok(dailyCap > 38, `daily cap ${dailyCap} is under the busiest real day`);
+    assert.ok(monthlyCap > 38 * 2, `monthly cap ${monthlyCap} does not clear a real onboarding burst`);
   });
 
   test('a typical user is comfortably profitable, which is the other half', () => {
