@@ -1005,6 +1005,92 @@ characters of the password's SHA-1 ever leave the browser - the password itself
 is never sent anywhere, including to us.
 
 
+### ADR-20 · The trial before the card is counted in replies, not days
+
+**Context.** Two questions arrived together: what stops a subscriber costing
+more than they pay, and is a free trial worth its cost. The first was answered
+by migration `0056` — a 60/day and 400/month cap on `/api/chat`, which bounds a
+paying athlete at roughly $28 against $9.40 of net revenue in a month nobody
+has ever come close to. The second is this ADR.
+
+The measured shape of usage is what decides it. Across 69 production model
+calls to 2026-09-04 the mean reply cost $0.0712, and use is front-loaded, hard:
+the busiest account's first day was 38 replies and the five days after it
+totalled 19. The owner predicted that shape before the data showed it, and the
+data agrees.
+
+That is exactly the wrong shape for a time-boxed trial. Fourteen days does not
+cost fourteen days of average usage; it costs the heaviest two weeks somebody
+will ever have with the product, and its price is whatever they choose to make
+it. The only lever left afterwards is a rate limit, which is a worse experience
+than a number stated up front.
+
+**Decision.** A trial of **25 coaching replies**, granted to anybody who has
+never subscribed, enforced in the database, and spent only when a reply has
+actually been produced and saved.
+
+25 × $0.0712 = **$1.78 of worst-case acquisition cost**, against $9.40 net on
+a subscription. The point is not that $1.78 is small. It is that it is a
+number, decided in advance, rather than an unknown.
+
+Twenty-five is also enough to be a real trial rather than a tease: an intake
+conversation, a program, and two or three weeks of adjusting it. Somebody who
+has trained a block on this has had the product, not a demo of it.
+
+**Three things about the mechanism, each of which had a cheaper wrong answer.**
+
+*The counter is in `private`.* Not a column on `user_profile`. ADR-14 and
+migration `0032` established why: `authenticated` holds a table-level `UPDATE`
+grant there, and in Postgres a column-level revoke cannot subtract from a
+table-level privilege — so a counter on that table would be a number any
+signed-in person could reset through PostgREST, which is an unlimited free
+trial for anybody who opened the network tab. `0032` solved that for one
+boolean with a trigger, which works and needs one trigger per protected column.
+`private.trial_usage` needs none: `authenticated` has no grant there at all, and
+reaches it only through two `SECURITY DEFINER` functions.
+
+*Reading is not spending.* `trial_status()` reads and `consume_trial_reply()`
+writes, and they are separate functions on purpose. The paywall check runs
+before the model call; the spend runs after the reply has been generated **and
+saved**. Folded together, a request refused by the adult gate or lost to a
+timeout would cost somebody a free reply they never saw — and placed above the
+save rather than below it, a reply that generated fine and failed to store
+would be charged for coaching the athlete will not find when they come back.
+
+*The trial replaces `none`, never `lapsed`.* Somebody who subscribed and
+canceled does not get a second trial. If they did, the cheapest way to use this
+product forever would be to subscribe for one month and cancel — 25 free
+replies on every cancelation. That is not a trial, it is a reward for churning,
+and it is one misplaced `if` away at all times, which is why the test that
+holds it is named in capitals.
+
+**The allowance lives in the database.** `public.trial_reply_allowance()` is
+the single source; the API reads it and writes the copy from it, and the
+constant in `lib/entitlement.js` exists only so the rule stays a pure testable
+function and so a failed lookup degrades to the intended number rather than to
+zero. Two literals for one rule is how a screen ends up promising a different
+trial from the one being enforced — the `has_active_consent` failure exactly.
+`check-db-invariants.mjs` asserts the deployed number is the migration's, that
+`authenticated` holds no grant on the counter, and that `trial_status()` does
+not write. That is the `0056` lesson applied before it bites rather than after.
+
+**What the screen says.** Nothing, until five replies are left. A counter
+ticking down from 25 makes a free product feel metered from the first message,
+which is the opposite of what a trial is for. And none of the copy claims
+anything about results — the system prompt forbids it, and if 25 replies of
+coaching did not sell the product, a sentence at the paywall was not going to.
+
+**Consequences, and one open question.** There are now two trials, and they
+answer different moments: 25 replies before a card is entered, and Stripe's
+14-day trial after one is. Only the first is bounded. The second is bounded
+only by the rate limits, which permit ~400 replies in two weeks — roughly
+**$28 of exposure on a trial that may never convert**, against $9.40 if it
+does. That is a business decision rather than an engineering one, and it is
+recorded here unresolved rather than quietly changed: now that somebody can try
+the product properly without a card, the 14-day card trial may be giving away
+the conversion it was built to win.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
@@ -1054,7 +1140,7 @@ records. What remains:
 |---|---|---|
 | Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working program |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
-| Stripe subscriptions | 1 | Checkout (with a 14-day trial), portal, webhook and account UI are built and tested. Paywall wired behind `PAYWALL_ENABLED`, which ships **off** and now also refuses to activate on test keys in production. Waiting on real usage, not on code — see ADR-14 |
+| Stripe subscriptions | 1 | Checkout (with a 14-day card trial), portal, webhook and account UI are built and tested. A separate 25-reply trial applies before any card is entered — see ADR-20, which also records the unresolved question of whether both should exist. Paywall wired behind `PAYWALL_ENABLED`, which ships **off** and now also refuses to activate on test keys in production. Waiting on real usage, not on code — see ADR-14 |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
 | Data retention | 1 | Tiered, `private.apply_retention()` on a daily `pg_cron` schedule (migration 0031). Health notes and chat messages expire at 12 months, activity and usage records at 24; training logs are never swept. Inactive-account deletion is written and deliberately **unscheduled** until transactional email exists to warn people first |
 | Audit logging | 1 | `audit_events` (migration 0030) records data exports, account deletions and every service-role subscription write, readable by the person they happened to at `/account`. `user_id` is ON DELETE SET NULL so a deletion record survives the deletion without remaining personal data. Not yet covering: consent changes (already in their own ledger) and sign-in events |
