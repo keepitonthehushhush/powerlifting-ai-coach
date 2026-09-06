@@ -213,6 +213,19 @@ const CHECKS = [
                  !~* '\\y(insert|update|delete)\\y' as ok`,
   },
   {
+    name: 'THE CONVERSATION APPEND IS *NOT* SECURITY DEFINER',
+    why: 'The one function in this schema that must run as the caller. It takes a conversation id as an ARGUMENT and updates that row, so the only thing standing between an athlete and somebody else\'s conversation is the RLS policy on public.conversations - which a definer function would bypass. Every other entry here asserts definer is present; this one asserts it is absent, and the asymmetry is the point.',
+    sql: `select not bool_or(p.prosecdef) as ok
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname = 'append_conversation_turn'`,
+  },
+  {
+    name: 'and it appends rather than replacing',
+    why: 'The defect it exists to fix was a read-modify-write in the API: two overlapping turns read the same array and the second write erased the first. If this function is ever rewritten to SELECT the array and then UPDATE it, the same lost update comes back one layer down, where nothing is watching for it.',
+    sql: `select pg_get_functiondef('public.append_conversation_turn(uuid,text,text,integer)'::regprocedure)
+                 ~ 'set messages = coalesce\\(messages' as ok`,
+  },
+  {
     name: 'consume_rate_limit is SECURITY DEFINER',
     why: 'Counters live in the private schema, which authenticated cannot reach. Without definer rights every check raises 42501 and the limiter fails open, silently. This was true in production for a day.',
     sql: `select bool_and(p.prosecdef) as ok

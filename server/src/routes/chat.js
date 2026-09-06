@@ -581,18 +581,46 @@ chatRouter.post('/', async (req, res, next) => {
      */
     let savedProgram = null;
 
-    const now = new Date().toISOString();
-    const updated = [
-      ...history,
-      { role: 'user', content: message, at: now },
-      { role: 'assistant', content: replyText, at: now },
-    ];
-
-    const { error: saveError } = await req.supabase
-      .from('conversations')
-      .update({ messages: updated })
-      .eq('id', conversation.id);
+    /*
+     * ── APPENDED BY THE DATABASE, NOT OVERWRITTEN BY US ────────────────────
+     *
+     * This was `update({ messages: [...history, user, reply] })`, built from a
+     * snapshot read at the start of a request that then spent up to 77 seconds
+     * in the model. Read-modify-write on a JSONB column with no version check:
+     * two overlapping requests read the same array and the second write
+     * deleted the first exchange. Both replies were generated, both were paid
+     * for, and the coach never saw the erased one again - so a correction or
+     * an injury mentioned in it was simply forgotten.
+     *
+     * It is reachable despite the composer disabling send while busy: iOS
+     * kills the fetch when the app is backgrounded, the catch clears the busy
+     * flag, the server carries on, and the athlete sends again having seen
+     * nothing. It fired at least once in the first 71 replies - found in
+     * usage_events, never reported.
+     *
+     * The RPC appends in one statement, so both turns survive in arrival
+     * order, and returns the tail the client renders - which is why the
+     * response uses ITS answer rather than the array built here. Sending our
+     * own would show a conversation that disagrees with the one on reload.
+     * See migration 0058, including why it is SECURITY INVOKER.
+     */
+    const { data: storedTail, error: saveError } = await req.supabase.rpc('append_conversation_turn', {
+      p_conversation: conversation.id,
+      p_user_message: message,
+      p_assistant_message: replyText,
+      p_window: config.chat.historyWindow,
+    });
     if (saveError) throw codedError('reply_not_saved', 'Reply generated but could not be saved.');
+
+    /*
+     * An empty tail means the update matched no row - RLS refused it, or the
+     * conversation was deleted mid-request. The reply exists and is not
+     * stored, which is the case `reply_not_saved` is for; letting it through
+     * would answer 200 with a reply that is nowhere.
+     */
+    if (!Array.isArray(storedTail) || storedTail.length === 0) {
+      throw codedError('reply_not_saved', 'Reply generated but could not be saved.');
+    }
 
     /*
      * Both calls, when there were two. The repair is cheap - the system prompt
@@ -825,7 +853,8 @@ chatRouter.post('/', async (req, res, next) => {
     res.json({
       conversationId: conversation.id,
       reply: replyText,
-      messages: updated.slice(-config.chat.historyWindow),
+      // What the database now holds, not what this request believed it would.
+      messages: storedTail,
       // null unless a row actually landed. Never "probably".
       savedProgram,
       /*

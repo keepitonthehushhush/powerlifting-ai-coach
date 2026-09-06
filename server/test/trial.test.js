@@ -186,7 +186,7 @@ describe('the spend happens after the reply exists', () => {
      * find when they come back. Below it, the only failure mode is giving one
      * away, which is the right way round.
      */
-    const save = route.indexOf(".update({ messages: updated })");
+    const save = route.indexOf("rpc('append_conversation_turn'");
     const spend = route.indexOf('await consumeTrialReply(');
     assert.notEqual(save, -1, 'the conversation save moved - this test is now checking nothing');
     assert.notEqual(spend, -1, 'nothing spends the trial');

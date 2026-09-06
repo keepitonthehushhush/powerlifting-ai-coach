@@ -189,9 +189,9 @@ describe('the recovery is wired in, and rests on the server saving first', () =>
      * after the response, a backgrounded request would lose the exchange for
      * real and this recovery would poll for something that is not coming.
      */
-    const save = chatRoute.indexOf("from('conversations')\n      .update({ messages: updated })");
+    const save = chatRoute.indexOf("rpc('append_conversation_turn'");
     const respond = chatRoute.indexOf('res.json(');
-    assert.ok(save > -1, 'the conversation save has moved');
+    assert.ok(save > -1, 'the conversation save has moved - it no longer appends through the RPC');
     assert.ok(respond > -1, 'the response has moved');
     assert.ok(save < respond, 'the server answers before saving - recovery cannot work');
   });

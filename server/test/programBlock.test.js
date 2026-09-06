@@ -230,8 +230,18 @@ describe('saving a program never costs somebody their reply', () => {
   });
 
   test('the athlete is shown the stripped reply, not the raw one', () => {
-    assert.match(chatRoute, /content: replyText/);
-    assert.match(chatRoute, /reply: replyText/);
+    /*
+     * Both halves, because they are two different promises: what gets STORED
+     * in the conversation and what gets RETURNED in the response must be the
+     * stripped text, never the raw completion with the program block still in
+     * it. The stored half used to be `content: replyText` inside an array the
+     * route built; it now travels as an argument to the append RPC (migration
+     * 0058), which is the same promise through a different door.
+     */
+    assert.match(chatRoute, /p_assistant_message: replyText/, 'the raw reply may be what gets stored');
+    assert.match(chatRoute, /reply: replyText/, 'the raw reply may be what gets returned');
+    // And the raw completion must not be what travels anywhere.
+    assert.doesNotMatch(chatRoute, /p_assistant_message: reply\.|reply: rawReply/);
   });
 
   test('one program is active at a time, and the old one is kept', () => {
