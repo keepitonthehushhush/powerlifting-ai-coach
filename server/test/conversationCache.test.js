@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readSource } from './helpers/source.js';
 import {
   CONVERSATION_CACHE_TTL,
+  replayWindow,
   withHistoryCacheBreakpoint,
 } from '../src/lib/conversationCache.js';
 import { cacheTtlHonored, costInMicrodollars } from '../src/lib/pricing.js';
@@ -195,5 +196,109 @@ describe('the prompt size line still measures the prompt', () => {
     assert.match(route, /messagesChars: apiMessages\.reduce\(\(n, m\) => n \+ messageChars\(m\), 0\)/);
     assert.match(route, /function messageChars\(message\)/);
     assert.doesNotMatch(route, /n \+ \(m\.content\?\.length \?\? 0\)/);
+  });
+});
+
+describe('the cached prefix survives to the next turn', () => {
+  /**
+   * ── THE TEST THAT WAS MISSING ───────────────────────────────────────────
+   *
+   * Every test above checks that the breakpoint is placed correctly, and all
+   * of them passed while the feature was incapable of ever producing a single
+   * cache hit. Placement was never the question. The question is whether the
+   * bytes cached on one turn still begin the request on the next, and until
+   * this block nothing asked it.
+   *
+   * The old route replayed `history.slice(-window)` against a conversation
+   * that is stored in full, so the window slid two messages forward per turn
+   * and the prefix changed from the very first block. Cache entries were
+   * written every turn and read never - the expensive half of caching with
+   * none of the benefit, which is the exact mistake the file's own comments
+   * warn about, made one level up.
+   */
+
+  /** What the model is actually shown, as one comparable string. */
+  const sent = (messages) =>
+    messages
+      .map((m) => `${m.role}:${typeof m.content === 'string' ? m.content : m.content[0].text}`)
+      .join('\n');
+
+  /** The prefix a turn asks Anthropic to remember: everything up to the marker. */
+  const cachedPrefix = (apiMessages) => {
+    const at = apiMessages.findIndex((m) => Array.isArray(m.content));
+    assert.notEqual(at, -1, 'this turn set no breakpoint at all');
+    return sent(apiMessages.slice(0, at + 1));
+  };
+
+  /** One turn, exactly as routes/chat.js builds it. */
+  const turn = (stored, message) =>
+    withHistoryCacheBreakpoint([
+      ...replayWindow(stored).map(({ role, content }) => ({ role, content })),
+      { role: 'user', content: message },
+    ]);
+
+  const conversation = (turns) =>
+    Array.from({ length: turns * 2 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `${i % 2 === 0 ? 'question' : 'answer'} ${i} ${line(400)}`,
+    }));
+
+  test('a long conversation reads back most of what it just paid to cache', () => {
+    /*
+     * Forty turns is an ordinary first two weeks for the busiest account this
+     * product has had - day one alone was 38 replies. Well past the window,
+     * which is the only region where any of this matters.
+     */
+    let stored = conversation(40);
+    let hits = 0;
+    const turnsChecked = 12;
+
+    for (let i = 0; i < turnsChecked; i += 1) {
+      const before = cachedPrefix(turn(stored, `question ${i}`));
+      stored = [
+        ...stored,
+        { role: 'user', content: `question ${i}` },
+        { role: 'assistant', content: `answer ${i} ${line(400)}` },
+      ];
+      const after = sent(turn(stored, `question ${i + 1}`));
+
+      // A hit is not "the breakpoint moved sensibly". It is the literal
+      // thing Anthropic does: does the next request BEGIN with the bytes the
+      // last one asked to have remembered?
+      if (after.startsWith(before)) hits += 1;
+    }
+
+    assert.ok(
+      hits >= turnsChecked - Math.ceil(turnsChecked / 5) - 1,
+      `only ${hits} of ${turnsChecked} turns could read the previous turn's cache back`
+    );
+  });
+
+  test('the anchor holds still for several turns, then moves once', () => {
+    // The mechanism, asserted directly: an anchor that moves every turn is
+    // the defect, and an anchor that never moves would grow the window without
+    // limit. It must do neither.
+    const anchors = new Set();
+    for (let n = 62; n <= 72; n += 2) {
+      const stored = conversation(n / 2);
+      anchors.add(stored.length - replayWindow(stored).length);
+    }
+    assert.ok(anchors.size >= 2, 'the anchor never moved - the window would grow forever');
+    assert.ok(anchors.size <= 3, `the anchor moved ${anchors.size} times in 6 turns - it still slides`);
+  });
+
+  test('and it never replays more than the window the route promises', () => {
+    for (let n = 1; n <= 120; n += 1) {
+      const stored = conversation(n);
+      const replayed = replayWindow(stored);
+      assert.ok(replayed.length <= 30, `replayed ${replayed.length} messages for a ${n}-turn conversation`);
+      assert.ok(
+        replayed.length >= Math.min(stored.length, 22),
+        `replayed only ${replayed.length} messages for a ${n}-turn conversation`
+      );
+      // Always the TAIL of the conversation. Dropping from the end instead of
+      // the front would hand the coach a stale picture of the athlete.
+      assert.deepEqual(replayed, stored.slice(stored.length - replayed.length));
+    }
   });
 });

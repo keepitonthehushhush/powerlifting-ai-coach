@@ -84,3 +84,69 @@ export function withHistoryCacheBreakpoint(messages) {
       : message
   );
 }
+
+/**
+ * The slice of history to replay, chosen so that the cache can actually hit.
+ *
+ * ── THE DEFECT THIS EXISTS TO FIX ─────────────────────────────────────────
+ *
+ * The breakpoint above is placed correctly and, as originally shipped, could
+ * never have been read back even once. The route replayed
+ * `history.slice(-30)`, and the stored conversation is not truncated - it
+ * grows for as long as the athlete keeps talking. So past thirty messages the
+ * window slid forward by two on EVERY turn:
+ *
+ *   turn N     sends m1 … m30, caches the prefix m1 … m30
+ *   turn N+1   sends m3 … m30, u, a
+ *
+ * Anthropic matches a cache entry against the literal prefix of the request,
+ * from the first block. `m1 … m30` is not a prefix of anything that starts at
+ * `m3`. The entry written on turn N is unreachable on turn N+1, which writes
+ * its own unreachable entry, and so on forever.
+ *
+ * That is worse than not caching at all. A 20,000-token history costs $0.040
+ * to send at full input price and $0.080 to write at the 1-hour rate, so the
+ * feature added to halve the cost of a long conversation would have doubled
+ * it. It never ran in production - the commit landed a day after the last
+ * chat traffic - so this was caught by reading the numbers rather than by
+ * paying them, and the check that found it was "does the cached prefix on one
+ * turn still start the request on the next", which no unit test was asking.
+ *
+ * ── WHY A STEPPED WINDOW ──────────────────────────────────────────────────
+ *
+ * The prefix has to stay byte-identical across consecutive turns, so the
+ * START of the window must not move every turn. It moves in steps instead:
+ * the window grows from `floor` up to `window` messages, then drops back to
+ * `floor` in one move and grows again.
+ *
+ * With the defaults that is one miss in every five turns and four hits, and
+ * the replayed history stays between 22 and 30 messages - never more than the
+ * window the route already promised, and never so few that the coach loses
+ * the thread. Trading a slightly shorter average history for a cache that
+ * works is worth it by a wide margin; trading it for one that cannot work is
+ * not a trade at all.
+ *
+ * Dropping in one move rather than two is also why the drop is cheap: the
+ * turn that re-anchors pays full input price once, and the four turns after
+ * it read almost everything back at a tenth of it.
+ *
+ * @param {Array} history every message stored for this conversation, oldest first.
+ * @param {{window?: number, step?: number}} [options]
+ *        `window` is the most messages that may be replayed. `step` is how far
+ *        the anchor jumps when it moves, and therefore how many turns share an
+ *        anchor.
+ * @returns {Array} the messages to replay, oldest first.
+ */
+export function replayWindow(history, { window = 30, step = 10 } = {}) {
+  if (!Array.isArray(history)) return [];
+  if (history.length <= window) return history;
+
+  /*
+   * The anchor is a multiple of `step`, so it is unchanged for `step / 2`
+   * turns (a turn appends two messages). Ceil, not floor: floor would leave
+   * the window one step too wide and send more than `window` messages, which
+   * is the promise this function is not allowed to break.
+   */
+  const anchor = Math.ceil((history.length - window) / step) * step;
+  return history.slice(anchor);
+}

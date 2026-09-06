@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { cacheTtlHonored, costInMicrodollars } from '../lib/pricing.js';
-import { withHistoryCacheBreakpoint } from '../lib/conversationCache.js';
+import { replayWindow, withHistoryCacheBreakpoint } from '../lib/conversationCache.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
@@ -305,7 +305,15 @@ chatRouter.post('/', async (req, res, next) => {
     const conversation = await loadOrCreateConversation(req.supabase, conversationId);
 
     const history = Array.isArray(conversation.messages) ? conversation.messages : [];
-    const window = history.slice(-config.chat.historyWindow);
+    /*
+     * NOT history.slice(-window). That slid the start of the replay forward by
+     * two messages every turn, so the prefix cached on one turn did not begin
+     * the request on the next and no cache entry was ever readable - the
+     * conversation cache could not have produced a single hit. replayWindow
+     * moves the anchor in steps instead, and lib/conversationCache.js has the
+     * arithmetic and the dollars.
+     */
+    const window = replayWindow(history, { window: config.chat.historyWindow });
 
     /*
      * The breakpoint goes on the last message of the REPLAYED HISTORY, never
