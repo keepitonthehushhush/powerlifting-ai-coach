@@ -1019,6 +1019,16 @@ the busiest account's first day was 38 replies and the five days after it
 totalled 19. The owner predicted that shape before the data showed it, and the
 data agrees.
 
+**And the data is one person.** Six accounts exist; one of them holds 80 of the
+92 replies ever delivered, and it is the developer's. Four of the other five
+sent one message or none. So every figure in this ADR — the mean, the curve,
+the $1.78 — is n=1, and the 1 is not a customer. The reasoning may still be
+right: a bounded acquisition cost is better than an unbounded one whatever the
+distribution turns out to be, and that argument does not depend on the numbers.
+But the numbers are not yet evidence about strangers, and this paragraph exists
+so that nobody quotes them as though they were. `docs/WHO_IS_USING_THIS.md`
+has the funnel and how to re-run it.
+
 That is exactly the wrong shape for a time-boxed trial. Fourteen days does not
 cost fourteen days of average usage; it costs the heaviest two weeks somebody
 will ever have with the product, and its price is whatever they choose to make

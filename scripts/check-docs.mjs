@@ -44,6 +44,7 @@ const FILES = [
   'docs/RUNBOOK.md',
   'docs/SECURITY.md',
   'docs/LEGAL_CONSIDERATIONS.md',
+  'docs/WHO_IS_USING_THIS.md',
   '.env.example',
   'scripts/check-db-invariants.mjs',
   'scripts/check-contact-route.mjs',
