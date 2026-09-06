@@ -34,3 +34,48 @@ export async function loadSubscription(supabase) {
   if (error) throw codedError('storage_unavailable', 'Could not read your subscription.', { cause: error.code });
   return data ?? null;
 }
+
+/**
+ * How much of the free trial the caller has spent.
+ *
+ * ── WHY THIS CAN RETURN NULL AND WHAT NULL MEANS ──────────────────────────
+ *
+ * Null is "we do not know", never "none spent". entitlement() treats an
+ * unknown count as no trial rather than as a full one, which is the safe
+ * direction: a database hiccup should not mint free coaching, and the athlete
+ * who hits that gets the ordinary subscribe message rather than silent
+ * unlimited access.
+ *
+ * That is the opposite direction from the rate limiter, which fails OPEN on
+ * purpose. The difference is what each failure costs. An open rate limiter
+ * risks a bill; an open trial IS the bill, repeatedly, for anybody who
+ * notices. And unlike a limiter, the failure here is visible to the person
+ * immediately, so it cannot sit unnoticed for a day the way the unknown
+ * bucket did.
+ *
+ * @returns {Promise<{used: number, allowance: number, remaining: number}|null>}
+ */
+export async function loadTrialStatus(supabase) {
+  const { data, error } = await supabase.rpc('trial_status');
+  if (error) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !Number.isInteger(row.used) || !Number.isInteger(row.allowance)) return null;
+  return { used: row.used, allowance: row.allowance, remaining: row.remaining };
+}
+
+/**
+ * Spend one trial reply. Called only after a reply exists and has been saved.
+ *
+ * Best-effort by design, and the direction is deliberate: if this fails the
+ * athlete gets one reply more than the trial allows, which is a rounding error
+ * in the athlete's favor to give away. The alternative - failing the request after the
+ * coaching has already been written and stored - would take away a reply the
+ * person can see on their screen, to protect a few cents.
+ *
+ * @returns {Promise<number|null>} the new total, or null if it did not land.
+ */
+export async function consumeTrialReply(supabase) {
+  const { data, error } = await supabase.rpc('consume_trial_reply');
+  if (error || !Number.isInteger(data)) return null;
+  return data;
+}

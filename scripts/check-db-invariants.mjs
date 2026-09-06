@@ -69,6 +69,32 @@ function intendedBuckets() {
 }
 
 /** The buckets the APPLICATION asks for, which must all exist. */
+/**
+ * The free-trial allowance as the REPOSITORY intends it.
+ *
+ * Read from the migration for the same reason the rate limits are: 0056 was
+ * written, committed, deployed and never applied, and a hardcoded copy here
+ * would have agreed with the file and lied about the database. The trial has
+ * the identical failure shape and a worse consequence - a deployed allowance
+ * larger than the one intended is free coaching nobody decided to give away,
+ * and nothing anywhere goes red.
+ */
+function intendedTrialAllowance() {
+  const dir = new URL('../supabase/migrations/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+
+  let newest = null;
+  for (const file of files) {
+    const sql = readFileSync(new URL(file, dir), 'utf8');
+    if (sql.includes('function public.trial_reply_allowance')) newest = sql;
+  }
+  if (!newest) throw new Error('no migration defines trial_reply_allowance');
+
+  const found = newest.match(/function public\.trial_reply_allowance\(\)[\s\S]*?select\s+(\d+)/);
+  if (!found) throw new Error('trial_reply_allowance() no longer returns a literal');
+  return Number(found[1]);
+}
+
 function mountedBuckets() {
   const app = readFileSync(new URL('../server/src/app.js', import.meta.url), 'utf8');
   return [...new Set([...app.matchAll(/rateLimit\('([a-z_]+)'\)/g)].map((m) => m[1]))];
@@ -163,6 +189,28 @@ const CHECKS = [
                    ('when ''' || b.bucket || '''') in
                    pg_get_functiondef('public.consume_rate_limit(text)'::regprocedure)
                  ) = 0`,
+  },
+  {
+    name: 'THE DEPLOYED TRIAL IS THE ONE THE MIGRATION DESCRIBES',
+    why: 'Same failure shape as the rate limits, and a worse consequence. The allowance is a number in a deployed function; the API reads it and writes the copy from it, so a database still running an older value hands out a trial nobody decided on and displays it as if it were the decision. The file is the intent and the catalog is the fact.',
+    sql: `select pg_get_functiondef('public.trial_reply_allowance()'::regprocedure)
+                 ~ ('select\\s+' || ${intendedTrialAllowance()} || '\\y') as ok`,
+  },
+  {
+    name: 'AND THE COUNTER IT SPENDS IS OUT OF THE ATHLETE\'S REACH',
+    why: 'The whole design rests on this. Migration 0032 established that a column-level revoke cannot subtract from the table-level UPDATE grant authenticated holds on user_profile, which would have made "free coaching forever" a boolean anybody could set on themselves. The trial counter avoids that by living in private, where there is no grant to subtract from - and this asserts the grant is actually absent rather than assumed absent.',
+    sql: `select not (
+            has_table_privilege('authenticated', 'private.trial_usage', 'SELECT')
+            or has_table_privilege('authenticated', 'private.trial_usage', 'UPDATE')
+            or has_table_privilege('authenticated', 'private.trial_usage', 'INSERT')
+            or has_table_privilege('authenticated', 'private.trial_usage', 'DELETE')
+          ) as ok`,
+  },
+  {
+    name: 'and trial_status reads without spending',
+    why: 'The paywall check runs before the model call and must not consume anything. If these two ever collapse into one function, a request refused by the adult gate or lost to a timeout starts costing somebody a free reply they never saw.',
+    sql: `select pg_get_functiondef('public.trial_status()'::regprocedure)
+                 !~* '\\y(insert|update|delete)\\y' as ok`,
   },
   {
     name: 'consume_rate_limit is SECURITY DEFINER',

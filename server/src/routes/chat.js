@@ -19,7 +19,7 @@ import {
   TRUNCATION_NOTICE,
 } from '../lib/coachOutcome.js';
 import { entitlement, requiresSubscription, PAID_FEATURE } from '../lib/entitlement.js';
-import { loadSubscription } from '../lib/subscriptions.js';
+import { consumeTrialReply, loadSubscription, loadTrialStatus } from '../lib/subscriptions.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
 import { GUARDIAN_CONSENT_VERSION } from '../lib/policyVersions.js';
@@ -217,9 +217,13 @@ chatRouter.post('/', async (req, res, next) => {
      * The subscription read is skipped entirely when the paywall is off, which
      * is the state this ships in.
      */
-    const [context, subscription, guardianConsent] = await Promise.all([
+    const [context, subscription, trial, guardianConsent] = await Promise.all([
       loadCoachingContext(req.supabase),
       config.paywall.active ? loadSubscription(req.supabase) : Promise.resolve(null),
+      // Same rule as the subscription read: it answers a question nothing asks
+      // while the paywall is off, so it is not asked. Nothing is spent here -
+      // trial_status() reads and never increments (migration 0057).
+      config.paywall.active ? loadTrialStatus(req.supabase) : Promise.resolve(null),
       // Skipped entirely while minors are disabled, like the subscription read
       // above: it answers a question the gate will not ask.
       config.minors.enabled ? loadGuardianConsent(req.supabase) : Promise.resolve(false),
@@ -253,6 +257,13 @@ chatRouter.post('/', async (req, res, next) => {
         { code: `adult_gate_${adult.reason}` }
       );
     }
+
+    /*
+     * Null unless this reply is being paid for out of a free trial, in which
+     * case it is how many were left BEFORE this one. Set by the paywall block
+     * and read twice afterwards: once to spend, once to tell the athlete.
+     */
+    let trialRemaining = null;
 
     /**
      * THE PAYWALL, AFTER THE ADULT GATE AND NEVER BEFORE IT - AND NEVER FOR
@@ -289,17 +300,31 @@ chatRouter.post('/', async (req, res, next) => {
         // Loaded with the profile that the adult gate already used, so this
         // costs no extra query.
         freeForever: context.profile?.free_forever === true,
+        trialRepliesUsed: trial?.used,
+        // The database owns the number. Passing back what it just said, rather
+        // than letting the fallback constant decide, is what keeps the message
+        // on the screen and the rule being enforced from ever describing two
+        // different trials.
+        ...(Number.isInteger(trial?.allowance) ? { trialAllowance: trial.allowance } : {}),
       });
       if (!decision.entitled) {
         logger.info('chat.refused_no_subscription', { userId: req.user.id, reason: decision.reason });
-        throw codedError(
-          'payment_required',
-          decision.reason === 'lapsed'
-            ? 'Your subscription has ended, so the coaching conversations are paused. Everything else - your logs, your charts, your program - is still here and still free. You can restart the subscription from your account page.'
-            : 'Coaching conversations are part of the subscription. Your logs, charts, program and the exercise library stay free. You can subscribe from your account page.',
-          { reason: decision.reason }
-        );
+        throw codedError('payment_required', refusalCopy(decision.reason), { reason: decision.reason });
       }
+      /*
+       * ── ON THE TRIAL, AND ONLY THEN ─────────────────────────────────────
+       *
+       * Decided here, spent hundreds of lines below, after the reply has been
+       * produced AND saved. Separating the two is the whole point: a request
+       * that errors, times out or produces nothing usable must not cost
+       * somebody a free reply they never got to read.
+       *
+       * Scoped to `reason === 'trial'` rather than to "not paying", because a
+       * grandfathered or paying athlete has no counter that should move, and
+       * incrementing one for them would quietly arm a trial that is already
+       * spent if they ever lapse.
+       */
+      if (decision.reason === 'trial') trialRemaining = decision.trialRemaining;
     }
 
     const conversation = await loadOrCreateConversation(req.supabase, conversationId);
@@ -778,17 +803,76 @@ chatRouter.post('/', async (req, res, next) => {
       logger.warn('usage.record_failed', { userId: req.user.id, message: err.message });
     }
 
+    /*
+     * ── THE SPEND, AFTER THE REPLY EXISTS AND IS SAVED ──────────────────────
+     *
+     * Below the save, deliberately. Above it, a conversation that generated a
+     * reply and then failed to store it would still have cost a trial reply -
+     * charging somebody for coaching they will not find when they come back.
+     *
+     * Best-effort: if the counter does not move, the athlete gets one more
+     * reply than the trial allows. That is a rounding error in their favor,
+     * and the alternative is failing a request whose answer is already written
+     * and stored in order to protect a few cents.
+     */
+    let trialLeft = null;
+    if (trialRemaining !== null) {
+      const used = await consumeTrialReply(req.supabase);
+      trialLeft = Number.isInteger(used) ? Math.max(trial.allowance - used, 0) : trialRemaining - 1;
+      if (used === null) logger.warn('trial.spend_failed', { userId: req.user.id });
+    }
+
     res.json({
       conversationId: conversation.id,
       reply: replyText,
       messages: updated.slice(-config.chat.historyWindow),
       // null unless a row actually landed. Never "probably".
       savedProgram,
+      /*
+       * Absent for everybody who is not on a trial, rather than present and
+       * null. A paying athlete's client should have no field to render, and a
+       * key that is sometimes null is a key somebody eventually renders as
+       * "0 replies left" to a subscriber.
+       */
+      ...(trialLeft === null ? {} : { trialRepliesLeft: trialLeft }),
     });
   } catch (err) {
     next(err);
   }
 });
+
+/**
+ * What a refused athlete is told, by reason.
+ *
+ * ── WHY THE COPY IS A FUNCTION AND NOT A TERNARY ──────────────────────────
+ *
+ * It was a ternary with two arms while there were two outcomes. There are now
+ * four, and a ternary that has stopped covering its cases does not fail - it
+ * silently gives everybody the last arm, so somebody who never subscribed at
+ * all would be told their subscription had ended. A lookup with a default
+ * makes a missing case a wrong sentence rather than a confidently wrong one,
+ * and a test can enumerate the reasons entitlement() can return and check that
+ * each has its own words.
+ *
+ * ── AND WHY IT CLAIMS NOTHING ─────────────────────────────────────────────
+ *
+ * The system prompt forbids claims about results, and a paywall is exactly
+ * where a product starts making them. So none of this says the coaching
+ * works, is worth it, or will get anybody stronger. It says what happened,
+ * what is still free, and what the button does. The trial has to sell by
+ * being good; if 25 replies of coaching did not do it, a sentence here was
+ * never going to.
+ */
+export function refusalCopy(reason) {
+  switch (reason) {
+    case 'trial_exhausted':
+      return 'That was the last of your free coaching replies. Your program, your logs, your charts and the exercise library stay free and stay exactly where they are - the conversation is the part that needs a subscription. You can start one from your account page.';
+    case 'lapsed':
+      return 'Your subscription has ended, so the coaching conversations are paused. Everything else - your logs, your charts, your program - is still here and still free. You can restart the subscription from your account page.';
+    default:
+      return 'Coaching conversations are part of the subscription. Your logs, charts, program and the exercise library stay free. You can subscribe from your account page.';
+  }
+}
 
 /** GET /api/chat/conversation - rehydrate the UI on page load. */
 chatRouter.get('/conversation', async (req, res, next) => {

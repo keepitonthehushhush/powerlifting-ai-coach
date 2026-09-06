@@ -615,6 +615,15 @@ claim nobody checked, and the test that pins this section pins the LIST. Read
 the list as the fact and the number as commentary.
 
 - `public.consume_rate_limit(text)`
+- `public.trial_status()` — reads the caller's free-trial counter and never
+  moves it. Takes no arguments, so there is nothing to point at another
+  account, and it returns three integers with no personal content in them.
+- `public.consume_trial_reply()` — spends one free-trial reply for the
+  caller. Also argument-free. A signed-in person can call it directly and
+  the only thing that achieves is spending their own trial faster, which is
+  why it is not worth defending against; the counter it writes lives in
+  `private.trial_usage`, where `authenticated` holds no grant, so this
+  function and `trial_status()` are the entire reach anybody has to it.
 - `public.delete_my_account()`
 - `public.record_audit_event(text, jsonb)`
 - `public.record_error_event(...)`

@@ -487,6 +487,12 @@ export const en = {
     coach: 'Coach',
     programSaved: 'Week {week} is saved — {days} days, ready to follow.',
     programSavedLink: 'Open your program',
+    // Says what is left and what it costs to keep going, and claims nothing
+    // about what the coaching will do. If the replies did not sell it, a
+    // sentence here was not going to.
+    trialLeft: '{count} free coaching replies left. Your program, logs and charts stay free either way.',
+    trialSpent: 'That was the last free coaching reply. Your program, logs and charts stay free.',
+    trialLink: 'See the subscription',
     thinking: 'Thinking…',
     thinkingElapsed: 'Writing your reply… {seconds}s',
     thinkingLong: 'Still writing. A full training week takes a minute or so.',

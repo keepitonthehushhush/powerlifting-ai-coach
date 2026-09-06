@@ -38,6 +38,20 @@ import { windowTranscript } from '../lib/transcriptWindow.js';
 /** After this long, the wait stops being ordinary and the copy says so. */
 const LONG_WAIT_SECONDS = 25;
 
+/**
+ * How few free replies must be left before the screen mentions them.
+ *
+ * Not a threshold anybody can derive from the allowance, and deliberately so.
+ * A counter visible from reply one meters a product that is trying to prove
+ * itself, and the number is not useful information until running out is close
+ * enough to plan around. Five is roughly a week of ordinary use at the rate
+ * the busiest account settled into after its first day.
+ *
+ * The allowance itself is never hardcoded here - the server sends what is
+ * left and this only decides when to show it.
+ */
+const TRIAL_TELL_AT = 5;
+
 export function Chat() {
   const { t } = useI18n();
   const [messages, setMessages] = useState([]);
@@ -66,6 +80,22 @@ export function Chat() {
    * describe an older turn.
    */
   const [savedProgram, setSavedProgram] = useState(null);
+  /*
+   * ── HOW MANY FREE REPLIES ARE LEFT, AND WHEN TO SAY SO ──────────────────
+   *
+   * Null for everybody who is not on a trial - the server omits the field
+   * rather than sending null, so a subscriber has nothing here to render and
+   * cannot be shown "0 replies left" by a falsy check somewhere.
+   *
+   * It is deliberately NOT a counter that sits on screen from the first reply.
+   * A number ticking down from 25 makes a free product feel metered from the
+   * moment somebody starts, which is the opposite of what a trial is for: the
+   * point is that they get far enough in to know whether this is any good.
+   * TELL_AT is where "you have plenty" turns into "this is going to run out",
+   * which is the first moment the information is useful rather than just
+   * anxious.
+   */
+  const [trialLeft, setTrialLeft] = useState(null);
   /*
    * Whether the whole conversation is mounted, or only its recent end.
    * Per visit, not per account, and deliberately so: somebody who opened the
@@ -144,6 +174,10 @@ export function Chat() {
       setConversationId(result.conversationId);
       setMessages(result.messages);
       setSavedProgram(result.savedProgram ?? null);
+      // Only ever what the server just said. Never decremented here: the
+      // browser guessing at a number the database owns is how a screen and an
+      // enforcement start disagreeing.
+      setTrialLeft(Number.isInteger(result.trialRepliesLeft) ? result.trialRepliesLeft : null);
     } catch (err) {
       /*
        * ── THE APP WAS BACKGROUNDED, NOT DISCONNECTED ────────────────────
@@ -280,6 +314,17 @@ export function Chat() {
             )}
           </article>
         ))}
+
+        {trialLeft !== null && trialLeft <= TRIAL_TELL_AT && (
+          <div className="trial-remaining" role="status">
+            <span className="muted">
+              {trialLeft === 0 ? t('chat.trialSpent') : t('chat.trialLeft', { count: trialLeft })}
+            </span>
+            <Link className="link" to="/account">
+              {t('chat.trialLink')}
+            </Link>
+          </div>
+        )}
 
         {savedProgram && (
           <div className="program-saved" role="status">

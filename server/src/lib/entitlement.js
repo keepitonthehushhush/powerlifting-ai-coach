@@ -35,6 +35,24 @@
  * who paid is the correct direction for a rounding error.
  */
 
+/**
+ * The trial, in replies.
+ *
+ * ── A FALLBACK, NOT THE SOURCE ────────────────────────────────────────────
+ *
+ * public.trial_reply_allowance() in the database is the source, because the
+ * database is what enforces the number and a second literal would drift into
+ * a screen that promises a different trial from the one being applied. This
+ * constant exists so that entitlement() is still a pure function that can be
+ * tested without a database, and so a failed lookup degrades to the intended
+ * number rather than to zero - erring towards the person, which is the same
+ * direction every other decision in this file errs.
+ *
+ * A test asserts it equals the migration's value, so the two cannot drift
+ * silently even though only one of them decides.
+ */
+export const TRIAL_REPLY_ALLOWANCE = 25;
+
 /** Stripe statuses that mean the coaching stays on. */
 export const PAYING_STATUSES = Object.freeze(['active', 'trialing', 'past_due']);
 
@@ -45,11 +63,17 @@ export const PAID_FEATURE = 'coaching_conversation';
  * @param {object|null} subscription a row from public.subscriptions
  * @param {Date|{asOf?: Date, freeForever?: boolean}} [options]
  *        A Date is accepted for the existing call sites and means `asOf`.
- * @returns {{entitled: boolean, reason: 'paid'|'grace'|'none'|'lapsed'|'payment_failing'|'promised_free'}}
+ * @returns {{entitled: boolean, trialRemaining?: number,
+ *            reason: 'paid'|'grace'|'none'|'lapsed'|'payment_failing'|'promised_free'
+ *                   |'trial'|'trial_exhausted'}}
  */
 export function entitlement(subscription, options = {}) {
-  const { asOf = new Date(), freeForever = false } =
-    options instanceof Date ? { asOf: options } : options;
+  const {
+    asOf = new Date(),
+    freeForever = false,
+    trialRepliesUsed,
+    trialAllowance = TRIAL_REPLY_ALLOWANCE,
+  } = options instanceof Date ? { asOf: options } : options;
 
   /**
    * ── THE PROMISE OUTRANKS EVERYTHING BELOW ────────────────────────────────
@@ -69,7 +93,36 @@ export function entitlement(subscription, options = {}) {
    */
   if (freeForever) return { entitled: true, reason: 'promised_free' };
 
-  if (!subscription || !subscription.status) return { entitled: false, reason: 'none' };
+  /**
+   * ── THE TRIAL SITS EXACTLY WHERE `none` USED TO ──────────────────────────
+   *
+   * Never anywhere else, and the placement is the whole rule.
+   *
+   * It is offered to somebody who has NEVER subscribed. It is not offered to
+   * somebody who subscribed and canceled: they reach `lapsed` below, which
+   * is a different answer on purpose. A lapsed athlete has already had the
+   * product and made a decision about it, and handing them 25 more free
+   * replies would mean the cheapest way to use this is to subscribe for a
+   * month and cancel - a trial that renews on cancelation is not a trial,
+   * it is a discount for churning.
+   *
+   * `trialRepliesUsed` is a count from private.trial_usage, which the athlete
+   * cannot write (see migration 0057, and 0032 for why a column on
+   * user_profile would have been writable by anybody who opened the network
+   * tab). Undefined means the caller did not look it up - a route that has
+   * not asked must not be handed a free trial by default, so undefined reads
+   * as "no trial available" rather than as zero.
+   */
+  const trialUsed = Number.isInteger(trialRepliesUsed) ? trialRepliesUsed : null;
+  const hasNeverSubscribed = !subscription || !subscription.status;
+
+  if (hasNeverSubscribed) {
+    if (trialUsed === null) return { entitled: false, reason: 'none' };
+    const remaining = Math.max(trialAllowance - trialUsed, 0);
+    return remaining > 0
+      ? { entitled: true, reason: 'trial', trialRemaining: remaining }
+      : { entitled: false, reason: 'trial_exhausted', trialRemaining: 0 };
+  }
 
   const periodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end)
