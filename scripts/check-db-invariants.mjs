@@ -29,7 +29,53 @@
  */
 
 
+import { readdirSync, readFileSync } from 'node:fs';
 import { migrationLedgerCheck } from './lib/migrationLedger.mjs';
+
+/**
+ * The rate-limit buckets and quotas as the REPOSITORY intends them.
+ *
+ * ── WHY THIS IS READ AND NOT TYPED ────────────────────────────────────────
+ *
+ * On 2026-09-06 migration 0056 was written, committed, deployed and not
+ * applied. Nothing failed. The code mounted `rateLimit('chat_monthly')`, the
+ * deployed function had never heard of that bucket, and consume_rate_limit
+ * raises on an unknown one - which the middleware catches, logs, and follows
+ * with next(). So /api/chat ran with NO monthly limit and wrote an error line
+ * per request, while the daily cap was still the old 300 the migration was
+ * written to replace.
+ *
+ * Every symptom lived in a Vercel log line that free-tier retention drops
+ * after a day. The file said one thing and the catalog said another, and this
+ * is the script whose whole job is to notice that.
+ */
+function intendedBuckets() {
+  const dir = new URL('../supabase/migrations/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+
+  // A migration directory is append-only, so the LAST file to define the
+  // function is the only one that describes what should be deployed.
+  let newest = null;
+  for (const file of files) {
+    const sql = readFileSync(new URL(file, dir), 'utf8');
+    if (sql.includes('function public.consume_rate_limit')) newest = sql;
+  }
+  if (!newest) throw new Error('no migration defines consume_rate_limit');
+
+  return [...newest.matchAll(/when\s+'([a-z_]+)'\s+then\s+v_limit\s*:=\s*(\d+)/gi)].map((m) => ({
+    bucket: m[1],
+    limit: Number(m[2]),
+  }));
+}
+
+/** The buckets the APPLICATION asks for, which must all exist. */
+function mountedBuckets() {
+  const app = readFileSync(new URL('../server/src/app.js', import.meta.url), 'utf8');
+  return [...new Set([...app.matchAll(/rateLimit\('([a-z_]+)'\)/g)].map((m) => m[1]))];
+}
+
+/** A SQL array literal from a list of identifiers we control. */
+const sqlArray = (values) => `array[${values.map((v) => `'${v}'`).join(', ')}]`;
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,6 +137,32 @@ const CHECKS = [
     why: 'Being addressed correctly must not be something a person trades privacy for. See migration 0024.',
     sql: `select position('pronouns' in pg_get_functiondef(
             'private.health_fingerprint(public.user_profile)'::regprocedure)) = 0 as ok`,
+  },
+  {
+    name: 'THE DEPLOYED RATE LIMITS ARE THE ONES THE MIGRATIONS DESCRIBE',
+    why: 'Migration 0056 was written, committed, deployed and not applied, and nothing failed: the code mounted a bucket the deployed function had never heard of, consume_rate_limit raised, the middleware logged and called next(), and /api/chat ran with no monthly limit while the daily cap was still the old value the migration existed to replace. The file is the intent and the catalog is the fact, and until this check existed nothing compared them.',
+    sql: `with intended(bucket, lim) as (
+            select * from unnest(${sqlArray(intendedBuckets().map((b) => b.bucket))},
+                                 array[${intendedBuckets().map((b) => b.limit).join(', ')}])
+          )
+          select count(*) = 0 as ok
+            from intended i
+           where position(
+                   ('when ''' || i.bucket || '''') in
+                   pg_get_functiondef('public.consume_rate_limit(text)'::regprocedure)
+                 ) = 0
+              or pg_get_functiondef('public.consume_rate_limit(text)'::regprocedure)
+                 !~ ('when\\s+''' || i.bucket || '''\\s+then\\s+v_limit\\s*:=\\s*' || i.lim || '\\y')`,
+  },
+  {
+    name: 'AND EVERY BUCKET THE APP MOUNTS IS ONE THE DATABASE KNOWS',
+    why: 'The middleware fails OPEN on an unknown bucket - deliberately, because a broken counter must not become a total outage - so a typo or a bucket shipped ahead of its migration produces an unlimited endpoint rather than a failure anybody notices. The check above catches a stale deployment; this one catches a name that was never right.',
+    sql: `select count(*) = 0 as ok
+            from unnest(${sqlArray(mountedBuckets())}) as b(bucket)
+           where position(
+                   ('when ''' || b.bucket || '''') in
+                   pg_get_functiondef('public.consume_rate_limit(text)'::regprocedure)
+                 ) = 0`,
   },
   {
     name: 'consume_rate_limit is SECURITY DEFINER',
