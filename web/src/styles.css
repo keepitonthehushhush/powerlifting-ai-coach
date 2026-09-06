@@ -431,6 +431,51 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .empty { color: var(--muted); text-align: center; padding: 3rem 1rem; }
 
+/* ── THE OPENERS ON AN EMPTY CONVERSATION ─────────────────────────────────
+   Left-aligned inside a centered block, deliberately. They are sentences the
+   person is about to say, not labels, and centered sentences of different
+   lengths read as decoration rather than as things you can pick up.
+
+   They fill the composer rather than sending, so they are styled as
+   suggestions - a quiet bordered row - and not as primary buttons. A row that
+   looks like a send button and does not send is a worse first impression than
+   no row at all.
+
+   `text-align: left` on the button and `width: 100%` together are what keep a
+   two-line opener from stair-stepping toward the middle on a narrow phone. */
+.starters {
+  list-style: none;
+  margin: 1.25rem auto 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 32rem;
+}
+
+.starter {
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.starter:hover { border-color: var(--accent); }
+
+/* Acknowledge the press before the box fills, so the tap reads as a
+   consequence of the finger rather than of something the app decided. */
+.starter:active { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .starter { transition: none; }
+  .starter:active { transform: none; }
+}
+
 /* The composer is a COLUMN, and that is the fix rather than a detail.
    It used to be a flex row holding three things: the textarea, an optional
    character counter, and the send button. Two bugs came out of that.

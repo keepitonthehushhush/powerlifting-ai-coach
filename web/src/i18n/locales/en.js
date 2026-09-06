@@ -482,7 +482,15 @@ export const en = {
   chat: {
     characterCount: '{count} of {limit} characters',
     emptyPrompt:
-      'Say hello and Coach Diaz will take it from there — it will ask what it needs before writing anything.',
+      'Tell the coach where you are starting and it will build your first week — it asks what it needs before writing anything.',
+    starters: {
+      firstProgram: "I'd like a program. Where do we start?",
+      meet: "I'm training for a meet. Where do we start?",
+      comingBack: "I'm coming back after time off. Where do we start?",
+      currentNumbers: 'Here are my current squat, bench and deadlift:',
+      neverLifted: "I've never lifted before and I don't know what I'm doing yet.",
+      howItWorks: 'What do you need from me to write a program?',
+    },
     you: 'You',
     coach: 'Coach',
     programSaved: 'Week {week} is saved — {days} days, ready to follow.',
@@ -500,6 +508,10 @@ export const en = {
     undo: 'Undo',
     undone: 'Not sent. Your message is back in the box.',
     placeholder: 'How did that session go?',
+    // The composer asks about a session, which is the right question for
+    // somebody who has trained and the wrong one for somebody on their first
+    // visit - they have not had a session for it to be about.
+    placeholderFirst: 'Tell the coach where you are starting',
     send: 'Send',
     inputLabel: 'Message Coach Diaz',
     showEarlier: 'Show {count} earlier messages',
@@ -621,7 +633,7 @@ export const en = {
   billing: {
     title: 'Subscription',
     offerBody:
-      'Coaching conversations are part of the subscription — free for 14 days, then $9.99 a month. Cancel any time, and during the trial you are charged nothing at all.',
+      'Coaching conversations are part of the subscription — free for 7 days, then $9.99 a month. Cancel any time, and during the trial you are charged nothing at all.',
     lapsedBody:
       'Your subscription has ended, so the coaching conversations are paused. Everything you logged is still here.',
     staysFree:

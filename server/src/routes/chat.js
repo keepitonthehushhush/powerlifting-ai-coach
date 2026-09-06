@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createCoachReply } from '../lib/anthropic.js';
 import { cacheTtlHonored, costInMicrodollars } from '../lib/pricing.js';
 import { replayWindow, withHistoryCacheBreakpoint } from '../lib/conversationCache.js';
+import { startersFor } from '../lib/starters.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
@@ -915,6 +916,35 @@ chatRouter.get('/conversation', async (req, res, next) => {
       .maybeSingle();
     if (error) throw codedError('storage_unavailable', 'Could not load the conversation.');
 
+    /*
+     * ── THE OPENERS, AND ONLY WHEN THERE IS NOTHING TO OPEN ────────────────
+     *
+     * Read only for an empty conversation, because that is the only time they
+     * are rendered. A returning athlete's page load does not pay for a query
+     * whose answer it would throw away.
+     *
+     * TWO COLUMNS, AND NEITHER IS HEALTH DATA - asserted rather than assumed:
+     * private.health_fingerprint() covers `units` and does not cover
+     * `experience_level` or `goal`, so this widens the payload by two training
+     * facts and nothing gated. And what actually crosses the wire is neither
+     * of them: startersFor() returns i18n KEYS, so the profile stays on the
+     * server and the copy stays in the locale files where both language guards
+     * can see it. See lib/starters.js.
+     *
+     * A failed read is not an error worth showing anybody. The openers are a
+     * help, and the page without them is the page as it was - so it degrades
+     * to an empty list rather than to a broken screen.
+     */
+    let starters = [];
+    const empty = !data || !Array.isArray(data.messages) || data.messages.length === 0;
+    if (empty) {
+      const { data: profile } = await req.supabase
+        .from('user_profile')
+        .select('experience_level, goal')
+        .maybeSingle();
+      starters = startersFor(profile);
+    }
+
     // The limit travels with the conversation so the client never hardcodes
     // its own copy. CHAT_MAX_MESSAGE_LENGTH is a deploy variable; a duplicated
     // constant in the frontend would drift the moment anyone tuned it, and the
@@ -922,6 +952,8 @@ chatRouter.get('/conversation', async (req, res, next) => {
     res.json({
       conversation: data ?? null,
       limits: { maxMessageLength: config.chat.maxMessageLength },
+      // Keys, never sentences, and empty for anybody with a conversation.
+      starters,
     });
   } catch (err) {
     next(err);

@@ -1090,15 +1090,30 @@ which is the opposite of what a trial is for. And none of the copy claims
 anything about results — the system prompt forbids it, and if 25 replies of
 coaching did not sell the product, a sentence at the paywall was not going to.
 
-**Consequences, and one open question.** There are now two trials, and they
-answer different moments: 25 replies before a card is entered, and Stripe's
-14-day trial after one is. Only the first is bounded. The second is bounded
-only by the rate limits, which permit ~400 replies in two weeks — roughly
-**$28 of exposure on a trial that may never convert**, against $9.40 if it
-does. That is a business decision rather than an engineering one, and it is
-recorded here unresolved rather than quietly changed: now that somebody can try
-the product properly without a card, the 14-day card trial may be giving away
-the conversion it was built to win.
+**Consequences, and the question this raised.** There are now two trials, and
+they answer different moments: 25 replies before a card is entered, and
+Stripe's card trial after one is. Only the first is bounded. The second is
+capped by nothing but the rate limits, which permit ~400 replies in two weeks —
+roughly **$28 of exposure on a trial that may never convert**, against $9.40 if
+it does.
+
+That was recorded here unresolved rather than quietly changed, because it is a
+business decision about what a conversion is worth. **Resolved 2026-09-06: the
+card trial is 7 days, not 14.** The original fourteen was chosen when it was
+the only trial, and its argument — that a training block is measured in weeks
+and nobody can judge a coach in a day — is now answered by the 25 replies,
+which happen before a card is involved at all. By the time somebody reaches
+checkout they have had an intake, a program, and a couple of weeks of adjusting
+it; they have decided. Seven days halves the exposure and keeps the card trial
+as what it is now actually for: a safety net for somebody who subscribes and
+changes their mind in the first week.
+
+`TRIAL_DAYS` in `server/src/routes/billing.js` is the only place the number
+lives, and the test that checks the public copy now reads it from there rather
+than holding a second `14` — which is how the copy went on promising fourteen
+days while the charge did something else. On a subscription that auto-renews
+that is not a typo, it is the disclosure ROSCA and the state auto-renewal laws
+are written about.
 
 
 ## 5. Operational notes
@@ -1150,7 +1165,7 @@ records. What remains:
 |---|---|---|
 | Automatic phase demotion | — | `lib/phase.js` promotes novice to intermediate; nothing moves anybody back. Detraining genuinely restores linear progression, but automating it needs to tell a layoff from a deload from a holiday from somebody who stopped logging, and getting it wrong resets a working program |
 | Real mailboxes on the domain | — | Deferred until there is revenue; the reasoning and the two things worth knowing before then are below |
-| Stripe subscriptions | 1 | Checkout (with a 14-day card trial), portal, webhook and account UI are built and tested. A separate 25-reply trial applies before any card is entered — see ADR-20, which also records the unresolved question of whether both should exist. Paywall wired behind `PAYWALL_ENABLED`, which ships **off** and now also refuses to activate on test keys in production. Waiting on real usage, not on code — see ADR-14 |
+| Stripe subscriptions | 1 | Checkout (with a 7-day card trial), portal, webhook and account UI are built and tested. A separate 25-reply trial applies before any card is entered — see ADR-20, which also records the unresolved question of whether both should exist. Paywall wired behind `PAYWALL_ENABLED`, which ships **off** and now also refuses to activate on test keys in production. Waiting on real usage, not on code — see ADR-14 |
 | Streaming responses | — | Would need Vercel's streaming runtime. Also interacts with prompt caching, which is measured against non-streamed usage figures |
 | Data retention | 1 | Tiered, `private.apply_retention()` on a daily `pg_cron` schedule (migration 0031). Health notes and chat messages expire at 12 months, activity and usage records at 24; training logs are never swept. Inactive-account deletion is written and deliberately **unscheduled** until transactional email exists to warn people first |
 | Audit logging | 1 | `audit_events` (migration 0030) records data exports, account deletions and every service-role subscription write, readable by the person they happened to at `/account`. `user_id` is ON DELETE SET NULL so a deletion record survives the deletion without remaining personal data. Not yet covering: consent changes (already in their own ledger) and sign-in events |

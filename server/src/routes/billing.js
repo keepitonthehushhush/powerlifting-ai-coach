@@ -7,19 +7,34 @@ import { loadSubscription } from '../lib/subscriptions.js';
 import { logger } from '../lib/logger.js';
 
 /**
- * The free trial, in days.
+ * The card trial, in days. The SECOND trial, and the one that is not bounded.
  *
- * Fourteen because a training block is measured in weeks. Nobody can judge a
- * coach in a day - the first useful signal is a session that went to plan
- * because the prescription was right, and the second is the week after. A
- * trial shorter than that does not test the product, it tests the onboarding,
- * and asking somebody to decide before they have trained produces refund
- * requests rather than subscribers.
+ * ── WHY IT SHRANK FROM FOURTEEN ──────────────────────────────────────────
+ *
+ * Fourteen was chosen when this was the only trial: a training block is
+ * measured in weeks, the first useful signal is a session that went to plan
+ * because the prescription was right, and the second is the week after. That
+ * argument was sound and it is no longer the whole picture.
+ *
+ * Migration 0057 added a trial BEFORE the card - 25 coaching replies for
+ * anybody who has never subscribed - so the week of training that argument
+ * asks for now happens without a card at all. By the time somebody reaches
+ * this checkout they have had an intake, a program, and a couple of weeks of
+ * adjusting it. They have decided.
+ *
+ * What was left was the only unbounded cost in the product. This trial is
+ * capped by nothing except the rate limits, which permit around 400 replies
+ * in two weeks - roughly $28 against $9.40 of net revenue if it converts, and
+ * $28 against nothing if it does not. Seven days halves that while keeping a
+ * card trial as what it is actually useful for now: a safety net for somebody
+ * who subscribes and changes their mind in the first week.
  *
  * `trialing` already counts as entitled in lib/entitlement.js, so nothing else
- * needed to change for the coaching to work during it.
+ * needed to change for the coaching to work during it. See ADR-20, which
+ * recorded this as an open question rather than deciding it quietly, and now
+ * records the answer.
  */
-const TRIAL_DAYS = 14;
+const TRIAL_DAYS = 7;
 
 export const billingRouter = Router();
 

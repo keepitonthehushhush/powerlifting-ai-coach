@@ -468,7 +468,15 @@ export const es = {
     showEarlier: 'Mostrar {count} mensajes anteriores',
     characterCount: '{count} de {limit} caracteres',
     emptyPrompt:
-      'Saluda y Coach Diaz continuará desde ahí — te preguntará lo que necesite antes de escribir nada.',
+      'Dile al entrenador desde dónde empiezas y armará tu primera semana; te preguntará lo que necesite antes de escribir nada.',
+    starters: {
+      firstProgram: 'Quiero un programa. ¿Por dónde empezamos?',
+      meet: 'Me estoy preparando para una competencia. ¿Por dónde empezamos?',
+      comingBack: 'Estoy regresando después de un tiempo sin entrenar. ¿Por dónde empezamos?',
+      currentNumbers: 'Estas son mis marcas actuales en sentadilla, banca y peso muerto:',
+      neverLifted: 'Nunca he levantado pesas y todavía no sé qué estoy haciendo.',
+      howItWorks: '¿Qué necesitas de mí para escribir un programa?',
+    },
     you: 'Tú',
     coach: 'Coach',
     programSaved: 'La semana {week} está guardada: {days} días, lista para seguir.',
@@ -483,6 +491,7 @@ export const es = {
     undo: 'Deshacer',
     undone: 'No se envió. Tu mensaje volvió al cuadro de texto.',
     placeholder: '¿Cómo fue esa sesión?',
+    placeholderFirst: 'Dile al entrenador desde dónde empiezas',
     send: 'Enviar',
     inputLabel: 'Escribir a Coach Diaz',
     loadFailed: 'No se pudo cargar tu conversación.',
@@ -600,7 +609,7 @@ export const es = {
   billing: {
     title: 'Suscripción',
     offerBody:
-      'Las conversaciones con el entrenador forman parte de la suscripción: gratis durante 14 días y después 9,99 $ al mes. Cancela cuando quieras; durante la prueba no se te cobra nada.',
+      'Las conversaciones con el entrenador forman parte de la suscripción: gratis durante 7 días y después $9.99 al mes. Cancela cuando quieras; durante la prueba no se te cobra nada.',
     lapsedBody:
       'Tu suscripción ha terminado, así que las conversaciones con el entrenador están en pausa. Todo lo que registraste sigue aquí.',
     staysFree:

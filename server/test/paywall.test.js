@@ -377,9 +377,10 @@ describe('the promise made to people who signed up first', () => {
 describe('the trial', () => {
   const billing = readSource(new URL('../src/routes/billing.js', import.meta.url));
   const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
+  const es = readSource(new URL('../../web/src/i18n/locales/es.js', import.meta.url));
 
-  test('is 14 days, set once', () => {
-    assert.match(billing, /const TRIAL_DAYS = 14;/);
+  test('is 7 days, set once', () => {
+    assert.match(billing, /const TRIAL_DAYS = 7;/);
     assert.match(billing, /trial_period_days: TRIAL_DAYS/);
   });
 
@@ -400,8 +401,23 @@ describe('the trial', () => {
     assert.match(block.slice(0, 200), /metadata: \{ user_id: req\.user\.id \}/);
   });
 
-  test('and the app copy says it too, not only Stripe', () => {
-    assert.match(en, phrase('free for 14 days, then $9.99 a month'));
+  test('AND THE APP COPY SAYS THE SAME NUMBER, DERIVED RATHER THAN REPEATED', () => {
+    /*
+     * This held a second literal `14` and went green while the trial was
+     * shortened to seven - a disclosure about money saying one thing and the
+     * charge doing another, which is the failure ROSCA and the state
+     * auto-renewal laws are written about. It is also the exact shape of every
+     * other drift this repository has found: two copies of one fact, only one
+     * of which anybody remembered to change.
+     *
+     * So the number comes out of billing.js. There is one place to edit and
+     * the copy cannot disagree with the charge.
+     */
+    const days = billing.match(/const TRIAL_DAYS = (\d+);/);
+    assert.ok(days, 'TRIAL_DAYS is gone - this check is now asserting nothing');
+    assert.match(en, phrase(`free for ${days[1]} days, then $9.99 a month`));
+    // Spanish carries the same disclosure, and it is the same promise.
+    assert.match(es, phrase(`gratis durante ${days[1]} días`));
   });
 
   test('trialing already counted as entitled, so the coaching works during it', () => {

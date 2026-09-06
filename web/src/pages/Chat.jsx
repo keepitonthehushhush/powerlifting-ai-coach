@@ -97,6 +97,20 @@ export function Chat() {
    */
   const [trialLeft, setTrialLeft] = useState(null);
   /*
+   * ── OPENERS FOR AN EMPTY CONVERSATION ───────────────────────────────────
+   *
+   * i18n keys chosen by the server from the intake this person already
+   * completed - see server/src/lib/starters.js for why keys and not
+   * sentences, and why the profile does not travel to this page.
+   *
+   * They FILL THE BOX; they do not send. A beginner should see the words
+   * going out under their name before they go, and be able to change them -
+   * their actual situation is more specific than any canned line, and the
+   * edit is where that specificity gets in. Sending on tap would also spend a
+   * trial reply on a mis-tap, which is a bad way to meet somebody.
+   */
+  const [starters, setStarters] = useState([]);
+  /*
    * Whether the whole conversation is mounted, or only its recent end.
    * Per visit, not per account, and deliberately so: somebody who opened the
    * full history once should not have their phone lay out the entire thing
@@ -110,12 +124,13 @@ export function Chat() {
   useEffect(() => {
     api
       .getConversation()
-      .then(({ conversation, limits }) => {
+      .then(({ conversation, limits, starters: offered }) => {
         if (limits?.maxMessageLength) setMaxLength(limits.maxMessageLength);
         if (conversation) {
           setConversationId(conversation.id);
           setMessages(conversation.messages ?? []);
         }
+        setStarters(Array.isArray(offered) ? offered : []);
       })
       .catch(() => setError(t('chat.loadFailed')))
       .finally(() => setLoading(false));
@@ -287,6 +302,26 @@ export function Chat() {
         {!loading && messages.length === 0 && (
           <div className="empty">
             <p>{t('chat.emptyPrompt')}</p>
+            {starters.length > 0 && (
+              <ul className="starters">
+                {starters.map((id) => (
+                  <li key={id}>
+                    <button
+                      type="button"
+                      className="starter"
+                      onClick={() => {
+                        setDraft(t(`chat.starters.${id}`));
+                        // The cursor goes to the end, so the natural next
+                        // action is to add to it rather than to overwrite it.
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      {t(`chat.starters.${id}`)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="fineprint">{t('medical.disclaimer')}</p>
           </div>
         )}
@@ -385,7 +420,7 @@ export function Chat() {
             onKeyDown={(e) => {
               if (isSendKey(e, settings.sendKey)) send(e);
             }}
-            placeholder={t('chat.placeholder')}
+            placeholder={messages.length === 0 ? t('chat.placeholderFirst') : t('chat.placeholder')}
             disabled={busy}
             aria-label={t('chat.inputLabel')}
             {...(maxLength ? { maxLength } : {})}
