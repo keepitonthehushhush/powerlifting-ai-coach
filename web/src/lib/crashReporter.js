@@ -73,6 +73,43 @@ const MARKER = 'cd:page-open';
  */
 const PENDING = 'cd:pending-reports';
 
+/**
+ * The three facts about the browser a report is allowed to carry.
+ *
+ * ── EVERY READ IS GUARDED, AND THAT IS NOT DEFENSIVENESS ──────────────────
+ *
+ * This runs inside a crash handler. `navigator` and `matchMedia` are present
+ * in every browser that matters, and a reporter that throws while reporting a
+ * throw loses the report AND replaces a recoverable error with an unhandled
+ * one - which is the failure mode this whole module exists to prevent. The
+ * cost of the try/catch is nothing; the cost of not having it is the crash you
+ * were trying to see.
+ *
+ * `matchMedia('(display-mode: standalone)')` is the standard test; iOS Safari
+ * historically answered it inconsistently and exposes `navigator.standalone`
+ * instead, so both are read and either one counts. iOS is also the platform
+ * where the answer matters most - a home-screen web view is what gets evicted.
+ *
+ * The user agent is READ here and never returned: platformBucket() reduces it
+ * to one of nine values inside describeError(), and the raw string does not
+ * leave this function.
+ */
+function browserEnvironment() {
+  try {
+    if (typeof navigator === 'undefined') return {};
+    const standalone =
+      navigator.standalone === true ||
+      (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
+    return {
+      ua: navigator.userAgent ?? null,
+      touchPoints: navigator.maxTouchPoints ?? 0,
+      standalone,
+    };
+  } catch {
+    return {};
+  }
+}
+
 /** Per page view. Reset by the page going away, which is the point. */
 let state = { sent: [] };
 
@@ -165,7 +202,7 @@ export function flushPendingReports() {
  */
 async function send(code, thrown, route, build = BUILD_ID) {
   try {
-    const report = buildReport({ code, route, thrown, build });
+    const report = buildReport({ code, route, thrown, build, ...browserEnvironment() });
     const decision = shouldReport(state, report);
     state = decision.state;
     if (!decision.send) return;

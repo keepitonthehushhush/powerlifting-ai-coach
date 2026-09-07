@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readSource } from './helpers/source.js';
 import { loadWithStubbedImports } from './helpers/browserModule.js';
 import {
+  PLATFORMS,
   CLIENT_ERROR_CODES,
   MAX_PENDING_REPORTS,
   pendingReport,
@@ -275,7 +276,19 @@ describe('END TO END: queued in one page view, sent in the next', () => {
     // The report is a coordinate, never a description. No message field has
     // ever been permitted to leave, and this path is no exception.
     assert.deepEqual(Object.keys(body).sort(), ['code', 'detail', 'route']);
-    assert.deepEqual(Object.keys(body.detail).sort(), ['build', 'errorName', 'frames', 'topFrame']);
+    assert.deepEqual(
+      Object.keys(body.detail).sort(),
+      ['build', 'errorName', 'frames', 'platform', 'standalone', 'topFrame']
+    );
+    /*
+     * The platform is a BUCKET and never a user agent - nine values, checked
+     * by the database as well as here (migration 0060). This harness has no
+     * navigator, so 'other' is the honest answer; what matters is that
+     * whatever appears is one of the nine and not a string somebody's browser
+     * wrote about itself.
+     */
+    assert.ok(PLATFORMS.includes(body.detail.platform), `platform "${body.detail.platform}" is not a bucket`);
+    assert.equal(typeof body.detail.standalone, 'boolean');
     assert.equal(body.detail.topFrame, null, 'a fabricated coordinate is worse than none');
 
     // And the queue is empty, so the next success does not send it twice.

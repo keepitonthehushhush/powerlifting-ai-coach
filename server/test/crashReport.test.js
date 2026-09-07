@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { normaliseRoute } from '../src/lib/errorRecord.js';
 import {
   CLIENT_ERROR_CODES,
@@ -72,19 +72,31 @@ describe('a report carries a coordinate, never a description', () => {
         topFrame: 'index-a1b2c3.js:14:2201',
         frames: 2,
         build: 'dpl_abc123',
+        // No environment was passed, so the platform is unknown rather than
+        // guessed. 'other' is a true statement about a report with no user
+        // agent behind it; inventing one would be worse than not knowing.
+        platform: 'other',
+        standalone: false,
       },
     });
   });
 
-  test('the report has exactly four detail keys and no fifth ever appears', () => {
+  test('the report carries exactly the whitelisted detail keys and no others', () => {
     const report = buildReport({
       code: 'client_unhandled_error',
       route: '/account',
       thrown: thrownWithHealthData(),
       build: 'dpl_abc123',
     });
+    /*
+     * Six now, not four: `platform` and `standalone` were added so a crash on
+     * somebody's Android phone is distinguishable from one on a desktop, which
+     * the reports could not do at all. The number is not the property - the
+     * WHITELIST is. This stays a deepEqual so a seventh key is a decision
+     * somebody makes here rather than a field that drifts in.
+     */
     assert.deepEqual(Object.keys(report.detail).sort(), [
-      'build', 'errorName', 'frames', 'topFrame',
+      'build', 'errorName', 'frames', 'platform', 'standalone', 'topFrame',
     ]);
   });
 
@@ -102,6 +114,8 @@ describe('a report carries a coordinate, never a description', () => {
       topFrame: null,
       frames: 0,
       build: 'x',
+      platform: 'other',
+      standalone: false,
     });
   });
 });
@@ -222,10 +236,26 @@ describe('the browser and the database agree', () => {
    * be refused by the database and the warning logged where nobody looks.
    * That is this project's recurring defect shape, so it gets a test.
    */
-  const migration = readFileSync(
-    new URL('../../supabase/migrations/0048_a_crash_that_can_report_itself.sql', import.meta.url),
-    'utf8'
-  );
+  /*
+   * THE NEWEST FILE THAT DEFINES THE CONSTRAINT, not a named one. This read
+   * `0048_a_crash_that_can_report_itself.sql` - correct when it was written and
+   * wrong the moment 0060 widened the whitelist, because a migration directory
+   * is append-only and a test that reads one file can never fail. The same
+   * mistake has now been made three times in this repository, twice against
+   * private.health_fingerprint and once here.
+   */
+  const constraintMigration = (() => {
+    const dir = new URL('../../supabase/migrations/', import.meta.url);
+    const files = readdirSync(dir).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+    let newest = null;
+    for (const file of files) {
+      const sql = readFileSync(new URL(file, dir), 'utf8');
+      if (sql.includes('error_events_detail_check')) newest = sql;
+    }
+    assert.ok(newest, 'no migration defines error_events_detail_check');
+    return newest;
+  })();
+  const migration = constraintMigration;
 
   test('every detail key the browser can produce is permitted by the CHECK constraint', () => {
     const whitelist = migration

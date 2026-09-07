@@ -143,7 +143,7 @@ export function frameCountOf(stack) {
  * carries whatever it carries. A non-Error becomes name 'Other' with no
  * coordinate, which is a true statement about a throw that had no stack.
  */
-export function describeError(thrown, { build = 'unknown' } = {}) {
+export function describeError(thrown, { build = 'unknown', ua = null, standalone = null, touchPoints = 0 } = {}) {
   const name = thrown?.name;
   const stack = thrown?.stack;
   return {
@@ -151,7 +151,81 @@ export function describeError(thrown, { build = 'unknown' } = {}) {
     topFrame: topFrameOf(stack),
     frames: frameCountOf(stack),
     build: typeof build === 'string' ? build.slice(0, 40) : 'unknown',
+    platform: platformBucket(ua, { touchPoints }),
+    standalone: standalone === true,
   };
+}
+
+/**
+ * The closed set of platforms a report may name. Nothing else is ever sent.
+ *
+ * ── WHY A BUCKET AND NOT A USER AGENT ─────────────────────────────────────
+ *
+ * The question this answers is "are all the crashes on one platform" - which
+ * is the first question anybody asks when a link has just gone out to ten
+ * people with ten different phones, and which the reports could not answer at
+ * all: an Android crash and a desktop one were byte-identical rows.
+ *
+ * A user-agent string answers it and is a fingerprinting surface: version,
+ * build, device model, sometimes locale. On a product holding health data,
+ * storing one per crash is a worse trade than not knowing the patch version.
+ * So the browser resolves it to one of these BEFORE anything leaves, the raw
+ * string is never sent, and a migration constrains the column to this list so
+ * a future caller cannot widen it by accident.
+ *
+ * Coarse on purpose. "iOS Safari" and "Android Chrome" are the two that carry
+ * real behavioral differences for this app - the home-screen web view eviction
+ * that cost a theme and a message is an iOS-standalone problem specifically.
+ * Patch versions would be noise.
+ */
+export const PLATFORMS = Object.freeze([
+  'ios-safari', 'ios-other',
+  'android-chrome', 'android-other',
+  'mac-safari', 'mac-other',
+  'windows', 'linux', 'other',
+]);
+
+/**
+ * @param {string|null} ua a user agent string. Never stored, only read.
+ * @param {{touchPoints?: number}} [hints] `navigator.maxTouchPoints`.
+ * @returns {string} one of PLATFORMS.
+ */
+export function platformBucket(ua, { touchPoints = 0 } = {}) {
+  if (typeof ua !== 'string' || ua.length === 0) return 'other';
+
+  /*
+   * ── AN iPAD CANNOT BE IDENTIFIED FROM THE USER AGENT ────────────────────
+   *
+   * Since iPadOS 13, Safari on an iPad sends a user agent that is BYTE
+   * IDENTICAL to a desktop Mac's - no 'iPad' anywhere in it. The first version
+   * of this function carried a comment saying it handled that and a regex that
+   * could not, which is the defect this project keeps finding in its own
+   * checks: a claim nobody tested against the case it names.
+   *
+   * `navigator.maxTouchPoints` is the discriminator that works. An iPad
+   * reports 5; a Mac reports 0, including a MacBook with a trackpad. It is one
+   * number, it identifies nobody, and it is the only reason iPads do not
+   * silently land in the desktop bucket - which matters because the
+   * home-screen web-view eviction that cost a theme and a message is an iOS
+   * problem specifically, and half the iPads would have been filed as Macs.
+   *
+   * Every browser on iOS is Safari's engine underneath, so 'ios-other' means a
+   * different SHELL (Chrome, Firefox), which can still differ in what it does
+   * to a web view - the distinction worth keeping.
+   */
+  const iPadPretendingToBeAMac = /Macintosh|Mac OS X/.test(ua) && touchPoints > 1;
+  if (/iPhone|iPod|iPad/.test(ua) || iPadPretendingToBeAMac) {
+    return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? 'ios-other' : 'ios-safari';
+  }
+  if (/Android/.test(ua)) return /Chrome|CriOS/.test(ua) ? 'android-chrome' : 'android-other';
+  if (/Windows/.test(ua)) return 'windows';
+  if (/Macintosh|Mac OS X/.test(ua)) {
+    // Chrome and Edge both put "Safari" in the string; Safari is the one that
+    // does NOT put Chrome in it.
+    return /Chrome|Chromium|Edg\//.test(ua) ? 'mac-other' : 'mac-safari';
+  }
+  if (/Linux|X11|CrOS/.test(ua)) return 'linux';
+  return 'other';
 }
 
 /**
@@ -280,6 +354,6 @@ export function shouldReport(state, report) {
  * it. That test is the reason this function exists rather than an object
  * literal at the call site.
  */
-export function buildReport({ code, route, thrown, build }) {
-  return { code, route: safeRoute(route), detail: describeError(thrown, { build }) };
+export function buildReport({ code, route, thrown, build, ...environment }) {
+  return { code, route: safeRoute(route), detail: describeError(thrown, { build, ...environment }) };
 }

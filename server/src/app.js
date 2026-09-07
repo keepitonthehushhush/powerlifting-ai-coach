@@ -6,6 +6,7 @@ import { guardianRouter, guardianPublicRouter } from './routes/guardian.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { chatRouter } from './routes/chat.js';
+import { databaseReachable } from './lib/databaseReachable.js';
 import { profileRouter } from './routes/profile.js';
 import { preferencesRouter } from './routes/preferences.js';
 import { clientErrorsRouter } from './routes/clientErrors.js';
@@ -174,9 +175,25 @@ export function createApp() {
    * Unauthenticated on purpose: it is already the maintenance page's poll
    * target, and a deployment id is not a secret.
    */
-  app.get('/api/health', (_req, res) =>
-    res.json({
-      status: 'ok',
+  app.get('/api/health', async (_req, res) => {
+    /*
+     * ── "ok" NOW MEANS THE DATABASE ANSWERED ─────────────────────────────
+     *
+     * It used to mean "this function ran", which it could say with the
+     * database gone - and Supabase pauses a free project after about a week
+     * of low activity, so that is a likely state rather than a remote one.
+     * The daily check would have reported production healthy every morning of
+     * an outage. See lib/databaseReachable.js, including why the same round
+     * trip is also what keeps the project from pausing in the first place.
+     *
+     * `status` stays 'ok' when the database is merely UNCONFIGURED, because a
+     * deployment without a service-role key is the free product and is not
+     * broken. Only a database we asked and did not hear from is degraded.
+     */
+    const database = await databaseReachable();
+    res.status(database === 'unreachable' ? 503 : 200).json({
+      status: database === 'unreachable' ? 'degraded' : 'ok',
+      database,
       deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev',
       /*
        * ── WHICH COMMIT IS ACTUALLY SERVING ──────────────────────────────────
@@ -222,7 +239,8 @@ export function createApp() {
        * the local value, so the two can no longer drift in silence.
        */
       maxOutputTokens: config.anthropic.maxTokens,
-    }));
+    });
+  });
 
   // Everything past this line requires a verified session. Applying requireAuth
   // to the whole /api surface at once, rather than route by route, means a new
