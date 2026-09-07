@@ -103,7 +103,15 @@ test('the coach may ask what a bodily sensation is, and must not answer itself',
 test('stopping there stops the deciding, not the coaching', () => {
   const start = prompt.indexOf('IF THE OBSTACLE THEY NAME IS SOMETHING THEIR BODY DOES');
   assert.notEqual(start, -1, 'the ask-then-stop rule has gone');
-  const rule = prompt.slice(start, start + 3000);
+  // MARK BOTH ENDS. This read `start + 3000`, and adding four lines to the
+  // rule pushed the last assertion past the magic number - so the test
+  // reported that the do-not-soften instruction had gone while it sat two
+  // lines below the cut. A region whose end is a character count is a region
+  // that any edit to the prose can silently resize, and it fails by naming a
+  // defect that is not there.
+  const end = prompt.indexOf('\n# MUSIC', start);
+  assert.notEqual(end, -1, 'the section after the ask-then-stop rule has been renamed');
+  const rule = prompt.slice(start, end);
 
   assert.match(rule, phrase('STOPPING THERE MEANS STOPPING THE DECIDING'));
   assert.match(rule, phrase('It does not mean going quiet'));
