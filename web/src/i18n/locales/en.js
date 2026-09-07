@@ -541,6 +541,16 @@ export const en = {
   },
 
   consent: {
+    /* Shown when the consent state could not be READ. It has to do two things
+       a redirect could not: say the problem is ours, and say their choices are
+       still on file - because the screen this replaced implied the opposite to
+       somebody who had already agreed. */
+    unavailable: {
+      title: 'We could not load your privacy choices',
+      body: 'That is a problem on our end, not something you did. Your choices are still saved — we just could not read them back this time.',
+      reassurance: 'Nothing has changed on your account, and you do not need to agree to anything again.',
+      retry: 'Try again',
+    },
     title: 'Your privacy choices',
     subtitle:
       'These are separate on purpose. You can change any of them later, and turning one off never turns off another.',

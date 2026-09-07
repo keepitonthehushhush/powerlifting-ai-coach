@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useConsent } from '../context/ConsentContext.jsx';
+import { ConsentUnavailable } from './ConsentUnavailable.jsx';
 import { Loading } from './Loading.jsx';
 import { useMfa } from '../context/MfaContext.jsx';
 import { MfaChallenge } from './MfaChallenge.jsx';
@@ -24,7 +25,7 @@ import { MfaChallenge } from './MfaChallenge.jsx';
  */
 export function ProtectedRoute({ children, requireConsent = true }) {
   const { session, loading } = useAuth();
-  const { status, gate } = useConsent();
+  const { status, gate, refresh } = useConsent();
   const mfa = useMfa();
 
   if (loading) return <div className="centered"><Loading /></div>;
@@ -69,6 +70,22 @@ export function ProtectedRoute({ children, requireConsent = true }) {
     if (status === 'idle' || status === 'loading') {
       return <div className="centered"><Loading /></div>;
     }
+
+    /*
+     * COULD NOT READ IS NOT DID NOT AGREE, and sending both to /consent made
+     * the first one look like the second. A failed read leaves the gate
+     * `reason: 'unknown'`, which redirected an athlete who HAD agreed to a
+     * screen headed "before we start" - whose panel reloads the same failing
+     * endpoint, and whose Continue button stays disabled until it succeeds.
+     * A dead end, reached by doing nothing wrong, explaining nothing. One
+     * athlete hit exactly that on 2026-09-02 and has not returned.
+     *
+     * Rendered in place rather than routed to, for the same reason the MFA
+     * challenge is: there is no state here worth a URL. And it still admits
+     * nobody - failing closed was never the bug.
+     */
+    if (status === 'error') return <ConsentUnavailable onRetry={refresh} />;
+
     if (!gate.allowed && status !== 'refreshing') return <Navigate to="/consent" replace />;
   }
 

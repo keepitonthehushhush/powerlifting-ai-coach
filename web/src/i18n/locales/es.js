@@ -517,6 +517,12 @@ export const es = {
   },
 
   consent: {
+    unavailable: {
+      title: 'No pudimos cargar tus opciones de privacidad',
+      body: 'Es un problema de nuestro lado, no algo que hayas hecho tu. Tus opciones siguen guardadas; solo no pudimos leerlas esta vez.',
+      reassurance: 'Nada cambio en tu cuenta, y no necesitas volver a aceptar nada.',
+      retry: 'Intentar de nuevo',
+    },
     title: 'Tus opciones de privacidad',
     subtitle:
       'Están separadas a propósito. Puedes cambiar cualquiera más adelante, y desactivar una nunca desactiva otra.',

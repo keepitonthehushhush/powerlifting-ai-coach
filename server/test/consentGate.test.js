@@ -103,6 +103,64 @@ describe('the gate is actually wired up', () => {
     assert.match(source, /Navigate to="\/consent"|to="\/consent"/);
   });
 
+  /*
+   * ── COULD NOT READ IS NOT DID NOT AGREE ────────────────────────────────
+   *
+   * The gate fails closed on an unreadable state, which is right. What was
+   * wrong was where that landed somebody: /consent, headed "before we start",
+   * whose panel reloads the endpoint that just failed and whose Continue
+   * button stays disabled until it succeeds. An athlete who had already
+   * agreed hit that on 2026-09-02 after a 502 on GET /api/consent, and has
+   * not been back.
+   *
+   * ORDER IS THE PROPERTY HERE, which is the narrow case where asserting
+   * source position is correct: the error branch is only reachable if it sits
+   * ABOVE the redirect, and a refactor that moves it below restores the bug
+   * while every behavioral assertion still passes.
+   */
+  test('an unreadable consent state renders a retry, and does so before the redirect', () => {
+    const source = read('../../web/src/components/ProtectedRoute.jsx');
+
+    const errorBranch = source.indexOf("status === 'error'");
+    const redirect = source.indexOf('to="/consent"');
+    assert.ok(errorBranch > -1, 'a failed consent READ must be handled, not folded into "not granted"');
+    assert.ok(redirect > -1, 'the consent redirect has gone');
+    assert.ok(
+      errorBranch < redirect,
+      'the error branch must come before the redirect or it is unreachable and the dead end is back'
+    );
+
+    assert.match(source, /ConsentUnavailable/, 'the error case must render something, not navigate');
+    assert.match(source, /onRetry=\{refresh\}/, 'the retry has to actually re-read, or it is a button that lies');
+  });
+
+  test('the retry screen still admits nobody', () => {
+    // Fails closed is not the bug and must not become one. The unreadable
+    // state is still `allowed: false`; this only changes what is SHOWN.
+    assert.deepEqual(evaluateConsentGate(null), { allowed: false, missing: [], reason: 'unknown' });
+    assert.deepEqual(evaluateConsentGate(undefined), { allowed: false, missing: [], reason: 'unknown' });
+
+    const screen = read('../../web/src/components/ConsentUnavailable.jsx');
+    assert.doesNotMatch(screen, /Navigate|useNavigate/, 'it must not route anywhere - it replaces the children');
+    // The RENDER form, not the word - `/children/` matched the prose in this
+    // component's own comment explaining that it stands in front of them.
+    // Same readSource/readRaw trap this repo keeps re-learning.
+    assert.doesNotMatch(screen, /\{\s*children\s*\}/, 'it must not render what it is standing in front of');
+  });
+
+  test('the retry screen says whose fault it is and that nothing was lost', () => {
+    // The redirect said neither, to somebody who had done everything asked.
+    for (const locale of ['en', 'es']) {
+      const copy = read(`../../web/src/i18n/locales/${locale}.js`);
+      const at = copy.indexOf('unavailable: {');
+      assert.ok(at > -1, `${locale} has no copy for an unreadable consent state`);
+      const block = copy.slice(at, at + 700);
+      for (const key of ['title:', 'body:', 'reassurance:', 'retry:']) {
+        assert.ok(block.includes(key), `${locale} consent.unavailable is missing ${key}`);
+      }
+    }
+  });
+
   test('the routes that must stay reachable without consent opt out explicitly', () => {
     const app = read('../../web/src/App.jsx');
     for (const path of ['/consent', '/account']) {
