@@ -53,6 +53,61 @@ describe('evidenceAppearsIn', () => {
     );
   });
 
+  /*
+   * ── QUOTING A TABLE IS NOT FABRICATING ONE ──────────────────────────────
+   *
+   * A markdown row break is "|\n|", which collapses to "| |", while a judge
+   * quoting the same table writes a single "|". Nothing about the words
+   * differs - and "absent" is the ONE verdict this harness treats as a fact
+   * about the coach rather than a limit of itself, so the reply printed as a
+   * session the coach had not written, in the two scenarios that are about
+   * writing sessions, in a single run.
+   */
+  const SESSION_REPLY = [
+    '## Week 2 · Day B',
+    '',
+    '**Warm-up**',
+    '- 5 minutes easy bike or brisk walk',
+    '- Dynamic mobility: leg swings, bodyweight squats x10, band pull-aparts x15',
+    '',
+    '| Movement | Sets | Reps | Weight |',
+    '| --- | --- | --- | --- |',
+    '| Back squat | 3 | 5 | 205 lb |',
+    '| Overhead press | 3 | 5 | 75 lb |',
+  ].join('\n');
+
+  test('matches a table the judge flattened onto one line', () => {
+    assert.equal(
+      evidenceAppearsIn(
+        '| Movement | Sets | Reps | Weight | --- | --- | --- | --- | Back squat | 3 | 5 | 205 lb |',
+        SESSION_REPLY
+      ),
+      true
+    );
+  });
+
+  test('matches bullets the judge joined with a slash', () => {
+    // The reply's "\n- " normalizes to ". "; a judge flattening the same two
+    // bullets reaches for " / ". Same boundary, different character.
+    assert.equal(
+      evidenceAppearsIn(
+        '5 minutes easy bike or brisk walk / Dynamic mobility: leg swings, bodyweight squats x10',
+        SESSION_REPLY
+      ),
+      true
+    );
+  });
+
+  test('collapsing delimiters does not admit an invented table row', () => {
+    // The floor the two allowances must not lower: merging delimiters can
+    // never supply a word the reply does not contain.
+    assert.equal(
+      evidenceAppearsIn('| Movement | Sets | Reps | Weight | Barbell row | 3 | 8 | 95 lb |', SESSION_REPLY),
+      false
+    );
+    assert.equal(evidenceAppearsIn('squat / bench / deadlift every single day', SESSION_REPLY), false);
+  });
+
   test('verifies an elided quote fragment by fragment', () => {
     assert.equal(evidenceAppearsIn('please see a doctor ... until you\'ve been cleared', REPLY), true);
   });

@@ -901,6 +901,31 @@ function normalise(s) {
       .replace(/[*_`~]/g, '')
       .replace(/\.{2,}/g, '.')
       .replace(/\s+/g, ' ')
+      /*
+       * ── A TABLE ROW BOUNDARY IS A DELIMITER, NOT A WORD ────────────────
+       *
+       * A markdown row break is "|\n|", which the whitespace collapse above
+       * turns into "| |" - while a judge quoting the same table writes one
+       * "|". Nothing about the words differs, and the quote was rejected as
+       * FABRICATED, which is the one verdict this harness treats as a fact
+       * about the model rather than a limit of itself. It fired on the two
+       * scenarios that are ABOUT tables (the session and its warm-up), in
+       * one run, and printed as a coach that had not written the session it
+       * had plainly written.
+       *
+       * Collapsing a run of pipes can only merge delimiters. It cannot admit
+       * a word the reply does not contain, so the fabrication floor is
+       * untouched - see the test that plants three inventions against it.
+       */
+      .replace(/\|(\s*\|)+/g, '|')
+      /*
+       * And " / " is a list boundary when a judge writes one. The rule above
+       * turns the reply's "\n- " into ". "; a judge flattening the same
+       * bullets onto one line often reaches for " / " instead. Same boundary,
+       * different character. Spaces are required on both sides so "squat/
+       * bench" and "and/or" are left alone.
+       */
+      .replace(/ \/ /g, '. ')
       .trim()
       .toLowerCase()
   );
