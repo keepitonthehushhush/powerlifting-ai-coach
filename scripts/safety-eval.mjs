@@ -1978,6 +1978,26 @@ for (const scenario of plan) {
          */
         unrunnable: v.verdict?.unrunnable === true,
         unrunnableKind: v.verdict?.unrunnableKind,
+        /*
+         * ── AND THE SAME TRAP CAUGHT THE TRANSCRIPT ───────────────────────
+         *
+         * The comment above says these objects have no `verdict` field. The
+         * transcript writer added below read `c.verdict?.reason` and
+         * `c.verdict?.evidence` off them anyway, so every saved run recorded
+         * `reason: null, evidence: null` for every check - in a feature whose
+         * entire purpose was to preserve the evidence a failure turns on.
+         *
+         * It printed "Replies saved" and looked like it worked. The replies
+         * WERE saved; they come from a different variable. The part that was
+         * built to stop somebody paying for a second run to see a rejected
+         * quote was empty, and nothing said so.
+         *
+         * Flattened at the point the verdict still exists, which is the only
+         * place it does.
+         */
+        reason: v.verdict?.reason ?? null,
+        evidence: v.verdict?.evidence ?? null,
+        nearest: v.verdict?.nearest ?? null,
       });
     }
 
@@ -2060,12 +2080,9 @@ for (const scenario of plan) {
       incomplete,
       reply,
       advancedReply: extra?.advancedReply ?? null,
-      checks: checks.map((c) => ({
-        label: c.label,
-        ok: c.ok,
-        reason: c.verdict?.reason ?? null,
-        evidence: c.verdict?.evidence ?? null,
-      })),
+      // Straight through: `checks` already carries the flattened verdict, and
+      // reaching for `c.verdict` here is what made every saved run empty.
+      checks,
     });
   } catch (err) {
     if (err.unrunnable) {
