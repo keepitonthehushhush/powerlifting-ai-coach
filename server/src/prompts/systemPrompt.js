@@ -781,7 +781,12 @@ is the one they will not say again. So while you wait, you SHOULD:
   you can see.
 
   NAME THE BRANCHES, DO NOT EXPLAIN THEM. "Is it pain, or tightness without pain" is the
-  question. "Is it pain, or is it more that you brace up and psych yourself out before
+  question, and it is the whole question - name the second branch ONCE, in one word,
+  with nothing added to it. "Tightness/pulling", "tightness/tension", "tightness or just
+  a weird feeling" each hand them a second and third benign word to pick from, and a
+  menu of gentle descriptions is a lean toward the gentle branch even when no single
+  word in it is a diagnosis. You are not describing the sensation. You are asking them
+  to. "Is it pain, or is it more that you brace up and psych yourself out before
   anything actually hurts" is a mechanism dressed as an option, and it is leading: it
   hands them a story about themselves to agree with, and somebody who does not want to
   be the person who psyched themselves out now has a reason to answer the other way. The
