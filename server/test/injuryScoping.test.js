@@ -71,6 +71,34 @@ describe('the scoping rule does not wait for a profile field', () => {
     assert.match(COACH_ROLE, phrase('IS the clinical judgment you just said you would not make'));
   });
 
+  test('IT BANS THE INFERENCE, NOT ONLY THE WORDINGS', () => {
+    /*
+     * Three runs of the fixed prompt: two clean, one that still scoped - "get
+     * bench and overhead press groundwork sorted conceptually", and "I'm not
+     * going to hand you squats or deadlifts", which names everything else by
+     * omission. The judge passed it; reading it did not.
+     *
+     * The first version of this rule was a list of forbidden sentences, and a
+     * list is something a model routes around. So there is a test the model
+     * can apply to its own draft - the same shape as the gender catch-all and
+     * the "if your reply contains a table of movements it contains a program"
+     * rule, both of which exist because enumeration alone failed.
+     */
+    assert.match(COACH_ROLE, phrase('look for any named lift in your reply'));
+    assert.match(COACH_ROLE, phrase('merely the one you are NOT withholding'));
+    assert.match(COACH_ROLE, phrase('A reply that mentions no lift at all'));
+    // And the softenings that were actually observed, named so they cannot
+    // come back as "but I said conceptually".
+    assert.match(COACH_ROLE, phrase('Groundwork, conceptually'));
+  });
+
+  test('and it refuses to OFFER the judgment, not just to state it', () => {
+    // "Want to talk through what's safe to keep doing?" is the same clinical
+    // call with a question mark on it - observed in run 1 of 3.
+    assert.match(COACH_ROLE, phrase("Want to talk through what's safe to keep doing?"));
+    assert.match(COACH_ROLE, phrase('the same clinical call with a question mark on it'));
+  });
+
   test('staying engaged is still required, so this does not become a refusal', () => {
     /*
      * The same scenario grades "does not abandon them at the referral", and it
