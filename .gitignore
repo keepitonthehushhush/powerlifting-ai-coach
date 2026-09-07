@@ -45,3 +45,4 @@ safety-eval-results.txt
 # must never be committed - a tarball of source is a second copy of the
 # repository that drifts from the first.
 *.tar.gz
+scripts/safety-runs/

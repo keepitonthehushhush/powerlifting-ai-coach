@@ -38,7 +38,7 @@ import { buildSystemPrompt } from '../server/src/prompts/systemPrompt.js';
 import { resolveMaxTokens } from '../server/src/lib/modelBudget.js';
 import { extractIntentionBlock } from '../server/src/lib/intentionBlock.js';
 import { extractProgramBlock } from '../server/src/lib/programBlock.js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { normalizeTurns } from './lib/transcript.mjs';
 import { classifyApiFailure, UNRUNNABLE_ADVICE } from './lib/apiFailure.mjs';
 import { MESSAGES_URL } from './lib/apiBase.mjs';
@@ -1631,6 +1631,8 @@ const scenarios = [
 // --- runner ----------------------------------------------------------------
 
 const results = [];
+/** Every reply this run produced, written out at the end. See the note by its push. */
+const transcript = [];
 console.log(`\nCoach safety evaluation`);
 console.log(`  model under test : ${MODEL}`);
 console.log(`  judge model      : ${process.env.SAFETY_EVAL_JUDGE_MODEL || 'claude-haiku-4-5-20251001'}`);
@@ -1935,10 +1937,23 @@ for (const scenario of plan) {
         }
       } else {
         console.log(`              └ ${v.verdict.reason}`);
-        // Print the quote that was rejected. "does not appear in the reply" is
-        // unactionable without showing what was actually offered.
+        /*
+         * Print the quote that was rejected, IN FULL. "does not appear in the
+         * reply" is unactionable without showing what was actually offered -
+         * and this line used to slice it to 110 characters, which made it
+         * unactionable again the moment the disagreement sat past character
+         * 110. That is exactly what happened on 2026-09-07: the intake
+         * scenario failed, the rejected quote was cut mid-word, and the one
+         * piece of information needed to tell a judge error from a coach
+         * error was the part that got trimmed. Re-running to see it costs
+         * real money.
+         *
+         * 110 is right for the `nearest:` lines above, which are scanned in
+         * bulk on a green run. A failure is read one at a time, and there is
+         * no such thing as too much detail in it.
+         */
         if (v.verdict.evidence) {
-          console.log(`              └ rejected quote: "${v.verdict.evidence.slice(0, 110)}"`);
+          console.log(`              └ rejected quote: "${v.verdict.evidence}"`);
         }
       }
       /*
@@ -2022,6 +2037,36 @@ for (const scenario of plan) {
     console.log(`    ${'─'.repeat(68)}\n`);
 
     results.push({ name: scenario.name, passed, incomplete, checks });
+    /*
+     * ── KEEP THE REPLY, SO A FAILURE CAN BE READ TWICE ────────────────────
+     *
+     * A live run used to discard every reply the moment it printed. So the
+     * only record of a failure was console scrollback, and re-examining one
+     * meant paying for the whole suite again - on an evaluation whose entire
+     * purpose is diagnosing behavior that is rare and hard to reproduce.
+     *
+     * 2026-09-07 is what that costs: four scenarios failed, one of them on a
+     * rejected quote the printer had truncated mid-word, and the text needed
+     * to tell a judge error from a coach error was simply gone.
+     *
+     * fixtures/replies.json is NOT this. It is a small hand-curated set that
+     * --replay grades to test the JUDGE, and it deliberately keeps a known
+     * bad reply. Overwriting it with a run would destroy that. This is a
+     * separate, timestamped transcript that nothing reads automatically.
+     */
+    transcript.push({
+      scenario: scenario.name,
+      passed,
+      incomplete,
+      reply,
+      advancedReply: extra?.advancedReply ?? null,
+      checks: checks.map((c) => ({
+        label: c.label,
+        ok: c.ok,
+        reason: c.verdict?.reason ?? null,
+        evidence: c.verdict?.evidence ?? null,
+      })),
+    });
   } catch (err) {
     if (err.unrunnable) {
       console.log(`    ❌ ${err.message}\n`);
@@ -2166,6 +2211,25 @@ if (results.length < plan.length) {
           'A scenario that could not be graded is not a scenario that failed.\n'
       : `\n${passedCount}/${results.length} scenario runs passed.\n`
   );
+}
+
+/*
+ * Written for a live run only. A replay grades stored text, so saving its
+ * output would be recording the fixture back on top of itself.
+ */
+if (!REPLAY && transcript.length > 0) {
+  try {
+    const dir = new URL('./safety-runs/', import.meta.url);
+    mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const file = new URL(`${stamp}.json`, dir);
+    writeFileSync(file, JSON.stringify({ model: MODEL, at: new Date().toISOString(), runs: transcript }, null, 2));
+    console.log(`Replies saved to scripts/safety-runs/${stamp}.json - read a failure there`);
+    console.log('rather than paying for another run. Gitignored: replies quote the prompt.\n');
+  } catch (err) {
+    // Never let bookkeeping lose a run that has already been paid for.
+    console.log(`(could not save the transcript: ${err.message})\n`);
+  }
 }
 
 if (REPLAY) {
