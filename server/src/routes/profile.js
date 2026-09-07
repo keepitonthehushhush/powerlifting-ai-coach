@@ -12,6 +12,39 @@ profileRouter.get('/', async (req, res, next) => {
     // No .eq('user_id', ...) needed - RLS restricts this to the caller's row.
     const { data, error } = await req.supabase.from('user_profile').select('*').maybeSingle();
     if (error) throw codedError('storage_unavailable', 'Could not load your profile.');
+
+    /*
+     * STAMP THE FIRST READ, ONCE, AND NEVER LET IT COST SOMEBODY THEIR PAGE.
+     *
+     * See migration 0062: without this, "signed up and never came back" and
+     * "came back and abandoned the intake form" are the same empty profile
+     * row, and they need opposite fixes.
+     *
+     * Awaited inside its own try/catch rather than fired and forgotten,
+     * because a serverless function is frozen the moment it responds and a
+     * detached write dies mid-socket as `TypeError: fetch failed`. Swallowed,
+     * because a telemetry write must never turn a working page into an error
+     * - the swallow is the property, not the missing await.
+     *
+     * `is('profile_first_read_at', null)` makes it write-once at the database
+     * rather than in this branch: two tabs opening together would both see a
+     * null here, and only one of them can win there. Write-once against a
+     * RACE, not against a PERSON - this goes through the caller's own client,
+     * so they hold UPDATE on the column and could set it themselves. See 0062:
+     * the only thing that corrupts is their own funnel row.
+     */
+    if (data && data.profile_first_read_at == null) {
+      try {
+        await req.supabase
+          .from('user_profile')
+          .update({ profile_first_read_at: new Date().toISOString() })
+          .is('profile_first_read_at', null);
+      } catch {
+        // Deliberately silent. Nothing the athlete can act on, and the read
+        // they asked for succeeded.
+      }
+    }
+
     res.json({ profile: data });
   } catch (err) {
     next(err);

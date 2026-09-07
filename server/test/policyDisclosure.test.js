@@ -90,6 +90,12 @@ const SENT_TO_THE_MODEL = {
 
 /** Columns on user_profile that never reach renderProfile, and why. */
 const NOT_SENT = {
+  profile_first_read_at:
+    'when this profile was first read back, which in practice is the intake ' +
+    'screen loading (migration 0062). It exists so that "signed up and never ' +
+    'came back" stops looking identical to "came back and abandoned intake". ' +
+    'Not sent: it is a fact about using the app, not about the athlete or ' +
+    'their training, and the coach cannot do anything with it.',
   training_intention_updated_at:
     'when the obstacle or the if-then plan last changed, used only to expire ' +
     'them after 12 months (migration 0053). Not sent, for the same reason as ' +

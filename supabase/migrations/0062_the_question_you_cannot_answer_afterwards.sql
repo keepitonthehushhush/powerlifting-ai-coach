@@ -1,0 +1,63 @@
+-- =============================================================================
+-- 0062_the_question_you_cannot_answer_afterwards.sql
+--
+-- One nullable timestamp, so "never came back after signing up" stops looking
+-- like "came back, saw the intake form, and left".
+--
+-- ── WHY ─────────────────────────────────────────────────────────────────────
+--
+-- On 2026-09-06 somebody signed up and left no other trace: every profile
+-- field null, no clearance assertion, no conversation, no error. Nothing in
+-- the database can say whether they ever loaded the app again, because the
+-- profile row is created by a trigger at signup and so its existence records
+-- nothing, and Vercel's request logs are gone within a day on this plan.
+--
+-- Those two explanations need opposite fixes. "Signed up and never returned"
+-- is a broken handoff - confirmation mail, redirect, a link that expired.
+-- "Returned and abandoned the form" is a form that asks too much. Guessing
+-- between them and building the wrong one costs a week.
+--
+-- The rule this project keeps re-learning: add the log line the moment you
+-- notice you cannot answer a question about somebody who has already left. It
+-- does not help them. It answers the next one.
+--
+-- ── WHY HERE, AND NOT IN audit_events ───────────────────────────────────────
+--
+-- audit_events is a legal ledger with five permitted actions and a whitelist
+-- of detail keys, deliberately. Product analytics does not belong in it, and
+-- widening that constraint to fit some would be the beginning of it meaning
+-- nothing. A column on the row it describes is the smaller thing.
+--
+-- ── WHAT THIS IS NOT ────────────────────────────────────────────────────────
+--
+-- Not health data - it says nothing about a body. Not sent to the model:
+-- policyDisclosure.test.js requires every profile column to be classified
+-- either sent-and-disclosed or explicitly-not-sent, and this is entered as the
+-- latter. It rides the existing ON DELETE CASCADE and the existing
+-- `select('*')` in the data export, so it is erased with the account and
+-- included when somebody asks for their data, with no further work.
+--
+-- No new collection surface: this is a timestamp of an authenticated request
+-- the server already served, held next to the account that made it.
+--
+-- ── AND IT IS NOT TAMPER-PROOF, WHICH IS FINE, BUT SAY SO ───────────────────
+--
+-- The route writes this through the CALLER'S OWN RLS-scoped client, not the
+-- admin one, so `authenticated` necessarily holds UPDATE on the column and a
+-- determined person can set their own value through PostgREST. Revoking it
+-- would break the write that needs it - and a column-level revoke cannot
+-- subtract from the table-level grant anyway, which this repository has
+-- already paid to learn once.
+--
+-- Left as is deliberately: the worst available outcome is one person's own
+-- funnel timestamp being wrong, in a number nothing is enforced against. The
+-- first draft of this comment said "never by the client", which was simply
+-- false, and a comment claiming a property the code does not have is worse
+-- than no comment at all.
+-- =============================================================================
+
+alter table public.user_profile
+  add column if not exists profile_first_read_at timestamptz;
+
+comment on column public.user_profile.profile_first_read_at is
+  'First authenticated read of this profile, which in practice is the intake screen loading. Written by the server through the caller own RLS-scoped client, so authenticated necessarily holds UPDATE on it and a determined person could set their own value - the blast radius is their own funnel timestamp and nothing else, which is why it is not worth a trigger. Not health data and never sent to the model. Exists so that signed up and never came back is distinguishable from came back and abandoned intake, which have opposite fixes.';
