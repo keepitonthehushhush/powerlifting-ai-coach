@@ -69,7 +69,7 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board, guardianRequests] = await Promise.all([
+    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board, trial, guardianRequests] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       // Interface preferences are personal data too. Small, dull, and still
       // the subject's - an export that quietly omits a table is an export
@@ -107,6 +107,21 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
        * can no longer filter on it. See migration 0042.
        */
       req.supabase.rpc('my_leaderboard_entry'),
+      /**
+       * The free-trial counter: how many coaching replies they have used, when
+       * it started, when it was last spent.
+       *
+       * Through a definer function for the same reason the leaderboard row is
+       * - `authenticated` holds no grant in `private`, and that absence is the
+       * whole reason the counter cannot be reset from a network tab (migration
+       * 0057). Granting select for the sake of an export would undo it.
+       *
+       * It was missing until 0061, and it was missing invisibly:
+       * exportCompleteness.test.js scanned only `create table public.*`, so
+       * the first table in this schema born in `private` was never checked
+       * against the export at all.
+       */
+      req.supabase.rpc('trial_status'),
       /**
        * Guardian consent requests: who was asked, when, and what they said.
        *
@@ -172,6 +187,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       subscription,
       audit_events: activity,
       leaderboard_entry: board,
+      free_trial: trial,
       guardian_consent_requests: guardianRequests,
     };
 
@@ -207,6 +223,13 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         audit_events: activity.data ?? [],
         // Zero rows when they never joined; one row when they did.
         leaderboard_entry: (board.data ?? [])[0] ?? null,
+        /*
+         * Always one row, because trial_status() answers for an athlete who
+         * has never spent a reply as well as one who has - `used: 0` with null
+         * timestamps is a true and useful answer, and a missing key would read
+         * as "we hold nothing" when what we hold is a zero.
+         */
+        free_trial: (trial.data ?? [])[0] ?? null,
         guardian_consent_requests: guardianRequests.data ?? [],
       },
       /**

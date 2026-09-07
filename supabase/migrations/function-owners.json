@@ -92,5 +92,11 @@
       "0052_a_definer_function_does_not_see_a_policy.sql"
     ],
     "owner": "0054_guardian_consent.sql"
+  },
+  "public.trial_status()": {
+    "alsoIn": [
+      "0057_the_trial_is_counted_in_replies_not_days.sql"
+    ],
+    "owner": "0061_the_trial_counter_is_the_athletes_data_too.sql"
   }
 }

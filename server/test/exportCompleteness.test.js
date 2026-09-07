@@ -54,13 +54,32 @@ const NOT_PERSONAL_DATA = {
  */
 const EXPORTED_VIA = {
   leaderboard_entries: "rpc('my_leaderboard_entry')",
+  // Same reason: `authenticated` holds no grant in `private`, and that absence
+  // is what makes the trial counter impossible to reset from a network tab.
+  // Granting select for the sake of an export would undo the design.
+  trial_usage: "rpc('trial_status')",
 };
 
+/**
+ * ── BOTH SCHEMAS, AND THAT WAS A REAL OMISSION ────────────────────────────
+ *
+ * This read `create table ... public.<name>` only. Every user-scoped table WAS
+ * in public when it was written, and the one that lives in private today -
+ * rate_limit_counters - was created in public by 0005 and moved by 0006, so
+ * its name is still in the historical scan and its exclusion entry still
+ * works. The premise held by accident.
+ *
+ * private.trial_usage (0057) is the first table in this schema born private.
+ * The guard could not see it, nothing failed, and a subject access request
+ * quietly omitted how many free replies somebody had used - a legal obligation
+ * answered incompletely by a check that had silently stopped covering the
+ * schema it claims to cover.
+ */
 function declaredTables() {
   const names = new Set();
   for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql'))) {
     const sql = readFileSync(new URL(file, MIGRATIONS), 'utf8');
-    for (const [, name] of sql.matchAll(/create table (?:if not exists )?public\.([a-z_]+)/g)) {
+    for (const [, name] of sql.matchAll(/create table (?:if not exists )?(?:public|private)\.([a-z_]+)/g)) {
       names.add(name);
     }
   }
@@ -75,6 +94,16 @@ describe('the data export covers the whole schema', () => {
     const tables = declaredTables();
     assert.ok(tables.length >= 10, `found only ${tables.length} tables - the pattern stopped matching`);
     assert.ok(tables.includes('user_profile'), 'user_profile not found - the pattern is wrong');
+    /*
+     * A PRIVATE TABLE BY NAME. The pattern used to match only `public.` and so
+     * could never see a table born in private - which is exactly how
+     * trial_usage escaped this check. Naming one here means the blind spot
+     * cannot come back without a red test.
+     */
+    assert.ok(
+      tables.includes('trial_usage'),
+      'no private table found - the scan has gone back to public-only and is blind again'
+    );
   });
 
   test('every table is either exported or explicitly excluded, with a reason', () => {
