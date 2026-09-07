@@ -93,3 +93,49 @@ absence worth closing, and is recorded as such in ARCHITECTURE.md section 6.
 - **Logs per program.** One `progress_logs` row exists against three programs.
   The whole loop is prescribe → train → log → adapt, and the logging step has
   happened once. Same caveat: n is tiny and it is mostly the developer.
+
+## 2026-09-07: the thing this document said to watch for happened
+
+"Conversations per signup. If it stays at zero for people who finished the
+intake, the problem is between the last intake screen and the first message."
+It stayed at zero. Seven accounts now, three of them new in a week, and the
+count of people other than the developer who have sent a message is still one.
+
+Three finished intake — experience, goal, days, equipment, health — and sent
+nothing. The lift fields are blank on all three, which is not the wall it
+looks like: those inputs are optional and sit ABOVE the required ones on the
+form, so a blank squat means "skipped an optional field", not "stopped here".
+They submitted. They just never said anything afterwards.
+
+### One of them has a cause, and it is ours
+
+`873b84c7` finished intake at 11:46 on 09-02 and hit `storage_unavailable` on
+`GET /api/consent` at 19:18 the same day. That read failing left the consent
+gate at `reason: 'unknown'` — correctly, it fails closed — and `ProtectedRoute`
+sent them to `/consent`, a screen headed "before we start", whose panel reloads
+the endpoint that just failed and whose Continue button stays disabled until it
+succeeds. A dead end, reached by somebody who had already agreed to everything,
+explaining nothing. They have not been back.
+
+Fixed: an unreadable consent state now renders a retry in place, says the
+problem is ours and that their choices are still saved. The gate still admits
+nobody — failing closed was never the bug; landing it on a screen with no exit
+was.
+
+### One of them cannot be explained, and that is now closed too
+
+`a12541d0` signed up on 09-06 and left no other trace: every profile field
+null, no clearance assertion, no conversation, no error. Nothing in the
+database could say whether they ever loaded the app again, because the profile
+row is created by a trigger at signup and its existence therefore records
+nothing. Migration 0062 adds `profile_first_read_at` so the next one is
+answerable: signed up and never returned is a broken handoff, returned and
+abandoned the form is a form that asks too much, and they need opposite fixes.
+
+### Still open
+
+- **Transactional email is still unconfigured.** Three of seven are locked out
+  pending re-consent and nothing tells them. It was already the next absence
+  worth closing; a week of data has not changed that.
+- **n is seven and one of them is the developer.** Everything above is a
+  direction to look, not a measurement.
