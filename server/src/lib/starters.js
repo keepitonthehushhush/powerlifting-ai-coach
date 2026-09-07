@@ -62,12 +62,41 @@ export const MAX_STARTERS = 3;
 
 /**
  * @param {{experience_level?: string|null, goal?: string|null}|null} profile
+ * @param {{awaitingClearance?: boolean}} [state]
  * @returns {string[]} opener ids, most-relevant first, at most MAX_STARTERS.
  *          The client renders `chat.starters.<id>` from its own catalogue.
  */
-export function startersFor(profile) {
+export function startersFor(profile, { awaitingClearance = false } = {}) {
   const experience = profile?.experience_level ?? null;
   const goal = profile?.goal ?? null;
+
+  /*
+   * ── AN ATHLETE AWAITING CLEARANCE IS OFFERED WHAT THE COACH CAN DO ──────
+   *
+   * FIRST, before goal or experience, because it overrides both.
+   *
+   * The intake tells somebody who reports a restriction and has not been
+   * cleared: "Coach will not write you a program until you have been cleared
+   * by a professional. It will still answer questions in the meantime." They
+   * then land on the chat page, which - until this - said nothing about any of
+   * it and would have offered them "I'd like a program. Where do we start?"
+   *
+   * That is the one thing the coach has just told them it will not do. An
+   * opener for it is the app forgetting, thirty seconds later, something the
+   * person took care to tell it - and the reply would be a refusal, which is a
+   * poor first exchange with somebody who has just disclosed an injury.
+   *
+   * This is a real account, not a hypothetical: 2026-09-01, the whole intake
+   * completed, `clearance_asserted {cleared: false}` in the audit log, and not
+   * one message ever sent.
+   *
+   * So they get the two things that ARE useful now - what to ask the doctor,
+   * and working around the restriction - plus the honest question about what
+   * happens next. `awaitingClearance` is computed on the server by
+   * needsMedicalClearance() and only ids travel, so the restriction text
+   * itself never reaches the chat page.
+   */
+  if (awaitingClearance) return ['clearanceWhatNow', 'clearanceAskDoctor', 'clearanceMeanwhile'];
 
   const starters = [];
 

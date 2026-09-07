@@ -490,6 +490,12 @@ export const en = {
       currentNumbers: 'Here are my current squat, bench and deadlift:',
       neverLifted: "I've never lifted before and I don't know what I'm doing yet.",
       howItWorks: 'What do you need from me to write a program?',
+      // For somebody who reported a restriction and has not been cleared. The
+      // coach will not write them a program yet and has told them so; these
+      // are the things it CAN do, phrased as they would say them.
+      clearanceWhatNow: 'I have not been cleared yet. What can we do in the meantime?',
+      clearanceAskDoctor: 'What should I ask my doctor or physical therapist?',
+      clearanceMeanwhile: 'What can I safely work on that does not involve the injury?',
     },
     you: 'You',
     coach: 'Coach',

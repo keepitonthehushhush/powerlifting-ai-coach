@@ -145,6 +145,78 @@ describe('the openers match what the person told the intake', () => {
   });
 });
 
+describe('an athlete awaiting clearance is offered what the coach can do', () => {
+  /*
+   * A REAL ACCOUNT, NOT A HYPOTHETICAL. 2026-09-01: the whole intake
+   * completed, `clearance_asserted {cleared: false}` in the audit log, and not
+   * one message ever sent. The intake had just told them "Coach will not write
+   * you a program until you have been cleared by a professional. It will still
+   * answer questions in the meantime" - and the chat page they landed on said
+   * nothing about any of it.
+   */
+  test('THEY ARE NOT OFFERED A PROGRAM THE COACH HAS REFUSED TO WRITE', () => {
+    for (const experience of [...EXPERIENCE, null]) {
+      for (const goal of [...GOALS, null]) {
+        const out = startersFor({ experience_level: experience, goal }, { awaitingClearance: true });
+        assert.ok(!out.includes('firstProgram'), `offered a program to an uncleared ${goal} athlete`);
+        assert.ok(!out.includes('meet'), `offered meet prep to an uncleared ${goal} athlete`);
+        assert.ok(!out.includes('howItWorks'), 'asked what the coach needs to write a program it will not write');
+        assert.ok(out.length > 0, `no openers at all for an uncleared ${experience} / ${goal}`);
+      }
+    }
+  });
+
+  test('the clearance state overrides goal and experience, both', () => {
+    // It is checked FIRST for a reason: a meet goal or a beginner's experience
+    // would otherwise still steer the openers toward programming.
+    assert.deepEqual(
+      startersFor({ goal: 'first_meet', experience_level: 'never_lifted' }, { awaitingClearance: true }),
+      startersFor({ goal: 'meet_prep', experience_level: 'over_2_years' }, { awaitingClearance: true })
+    );
+  });
+
+  test('and the copy points at the clinician, not at a diagnosis', () => {
+    /*
+     * The product is not a doctor and its openers must not sound like one.
+     * "What should I ask my doctor" is the app being useful about a boundary;
+     * anything that reads as assessing the injury is the app crossing it.
+     */
+    const from = en.indexOf('clearanceWhatNow:');
+    const to = en.indexOf('},', from);
+    assert.notEqual(from, -1, 'the clearance copy is gone - this check did not run');
+    assert.notEqual(to, -1, 'the end of the starters block moved - this check did not run');
+    const block = en.slice(from, to);
+    assert.ok(block.length > 100, `the clearance copy slice is only ${block.length} chars`);
+    assert.match(block, /doctor|physical therapist/i, 'nothing points at a professional');
+    assert.doesNotMatch(block, /\b(diagnos|treat|heal|cure|rehab protocol)/i, 'the copy strays into clinical advice');
+  });
+
+  test('the route computes it server-side and sends only ids', () => {
+    // health_restrictions and cleared_to_train ARE health data. They are read
+    // to produce a boolean and must never reach the chat page themselves.
+    assert.match(route, /needsMedicalClearance\(profile\)/, 'the clearance state is not computed for the openers');
+    assert.match(route, /health_restrictions, cleared_to_train/);
+    /*
+     * THE FIRST VERSION OF THIS ASSERTION WAS A NO-OP. It searched for
+     * `starters:` followed by `health_restrictions` - and the route writes
+     * `starters,` with a comma, shorthand property syntax, so the pattern
+     * could never match anything. Planting the leak did not fail the suite.
+     *
+     * So it reads the RESPONSE BODY and names the columns, which is the
+     * property rather than a guess at how it would be spelled.
+     */
+    const from = route.indexOf('res.json({', route.indexOf('let starters = []'));
+    const to = route.indexOf('});', from);
+    assert.notEqual(from, -1, 'the conversation response is gone - this check did not run');
+    assert.notEqual(to, -1, 'the end of the response object moved - this check did not run');
+    const body = route.slice(from, to);
+    assert.match(body, /starters/, 'the wrong block was sliced - this check did not run');
+    for (const column of ['health_restrictions', 'cleared_to_train', 'date_of_birth', 'bodyweight', 'gender']) {
+      assert.ok(!body.includes(column), `the conversation response sends ${column} to the chat page`);
+    }
+  });
+});
+
 describe('what crosses the wire, and what does not', () => {
   test('THE PROFILE DOES NOT REACH THE CHAT PAGE', () => {
     /*
@@ -153,9 +225,19 @@ describe('what crosses the wire, and what does not', () => {
      * restrictions, and "not sent anywhere it does not need to go" is a rule
      * about health data with teeth.
      */
-    assert.match(route, /\.select\('experience_level, goal'\)/, 'the profile read has widened');
+    /*
+     * The read widened deliberately once - health_restrictions and
+     * cleared_to_train are needed to compute the clearance boolean. The list is
+     * pinned exactly, so the next widening is a decision somebody makes rather
+     * than a column that drifts in.
+     */
+    assert.match(
+      route,
+      /\.select\('experience_level, goal, health_restrictions, cleared_to_train'\)/,
+      'the profile read has changed - widening it sends more health data to a page that may not need it'
+    );
     assert.doesNotMatch(route, /\.select\('\*'\)[\s\S]{0,120}user_profile/);
-    assert.match(route, /starters = startersFor\(profile\)/);
+    assert.match(route, /starters = startersFor\(profile, \{ awaitingClearance: needsMedicalClearance\(profile\) \}\)/);
     // And the ids carry no copy with them.
     assert.doesNotMatch(route, /Where do we start/);
   });

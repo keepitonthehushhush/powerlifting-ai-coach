@@ -85,6 +85,50 @@ and needs one word.
 If the Supabase tools are not available, say the error log could not be
 checked. Do not omit it silently.
 
+### 5. Did anybody arrive, and did they get anywhere?
+
+The checks above ask whether the code is healthy. This one asks whether the
+product is, and they are not the same question — on 2026-09-06 every technical
+check was green while the two most recent signups had completed the entire
+intake and sent zero messages. Nobody found that for five days.
+
+It matters most while the link is being shared: a stalled signup you hear about
+the next morning is somebody you can still ask what happened. A week later they
+are gone.
+
+Same Supabase MCP tools, same production project:
+
+```sql
+select u.created_at::date as signed_up,
+       right(u.id::text, 6) as who,
+       (select count(*) from public.conversations c where c.user_id = u.id) as conversations,
+       (select count(*) from public.usage_events e where e.user_id = u.id) as replies,
+       p.goal is not null as finished_intake
+  from auth.users u
+  left join public.user_profile p on p.user_id = u.id
+ where u.created_at > now() - interval '8 days'
+ order by u.created_at;
+```
+
+**Report only what is worth acting on.** In order of interest:
+
+- **Finished the intake, zero conversations.** The one that matters. They got
+  all the way through and never spoke to the coach. Say so by signup date, and
+  check `error_events` for a `client_request_failed` row from around that time —
+  that is what separates "the send broke" from "they looked and left", and it
+  is the only evidence that can tell them apart.
+- **A conversation with zero replies.** They sent something and got nothing.
+  That is a failure, not a choice.
+- **Nobody signed up at all.** Worth one sentence during an outreach push and
+  worth nothing otherwise. Do not report it as a problem.
+
+Everything else — people using it normally — needs no comment. `right(u.id, 6)`
+rather than the email on purpose: this is a report about a funnel, not a list of
+who is behind on their training.
+
+`docs/WHO_IS_USING_THIS.md` has the fuller query, what it said when it was
+written, and what had already been ruled out.
+
 ## What this task cannot do
 
 `node scripts/verify-deployment.mjs` is the fuller version of checks 1–3 — it

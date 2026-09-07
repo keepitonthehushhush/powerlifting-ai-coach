@@ -938,11 +938,19 @@ chatRouter.get('/conversation', async (req, res, next) => {
     let starters = [];
     const empty = !data || !Array.isArray(data.messages) || data.messages.length === 0;
     if (empty) {
+      /*
+       * `health_restrictions` and `cleared_to_train` ARE health data, unlike
+       * the two above, and they are read here for one reason: to compute a
+       * boolean that never leaves the server. needsMedicalClearance() turns
+       * them into `awaitingClearance`, startersFor() turns that into opener
+       * ids, and the ids are what cross the wire - the restriction text itself
+       * does not reach the chat page, and must not.
+       */
       const { data: profile } = await req.supabase
         .from('user_profile')
-        .select('experience_level, goal')
+        .select('experience_level, goal, health_restrictions, cleared_to_train')
         .maybeSingle();
-      starters = startersFor(profile);
+      starters = startersFor(profile, { awaitingClearance: needsMedicalClearance(profile) });
     }
 
     // The limit travels with the conversation so the client never hardcodes
