@@ -212,10 +212,14 @@ re-checking when anything about the domain changes.
   exist. This was written down as missing for exactly that reason before
   `vercel dns ls coachdiaz.app` showed it sitting there. **Read the zone, not
   the selector you expect.**
-- **DMARC is absent.** The one real gap. Not required at this volume, and
-  worth having: with DKIM published and the Return-Path aligned, a `p=none`
-  record costs nothing, enforces nothing, and starts telling you what
-  receivers actually think of your mail before it matters.
+- **DMARC is published** as of 2026-09-08:
+  `v=DMARC1; p=none; rua=mailto:eddydiaz10@gmail.com; fo=1`.
+  `p=none` ENFORCES NOTHING and is meant to stay that way for now - it is a
+  listening post, not a policy. Reports arrive at that address; read a few
+  weeks of them before considering `p=quarantine`, because tightening a policy
+  over a domain you have not watched is how a person's own mail stops
+  arriving. `fo=1` asks for a report whenever either check fails, which is the
+  useful setting while there is nothing to lose.
 
 **DNS lives at Vercel** (`ns1/ns2.vercel-dns.com`), so records are added with
 `npx vercel dns add coachdiaz.app <name> <type> <value>` or in the Vercel
