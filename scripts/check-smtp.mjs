@@ -32,11 +32,24 @@
  *                    the caller decides which of those it is. `--require`
  *                    turns it into a failure for the production runbook.
  *
- * ── WHAT IT WILL NOT DO ─────────────────────────────────────────────────────
+ * ── WHAT IT WILL NOT DO ON ITS OWN ──────────────────────────────────────────
  *
- * It does not send a message. A check that mails somebody to prove mail works
- * needs a recipient, and the only addresses this product holds belong to
- * athletes and to guardians who never signed up for anything.
+ * It sends nothing unless you name a recipient. A check that mails somebody to
+ * prove mail works needs a recipient, and the only addresses this product holds
+ * belong to athletes and to guardians who never signed up for anything.
+ *
+ * `--probe <address>` is the deliberate exception, and it exists because
+ * `verify()` cannot answer the question that actually bites. Postmark accepts
+ * the login of a server whose Sender Signature is unconfirmed and then refuses
+ * the SEND with a 422, `Sender Signature not defined for From address`. So a
+ * green PASS here has always been compatible with every message failing. The
+ * probe is the only way to find that out that does not involve a real parent.
+ *
+ * It is a diagnostic and it lives here rather than in mailer.js on purpose:
+ * mailer.js sends the product's messages, all of them written out in full, and
+ * a "send arbitrary text to an arbitrary address" function in that file would
+ * undo the reason it is shaped the way it is. This one has a fixed body, goes
+ * only where the operator points it, records nothing, and touches no account.
  *
  * It prints the host and the port. It does not print the user and it can not
  * print the password: this is run against a shell that has production
@@ -83,6 +96,20 @@ try {
 }
 
 const REQUIRE = process.argv.includes('--require');
+
+/*
+ * The address to prove delivery to, if any. Taken as an explicit argument and
+ * never defaulted: the whole point is that the operator names an inbox they
+ * can open, and a default would eventually be somebody else's.
+ */
+const probeIndex = process.argv.indexOf('--probe');
+const PROBE = probeIndex === -1 ? null : (process.argv[probeIndex + 1] ?? '').trim();
+
+if (probeIndex !== -1 && !isSendableFrom(PROBE)) {
+  console.error('FAIL - --probe needs an address to send to.');
+  console.error('\n  npm run check:smtp -- --probe you@example.com\n');
+  process.exit(2);
+}
 
 const host = (process.env.SMTP_HOST ?? '').trim();
 const user = (process.env.SMTP_USER ?? '').trim();
@@ -193,14 +220,57 @@ const transport = nodemailer.createTransport({
 try {
   await transport.verify();
   console.log(`PASS - connected and authenticated to ${host}:${port}, sending as ${from}.`);
-  console.log('No message was sent. The credentials work and the guardian link can go out.');
+
+  if (!PROBE) {
+    console.log('No message was sent. The credentials work and the guardian link can go out.');
+    console.log(
+      '\nThat is the login, not the delivery. A provider can accept this handshake and\n' +
+        'still refuse every send - Postmark answers 422 "Sender Signature not defined for\n' +
+        'From address" when the sending address is not confirmed. Prove the rest with:\n\n' +
+        '  npm run check:smtp -- --probe you@example.com',
+    );
+    process.exit(0);
+  }
+
+  /*
+   * Deliberately dull, and deliberately says what it is. Somebody may find
+   * this in an inbox months from now with no memory of running it, and a
+   * mystery message from a service about a child's training would be alarming.
+   */
+  const info = await transport.sendMail({
+    from,
+    to: PROBE,
+    subject: 'Coach Diaz: SMTP probe',
+    text: [
+      'This is a test message from the Coach Diaz deployment check. Somebody ran',
+      '`npm run check:smtp -- --probe` and named this address.',
+      '',
+      'It is not about an account and nothing has changed. If you were not expecting',
+      'it, you can ignore and delete it.',
+      '',
+      `Sent as: ${from}`,
+      `Through: ${host}:${port}`,
+    ].join('\n'),
+  });
+
+  console.log(`PASS - a message was accepted for delivery to ${PROBE}.`);
+  console.log(`  message id: ${info?.messageId ?? 'none returned'}`);
+  console.log(
+    '\nACCEPTED IS NOT ARRIVED. The server took it; go and look in that inbox, and in\n' +
+      'the spam folder. Only an email you can actually read proves the sending address\n' +
+      'is confirmed and the domain authenticates.',
+  );
   process.exit(0);
 } catch (err) {
   /*
    * The code, not the message. An SMTP library's `message` routinely quotes
    * the envelope and the greeting, and this runs in terminals and CI logs.
    */
-  console.error(`FAIL - ${host}:${port} refused the connection or the credentials.`);
+  console.error(
+    PROBE
+      ? `FAIL - ${host}:${port} refused the connection, the credentials, or the send.`
+      : `FAIL - ${host}:${port} refused the connection or the credentials.`,
+  );
   console.error(`  code: ${err?.code ?? 'unknown'}`);
   console.error(`  response code: ${err?.responseCode ?? 'none'}`);
   console.error(
@@ -209,6 +279,12 @@ try {
       'wants an API key or an app password; the sending domain is not verified yet;\n' +
       'SMTP_PORT is 465 without implicit TLS on the far end, or 587 with it.',
   );
+  if (err?.responseCode === 422 || /sender signature/i.test(err?.response ?? '')) {
+    console.error(
+      '\nThat response code is the Sender Signature one: the login is fine and the\n' +
+        `address is not. Confirm ${from} in Postmark, or verify its domain.`,
+    );
+  }
   process.exit(1);
 } finally {
   transport.close();

@@ -69,7 +69,7 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board, trial, guardianRequests] = await Promise.all([
+    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board, trial, guardianRequests, policyNotices] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       // Interface preferences are personal data too. Small, dull, and still
       // the subject's - an export that quietly omits a table is an export
@@ -140,6 +140,14 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         .from('guardian_consent_requests')
         .select('id, user_id, guardian_email, created_at, expires_at, decided_at, decision')
         .order('created_at'),
+      /*
+       * "You emailed me about this, on that date" is a record about a person,
+       * and it is one somebody is most likely to want precisely when they are
+       * unhappy about having received it. Migration 0063 grants select and no
+       * write, so `select('*')` is safe here in a way it is not on the row
+       * above.
+       */
+      req.supabase.from('policy_notice_emails').select('*').order('created_at'),
     ]);
 
     /**
@@ -189,6 +197,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       leaderboard_entry: board,
       free_trial: trial,
       guardian_consent_requests: guardianRequests,
+      policy_notice_emails: policyNotices,
     };
 
     const couldNotInclude = Object.entries(sources)
@@ -231,6 +240,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
          */
         free_trial: (trial.data ?? [])[0] ?? null,
         guardian_consent_requests: guardianRequests.data ?? [],
+        policy_notice_emails: policyNotices.data ?? [],
       },
       /**
        * Empty on a healthy export. Named rather than omitted, because a

@@ -79,12 +79,37 @@ describe('check:smtp', () => {
     assert.doesNotMatch(source, /SMTP_PASSWORD.*console|console.*SMTP_PASSWORD/, 'the variable name is logged with its value');
   });
 
-  test('it verifies rather than sends, so it needs no recipient', () => {
-    // A check that mails somebody to prove mail works needs an address, and
-    // every address this product holds belongs to an athlete or to a guardian
-    // who never signed up for anything.
+  test('it verifies, and sends only to an address the operator typed', () => {
+    /*
+     * This used to assert `sendMail` appeared nowhere, and the reason given was
+     * that every address this product holds belongs to an athlete or to a
+     * guardian who never signed up for anything. That reason is still right and
+     * it is not an argument against sending - it is an argument about WHERE THE
+     * RECIPIENT COMES FROM.
+     *
+     * It had to change because verify() proves the login and not the send.
+     * Postmark accepts the credentials of a server whose Sender Signature is
+     * unconfirmed and refuses every message with a 422, so a green check here
+     * was compatible with nothing ever arriving. The gap was closed the only
+     * way that does not involve a real parent: one fixed message, to one
+     * address, named on the command line.
+     */
     assert.match(source, /\.verify\(\)/, 'the connection must be proved by verify()');
-    assert.doesNotMatch(source, /sendMail/, 'this must never send a message');
+
+    // The recipient is argv and nothing else. No database, no env var, no
+    // fallback - a default recipient eventually becomes somebody else.
+    assert.match(source, /const PROBE = probeIndex === -1 \? null : \(process\.argv\[probeIndex \+ 1\] \?\? ''\)\.trim\(\)/);
+    assert.doesNotMatch(source, /to: [^P\n]*process\.env/, 'the recipient comes from the environment');
+
+    // And the send is unreachable without it.
+    const sendAt = source.indexOf('transport.sendMail');
+    const guardAt = source.indexOf('if (!PROBE) {');
+    assert.ok(guardAt > 0 && guardAt < sendAt, 'the send is not behind the --probe guard');
+    assert.equal(
+      (source.match(/sendMail/g) ?? []).length,
+      1,
+      'more than one send path in a script whose default is to send nothing'
+    );
   });
 
   test('the four outcomes are distinct, and only one of them is a finding', () => {

@@ -129,7 +129,7 @@ who is behind on their training.
 `docs/WHO_IS_USING_THIS.md` has the fuller query, what it said when it was
 written, and what had already been ruled out.
 
-## 6. Is the one email this product sends actually able to go?
+## 6. Is the email this product sends actually able to go?
 
 ```
 npm run check:smtp
@@ -156,6 +156,70 @@ sends signup confirmations and password resets, is capped at **2 messages per
 hour** and their own documentation says it is not meant for production. That is
 a separate setting in the Supabase dashboard, not an environment variable, and
 `check:smtp` cannot see it. Custom SMTP there raises it to 30/hour, adjustable.
+
+### And the thing exit 0 does not prove
+
+`verify()` proves the **login**. It does not prove a **send**, and the gap is
+not theoretical: Postmark accepts the credentials of a server whose Sender
+Signature is unconfirmed and then refuses every message with a 422,
+`Sender Signature not defined for From address`. A green check above has always
+been compatible with nothing ever arriving.
+
+Close that gap once, against an inbox you can open:
+
+```
+npm run check:smtp -- --probe you@example.com
+```
+
+One fixed diagnostic message, to the address you name, recording nothing and
+touching no account. **Then go and look in that inbox, including spam.** The
+script says ACCEPTED IS NOT ARRIVED because the server taking a message is not
+the same as a person receiving one — and only the second proves the sending
+address is confirmed and the domain authenticates.
+
+Do this before section 7. Writing to real users on the strength of a handshake
+is how you find out about the 422 from someone else.
+
+## 7. Is anybody stuck on a policy version we no longer offer?
+
+```
+npm run policy:notice -- --list
+```
+
+A consent recorded against superseded text is agreement to something we have
+since changed. The consent gate already stops those accounts at the door and
+shows them what moved — **but only if they come back**, and until this existed
+nothing could tell them to. An obligation that depends on somebody happening to
+return is not an obligation being met.
+
+`--list` reads and sends nothing. It prints the account ids and the versions
+they are on. To write to one of them:
+
+```
+npm run policy:notice -- --user <uuid>          # dry run, prints what it would do
+npm run policy:notice -- --user <uuid> --send   # actually sends
+```
+
+Three deliberate refusals, and none of them is worth "fixing":
+
+- **There is no `--all`.** Deciding to write to somebody is a decision, and it
+  should be made by a person who then watches it happen.
+- **Naming the account is not enough**; `--send` is a second, separate yes. The
+  failure mode of an emailing script is not "it did not work", it is "it worked,
+  on the wrong list", and there is no undo.
+- **An account already on the current versions is refused, not mailed.** A
+  copied id or a stale terminal should cost you an error, not somebody else a
+  confusing email.
+
+Re-running is safe by construction rather than by care: the row in
+`policy_notice_emails` is written **before** the send is attempted and
+`(user_id, notice_key)` is unique, so a second run collides and sends nothing.
+A row with no `delivered_at` is somebody who was **not** reached — that is a
+fact worth being able to see, which is why there is no `--retry`. Work out what
+happened first.
+
+Go one account at a time the first time. Exit is non-zero if anybody named was
+not reached.
 
 ## What this task cannot do
 
