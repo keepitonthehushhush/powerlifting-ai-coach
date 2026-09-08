@@ -122,6 +122,7 @@ const NOT_SENT = {
     'months. Not sent, for the same reason as the injury timestamp: how old an ' +
     'answer is tells the model nothing it can coach on.',
   intake_completed_at: 'bookkeeping',
+  coach_first_opened_at: 'bookkeeping',
   created_at: 'bookkeeping',
   updated_at: 'bookkeeping',
 };

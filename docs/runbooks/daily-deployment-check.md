@@ -225,6 +225,30 @@ re-checking when anything about the domain changes.
 `npx vercel dns add coachdiaz.app <name> <type> <value>` or in the Vercel
 dashboard under Domains — not at the registrar, and not in Postmark.
 
+### Where people stop
+
+```
+npm run funnel
+```
+
+Reads only; prints no addresses, no names, no health information and no
+training content — eight characters of each account id, timestamps and counts.
+
+It exists because four of six real signups completed the intake form and sent
+the coach **zero messages**, all of them leaving the same day, and nothing in
+the database could say which of two opposite problems that was:
+
+- **finished intake, never reached the coach page** — a bug. Routing, loading,
+  or an error nobody saw. Check `error_events` for those accounts.
+- **reached it and never typed** — a design problem. Go and read that page as a
+  stranger would; no amount of debugging fixes it.
+
+Migration 0064 added `coach_first_opened_at` to tell them apart, so **the split
+only means anything for people who arrive from now on** — the report says so
+itself rather than reporting a confident zero. It also treats a sent message as
+proof of arrival, because the first version did not and printed three people
+who were visibly talking to the coach as never having reached it.
+
 ## 7. Is anybody stuck on a policy version we no longer offer?
 
 ```

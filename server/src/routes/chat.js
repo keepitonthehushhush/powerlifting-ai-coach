@@ -1042,6 +1042,37 @@ chatRouter.get('/conversation', async (req, res, next) => {
     if (error) throw codedError('storage_unavailable', 'Could not load the conversation.');
 
     /*
+     * ── THEY REACHED THE COACH. WRITE IT DOWN ONCE ────────────────────────
+     *
+     * Four of six real signups completed the intake form and sent zero
+     * messages. Without this the database cannot say whether they never got
+     * here - a routing or loading failure, a bug - or got here, read it, and
+     * did not type, which is a design problem. Opposite fixes, and nothing
+     * distinguished them. See migration 0064.
+     *
+     * After the conversation read and only when it succeeded, because "the
+     * page answered" is the thing being recorded and a failed read is not
+     * that. `is(..., null)` makes it write-once in the database rather than
+     * in a branch here: two tabs opening together both see a null, and only
+     * one of them can win there.
+     *
+     * Awaited, and swallowed, for the reason profile.js gives in full: a
+     * serverless function is frozen the moment it responds, so a detached
+     * write dies mid-socket - and no piece of telemetry is worth turning a
+     * working page into an error.
+     */
+    try {
+      await req.supabase
+        .from('user_profile')
+        .update({ coach_first_opened_at: new Date().toISOString() })
+        .eq('user_id', req.user.id)
+        .is('coach_first_opened_at', null);
+    } catch {
+      // Deliberately silent. The conversation they asked for loaded.
+    }
+
+
+    /*
      * ── THE OPENERS, AND ONLY WHEN THERE IS NOTHING TO OPEN ────────────────
      *
      * Read only for an empty conversation, because that is the only time they

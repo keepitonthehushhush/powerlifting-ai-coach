@@ -35,7 +35,8 @@
     "check:docs": "node scripts/check-docs.mjs",
     "safety:replay": "node scripts/safety-eval.mjs --replay",
     "check:smtp": "node scripts/check-smtp.mjs",
-    "policy:notice": "node scripts/send-policy-notice.mjs"
+    "policy:notice": "node scripts/send-policy-notice.mjs",
+    "funnel": "node scripts/funnel.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

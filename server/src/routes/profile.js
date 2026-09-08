@@ -113,7 +113,20 @@ profileRouter.put('/', async (req, res, next) => {
       }
     }
 
-    const patch = { ...parsed.data, intake_completed_at: new Date().toISOString() };
+    /*
+     * ── intake_completed_at IS NOT IN THIS PATCH ANY MORE ──────────────────
+     *
+     * It used to be, on every save, which made a column named "completed"
+     * hold the last time somebody EDITED their intake. The developer's own
+     * row said 2026-09-01 for an intake finished on 2026-08-25, and a funnel
+     * built on it would have reported people completing intake weeks after
+     * they did, with nothing looking wrong. See migration 0064.
+     *
+     * Stamped below instead, write-once, the same way profile_first_read_at
+     * is: `.is(..., null)` puts the once in the DATABASE rather than in a
+     * branch here, so two saves racing cannot both win.
+     */
+    const patch = { ...parsed.data };
 
     // Upsert rather than update: the signup trigger creates the row, but an
     // account created before that trigger existed would otherwise 404 forever.
@@ -124,6 +137,25 @@ profileRouter.put('/', async (req, res, next) => {
       .upsert({ user_id: req.user.id, ...patch }, { onConflict: 'user_id' })
       .select('*')
       .single();
+
+    /*
+     * The moment they first finished it, recorded after the save that finished
+     * it. Awaited inside its own try/catch and swallowed, for the reason the
+     * GET above gives in full: a serverless function is frozen the moment it
+     * responds, so a detached write dies mid-socket - and a telemetry write
+     * must never cost somebody the save they actually asked for.
+     */
+    if (!error) {
+      try {
+        await req.supabase
+          .from('user_profile')
+          .update({ intake_completed_at: new Date().toISOString() })
+          .eq('user_id', req.user.id)
+          .is('intake_completed_at', null);
+      } catch {
+        // Deliberately silent. Their profile saved, which is the thing they came for.
+      }
+    }
 
     if (error) {
       // Logged at the point of failure, because the terminal handler only sees

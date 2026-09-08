@@ -1,0 +1,158 @@
+import test, { describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { readSource, flatten } from './helpers/source.js';
+
+const profileRoute = readSource(new URL('../src/routes/profile.js', import.meta.url));
+const chatRoute = readSource(new URL('../src/routes/chat.js', import.meta.url));
+const script = readFileSync(new URL('../../scripts/funnel.mjs', import.meta.url), 'utf8');
+const migration = readFileSync(
+  new URL('../../supabase/migrations/0064_where_they_stop_between_the_form_and_the_first_message.sql', import.meta.url),
+  'utf8'
+).replace(/--.*$/gm, '');
+
+/**
+ * Where people stop between finishing the form and saying anything.
+ *
+ * ── THE MEASUREMENT THIS EXISTS FOR ───────────────────────────────────────
+ *
+ * Four of six real signups completed the intake form and sent zero messages,
+ * and every one left the same day. "Never reached the coach page" is a bug and
+ * "reached it and did not type" is a design problem. Nothing in the database
+ * told them apart.
+ */
+describe('the two timestamps that split the drop-off', () => {
+  test('reaching the coach is recorded, once, in the conversation route', () => {
+    const handler = chatRoute.slice(chatRoute.indexOf("chatRouter.get('/conversation'"));
+    const stamp = handler.indexOf('coach_first_opened_at');
+    assert.ok(stamp > 0, 'the coach page arrival is not recorded where it happens');
+    // Write-once in the DATABASE, not in a branch: two tabs opening together
+    // both read null, and only one of them can win at `.is(..., null)`.
+    assert.match(handler.slice(stamp, stamp + 400), /\.is\('coach_first_opened_at', null\)/);
+  });
+
+  test('it is recorded only when the read actually succeeded', () => {
+    // "The page answered" is the thing being measured, and a failed read is
+    // not that. The throw has to come first.
+    const handler = chatRoute.slice(chatRoute.indexOf("chatRouter.get('/conversation'"));
+    const thrown = handler.indexOf("codedError('storage_unavailable'");
+    const stamp = handler.indexOf('coach_first_opened_at');
+    assert.ok(thrown > 0 && thrown < stamp, 'a failed conversation load would be counted as an arrival');
+  });
+
+  test('a telemetry write never costs somebody the page they asked for', () => {
+    for (const [name, source, marker] of [
+      ['chat', chatRoute, 'coach_first_opened_at'],
+      ['profile', profileRoute, 'intake_completed_at: new Date()'],
+    ]) {
+      const at = source.indexOf(marker);
+      const around = source.slice(Math.max(0, at - 700), at + 700);
+      assert.match(around, /try \{/, `${name}: the stamp is not guarded`);
+      assert.match(around, /\} catch \{/, `${name}: a failed stamp would surface as an error`);
+      // Awaited, not fired and forgotten: a serverless function is frozen the
+      // moment it responds and a detached write dies mid-socket.
+      assert.match(around, /await req\.supabase/, `${name}: the stamp is not awaited`);
+    }
+  });
+});
+
+describe('intake_completed_at means what it is called', () => {
+  test('it is no longer written on every save', () => {
+    /*
+     * It was in the upsert patch, so a column named "completed" held the last
+     * time somebody EDITED their intake. The developer's own row said
+     * 2026-09-01 for an intake finished on 2026-08-25 - and a funnel built on
+     * it would have reported people completing intake weeks late with nothing
+     * looking wrong.
+     */
+    assert.doesNotMatch(
+      profileRoute,
+      /const patch = \{ \.\.\.parsed\.data, intake_completed_at/,
+      'the timestamp is back in the patch and is a last-edit time again'
+    );
+    assert.match(flatten(profileRoute), /const patch = \{ \.\.\.parsed\.data \}/);
+  });
+
+  test('and is stamped write-once instead', () => {
+    const at = profileRoute.indexOf('intake_completed_at: new Date()');
+    assert.ok(at > 0, 'nothing records when the intake was finished');
+    assert.match(profileRoute.slice(at, at + 300), /\.is\('intake_completed_at', null\)/);
+  });
+
+  test('the migration says the early rows are a different measurement', () => {
+    // Somebody will one day plot this column and deserves to know its first
+    // points mean something else. Deleting the history quietly would be worse.
+    const comment = readFileSync(
+      new URL('../../supabase/migrations/0064_where_they_stop_between_the_form_and_the_first_message.sql', import.meta.url),
+      'utf8'
+    );
+    assert.match(comment, /BEFORE 0064 the route stamped it on every profile save/);
+  });
+});
+
+describe('the column carries no personal data', () => {
+  test('it is classified as not sent to the model', () => {
+    // policyDisclosure.test.js requires every profile column to be entered
+    // either as sent-and-disclosed or explicitly-not-sent. This is the entry.
+    const disclosure = readSource(new URL('./policyDisclosure.test.js', import.meta.url));
+    assert.match(disclosure, /coach_first_opened_at: 'bookkeeping'/);
+  });
+
+  test('and the migration says what it is not', () => {
+    assert.match(migration, /add column if not exists coach_first_opened_at timestamptz/);
+    const comment = readFileSync(
+      new URL('../../supabase/migrations/0064_where_they_stop_between_the_form_and_the_first_message.sql', import.meta.url),
+      'utf8'
+    );
+    assert.match(comment, /Not health data and never sent to the model/);
+  });
+});
+
+describe('the report', () => {
+  test('it prints where people stopped and nothing about who they are', () => {
+    // A funnel tool that quietly becomes a way to read the users is a tool
+    // that gets used for something else eventually.
+    assert.doesNotMatch(script, /\bemail\b/i, 'the report reaches for addresses');
+    assert.doesNotMatch(script, /health_restrictions|goal|display_name|bodyweight/, 'it selects personal fields');
+    assert.match(script, /const short = \(id\) => String\(id\)\.slice\(0, 8\)/, 'it prints whole account ids');
+  });
+
+  test('only messages the PERSON sent count as sending a message', () => {
+    // A conversation row exists the moment the coach greets somebody. Counting
+    // rows rather than user turns would report the drop-off as solved.
+    assert.match(script, /messages\.filter\(\(m\) => m\?\.role === 'user'\)/);
+  });
+
+  test('the steps fall monotonically, so a drop is a real drop', () => {
+    /*
+     * The first version counted each step with its own filter, and the first
+     * real run printed the funnel going UP - "reached the coach 0" above
+     * "sent a message 3". Three people were plainly talking to a page the
+     * report said they had never reached, because their arrival predates the
+     * column. An independent filter cannot know that a later step proves an
+     * earlier one, so the summary counts from the furthest step instead.
+     */
+    assert.match(flatten(script), /const furthestStep = \(p\) =>/);
+    assert.match(flatten(script), /profiles\.filter\(\(p\) => furthestStep\(p\) >= index\)/);
+  });
+
+  test('a sent message counts as proof of arrival', () => {
+    // Otherwise the "never reached the coach page - that is a bug" list names
+    // people who are visibly using the product.
+    const list = script.slice(script.indexOf('const finishedButNeverArrived'));
+    assert.match(list.slice(0, 400), /!sent\.has\(p\.user_id\)/);
+  });
+
+  test('it names the two groups that need opposite fixes', () => {
+    assert.match(script, /finishedButNeverArrived/);
+    assert.match(script, /arrivedButNeverTyped/);
+    assert.match(flatten(script), /That is a bug/);
+    assert.match(flatten(script), /That is a design problem, not a bug/);
+  });
+
+  test('it admits what it cannot see about older accounts', () => {
+    // Everyone who signed up before 0064 lands in the first list by default.
+    // A quiet zero there would read as "no problem here".
+    assert.match(flatten(script), /accounts that signed up before migration 0064/);
+  });
+});
