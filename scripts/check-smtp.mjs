@@ -55,6 +55,8 @@
  * one that must always work - die on a module-resolution stack trace.
  */
 
+import { isSendableFrom } from '../server/src/lib/mailFrom.js';
+
 const REQUIRE = process.argv.includes('--require');
 
 const host = (process.env.SMTP_HOST ?? '').trim();
@@ -108,7 +110,7 @@ if (!host || !user || !pass) {
  * that does not work.
  */
 const from = (process.env.SMTP_FROM ?? '').trim() || user;
-if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(from)) {
+if (!isSendableFrom(from)) {
   console.error(`FAIL - the From header would be "${from}", which is not an email address.`);
   console.error(
     '\nSMTP_FROM is unset, so it fell back to SMTP_USER. That default suits providers\n' +

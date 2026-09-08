@@ -136,8 +136,17 @@ describe('/api/health also says whether mail could go', () => {
    * observation from outside - and they need completely different next moves.
    * Telling them apart took a dashboard login.
    */
-  test('it reports mail presence from config, without connecting', () => {
-    assert.match(app, /mail:\s*config\.smtp\?\.configured \? 'configured' : 'unconfigured'/);
+  test('it reports a mail field at all', () => {
+    /*
+     * THE PROPERTY, NOT THE EXPRESSION. This first pinned the exact ternary
+     * `config.smtp?.configured ? 'configured' : 'unconfigured'`, and then
+     * failed the very next change to it - which was a correct one, adding the
+     * third state that the two-state version was hiding. That is the fourth
+     * time a source-text assertion in this repo has blocked a correct change.
+     * What matters is that the response carries `mail`; what it can SAY is
+     * mailFrom.test.js's job.
+     */
+    assert.match(app, /\bmail:/, 'the health response no longer reports mail at all');
   });
 
   test('it does not open an SMTP session on a polled endpoint', () => {

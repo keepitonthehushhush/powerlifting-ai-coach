@@ -22,6 +22,7 @@ import { billingWebhookRouter } from './routes/billingWebhook.js';
 import { initMonitoring } from './lib/monitoring.js';
 import { logger } from './lib/logger.js';
 import { config } from './config.js';
+import { isSendableFrom } from './lib/mailFrom.js';
 import { PAID_FEATURE } from './lib/entitlement.js';
 
 /**
@@ -175,6 +176,24 @@ export function createApp() {
    * Unauthenticated on purpose: it is already the maintenance page's poll
    * target, and a deployment id is not a secret.
    */
+  /**
+   * THREE STATES, BECAUSE TWO HID THE DANGEROUS ONE.
+   *
+   * `configured` is host && user && pass - it says nothing about SMTP_FROM,
+   * which defaults to SMTP_USER and is therefore an API TOKEN on Postmark and
+   * the word `resend` on Resend. Either way the send fails at the far end
+   * while this endpoint cheerfully reported "configured".
+   *
+   * So: unconfigured (nobody set it up), misconfigured (credentials present
+   * and the From is not an address - a guaranteed failure, and the state
+   * worth shouting about), configured (as ready as config alone can prove).
+   * Whether it AUTHENTICATES is check:smtp's job; this one never connects.
+   */
+  const mailReadiness = () => {
+    if (!config.smtp?.configured) return 'unconfigured';
+    return isSendableFrom(config.smtp.from) ? 'configured' : 'misconfigured';
+  };
+
   app.get('/api/health', async (_req, res) => {
     /*
      * ── "ok" NOW MEANS THE DATABASE ANSWERED ─────────────────────────────
@@ -216,7 +235,7 @@ export function createApp() {
        * degraded - it is the normal state for every preview and every local
        * run, and the one route that needs mail already refuses honestly.
        */
-      mail: config.smtp?.configured ? 'configured' : 'unconfigured',
+      mail: mailReadiness(),
       deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev',
       /*
        * ── WHICH COMMIT IS ACTUALLY SERVING ──────────────────────────────────
