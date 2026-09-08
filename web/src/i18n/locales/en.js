@@ -501,6 +501,8 @@ export const en = {
     coach: 'Coach',
     programSaved: 'Week {week} is saved — {days} days, ready to follow.',
     programSavedLink: 'Open your program',
+    bodyweightSaved: 'Your bodyweight is now {weight} {units} on your profile.',
+    bodyweightSavedLink: 'Change it',
     // Says what is left and what it costs to keep going, and claims nothing
     // about what the coaching will do. If the replies did not sell it, a
     // sentence here was not going to.

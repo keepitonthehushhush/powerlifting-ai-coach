@@ -7,8 +7,9 @@ import { startersFor } from '../lib/starters.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
+import { extractProfileUpdateBlock, toProfileUnits } from '../lib/profileUpdateBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
-import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE } from '../lib/ageGate.js';
+import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE, evaluateAgeGate } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
 import { prescribeAll } from '../lib/progression.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
@@ -422,10 +423,16 @@ chatRouter.post('/', async (req, res, next) => {
      * the first one's tags back into what the athlete reads.
      */
     const {
-      reply: prose,
+      reply: withoutIntention,
       intention,
       problem: intentionProblem,
     } = extractIntentionBlock(extracted);
+
+    const {
+      reply: prose,
+      update: profileUpdate,
+      problem: profileProblem,
+    } = extractProfileUpdateBlock(withoutIntention);
 
     // Appended after the blocks are stripped, so the notice is never mistaken
     // for part of the program and never lands inside the JSON.
@@ -435,6 +442,11 @@ chatRouter.post('/', async (req, res, next) => {
       // The reason and never the content: the obstacle is the athlete's own
       // words about what stops them, and that is health data.
       logger.warn('intention.block_unusable', { userId: req.user.id, problem: intentionProblem });
+    }
+    if (profileProblem) {
+      // The reason and never the value, for the same reason: a bodyweight is a
+      // fact about somebody's body.
+      logger.warn('profile.block_unusable', { userId: req.user.id, problem: profileProblem });
     }
 
     /**
@@ -816,6 +828,78 @@ chatRouter.post('/', async (req, res, next) => {
       logger.warn('intention.refused_while_gated', { userId: req.user.id });
     }
 
+    /*
+     * ── THE BODYWEIGHT THE ATHLETE JUST SAID OUT LOUD ─────────────────────
+     *
+     * Converted here rather than by the model, for the reason
+     * profileUpdateBlock.js gives: a silent unit error writes a number wrong by
+     * a factor of 2.2 that passes every bound we could check.
+     *
+     * Written only when it actually differs from what is on file. Re-writing
+     * the same number is a database write per message for nothing, and it would
+     * put a "bodyweight updated" notice under a reply that changed nothing -
+     * which teaches the athlete to ignore the one notice that matters.
+     *
+     * bodyweight is deliberately NOT part of the health fingerprint the consent
+     * trigger compares (see migration 0035), so this write cannot be refused by
+     * it. That is not an oversight to work around; it is the reason changing a
+     * bodyweight has never required re-consent.
+     */
+    let savedProfile = null;
+    /*
+     * ── THE MINOR CHECK IS IN CODE, NOT ONLY IN THE PROMPT ────────────────
+     *
+     * The prompt forbids emitting this block for anybody under eighteen, and
+     * that instruction is the first line of defense. This is the second, for
+     * the reason the program save gives: an instruction is not a control.
+     *
+     * The under-18 rules forbid the coach RAISING bodyweight at all, and they
+     * are explicitly not softened by the minor raising it first. Filing a
+     * teenager's weight away in a database is exactly the thing that section
+     * exists to prevent, and a minor can reach this route - with guardian
+     * consent, when minors are enabled - so the case is real rather than
+     * theoretical.
+     *
+     * Fails closed: a date of birth we cannot read is not permission.
+     */
+    const adultForProfile = evaluateAgeGate(context.profile?.date_of_birth);
+    if (profileUpdate && !adultForProfile.allowed) {
+      // The reason code and never the date or the age, the same rule the age
+      // gate itself follows.
+      logger.warn('profile.bodyweight_refused_not_adult', {
+        userId: req.user.id,
+        reason: adultForProfile.reason,
+      });
+    } else if (profileUpdate) {
+      const units = context.profile?.units === 'kg' ? 'kg' : 'lb';
+      const bodyweight = toProfileUnits(profileUpdate.bodyweight, profileUpdate.units, units);
+      const current = Number(context.profile?.bodyweight);
+      const unchanged = Number.isFinite(current) && Math.abs(current - bodyweight) < 0.01;
+
+      if (bodyweight === null) {
+        logger.warn('profile.bodyweight_unconvertible', { userId: req.user.id });
+      } else if (unchanged) {
+        logger.info('profile.bodyweight_unchanged', { userId: req.user.id });
+      } else {
+        try {
+          const { error } = await req.supabase
+            .from('user_profile')
+            .update({ bodyweight })
+            .eq('user_id', req.user.id);
+          // Never the message: a constraint violation can quote the value.
+          if (error) logger.warn('profile.bodyweight_save_failed', { userId: req.user.id, cause: error.code });
+          else {
+            logger.info('profile.bodyweight_saved', { userId: req.user.id });
+            // Only ever what actually landed. Never "probably" - same rule the
+            // saved program follows.
+            savedProfile = { bodyweight, units };
+          }
+        } catch {
+          logger.warn('profile.bodyweight_save_failed', { userId: req.user.id, cause: 'threw' });
+        }
+      }
+    }
+
     try {
       const { error } = await req.supabase.from('usage_events').insert({
         user_id: req.user.id,
@@ -858,6 +942,7 @@ chatRouter.post('/', async (req, res, next) => {
       messages: storedTail,
       // null unless a row actually landed. Never "probably".
       savedProgram,
+      savedProfile,
       /*
        * Absent for everybody who is not on a trial, rather than present and
        * null. A paying athlete's client should have no field to render, and a

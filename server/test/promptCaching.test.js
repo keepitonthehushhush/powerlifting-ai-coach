@@ -103,9 +103,10 @@ describe('nothing about an athlete is in the shared cache entry', () => {
      * cannot tell the difference, which is the correct behavior for it and
      * the reason the prompt now writes its examples in plates.
      *
-     * The one number that IS allowed through is the weight in the
-     * <program_data> example, which has to be a number for the JSON to be
-     * valid. Keep the fixture values below away from it.
+     * The numbers that ARE allowed through are the ones inside the
+     * <program_data> and <profile_update> examples, which have to be numbers
+     * for the JSON to be valid. Keep the fixture values below away from them -
+     * and when adding a block example, pick a number that is not in this list.
      */
     const [role] = buildSystemBlocks(context());
     for (const value of ['181', '275', '185', '315', '1995-04-02']) {

@@ -82,6 +82,13 @@ export function Chat() {
    */
   const [savedProgram, setSavedProgram] = useState(null);
   /*
+   * The bodyweight the coach just recorded, if it recorded one. Shown rather
+   * than filed silently: it is a setting the athlete owns, and the reason it is
+   * safe to write from a conversation at all is that they see it happen and can
+   * change it. See server/src/lib/profileUpdateBlock.js.
+   */
+  const [savedProfile, setSavedProfile] = useState(null);
+  /*
    * ── HOW MANY FREE REPLIES ARE LEFT, AND WHEN TO SAY SO ──────────────────
    *
    * Null for everybody who is not on a trial - the server omits the field
@@ -190,6 +197,7 @@ export function Chat() {
       setConversationId(result.conversationId);
       setMessages(result.messages);
       setSavedProgram(result.savedProgram ?? null);
+      setSavedProfile(result.savedProfile ?? null);
       // Only ever what the server just said. Never decremented here: the
       // browser guessing at a number the database owns is how a screen and an
       // enforcement start disagreeing.
@@ -359,6 +367,20 @@ export function Chat() {
             </span>
             <Link className="link" to="/account">
               {t('chat.trialLink')}
+            </Link>
+          </div>
+        )}
+
+        {savedProfile && (
+          <div className="program-saved" role="status">
+            <span>
+              {t('chat.bodyweightSaved', {
+                weight: savedProfile.bodyweight,
+                units: savedProfile.units,
+              })}
+            </span>
+            <Link className="link" to="/account">
+              {t('chat.bodyweightSavedLink')}
             </Link>
           </div>
         )}

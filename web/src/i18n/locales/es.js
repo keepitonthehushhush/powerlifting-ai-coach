@@ -484,6 +484,8 @@ export const es = {
     coach: 'Coach',
     programSaved: 'La semana {week} está guardada: {days} días, lista para seguir.',
     programSavedLink: 'Abrir tu programa',
+    bodyweightSaved: 'Tu peso corporal ahora es {weight} {units} en tu perfil.',
+    bodyweightSavedLink: 'Cambiarlo',
     trialLeft: 'Te quedan {count} respuestas gratis del entrenador. Tu programa, tus registros y tus gráficas siguen siendo gratis de todas formas.',
     trialSpent: 'Esa fue la última respuesta gratis del entrenador. Tu programa, tus registros y tus gráficas siguen siendo gratis.',
     trialLink: 'Ver la suscripción',

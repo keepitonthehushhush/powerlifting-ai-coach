@@ -431,6 +431,34 @@ requires the block to carry the whole program as it now stands, including the
 days the coach did not touch, and the athlete's current program is in the
 prompt so that instruction is one the coach can actually carry out.
 
+**Extended 2026-09-08 — a third block, and the first one that writes a setting
+the athlete owns.** `<profile_update>` records a bodyweight the athlete states
+in conversation. It is the same mechanism for the same reason — the coach still
+calls nothing — with three differences worth naming.
+
+*The whitelist is the boundary.* One field is writable, not "the profile". A
+field becomes writable by a deliberate edit to a `.strict()` schema, one at a
+time, with the reason next to it. Current lifts were considered and left out:
+they overlap the session-logging pipeline, and a chat and a log that disagree
+about the same number is worse than a stale one.
+
+*The arithmetic is not the model's.* A profile stores bodyweight in the
+athlete's own units, so the block carries the number **and the unit the athlete
+used**, and the route converts. A model asked to convert would get it right
+mostly, and a silent unit error writes a value wrong by a factor of 2.2 that
+sits inside every bound a schema could check and looks ordinary on the account
+page.
+
+*It is visible, and the intention block is not.* A bodyweight is a setting the
+athlete owns, so the reply carries a confirmation and a link to the page where
+they can change it. That visibility is what makes writing it from a
+conversation safe: a setting that changes because something misheard a
+sentence, with nothing on screen to say so, is a bug nobody can report. The
+prompt forbids recording a goal weight, forbids it entirely in any conversation
+touching disordered eating, and forbids it for a minor — and that last one is
+re-checked in code before the write, because a minor can reach this route with
+guardian consent and an instruction is not a control.
+
 ### ADR-10 · The safety eval reports a ratio, not a boolean
 
 **Context.** One adversarial scenario passed a run and failed the next two with
