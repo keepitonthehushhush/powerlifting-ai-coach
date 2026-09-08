@@ -122,20 +122,39 @@ problem is ours and that their choices are still saved. The gate still admits
 nobody — failing closed was never the bug; landing it on a screen with no exit
 was.
 
-### One of them cannot be explained, and that is now closed too
+### One of them I called unexplainable, and it was in the database all along
 
-`a12541d0` signed up on 09-06 and left no other trace: every profile field
-null, no clearance assertion, no conversation, no error. Nothing in the
-database could say whether they ever loaded the app again, because the profile
-row is created by a trigger at signup and its existence therefore records
-nothing. Migration 0062 adds `profile_first_read_at` so the next one is
-answerable: signed up and never returned is a broken handoff, returned and
-abandoned the form is a form that asks too much, and they need opposite fixes.
+WRITTEN 09-07, CORRECTED 09-08. The paragraph here said `a12541d0` "cannot be
+explained" - signed up 09-06, every profile field null, no clearance assertion,
+no conversation, no error - and used that to justify migration 0062.
+
+It was explainable. `consent_records` holds ZERO rows for them. The consent
+screen is the first thing after signup and before intake, so they confirmed
+their email, landed on it, and left without granting anything. One query would
+have said so and I did not run it: I checked the profile, the conversations,
+the usage and the audit ledger, decided the answer was not there, and wrote
+that down as a fact about the database rather than about my search.
+
+That is the same failure as calling transactional email the biggest unclosed
+gap while `SMTP_HOST` sat filled in - twice in two days, both times a confident
+claim about a system I had not asked. **The rule is not "look at the data", it
+is "name which table would hold the answer, and go and look at THAT one."**
+
+Migration 0062 is still worth having, and for the reason given: it separates
+"never came back" from "came back and abandoned intake", which `consent_records`
+cannot. It is stamping in production as of 09-08. It just was not needed to
+answer this particular question.
+
+So the drop points are now three, not two: the consent screen (1 of 7), intake
+completed with nothing sent (3 of 7), and one lost to the consent-read failure
+fixed on 09-07.
 
 ### Still open
 
-- **Transactional email is still unconfigured.** Three of seven are locked out
-  pending re-consent and nothing tells them. It was already the next absence
-  worth closing; a week of data has not changed that.
+- **Transactional email is configured and has never sent anything.** Corrected
+  09-08: Postmark is wired up in production, `/api/health` reports
+  `mail: configured`, and `guardian_consent_requests` holds zero rows - so the
+  transport has never been exercised and its credentials are unproven. Three of
+  seven are still on a stale policy version with nothing telling them.
 - **n is seven and one of them is the developer.** Everything above is a
   direction to look, not a measurement.
