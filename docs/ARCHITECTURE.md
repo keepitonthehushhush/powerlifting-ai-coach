@@ -450,14 +450,39 @@ sits inside every bound a schema could check and looks ordinary on the account
 page.
 
 *It is visible, and the intention block is not.* A bodyweight is a setting the
-athlete owns, so the reply carries a confirmation and a link to the page where
-they can change it. That visibility is what makes writing it from a
-conversation safe: a setting that changes because something misheard a
-sentence, with nothing on screen to say so, is a bug nobody can report. The
-prompt forbids recording a goal weight, forbids it entirely in any conversation
-touching disordered eating, and forbids it for a minor — and that last one is
-re-checked in code before the write, because a minor can reach this route with
-guardian consent and an instruction is not a control.
+athlete owns, so a status line under the reply carries the recorded number and
+a link to the page where they can change it. That visibility is what makes
+writing it from a conversation safe: a setting that changes because something
+misheard a sentence, with nothing on screen to say so, is a bug nobody can
+report. **The coach is told not to announce the save itself** — the write is
+refused in six places the model cannot see, and the first draft of this had the
+coach saying "I've updated your weight" above a screen that had not updated.
+The worst version of that is the case the under-18 rules exist for: a minor
+states their weight, the code correctly refuses to store it, and the reply
+tells them it was stored. The status line is written by the code that performed
+the write, so it is the only part of this that can be trusted to say so.
+
+The prompt forbids recording a goal weight, forbids it entirely in any
+conversation touching disordered eating, and forbids it for a minor — and that
+last one is re-checked in code before the write, because a minor can reach this
+route with guardian consent and an instruction is not a control.
+
+*Three bounds, not one.* The absolute range is checked on what the athlete said
+**and again on the converted value**, because a conversion moves the number and
+only the second one reaches the column. A **relative** bound refuses a change of
+more than a third from what is on file — the absolute range cannot catch
+misattribution, and "my daughter is 45 now" is a number a person could weigh but
+not one this person arrives at from 205. And the write is a **compare-and-swap**
+on the value the request read, so an athlete who corrects their weight on the
+account page during a reply that takes a minute does not have it silently
+reverted.
+
+*The echo path is closed at both ends.* The block is the one piece of model
+output with a side effect, so ADR-9's argument — the model only produces text —
+holds only while text the athlete supplies cannot come back out as an
+instruction. `sanitize.js` strips all three block tags from athlete-authored
+text before it reaches the prompt, and the route requires the profile block to
+be the last thing in the reply, since a quoted one lands mid-sentence.
 
 ### ADR-10 · The safety eval reports a ratio, not a boolean
 

@@ -68,18 +68,85 @@ export const LB_PER_KG = 1 / 0.45359237;
  * not a judgment about bodies. 20-1000 lb and 9-454 kg both land inside the
  * `bodyweight > 0` check on the column and the max of 1000 in profileSchema.js.
  */
+export const BOUNDS = {
+  // 453.59 kg rather than a round 454: 454 kg converts to 1000.89 lb, which is
+  // past the max in profileSchema.js. A value the account page could no longer
+  // validate is not a value this should be able to write, and the bound has to
+  // be stated in the unit that makes both true.
+  kg: { min: 10, max: 453 },
+  lb: { min: 20, max: 1000 },
+};
+// The two are not exact reciprocals, and do not need to be: whichever unit the
+// athlete used, the value is checked again after conversion in the unit the
+// column actually holds. The pair only has to be wide enough not to refuse a
+// real person and narrow enough to sit inside profileSchema.js.
+
+/**
+ * Is this a number a person could weigh, in the unit given?
+ *
+ * Deliberately wider than any real person: a sanity check against a misparse,
+ * not a judgment about bodies. Exported because it is checked TWICE - once on
+ * what the athlete said, and again on the converted value that is actually
+ * written, since those are different numbers and only the second one ends up
+ * in the column.
+ */
+export function isPlausibleBodyweight(value, units) {
+  const bound = BOUNDS[units];
+  if (!bound || !Number.isFinite(value)) return false;
+  return value >= bound.min && value <= bound.max;
+}
+
+/**
+ * Is this a believable CHANGE from what is already on file?
+ *
+ * The absolute bounds above cannot catch the failure that actually worries me
+ * here, which is misattribution: an athlete says "my daughter is 45 now" in a
+ * conversation about family, the model reads it as a bodyweight, and 45 lb
+ * passes every check because 45 lb is a number a person could weigh. It is not
+ * a number THIS person could have arrived at from 205.
+ *
+ * A third either way. A year of hard cutting or a real bulk stays inside it; a
+ * transcription of somebody else's weight, a units mix-up that survived, and a
+ * digit dropped from 185 do not. Somebody whose change is genuinely larger than
+ * this edits it on their account page, which is one screen away and is where
+ * this feature points them anyway.
+ *
+ * With no bodyweight on file there is nothing to compare against and nothing to
+ * refuse - a first value is not a change.
+ */
+export const MAX_CHANGE_RATIO = 1 / 3;
+
+export function isPlausibleChange(current, next) {
+  if (!Number.isFinite(current) || current <= 0) return true;
+  if (!Number.isFinite(next)) return false;
+  return Math.abs(next - current) / current <= MAX_CHANGE_RATIO;
+}
+
 export const ProfileUpdateData = z
   .object({
     bodyweight: z.number().positive().max(1000),
     units: z.enum(['lb', 'kg']),
   })
   .strict()
-  .refine(({ bodyweight, units }) => (units === 'kg' ? bodyweight >= 9 : bodyweight >= 20), {
-    message: 'below any plausible bodyweight for the unit given',
-  })
-  .refine(({ bodyweight, units }) => (units === 'kg' ? bodyweight <= 454 : bodyweight <= 1000), {
-    message: 'above any plausible bodyweight for the unit given',
+  .refine(({ bodyweight, units }) => isPlausibleBodyweight(bodyweight, units), {
+    message: 'outside any plausible bodyweight for the unit given',
   });
+
+/**
+ * The unit a profile stores its bodyweight in, or null if we cannot tell.
+ *
+ * Null is a REFUSAL, and it has to be reachable. Collapsing "anything that is
+ * not the string kg" into pounds at the call site is how a metric athlete whose
+ * column says `kgs`, `KG` or `metric` gets 84 written into a pound field - the
+ * exact factor-of-2.2 error this whole design exists to make impossible.
+ *
+ * An unset unit IS pounds. That is the default everywhere else in this app,
+ * including the intake form, so it is a known answer rather than a guess.
+ */
+export function resolveProfileUnits(profileUnits) {
+  if (profileUnits === null || profileUnits === undefined || profileUnits === '') return 'lb';
+  return profileUnits === 'kg' || profileUnits === 'lb' ? profileUnits : null;
+}
 
 /**
  * The athlete's stated weight, in the units their profile stores.
@@ -93,14 +160,17 @@ export const ProfileUpdateData = z
 export function toProfileUnits(value, statedUnits, profileUnits) {
   if (!Number.isFinite(value)) return null;
   const from = statedUnits === 'kg' || statedUnits === 'lb' ? statedUnits : null;
-  // A profile with no units set is in pounds; that is the default everywhere
-  // else in this app, including the intake form.
-  const to = profileUnits === 'kg' ? 'kg' : profileUnits === 'lb' || !profileUnits ? 'lb' : null;
+  const to = resolveProfileUnits(profileUnits);
   if (!from || !to) return null;
 
   const converted =
     from === to ? value : from === 'kg' ? value * LB_PER_KG : value / LB_PER_KG;
-  return Math.round(converted * 100) / 100;
+  const rounded = Math.round(converted * 100) / 100;
+
+  // Checked again, in the unit it will be STORED in. The bounds above were
+  // applied to what the athlete said, and a conversion moves the number: the
+  // two checks are not the same check, and only this one guards the column.
+  return isPlausibleBodyweight(rounded, to) ? rounded : null;
 }
 
 /** Removes every tag, opened or closed, matched or not. */
@@ -140,6 +210,25 @@ export function extractProfileUpdateBlock(text) {
     // Truncated mid-block. The prose before it is still worth delivering, and
     // a half-read number is not worth writing to anybody's profile.
     return { reply: stripAll(text), update: null, problem: 'unclosed profile block' };
+  }
+
+  /*
+   * ── IT HAS TO BE THE LAST THING IN THE REPLY ──────────────────────────────
+   *
+   * The prompt says "at the very end", and until this check that was a request
+   * rather than a requirement. The reason it has to be enforced is an echo: an
+   * athlete can type these tags into their own message, and a model that quotes
+   * a question back - "you asked what <profile_update>{...}</profile_update>
+   * does" - would have written whatever they put in it. The block is the one
+   * piece of model output with a side effect, so the argument programBlock.js
+   * rests on ("the model only produces text") is only true while what the
+   * athlete can put INTO that text cannot come back out as an instruction.
+   *
+   * A quoted block lands mid-sentence. The coach's own lands last, after every
+   * other block has been stripped from the end of the reply.
+   */
+  if (text.slice(close + CLOSE.length).trim() !== '') {
+    return { reply: stripAll(text), update: null, problem: 'profile block was not at the end' };
   }
 
   const raw = text.slice(first + OPEN.length, close);

@@ -54,7 +54,7 @@ const LONG_WAIT_SECONDS = 25;
 const TRIAL_TELL_AT = 5;
 
 export function Chat() {
-  const { t } = useI18n();
+  const { t, formatWeight } = useI18n();
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -297,7 +297,7 @@ export function Chat() {
 
   return (
     <div className="page chat-page">
-      <StickToBottom />
+      <StickToBottom contentKey={showAllMessages} />
       <StickyHeader>
       <header className="page-header row">
         <SiteNav>
@@ -372,11 +372,14 @@ export function Chat() {
         )}
 
         {savedProfile && (
-          <div className="program-saved" role="status">
+          <div className="program-saved profile-saved" role="status">
             <span>
               {t('chat.bodyweightSaved', {
-                weight: savedProfile.bodyweight,
-                units: savedProfile.units,
+                // The shared formatter, for the reason it exists: 185.19 in
+                // English is 185,19 in Spanish, and a number the athlete is
+                // being asked to check should be written the way they write
+                // numbers. It rounds to one decimal and appends the unit.
+                weight: formatWeight(savedProfile.bodyweight, savedProfile.units),
               })}
             </span>
             <Link className="link" to="/account">

@@ -4,6 +4,7 @@ import { readSource } from './helpers/source.js';
 
 import {
   BOTTOM_TOLERANCE_PX,
+  QUIET_MS,
   SETTLE_MS,
   createStickToBottom,
   isAtBottom,
@@ -87,6 +88,30 @@ function makePhone({ viewport, height }) {
       frames.clear();
       for (const [, fn] of due) fn();
     },
+    /** Time passing with nothing else happening. */
+    wait(ms) {
+      clock += ms;
+    },
+    /** The document gets taller with no event to announce it. */
+    grow(height) {
+      stage.height = height;
+    },
+    /**
+     * The browser's own scroll during a rotation, BEFORE it reports the resize:
+     * the document has already reflowed, and innerHeight is still reporting the
+     * orientation the phone has left (WebKit 170595).
+     */
+    scrollWithStaleViewport({ viewport, height, staleViewport }) {
+      stage.viewport = viewport;
+      stage.height = height;
+      win.innerHeight = staleViewport;
+      emit('scroll');
+    },
+    /** ...and then the resize, with the numbers finally true. */
+    reportResize(viewport) {
+      win.innerHeight = viewport;
+      emit('resize');
+    },
     input(type) {
       emit(type);
     },
@@ -98,12 +123,17 @@ function makePhone({ viewport, height }) {
      * Rotate. The browser clamps the offset to the new document, which fires a
      * scroll, and then reports the resize.
      */
-    rotate({ viewport: nextViewport, height: nextHeight }) {
+    rotate({ viewport: nextViewport, height: nextHeight, resizeFirst = false }) {
       stage.viewport = nextViewport;
       stage.height = nextHeight;
       win.innerHeight = nextViewport;
-      setScroll(win.scrollY);
-      emit('resize');
+      if (resizeFirst) {
+        emit('resize');
+        setScroll(win.scrollY);
+      } else {
+        setScroll(win.scrollY);
+        emit('resize');
+      }
     },
   };
 }
@@ -146,6 +176,7 @@ describe('rotating away and back', () => {
     const stop = stick.start();
 
     phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1); // they read for a moment before turning the phone
     assert.equal(phone.win.scrollY, 4200, 'the reader is at the end in portrait');
 
     phone.rotate(LANDSCAPE);
@@ -153,6 +184,7 @@ describe('rotating away and back', () => {
     // the loss: it is not recoverable from the offset alone afterwards.
     assert.equal(phone.win.scrollY, 2720);
 
+    phone.wait(QUIET_MS + 1);
     phone.rotate(PORTRAIT);
     phone.frame();
 
@@ -169,6 +201,7 @@ describe('rotating away and back', () => {
     const stop = createStickToBottom(phone.env).start();
 
     phone.scrollTo(1000);
+    phone.wait(QUIET_MS + 1);
     phone.rotate(LANDSCAPE);
     phone.frame();
 
@@ -182,6 +215,7 @@ describe('rotating away and back', () => {
     const stop = stick.start();
 
     phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1);
     phone.rotate(LANDSCAPE);
     assert.equal(stick.isPinned(), true);
     stop();
@@ -204,7 +238,9 @@ describe('rotating away and back', () => {
     const stop = stick.start();
 
     phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1);
     phone.rotate(LANDSCAPE);
+    phone.wait(QUIET_MS + 1);
 
     // Back to portrait, but the transcript has only partly reflowed.
     phone.rotate({ viewport: 700, height: 4000 });
@@ -229,7 +265,9 @@ describe('rotating away and back', () => {
     const stop = createStickToBottom(phone.env).start();
 
     phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1);
     phone.rotate(LANDSCAPE);
+    phone.wait(QUIET_MS + 1);
     phone.rotate(PORTRAIT);
 
     // A browser that reports the old height on the first frame gets corrected
@@ -253,7 +291,9 @@ describe('rotating away and back', () => {
       const stop = createStickToBottom(phone.env).start();
 
       phone.scrollTo(phone.maxScroll());
+      phone.wait(QUIET_MS + 1);
       phone.rotate(LANDSCAPE);
+      phone.wait(QUIET_MS + 1);
       phone.rotate(PORTRAIT);
 
       phone.input(gesture);
@@ -264,6 +304,112 @@ describe('rotating away and back', () => {
       stop();
     });
   }
+
+  /**
+   * The order of `scroll` and `resize` during a rotation is not specified, and
+   * a browser that clamps FIRST hands us a scroll event carrying rotation-time
+   * measurements before anything has said a rotation is happening. An earlier
+   * version of this file believed it, the resize a millisecond later found
+   * "the reader is not at the end", and the reported bug reproduced with the
+   * fix installed and nothing to show for it.
+   */
+  test('it does not matter which of scroll and resize the browser fires first', () => {
+    for (const resizeFirst of [false, true]) {
+      const phone = makePhone(PORTRAIT);
+      const stop = createStickToBottom(phone.env).start();
+
+      phone.scrollTo(phone.maxScroll());
+      phone.wait(QUIET_MS + 1);
+      phone.rotate({ ...LANDSCAPE, resizeFirst });
+      phone.wait(QUIET_MS + 1);
+      phone.rotate({ ...PORTRAIT, resizeFirst });
+      phone.frame();
+
+      assert.equal(phone.win.scrollY, 4200, `lost the end when resizeFirst=${resizeFirst}`);
+      stop();
+    }
+  });
+
+  /**
+   * The case the quiet window exists for, and the one an "ignore scrolls while
+   * we are correcting" guard cannot reach: the browser's scroll arrives BEFORE
+   * the resize, so there is no correction in progress to ignore it, and it
+   * carries an innerHeight from the orientation the phone has already left.
+   * Read at face value it says the reader is 1800px from the end. They are
+   * sitting on it.
+   */
+  test('a rotation-time scroll that arrives before the resize is not believed', () => {
+    const phone = makePhone(LANDSCAPE);
+    const stick = createStickToBottom(phone.env);
+    const stop = stick.start();
+
+    phone.scrollTo(phone.maxScroll());
+    assert.equal(phone.win.scrollY, 2720, 'at the end in landscape');
+    phone.wait(5000); // reading
+
+    phone.scrollWithStaleViewport({ viewport: 700, height: 4900, staleViewport: 380 });
+    phone.reportResize(700);
+    phone.frame();
+
+    assert.equal(phone.win.scrollY, 4200, 'believed a measurement taken mid-rotation');
+    stop();
+  });
+
+  /**
+   * One rotation is several resizes on iOS. Ending only the CURRENT correction
+   * meant the next resize in the same burst re-armed it half a second after the
+   * reader had taken over - and their own scrolls were being ignored while it
+   * ran, so nothing could talk it out of the idea.
+   */
+  test('a gesture suppresses the rest of the burst, not just the current frame', () => {
+    const phone = makePhone(PORTRAIT);
+    const stop = createStickToBottom(phone.env).start();
+
+    phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1);
+    phone.rotate(LANDSCAPE);
+    phone.wait(QUIET_MS + 1);
+    phone.rotate(PORTRAIT);
+
+    phone.input('touchstart');
+    phone.scrollTo(500);
+
+    // The second and third resizes of the same rotation.
+    phone.frame();
+    phone.rotate(PORTRAIT);
+    phone.frame();
+    phone.rotate(PORTRAIT);
+    phone.frame();
+
+    assert.equal(phone.win.scrollY, 500, 'started pulling the page down again mid-gesture');
+    stop();
+  });
+
+  /**
+   * Mounting the rest of the transcript changes the page height with no event
+   * at all. Without being told, the record still says "at the end" from before
+   * the expansion, and the next resize - the keyboard opening under the
+   * composer - throws the reader away from the message they just opened.
+   */
+  test('expanding the history is not an event, so the page says so', () => {
+    const phone = makePhone(PORTRAIT);
+    const stick = createStickToBottom(phone.env);
+    const stop = stick.start();
+
+    phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1);
+
+    // Four months of history mounts above the reader. No scroll, no resize.
+    phone.grow(24000);
+    stick.refresh();
+
+    // Now the keyboard opens.
+    phone.rotate({ viewport: 400, height: 24000 });
+    phone.frame();
+
+    assert.notEqual(phone.win.scrollY, phone.maxScroll(), 'threw the reader to the end of the transcript');
+    stop();
+  });
 
   test('it listens for the orientation event that is not deprecated', () => {
     const phone = makePhone(PORTRAIT);
@@ -281,7 +427,9 @@ describe('rotating away and back', () => {
     const stop = createStickToBottom(phone.env).start();
 
     phone.scrollTo(phone.maxScroll());
+    phone.wait(QUIET_MS + 1);
     phone.rotate(LANDSCAPE);
+    phone.wait(QUIET_MS + 1);
     phone.rotate(PORTRAIT);
     phone.frame();
 
@@ -305,7 +453,7 @@ describe('where it is mounted', () => {
   const chat = readSource(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
 
   test('the coach page mounts it', () => {
-    assert.match(chat, /<StickToBottom \/>/, 'the fix is not on the page it was reported against');
+    assert.match(chat, /<StickToBottom\b/, 'the fix is not on the page it was reported against');
   });
 
   test('and no other page does', () => {

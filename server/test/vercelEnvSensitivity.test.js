@@ -72,6 +72,45 @@ describe('set-vercel-env.sh variable sensitivity', () => {
     }
   });
 
+  test('the secret groups are written by the loop, not by a hard-coded list', () => {
+    // Membership of $SMTP_SECRET_VARS is worthless if the writing loop names
+    // variables directly: SMTP_USER would silently stop being created at all
+    // and mail would break with this file still looking correct.
+    for (const list of ['SECRET_VARS', 'SMTP_SECRET_VARS']) {
+      assert.match(
+        script,
+        new RegExp(`for name in \\$${list}; do\\s*\\n\\s*readd_secret`),
+        `${list} is not what the write loop iterates`
+      );
+    }
+  });
+
+  test('a secret is removed before it is added, so its sensitivity can change', () => {
+    /*
+     * `env add --force` overwrites the VALUE of an existing variable; Vercel
+     * ships a separate `env update --sensitive` because add does not change the
+     * type. SMTP_USER already exists on this project as non-sensitive - this
+     * script created it that way - so re-running with the corrected list would
+     * rewrite the token into the same readable field and look like a fix.
+     */
+    const fn = script.slice(script.indexOf('readd_secret() {'), script.indexOf('for target in'));
+    assert.match(fn, /env rm "\$1" "\$2" --yes/, 'nothing removes the old non-sensitive variable');
+    assert.match(fn, /\|\| true/, 'a fresh project has nothing to remove and that is not an error');
+    assert.ok(
+      fn.indexOf('env rm') < fn.indexOf('add_var'),
+      'removing after adding would delete the variable it just created'
+    );
+  });
+
+  test('the credentials never reach a development-scope variable', () => {
+    // Vercel refuses sensitive outside production and preview, and a refused
+    // create means the variable does not exist. The SMTP block is production
+    // only for a different reason - see the file - and this pins the overlap.
+    const loop = script.slice(script.indexOf('for target in'));
+    const smtp = loop.slice(loop.indexOf('SEND_SMTP" = yes'));
+    assert.match(smtp.slice(0, 80), /\$target" = production/);
+  });
+
   test('no variable is in both groups', () => {
     const both = sensitive.filter((name) => readable.includes(name));
     assert.deepEqual(both, [], 'a variable in both groups is written twice, last write wins');

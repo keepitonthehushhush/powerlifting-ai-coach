@@ -14,9 +14,9 @@
  *
  *   portrait, at the bottom   scrollY 4200,  document 4900,  viewport 700
  *   -> landscape              the document is now 3100 tall, so the browser
- *                             CLAMPS scrollY to 2750. Still the bottom.
+ *                             CLAMPS scrollY to 2720. Still the bottom.
  *   -> portrait again         the document is 4900 again, but scrollY is still
- *                             2750. That is 1450px short of where it was -
+ *                             2720. That is 1480px short of where it was -
  *                             "a couple of messages" up.
  *
  * Nothing is broken in either orientation on its own. The loss happens in the
@@ -51,9 +51,30 @@
  * rather than done once. One call lands on whatever height the browser
  * believed at that instant; repeating it every frame for half a second lets
  * the last one land on the truth. Any real input - a touch, a wheel, a key -
- * ends the window immediately, because a page that keeps pulling itself down
- * while somebody is trying to scroll up is a worse bug than the one being
- * fixed.
+ * ends the window immediately AND suppresses the rest of the burst, because a
+ * page that keeps pulling itself down while somebody is trying to scroll up is
+ * a worse bug than the one being fixed. Ending only the current window is not
+ * enough: iOS fires several resizes for one rotation, and the next one would
+ * start the whole thing again half a second after the reader took over.
+ *
+ * ── WHY THERE ARE TWO RECORDS AND NOT ONE ─────────────────────────────────
+ *
+ * "Ignore scroll events while we are correcting" is not sufficient, because a
+ * rotation does not begin with the resize. The order of `scroll` and `resize`
+ * during a rotation is not specified anywhere, and on a browser that fires the
+ * clamp FIRST there is a scroll event carrying rotation-time measurements
+ * before anything has told us a rotation is happening. Believing it sets the
+ * record to "not at the end", the resize a millisecond later reads that record
+ * and does nothing, and the bug reproduces exactly as reported with the fix
+ * installed and no signal anywhere.
+ *
+ * So the record the reflow consults is the reader's position AS OF BEFORE THE
+ * BURST. A measurement is only promoted to that record once it has survived a
+ * quiet moment - QUIET_MS with no reflow after it. A reader's genuine scroll
+ * and their rotation of the phone are never within a quarter second of each
+ * other; a browser's own clamp and its resize always are. That is the whole
+ * distinction, and it does not depend on which of the two events a given
+ * browser chooses to fire first.
  */
 
 /**
@@ -77,6 +98,16 @@ export const BOTTOM_TOLERANCE_PX = 64;
  * happens on the next frame - it is how long we keep correcting.
  */
 export const SETTLE_MS = 500;
+
+/**
+ * How long a measurement must stand before it is believed.
+ *
+ * A scroll this close to a reflow is the browser's, not the reader's. 300ms is
+ * far longer than the gap between a clamp and its resize, and far shorter than
+ * the gap between a person scrolling and that same person turning their phone
+ * over.
+ */
+export const QUIET_MS = 300;
 
 /**
  * Was the reader at the end of the page?
@@ -105,8 +136,15 @@ export function createStickToBottom(env = {}) {
   const raf = env.requestAnimationFrame ?? ((fn) => win.requestAnimationFrame(fn));
   const caf = env.cancelAnimationFrame ?? ((id) => win.cancelAnimationFrame(id));
 
-  let pinned = true;
+  /** The reader's position as of before any current burst. What reflows read. */
+  let stable = true;
+  /** The most recent measurement, and when it was taken. Not yet believed. */
+  let latest = true;
+  let latestAt = -Infinity;
+
   let settlingUntil = 0;
+  /** Set by a real gesture. Suppresses the rest of the reflow burst. */
+  let takeoverUntil = 0;
   let frame = 0;
 
   const settling = () => now() < settlingUntil;
@@ -117,17 +155,53 @@ export function createStickToBottom(env = {}) {
     documentHeight: doc.documentElement.scrollHeight,
   });
 
+  /**
+   * Believe the pending measurement, if it has stood long enough.
+   *
+   * Called before ANY new measurement is taken and before any reflow is acted
+   * on. Doing it only at reflow time is not enough, and that was a real bug in
+   * this file: the browser's clamp fires a scroll of its own a millisecond
+   * before the resize, which overwrote the reader's older, trustworthy
+   * measurement with a rotation-time one before it had ever been promoted.
+   * The reflow then found nothing worth believing and did nothing.
+   */
+  const promoteIfSettled = (at) => {
+    if (at - latestAt > QUIET_MS) stable = latest;
+  };
+
+  const record = () => {
+    const at = now();
+    promoteIfSettled(at);
+    latest = isAtBottom(measure());
+    latestAt = at;
+  };
+
   const scrollToEnd = () => {
     // Past the end on purpose. The browser clamps, so asking for more than
     // exists is free - and it is the only ask that cannot be defeated by a
     // scrollHeight the browser has not finished recomputing.
-    win.scrollTo({ top: doc.documentElement.scrollHeight, left: 0, behavior: 'instant' });
+    const top = doc.documentElement.scrollHeight;
+    try {
+      win.scrollTo({ top, left: 0, behavior: 'instant' });
+    } catch {
+      // `instant` was added to ScrollBehavior late; Safari before 15.4 throws
+      // a TypeError on it. Thrown inside the animation frame this runs in, that
+      // would kill the loop silently on the platform this whole file is for.
+      // The positional form has no enum to reject and no page here sets
+      // scroll-behavior, so it is instant anyway.
+      win.scrollTo(0, top);
+    }
   };
 
-  const stopSettling = () => {
-    settlingUntil = 0;
+  const stopFrame = () => {
     if (frame) caf(frame);
     frame = 0;
+  };
+
+  const takeOver = () => {
+    settlingUntil = 0;
+    takeoverUntil = now() + SETTLE_MS;
+    stopFrame();
   };
 
   const pin = () => {
@@ -136,13 +210,21 @@ export function createStickToBottom(env = {}) {
   };
 
   const onScroll = () => {
+    // Our own correction, measured with numbers we already know are moving.
     if (settling()) return;
-    pinned = isAtBottom(measure());
+    record();
   };
 
   const onReflow = () => {
-    if (!pinned) return;
-    settlingUntil = now() + SETTLE_MS;
+    const at = now();
+    // A measurement that has stood through a quiet moment is the reader's.
+    // One taken inside the burst is the browser's, and is left where it is.
+    promoteIfSettled(at);
+
+    if (at < takeoverUntil) return;
+    if (!stable) return;
+
+    settlingUntil = at + SETTLE_MS;
     if (!frame) frame = raf(pin);
   };
 
@@ -157,21 +239,40 @@ export function createStickToBottom(env = {}) {
     // iOS is exactly when the measurements have become true.
     orientation?.addEventListener?.('change', onReflow);
     for (const name of ['touchstart', 'wheel', 'keydown']) {
-      win.addEventListener(name, stopSettling, { passive: true });
+      win.addEventListener(name, takeOver, { passive: true });
     }
 
-    onScroll();
+    record();
+    stable = latest;
 
     return () => {
-      stopSettling();
+      stopFrame();
+      settlingUntil = 0;
       win.removeEventListener('scroll', onScroll);
       win.removeEventListener('resize', onReflow);
       orientation?.removeEventListener?.('change', onReflow);
       for (const name of ['touchstart', 'wheel', 'keydown']) {
-        win.removeEventListener(name, stopSettling);
+        win.removeEventListener(name, takeOver);
       }
     };
   }
 
-  return { start, isPinned: () => pinned };
+  /**
+   * Re-measure now, on purpose.
+   *
+   * For the one thing that changes the page's height without any event at all:
+   * mounting the rest of the transcript. A reader who expands four months of
+   * history is suddenly thousands of pixels from the end, nothing fires, and
+   * the next resize - the keyboard opening under the composer - would throw
+   * them to the bottom on the strength of a record taken before the expansion.
+   */
+  function refresh() {
+    if (settling()) return;
+    record();
+    // Deliberate and trusted: this is called because the page's own code knows
+    // the height changed, not because something fired an event we must judge.
+    stable = latest;
+  }
+
+  return { start, refresh, isPinned: () => stable };
 }

@@ -74,6 +74,25 @@ const FENCE_PATTERN = new RegExp(`<\\s*/?\\s*${FENCE_TAG}\\b[^>]*>`, 'gi');
  */
 const SECTION_HEADING = /^#{1,6}[ \t]+/gm;
 
+/**
+ * The tags the coach uses to hand structured data BACK to the application.
+ *
+ * Kept in one place next to the fence for the same reason: these are structure,
+ * and the athlete does not get to write structure. It matters more for these
+ * three than for the fence, because these have side effects - a parsed block
+ * saves a program, an if-then plan, or a bodyweight. `profile_update` is what
+ * made this worth adding: it writes a number to a column that changes what the
+ * coach prescribes, so an athlete who can get their own text quoted back is an
+ * athlete who can write to their own profile through the model.
+ *
+ * The route also requires the profile block to be the LAST thing in a reply,
+ * which is the other half of the same defense. Neither is sufficient alone: a
+ * quoted block lands mid-reply, and this stops the forgery reaching the prompt
+ * in the first place.
+ */
+const BLOCK_TAGS = ['program_data', 'training_intention', 'profile_update'];
+const BLOCK_PATTERN = new RegExp(`<\\s*/?\\s*(?:${BLOCK_TAGS.join('|')})\\b[^>]*>`, 'gi');
+
 /** Default ceiling per field. Long enough for any honest answer. */
 export const MAX_FIELD_LENGTH = 2000;
 
@@ -95,6 +114,7 @@ export function asData(value, { maxLength = MAX_FIELD_LENGTH } = {}) {
   }
 
   text = text.replace(FENCE_PATTERN, REPLACEMENT);
+  text = text.replace(BLOCK_PATTERN, REPLACEMENT);
   text = text.replace(SECTION_HEADING, '');
 
   // Long runs of blank lines are how injected text visually separates itself

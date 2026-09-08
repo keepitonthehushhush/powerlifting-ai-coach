@@ -7,7 +7,12 @@ import { startersFor } from '../lib/starters.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
-import { extractProfileUpdateBlock, toProfileUnits } from '../lib/profileUpdateBlock.js';
+import {
+  extractProfileUpdateBlock,
+  isPlausibleChange,
+  resolveProfileUnits,
+  toProfileUnits,
+} from '../lib/profileUpdateBlock.js';
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE, evaluateAgeGate } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
@@ -844,6 +849,15 @@ chatRouter.post('/', async (req, res, next) => {
      * trigger compares (see migration 0035), so this write cannot be refused by
      * it. That is not an oversight to work around; it is the reason changing a
      * bodyweight has never required re-consent.
+     *
+     * NOT GATED ON MEDICAL CLEARANCE, unlike the intention write directly above,
+     * and the asymmetry is deliberate. That one is refused for a gated athlete
+     * because the obstacle it records is very likely the injury they are waiting
+     * on a doctor about - recording it and quoting it back would be the app
+     * putting an obstacle in front of somebody who already has one. A bodyweight
+     * is not about the injury, does not become health data by being collected
+     * while somebody waits, and going stale during a wait of several weeks is
+     * exactly when it starts costing them.
      */
     let savedProfile = null;
     /*
@@ -871,24 +885,50 @@ chatRouter.post('/', async (req, res, next) => {
         reason: adultForProfile.reason,
       });
     } else if (profileUpdate) {
-      const units = context.profile?.units === 'kg' ? 'kg' : 'lb';
-      const bodyweight = toProfileUnits(profileUpdate.bodyweight, profileUpdate.units, units);
-      const current = Number(context.profile?.bodyweight);
+      // Never collapsed to a default here. resolveProfileUnits returns null for
+      // a stored unit we cannot name, and that refusal has to survive the call
+      // site: writing 84 kg into a pound column is the one error this design
+      // exists to prevent.
+      const units = resolveProfileUnits(context.profile?.units);
+      const bodyweight = units && toProfileUnits(profileUpdate.bodyweight, profileUpdate.units, units);
+      // Number(null) is 0 and Number.isFinite(0) is true, so the coalesce
+      // matters: a profile with no bodyweight has nothing on file, not zero.
+      const stored = context.profile?.bodyweight;
+      const current = stored === null || stored === undefined ? Number.NaN : Number(stored);
       const unchanged = Number.isFinite(current) && Math.abs(current - bodyweight) < 0.01;
 
-      if (bodyweight === null) {
+      if (!units) {
+        logger.warn('profile.bodyweight_unknown_units', { userId: req.user.id });
+      } else if (!bodyweight) {
         logger.warn('profile.bodyweight_unconvertible', { userId: req.user.id });
       } else if (unchanged) {
         logger.info('profile.bodyweight_unchanged', { userId: req.user.id });
+      } else if (!isPlausibleChange(current, bodyweight)) {
+        // Not a bad number - a number that cannot be THIS athlete's. Somebody
+        // else's weight, overheard and attributed. The account page is one
+        // screen away for the rare person whose real change is larger.
+        logger.warn('profile.bodyweight_implausible_change', { userId: req.user.id });
       } else {
         try {
-          const { error } = await req.supabase
-            .from('user_profile')
-            .update({ bodyweight })
-            .eq('user_id', req.user.id);
+          /*
+           * Compare-and-swap on the value this request read, not a blind write.
+           * The profile was loaded before a model call that can take a minute;
+           * an athlete who corrects their weight on the account page in that
+           * window would otherwise have it silently reverted by the reply, and
+           * be told the revert succeeded. Matching on the old value means a row
+           * that moved underneath us is left alone.
+           */
+          const stale = req.supabase.from('user_profile').update({ bodyweight }).eq('user_id', req.user.id);
+          const { data, error } = await (Number.isFinite(current)
+            ? stale.eq('bodyweight', current)
+            : stale.is('bodyweight', null)
+          ).select('user_id');
+
           // Never the message: a constraint violation can quote the value.
           if (error) logger.warn('profile.bodyweight_save_failed', { userId: req.user.id, cause: error.code });
-          else {
+          else if (!data?.length) {
+            logger.info('profile.bodyweight_superseded', { userId: req.user.id });
+          } else {
             logger.info('profile.bodyweight_saved', { userId: req.user.id });
             // Only ever what actually landed. Never "probably" - same rule the
             // saved program follows.

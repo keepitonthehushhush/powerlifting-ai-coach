@@ -37,12 +37,17 @@
 #   SMTP block below for the case that proves it: SMTP_USER sounds like config
 #   and holds a token.
 #
-#   TWO CONSTRAINTS FROM VERCEL'S DOCS worth knowing before you run this:
-#   sensitivity CANNOT BE EDITED IN PLACE - to make an existing variable
-#   sensitive you must remove it and add it again, which this script does. And
-#   sensitive is only available on production and preview; a development-scope
-#   variable cannot be sensitive at all, which is one more reason nothing
-#   secret belongs in a development-scope variable.
+#   TWO CONSTRAINTS FROM VERCEL'S DOCS worth knowing before you run this.
+#   First, sensitivity is not something `env add --force` changes: it overwrites
+#   the value of an existing variable and leaves its type alone. The dashboard
+#   cannot edit it either - Vercel's instruction there is to remove the variable
+#   and add it again - and the CLI ships `vercel env update <NAME> --sensitive`
+#   precisely because `add` does not do it. This script removes and re-adds the
+#   secret variables for that reason; see readd_secret below.
+#   Second, sensitive is only available on production and preview. A
+#   development-scope variable cannot be sensitive at all, which is one more
+#   reason nothing secret belongs in a development-scope variable - and why the
+#   SMTP block is production-only.
 #
 # THE FLAG THAT IS NOT OPTIONAL. Recent Vercel CLI versions make `env add`
 # SENSITIVE BY DEFAULT. `--no-sensitive` is not a redundant restatement of the
@@ -211,6 +216,28 @@ add_var() {
   printf '%s' "$(read_env "$1")" | $VERCEL env add "$1" "$2" "$3" --force --yes
 }
 
+# ── A VARIABLE THAT ALREADY EXISTS DOES NOT CHANGE ITS SENSITIVITY ───────────
+#
+# `env add --force` overwrites the VALUE. Vercel's own docs are clear that
+# sensitivity is not an editable property in the dashboard - you remove the
+# variable and add it again - and they ship a separate `env update --sensitive`
+# for exactly this, which is not a command you need if `add --force` did it.
+#
+# That matters here because SMTP_USER already exists on this project as a
+# NON-SENSITIVE variable: it was created that way by this script, before anyone
+# noticed that Postmark's username is the Server API Token. Re-running with the
+# corrected list would overwrite the value and leave it readable, which fixes
+# nothing and looks exactly like a fix.
+#
+# So the secret variables are removed first. `|| true` because the first run on
+# a fresh project has nothing to remove and that is not an error - and because a
+# failed remove followed by a successful add still leaves a working deployment,
+# which a failed add would not.
+readd_secret() {
+  $VERCEL env rm "$1" "$2" --yes >/dev/null 2>&1 || true
+  add_var "$1" "$2" --sensitive
+}
+
 for target in $TARGETS; do
   for name in $BUILD_VARS; do
     # --no-sensitive is load-bearing. See the note at the top of this file.
@@ -218,7 +245,7 @@ for target in $TARGETS; do
   done
 
   for name in $SECRET_VARS; do
-    add_var "$name" "$target" --sensitive
+    readd_secret "$name" "$target"
   done
 
   # Production only. The reasoning is at the declaration, not here, because
@@ -228,7 +255,7 @@ for target in $TARGETS; do
       add_var "$name" "$target" --no-sensitive
     done
     for name in $SMTP_SECRET_VARS; do
-      add_var "$name" "$target" --sensitive
+      readd_secret "$name" "$target"
     done
   fi
 done
