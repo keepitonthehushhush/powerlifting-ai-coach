@@ -57,6 +57,31 @@
 
 import { isSendableFrom } from '../server/src/lib/mailFrom.js';
 
+/*
+ * ── LOAD .env, LIKE EVERY OTHER SCRIPT HERE ────────────────────────────────
+ *
+ * This read `process.env` alone, so it reported "NOT CONFIGURED - SMTP_HOST,
+ * SMTP_USER, SMTP_PASSWORD are unset" for a repository whose .env had them
+ * filled in. A check whose whole job is telling you the truth about your
+ * configuration, lying about your configuration - and lying in the direction
+ * that sends somebody to re-enter values that were already right.
+ *
+ * safety-eval.mjs and scan-bundle-for-secrets.mjs both do this. Being the
+ * third script to need it and the first to forget is not a coincidence worth
+ * defending.
+ *
+ * Guarded, because dotenv is genuinely absent in some places this runs, and
+ * `loaded` is tracked so an unset variable can say WHICH of the two it means:
+ * "you did not set it" or "I could not read the file you set it in".
+ */
+let dotenvLoaded = false;
+try {
+  await import('dotenv/config');
+  dotenvLoaded = true;
+} catch {
+  // Absent. process.env is the only source, and the message below says so.
+}
+
 const REQUIRE = process.argv.includes('--require');
 
 const host = (process.env.SMTP_HOST ?? '').trim();
@@ -87,6 +112,13 @@ if (!host || !user || !pass) {
     '\nExpected locally and in every test run - the product works without it, and\n' +
       'the one message it sends fails visibly rather than silently.\n' +
       'Exit 3 so a caller can tell this apart from a transport that is refusing.',
+  );
+  console.log(
+    dotenvLoaded
+      ? '\n.env was loaded, so these are genuinely unset rather than unread.'
+      : '\nNOTE: dotenv is not installed here, so a .env file was NOT read. If you set\n' +
+        'these in .env, that is why they look unset - run `npm install`, or export them\n' +
+        'for one command.',
   );
   process.exit(3);
 }

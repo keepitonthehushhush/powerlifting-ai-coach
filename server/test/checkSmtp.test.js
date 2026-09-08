@@ -2,6 +2,9 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -139,5 +142,51 @@ describe('the From header, which one provider makes easy to get wrong', () => {
     const connect = source.indexOf('await transport.verify()');
     assert.ok(fromCheck > -1 && connect > -1);
     assert.ok(fromCheck < connect, 'the From guard must run before the transport is verified');
+  });
+});
+
+describe('it reads .env, like every other script in this repo', () => {
+  /*
+   * It read `process.env` alone, so it announced "NOT CONFIGURED - SMTP_HOST,
+   * SMTP_USER, SMTP_PASSWORD are unset" for a repository whose .env had them
+   * filled in. A check whose entire job is telling you the truth about your
+   * configuration, lying about your configuration - and lying in the direction
+   * that sends somebody back to re-enter values that were already correct.
+   *
+   * Behavioral, not a grep for `dotenv`: what matters is that values in a file
+   * REACH the check, which is the thing that was broken.
+   */
+  test('values in a .env file reach it', () => {
+    const file = join(tmpdir(), `check-smtp-${process.pid}.env`);
+    writeFileSync(
+      file,
+      [
+        // .invalid is reserved and cannot resolve, so a machine that HAS
+        // nodemailer fails DNS immediately rather than dialing a real host
+        // from a test run.
+        'SMTP_HOST=smtp.invalid',
+        'SMTP_PORT=587',
+        'SMTP_USER=11111111-2222-3333-4444-555555555555',
+        'SMTP_PASSWORD=11111111-2222-3333-4444-555555555555',
+        'SMTP_FROM=coach@coachdiaz.app',
+      ].join('\n'),
+    );
+    try {
+      const { out } = run({ DOTENV_CONFIG_PATH: file });
+      assert.doesNotMatch(
+        out,
+        /NOT CONFIGURED/,
+        'a .env with all five values still reported them unset - dotenv is not being loaded',
+      );
+    } finally {
+      rmSync(file, { force: true });
+    }
+  });
+
+  test('an unset variable says which kind of unset it is', () => {
+    // "You did not set it" and "I could not read the file you set it in" are
+    // different problems with different fixes, and the message said neither.
+    const { out } = run();
+    assert.match(out, /\.env was loaded|dotenv is not installed/);
   });
 });
