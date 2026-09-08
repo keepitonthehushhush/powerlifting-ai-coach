@@ -33,7 +33,8 @@
     "check:styles": "node scripts/check-computed-styles.mjs",
     "db:replay": "node scripts/replay-migrations.mjs",
     "check:docs": "node scripts/check-docs.mjs",
-    "safety:replay": "node scripts/safety-eval.mjs --replay"
+    "safety:replay": "node scripts/safety-eval.mjs --replay",
+    "check:smtp": "node scripts/check-smtp.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

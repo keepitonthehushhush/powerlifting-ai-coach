@@ -129,6 +129,34 @@ who is behind on their training.
 `docs/WHO_IS_USING_THIS.md` has the fuller query, what it said when it was
 written, and what had already been ruled out.
 
+## 6. Is the one email this product sends actually able to go?
+
+```
+npm run check:smtp
+```
+
+Connects and authenticates. Sends nothing to anybody.
+
+| exit | meaning | what to do |
+| --- | --- | --- |
+| 0 | connected and authenticated | nothing |
+| 1 | configured, and the server refused it | **guardian mail is dead right now** - see the script's own output for the three causes that actually happen |
+| 3 | not configured, or nodemailer is not installed here | neither is a finding; `--require` turns the first into a failure where mail must work |
+
+Why it is on this list at all: the only sender is the guardian consent link,
+used when somebody aged 13-17 signs up. `mailer.js` reports a dead transport
+honestly, but only to that one caller, at the moment of a send. So without this
+check the first person able to discover that SMTP broke is a parent who never
+received the mail, about a child who is waiting - and the athlete is shown "we
+have sent it" either way. The gap between "it broke" and "somebody found out"
+has no upper bound.
+
+Note the ceiling this does NOT check. Supabase's built-in email service, which
+sends signup confirmations and password resets, is capped at **2 messages per
+hour** and their own documentation says it is not meant for production. That is
+a separate setting in the Supabase dashboard, not an environment variable, and
+`check:smtp` cannot see it. Custom SMTP there raises it to 30/hour, adjustable.
+
 ## What this task cannot do
 
 `node scripts/verify-deployment.mjs` is the fuller version of checks 1–3 — it
