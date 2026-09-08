@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
+import { StickToBottom } from '../components/StickToBottom.jsx';
 import { api, errorText } from '../lib/api.js';
 import { isTransportFailure, recoverExchange } from '../lib/chatRecovery.js';
 import { useI18n } from '../i18n/index.jsx';
@@ -288,6 +289,7 @@ export function Chat() {
 
   return (
     <div className="page chat-page">
+      <StickToBottom />
       <StickyHeader>
       <header className="page-header row">
         <SiteNav>
