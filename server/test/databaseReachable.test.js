@@ -126,3 +126,40 @@ describe('the keepalive is written down where somebody will act on it', () => {
     assert.match(runbook, /api\/health/);
   });
 });
+
+describe('/api/health also says whether mail could go', () => {
+  const app = readSource(new URL('../src/app.js', import.meta.url));
+
+  /*
+   * The endpoint reported the database and nothing else, so "nobody ever set
+   * SMTP up" and "it is set up and something else is wrong" were the same
+   * observation from outside - and they need completely different next moves.
+   * Telling them apart took a dashboard login.
+   */
+  test('it reports mail presence from config, without connecting', () => {
+    assert.match(app, /mail:\s*config\.smtp\?\.configured \? 'configured' : 'unconfigured'/);
+  });
+
+  test('it does not open an SMTP session on a polled endpoint', () => {
+    // A health endpoint is polled. Authenticating to the mail provider on every
+    // poll would make this check the reason the provider rate-limits us -
+    // check:smtp is the one that connects, on demand.
+    const handler = app.slice(app.indexOf("app.get('/api/health'"), app.indexOf("app.get('/api/health'") + 2200);
+    assert.doesNotMatch(handler, /verify\(\)|createTransport|nodemailer/);
+  });
+
+  test('missing mail does not make the deployment degraded', () => {
+    // Every preview and every local run has no SMTP. That is the normal state,
+    // not an outage, and the one route that needs mail already refuses
+    // honestly. Only an unreachable DATABASE flips status.
+    assert.match(app, /status: database === 'unreachable' \? 'degraded' : 'ok'/);
+    // THE LINE, not a character count. `readSource` strips comments, so the
+    // explanatory block between `database,` and `mail:` disappears and a
+    // 120-char window runs straight into the property below - which is how
+    // this assertion first reported that mail was influencing status when it
+    // was only sitting near it. A region whose end is an offset, again.
+    const at = app.indexOf('status: database');
+    const statusLine = app.slice(at, app.indexOf('\n', at));
+    assert.doesNotMatch(statusLine, /smtp|mail/i, 'mail must not influence status');
+  });
+});

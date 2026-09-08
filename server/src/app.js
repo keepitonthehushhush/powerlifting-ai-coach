@@ -194,6 +194,29 @@ export function createApp() {
     res.status(database === 'unreachable' ? 503 : 200).json({
       status: database === 'unreachable' ? 'degraded' : 'ok',
       database,
+      /*
+       * ── WHETHER THE MAIL COULD GO, NOT WHETHER IT WOULD ──────────────────
+       *
+       * Config only. No connection, no handshake, no `verify()`. A health
+       * endpoint is polled; opening an authenticated SMTP session on every
+       * poll would make this check the reason the provider rate-limits us.
+       * `npm run check:smtp` is the one that actually connects, on demand.
+       *
+       * So this answers exactly one question: are the credentials PRESENT.
+       * That is the question that was unanswerable from outside, and it is
+       * the difference between "nobody ever set this up" and "it is set up
+       * and something else is wrong" - which need completely different next
+       * moves, and which took a dashboard login to tell apart.
+       *
+       * It is not a secret. It names no host, no user, and obviously no
+       * password; it is a boolean about our own deployment, and `database`
+       * above already reports the same shape for the same reason.
+       *
+       * `status` is unaffected on purpose. A deployment without SMTP is not
+       * degraded - it is the normal state for every preview and every local
+       * run, and the one route that needs mail already refuses honestly.
+       */
+      mail: config.smtp?.configured ? 'configured' : 'unconfigured',
       deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? 'dev',
       /*
        * ── WHICH COMMIT IS ACTUALLY SERVING ──────────────────────────────────
