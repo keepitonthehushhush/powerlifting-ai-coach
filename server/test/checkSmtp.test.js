@@ -19,13 +19,29 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT = fileURLToPath(new URL('../../scripts/check-smtp.mjs', import.meta.url));
 const source = readFileSync(SCRIPT, 'utf8');
 
-/** Run it with a clean SMTP environment plus whatever this case sets. */
+/**
+ * Run it with a clean SMTP environment plus whatever this case sets.
+ *
+ * ── WHY IT RUNS SOMEWHERE ELSE ────────────────────────────────────────────
+ *
+ * Deleting the variables from `env` is not enough. The script loads
+ * `dotenv/config`, which reads `.env` from the CURRENT WORKING DIRECTORY - so
+ * every "unconfigured" case here was passing only because this developer's
+ * `.env` happened to have no SMTP block in it. The day one was added, five
+ * tests failed at once and none of them was about the change that broke them.
+ *
+ * A test whose result depends on an untracked file in the repository root is
+ * not testing what it says it is. Running from a temp directory gives dotenv
+ * nothing to find. The script's own imports resolve against its module URL
+ * rather than cwd, so moving it is safe.
+ */
 function run(env = {}, args = []) {
   const base = { ...process.env };
   for (const key of ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_PORT', 'SMTP_FROM']) delete base[key];
   try {
     const stdout = execFileSync(process.execPath, [SCRIPT, ...args], {
       env: { ...base, ...env },
+      cwd: tmpdir(),
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -112,6 +128,64 @@ describe('check:smtp', () => {
     );
   });
 
+  /**
+   * ── THE ONE THIS PROJECT PAID FOR ─────────────────────────────────────
+   *
+   * The probe printed PASS, said "go and look in your inbox", and nothing
+   * arrived. Postmark had taken the message on the connection, returned a
+   * message id, and then refused it internally: SMTPApiError 100007, error
+   * 412 - a new account may only send to its own domain until a person
+   * approves it. Every user of this product is on gmail, protonmail or
+   * icloud, so not one of them could have been reached, and every check
+   * anybody had run said PASS.
+   *
+   * The rejection is ASYNCHRONOUS. No SMTP result could have caught it. The
+   * only record is the provider's, so the provider gets asked.
+   */
+  test('a message accepted and then refused is a FAIL, not a PASS', () => {
+    const probe = source.slice(source.indexOf('const verdict = await postmarkVerdict'));
+    assert.match(probe.slice(0, 400), /if \(verdict\.bounced\)/);
+    assert.match(probe.slice(0, 600), /FAIL - \$\{host\} accepted the message and then refused it/);
+    // And it exits non-zero, or a runbook would carry on to the next step.
+    const bounceBlock = probe.slice(0, probe.indexOf('console.log('));
+    assert.match(bounceBlock, /process\.exit\(1\)/);
+  });
+
+  test('not finding a bounce is not reported as arrival', () => {
+    // "I saw no problem in twelve seconds" turned into "it works" would be
+    // the same defect this function exists because of.
+    const probe = source.slice(source.indexOf('const verdict = await postmarkVerdict'));
+    assert.match(probe, /still not proof of arrival/);
+    assert.doesNotMatch(probe.slice(0, 1600), /PASS - (the message |it )?arrived/);
+  });
+
+  test('the bounce is matched on the recipient AND the time', () => {
+    // Matching the address alone would report last week's bounce as this
+    // message's - a confident wrong answer that costs an afternoon.
+    const fn = source.slice(source.indexOf('async function postmarkVerdict'));
+    assert.match(fn, /String\(bounce\.Email \?\? ''\)\.toLowerCase\(\) === PROBE\.toLowerCase\(\)/);
+    assert.match(fn, /Date\.parse\(bounce\.BouncedAt \?\? ''\) >= sentAt/);
+  });
+
+  test('it needs no credential it did not already have', () => {
+    // Postmark's SMTP password IS the Server API Token, so the bounce lookup
+    // adds no configuration and no second secret to hold.
+    const fn = source.slice(source.indexOf('async function postmarkVerdict'));
+    assert.match(fn, /'X-Postmark-Server-Token': pass/);
+    assert.doesNotMatch(fn, /process\.env\.POSTMARK/);
+  });
+
+  test('it does not claim to have checked a provider it cannot ask', () => {
+    const fn = source.slice(source.indexOf('async function postmarkVerdict'));
+    assert.match(fn, /notPostmark/);
+    assert.match(fn, /checked: false/);
+  });
+
+  test('the pending-approval code gets named, because the message alone is not enough', () => {
+    assert.match(source, /verdict\.code === 100007/);
+    assert.match(source, /NOTHING can reach a real/);
+  });
+
   test('the four outcomes are distinct, and only one of them is a finding', () => {
     // works 0 / broken 1 / unconfigured 3 / cannot check 3. The two 3s are
     // both "no information", which is the property - neither is a defect.
@@ -142,17 +216,31 @@ describe('the From header, which one provider makes easy to get wrong', () => {
   });
 
   test('an explicit SMTP_FROM gets past the check and on to the connection', () => {
-    // Proves the guard is about the ADDRESS and not about the provider: with a
-    // real From it stops being a From problem, and the run gets far enough to
-    // need nodemailer (absent here, so exit 3 - no information, not a finding).
-    const { code, out } = run({
+    /*
+     * Proves the guard is about the ADDRESS and not about the provider: with a
+     * real From it stops being a From problem and the run goes on to connect.
+     *
+     * This used to assert `code !== 1`, which passed for a reason that had
+     * nothing to do with the From header: nodemailer was not installed, so the
+     * run ended at CANNOT CHECK with exit 3 before it could reach a network
+     * failure. Installing it made the same correct behavior fail the test.
+     *
+     * So the assertion is on the OUTPUT, which is where the distinction
+     * actually lives. Refusing a bad From and failing to reach a fake server
+     * are both exit 1, and an exit code cannot tell them apart.
+     */
+    const { out } = run({
       SMTP_HOST: 'smtp.resend.com',
       SMTP_USER: 'resend',
       SMTP_PASSWORD: 're_not_a_real_key',
       SMTP_FROM: 'coach@coachdiaz.app',
     });
-    assert.notEqual(code, 1, 'a valid From must not be reported as a From failure');
-    assert.doesNotMatch(out, /not an email address/);
+    assert.doesNotMatch(out, /not an email address/, 'a valid From was reported as a From failure');
+    assert.match(
+      out,
+      /refused the connection|CANNOT CHECK/,
+      'the run did not get past the From guard at all'
+    );
   });
 
   test('the From is checked BEFORE the connection', () => {

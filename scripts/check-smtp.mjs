@@ -51,6 +51,29 @@
  * undo the reason it is shaped the way it is. This one has a fixed body, goes
  * only where the operator points it, records nothing, and touches no account.
  *
+ * ── AND THEN IT ASKS WHAT HAPPENED TO IT, BECAUSE ACCEPTING IS NOT SENDING ──
+ *
+ * The first version of the probe printed PASS and told the operator to go and
+ * look in their inbox. Nothing arrived. Postmark had taken the message on the
+ * SMTP connection, returned a message id, and then rejected it internally:
+ *
+ *   type SMTPApiError, code 100007, error 412 - "While your account is pending
+ *   approval, all recipient addresses must share the same domain as the 'From'
+ *   address."
+ *
+ * A brand new Postmark account is restricted to its own domain until a human
+ * at Postmark approves it. Every one of this product's users is on gmail,
+ * protonmail or icloud, so the account could not have mailed a single one of
+ * them - and every check anybody had ever run said PASS.
+ *
+ * That is this project's recurring defect exactly: a green signal over a thing
+ * that does not work. The failure is ASYNCHRONOUS, so no SMTP result could
+ * have caught it. The only place it exists is the provider's bounce record, so
+ * that is what gets read.
+ *
+ * Provider-specific, and deliberately so. A generic check that cannot see the
+ * one place the answer is kept would be a generic check that is wrong.
+ *
  * It prints the host and the port. It does not print the user and it can not
  * print the password: this is run against a shell that has production
  * credentials in it, and a check that echoes a secret into a terminal - or
@@ -199,6 +222,76 @@ try {
   process.exit(3);
 }
 
+/**
+ * Ask Postmark what actually happened to the message we just handed it.
+ *
+ * ── WHY POLLING, AND WHY A WINDOW ─────────────────────────────────────────
+ *
+ * The rejection is asynchronous - it happens after the SMTP connection is
+ * closed and the message id has been returned - so there is nothing to read at
+ * the moment of the send. It lands in the bounce record a moment later.
+ *
+ * The window is short and the failure mode is chosen deliberately: NOT FINDING
+ * A BOUNCE IS NOT A PASS, and this says so rather than printing a green line.
+ * A check that turns "I did not see a problem in eight seconds" into "it works"
+ * would be the same defect this whole function exists because of.
+ *
+ * The token is the one already in the environment. It is a Server API Token,
+ * which is what Postmark's SMTP username and password are, so this needs no
+ * new credential and no new configuration.
+ */
+async function postmarkVerdict(sentAt) {
+  const notPostmark = !/(^|\.)postmarkapp\.com$/i.test(host);
+  if (notPostmark) return { bounced: false, checked: false, why: `${host} is not Postmark` };
+
+  const WINDOW_MS = 12_000;
+  const started = Date.now();
+
+  while (Date.now() - started < WINDOW_MS) {
+    // A second between attempts. The record usually appears within two.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    let payload;
+    try {
+      const response = await fetch('https://api.postmarkapp.com/bounces?count=10&offset=0', {
+        headers: { 'X-Postmark-Server-Token': pass, Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        return { bounced: false, checked: false, why: `the bounce API answered ${response.status}` };
+      }
+      payload = await response.json();
+    } catch {
+      return { bounced: false, checked: false, why: 'the bounce API could not be reached' };
+    }
+
+    /*
+     * Matched on recipient AND time. Matching on the address alone would
+     * report a bounce from last week as this message's, which is the kind of
+     * confident wrong answer that costs an afternoon. One second of slack for
+     * clock skew between here and Postmark.
+     */
+    const mine = (payload?.Bounces ?? []).find(
+      (bounce) =>
+        String(bounce.Email ?? '').toLowerCase() === PROBE.toLowerCase() &&
+        Date.parse(bounce.BouncedAt ?? '') >= sentAt - 1000
+    );
+
+    if (mine) {
+      return {
+        bounced: true,
+        checked: true,
+        type: mine.Type ?? 'unknown',
+        code: mine.TypeCode ?? 0,
+        // Postmark puts the useful sentence in Subject for an SMTP API error,
+        // which is odd and is where the answer actually is.
+        reason: String(mine.Details || mine.Subject || mine.Description || 'no reason given').slice(0, 500),
+      };
+    }
+  }
+
+  return { bounced: false, checked: true, waitedSeconds: Math.round(WINDOW_MS / 1000) };
+}
+
 /*
  * 465 is implicit TLS; everything else negotiates STARTTLS. This mirrors
  * mailer.js deliberately rather than importing it: the point of the check is
@@ -237,6 +330,7 @@ try {
    * this in an inbox months from now with no memory of running it, and a
    * mystery message from a service about a child's training would be alarming.
    */
+  const sentAt = Date.now();
   const info = await transport.sendMail({
     from,
     to: PROBE,
@@ -253,12 +347,32 @@ try {
     ].join('\n'),
   });
 
-  console.log(`PASS - a message was accepted for delivery to ${PROBE}.`);
+  console.log(`  accepted for delivery to ${PROBE}.`);
   console.log(`  message id: ${info?.messageId ?? 'none returned'}`);
+
+  const verdict = await postmarkVerdict(sentAt);
+  if (verdict.bounced) {
+    console.error(`\nFAIL - ${host} accepted the message and then refused it.`);
+    console.error(`  type: ${verdict.type} (code ${verdict.code})`);
+    console.error(`  ${verdict.reason}`);
+    if (verdict.code === 100007) {
+      console.error(
+        '\nThat is the pending-approval restriction: a new Postmark account may only\n' +
+          'send to its own domain until a person at Postmark approves it. Request\n' +
+          'approval in the Postmark dashboard. Until then NOTHING can reach a real\n' +
+          'user, because none of them are on your sending domain.',
+      );
+    }
+    process.exit(1);
+  }
+
   console.log(
-    '\nACCEPTED IS NOT ARRIVED. The server took it; go and look in that inbox, and in\n' +
-      'the spam folder. Only an email you can actually read proves the sending address\n' +
-      'is confirmed and the domain authenticates.',
+    verdict.checked
+      ? `\nNo bounce recorded in the ${verdict.waitedSeconds}s after sending. That is the best\n` +
+        'this can tell you, and it is still not proof of arrival - go and look in that\n' +
+        'inbox, including spam. Only an email you can read proves the domain authenticates.'
+      : '\nACCEPTED IS NOT ARRIVED, and this could not check further (' + verdict.why + ').\n' +
+        'Go and look in that inbox, including spam.',
   );
   process.exit(0);
 } catch (err) {
