@@ -205,15 +205,21 @@ re-checking when anything about the domain changes.
   to check for SPF alignment", so adding them would be noise. Do not "fix" this.
 - **Return-Path** is set up: `pm-bounces.coachdiaz.app` resolves to
   `pm.mtasv.net`. That is what gives DMARC's stricter SPF alignment.
-- **DKIM** has no record at `pm._domainkey.coachdiaz.app`. Newer Postmark
-  accounts are issued a unique selector, so this may simply be published
-  somewhere else — the exact record is in Postmark under Sender Signatures →
-  the domain → DNS Settings, and that page also says whether it is verified.
-  **Check it.** Without DKIM, messages are signed by Postmark's shared domain
-  and DMARC alignment fails, which is the difference between the inbox and
-  the spam folder.
-- **DMARC** is absent. Not required at this volume, and `p=none` is cheap and
-  tells you what receivers think of your mail.
+- **DKIM is published, under a TIMESTAMPED SELECTOR.** The record is at
+  `20260830135054pm._domainkey.coachdiaz.app` — Postmark issues a per-domain
+  selector stamped with the moment the domain was added, so the familiar
+  `pm._domainkey` is empty and looking there reports a gap that does not
+  exist. This was written down as missing for exactly that reason before
+  `vercel dns ls coachdiaz.app` showed it sitting there. **Read the zone, not
+  the selector you expect.**
+- **DMARC is absent.** The one real gap. Not required at this volume, and
+  worth having: with DKIM published and the Return-Path aligned, a `p=none`
+  record costs nothing, enforces nothing, and starts telling you what
+  receivers actually think of your mail before it matters.
+
+**DNS lives at Vercel** (`ns1/ns2.vercel-dns.com`), so records are added with
+`npx vercel dns add coachdiaz.app <name> <type> <value>` or in the Vercel
+dashboard under Domains — not at the registrar, and not in Postmark.
 
 ## 7. Is anybody stuck on a policy version we no longer offer?
 
