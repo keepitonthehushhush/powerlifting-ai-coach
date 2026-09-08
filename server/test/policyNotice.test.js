@@ -74,6 +74,44 @@ describe('the policy-change notice', () => {
     assert.ok(fn.indexOf('no_versions') < fn.indexOf('transport()'), 'it builds a transport before it checks');
   });
 
+  test('both messages name their stream instead of relying on a default', () => {
+    /*
+     * Postmark routes an SMTP message with no header to the default `outbound`
+     * transactional stream, so this is belt and braces - and the braces matter,
+     * because the default is a setting on somebody else's dashboard.
+     *
+     * A broadcast stream attaches unsubscribe handling. You cannot unsubscribe
+     * from being told the terms you agreed to have changed, and an unsubscribe
+     * link on a message asking a parent to consent to their child training
+     * would be worse than absurd. Neither message may ever go through one.
+     */
+    assert.match(mailer, /export const MESSAGE_STREAM = 'outbound'/);
+    /*
+     * Sliced to the call's own closing line, not with a lazy `}\)`. The first
+     * version stopped at the first `})` it met - which is inside the call, in
+     * `guardianMessage({ link, athleteName })` - and reported a missing header
+     * that was two lines below the cut. The same magic-region mistake this
+     * suite has made before.
+     */
+    const sends = [];
+    for (let at = mailer.indexOf('sendMail({'); at !== -1; at = mailer.indexOf('sendMail({', at + 1)) {
+      const end = mailer.indexOf('\n    });', at);
+      assert.ok(end > at, 'a sendMail call does not close where this expects');
+      sends.push(mailer.slice(at, end));
+    }
+    assert.equal(sends.length, 2, 'the number of sends changed; check each one names its stream');
+    for (const send of sends) {
+      assert.match(send, /headers: streamHeader/, 'a send does not name its message stream');
+    }
+    assert.doesNotMatch(mailer, /broadcast/i);
+  });
+
+  test('the probe proves the route the real messages take', () => {
+    // A probe through a different stream is a probe that proves nothing about
+    // the mail that matters.
+    assert.match(checkSmtp, /'X-PM-Message-Stream': 'outbound'/);
+  });
+
   test('a failure is never reported as a send', () => {
     const fn = mailer.slice(mailer.indexOf('export async function sendPolicyUpdateEmail'));
     assert.match(fn, /return \{ sent: false, reason: 'send_failed' \}/);

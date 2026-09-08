@@ -61,6 +61,33 @@ import { logger } from './logger.js';
  * this passes an opaque outcome and a message id, never the recipient.
  */
 
+/**
+ * ── WHICH MESSAGE STREAM, SAID OUT LOUD ───────────────────────────────────
+ *
+ * Postmark separates sending into streams, and routes an SMTP message with no
+ * header to the default `outbound` transactional stream. That default is
+ * correct for both messages here, and relying on it is still wrong.
+ *
+ * BOTH OF THESE ARE TRANSACTIONAL, and neither could survive being anything
+ * else. A broadcast stream attaches unsubscribe handling - which is right for
+ * a newsletter and absurd on the two messages this product sends. You cannot
+ * unsubscribe from being told the terms you agreed to have changed, and an
+ * unsubscribe link on a message asking a parent to consent to their child
+ * training would be worse than absurd. Broadcast streams also carry their own
+ * sending reputation, managed for bulk mail, which is not where a consent link
+ * belongs.
+ *
+ * The default is a setting on somebody else's dashboard. Naming the stream in
+ * the message means a change over there - or a second stream added here for
+ * some future announcement - cannot silently re-route a guardian consent link
+ * into a bulk channel. Non-Postmark providers ignore an unknown header, so
+ * this costs nothing anywhere else.
+ */
+export const MESSAGE_STREAM = 'outbound';
+
+/** Postmark reads this; every other provider passes it through untouched. */
+const streamHeader = { 'X-PM-Message-Stream': MESSAGE_STREAM };
+
 let cached;
 
 /**
@@ -206,6 +233,7 @@ export async function sendPolicyUpdateEmail({ to, versions }) {
       to,
       subject: 'Coach Diaz: our terms have changed',
       text: policyUpdateMessage({ versions: listed }),
+      headers: streamHeader,
     });
     logger.info('mailer.sent', { purpose: 'policy_update', messageId: info?.messageId ?? null });
     return { sent: true, messageId: info?.messageId ?? null };
@@ -236,6 +264,7 @@ export async function sendGuardianConsentEmail({ to, link, athleteName = null })
       to,
       subject: 'Permission needed: Coach Diaz',
       text: guardianMessage({ link, athleteName }),
+      headers: streamHeader,
     });
     // The id, never the recipient.
     logger.info('mailer.sent', { purpose: 'guardian_consent', messageId: info?.messageId ?? null });

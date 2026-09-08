@@ -345,6 +345,10 @@ try {
       `Sent as: ${from}`,
       `Through: ${host}:${port}`,
     ].join('\n'),
+    // The same stream the product's own mail uses. A probe that proves a
+    // different route than the real messages take is a probe that proves
+    // nothing about them. See MESSAGE_STREAM in server/src/lib/mailer.js.
+    headers: { 'X-PM-Message-Stream': 'outbound' },
   });
 
   console.log(`  accepted for delivery to ${PROBE}.`);

@@ -180,6 +180,41 @@ address is confirmed and the domain authenticates.
 Do this before section 7. Writing to real users on the strength of a handshake
 is how you find out about the 422 from someone else.
 
+### The three Postmark streams, and which of them this product uses
+
+Postmark gives every server three by default. Audited 2026-09-08; all three
+exist, and the decision about each is below rather than in somebody's memory.
+
+| stream | state | this product |
+| --- | --- | --- |
+| `outbound` (Transactional) | in use | **both messages**, named explicitly in the header rather than left to Postmark's default — see MESSAGE_STREAM in `server/src/lib/mailer.js` |
+| `broadcast` (Broadcasts) | exists, unused | **never.** It attaches unsubscribe handling and carries a bulk sending reputation. You cannot unsubscribe from being told your terms changed, and an unsubscribe link on a message asking a parent to consent to their child training would be worse than absurd |
+| `inbound` (Inbound) | exists, no webhook | **deliberately off.** Turning it on would pipe replies into the application, which means storing user-written email content — a new personal-data surface with its own retention and erasure obligations, on a product that holds health data. Replies are handled by a human instead |
+
+**Replies go to a person, not to the app.** `coachdiaz.app` has MX records
+pointing at ImprovMX, so mail to `coach@coachdiaz.app` forwards to a real
+mailbox. That is the whole reply story and it is the right size for it. If that
+forwarding ever stops, a parent's reply to a consent request disappears — worth
+re-checking when anything about the domain changes.
+
+**DNS, as audited on 2026-09-08:**
+
+- **SPF** is `v=spf1 include:spf.improvmx.com ~all` and is **correct as it
+  stands**. Postmark is deliberately *not* in it: their documentation is
+  explicit that "the Return-Path domain is now used by receiving email domains
+  to check for SPF alignment", so adding them would be noise. Do not "fix" this.
+- **Return-Path** is set up: `pm-bounces.coachdiaz.app` resolves to
+  `pm.mtasv.net`. That is what gives DMARC's stricter SPF alignment.
+- **DKIM** has no record at `pm._domainkey.coachdiaz.app`. Newer Postmark
+  accounts are issued a unique selector, so this may simply be published
+  somewhere else — the exact record is in Postmark under Sender Signatures →
+  the domain → DNS Settings, and that page also says whether it is verified.
+  **Check it.** Without DKIM, messages are signed by Postmark's shared domain
+  and DMARC alignment fails, which is the difference between the inbox and
+  the spam folder.
+- **DMARC** is absent. Not required at this volume, and `p=none` is cheap and
+  tells you what receivers think of your mail.
+
 ## 7. Is anybody stuck on a policy version we no longer offer?
 
 ```
