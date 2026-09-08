@@ -68,6 +68,31 @@ VERCEL="npx --yes vercel@latest"
 BUILD_VARS="VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY SUPABASE_URL SUPABASE_PUBLISHABLE_KEY ANTHROPIC_MODEL"
 SECRET_VARS="ANTHROPIC_API_KEY"
 
+# ── SMTP: OPTIONAL, AND PRODUCTION ONLY ──────────────────────────────────────
+#
+# Optional because it genuinely is. env.js and mailer.js both treat an absent
+# transport as a normal state - local development and every test run have none -
+# so requiring it here would stop this script working for the people it works
+# for today.
+#
+# PRODUCTION ONLY, and that is the part worth arguing. Every other variable in
+# this file goes to preview as well, because a preview with the wrong Supabase
+# URL is a broken preview and nothing more. SMTP is not like that. The one
+# message this product sends is a consent request to the PARENT OF A CHILD, at
+# an address a real person typed. A preview deployment is half-finished work by
+# definition, and half-finished work with live mail credentials sends real
+# email to real parents about real children.
+#
+# Without it, preview returns `email_unavailable` on that route - which is the
+# honest degraded state, and visible, which is the whole design of mailer.js.
+# The send path is proved by `npm run check:smtp` and by one guardian request
+# in production to an address you control.
+#
+# Putting SMTP on preview would be a deliberate edit here, with a reason
+# written next to it. Same rule mailer.js uses for adding a second kind of mail.
+SMTP_VARS="SMTP_HOST SMTP_PORT SMTP_USER SMTP_FROM"
+SMTP_SECRET_VARS="SMTP_PASSWORD"
+
 read_env() {
   grep -E "^$1=" .env | head -1 | sed -E "s/^$1=//" | sed -E 's/^"(.*)"$/\1/' | sed -E "s/^'(.*)'\$/\1/" | tr -d '\r' || true
 }
@@ -84,6 +109,35 @@ if [ -n "$missing" ]; then
   exit 2
 fi
 
+# ── ALL FIVE, OR NONE ────────────────────────────────────────────────────────
+#
+# A PARTIAL SMTP CONFIGURATION IS THE DANGEROUS STATE, not the harmless one.
+# `configured` in env.js is `host && user && pass`, so four out of five reads
+# as "no mail configured" and the guardian route quietly answers
+# email_unavailable - indistinguishable from never having set it up, on a
+# machine where somebody clearly just did.
+#
+# So this refuses to write a half-set group rather than leaving somebody to
+# discover it through a parent who never got the link.
+smtp_present=""
+smtp_absent=""
+for name in $SMTP_VARS $SMTP_SECRET_VARS; do
+  if [ -n "$(read_env "$name")" ]; then smtp_present="$smtp_present $name"; else smtp_absent="$smtp_absent $name"; fi
+done
+
+SEND_SMTP=no
+if [ -n "$smtp_present" ] && [ -n "$smtp_absent" ]; then
+  echo "SMTP is half-configured in .env."
+  echo "  set:    $smtp_present"
+  echo "  unset: $smtp_absent"
+  echo
+  echo "Four out of five reads as 'no mail configured' and fails the same silent way as none."
+  echo "Set all five or clear them. Nothing has been changed on Vercel."
+  exit 2
+elif [ -n "$smtp_present" ]; then
+  SEND_SMTP=yes
+fi
+
 echo "Target environments: $TARGETS"
 echo
 
@@ -92,6 +146,19 @@ for name in $BUILD_VARS $SECRET_VARS; do
   case " $SECRET_VARS " in *" $name "*) kind="sensitive  (runtime only)" ;; *) kind="build+runtime" ;; esac
   printf '%-32s %-24s %s chars\n' "$name" "$kind" "${#value}"
 done
+
+if [ "$SEND_SMTP" = yes ]; then
+  echo
+  echo "SMTP (production only - see the note above):"
+  for name in $SMTP_VARS $SMTP_SECRET_VARS; do
+    value="$(read_env "$name")"
+    case " $SMTP_SECRET_VARS " in *" $name "*) kind="sensitive  (runtime only)" ;; *) kind="runtime" ;; esac
+    printf '%-32s %-24s %s chars\n' "$name" "$kind" "${#value}"
+  done
+else
+  echo
+  echo "SMTP: not in .env, skipping. The guardian consent mail will not send."
+fi
 
 echo
 printf 'Replace these on Vercel? [y/N] '
@@ -125,6 +192,17 @@ for target in $TARGETS; do
   for name in $SECRET_VARS; do
     add_var "$name" "$target" --sensitive
   done
+
+  # Production only. The reasoning is at the declaration, not here, because
+  # this line is where somebody would "fix" it without reading why.
+  if [ "$SEND_SMTP" = yes ] && [ "$target" = production ]; then
+    for name in $SMTP_VARS; do
+      add_var "$name" "$target" --no-sensitive
+    done
+    for name in $SMTP_SECRET_VARS; do
+      add_var "$name" "$target" --sensitive
+    done
+  fi
 done
 
 echo
