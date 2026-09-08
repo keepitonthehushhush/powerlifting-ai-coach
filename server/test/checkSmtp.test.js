@@ -93,3 +93,51 @@ describe('check:smtp', () => {
     assert.match(source, /CANNOT CHECK/, 'a missing library must not read as a broken transport');
   });
 });
+
+describe('the From header, which one provider makes easy to get wrong', () => {
+  /*
+   * env.js defaults SMTP_FROM to SMTP_USER - correct for providers whose
+   * username IS the mailbox, and wrong for Resend, whose SMTP username is the
+   * fixed literal `resend`. The resulting From is not an address, the send
+   * fails at the far end, and the only person positioned to notice is a parent
+   * who never received the link.
+   */
+  test('a username that is not an address is refused, not connected with', () => {
+    const { code, out } = run({
+      SMTP_HOST: 'smtp.resend.com',
+      SMTP_USER: 'resend',
+      SMTP_PASSWORD: 're_not_a_real_key',
+    });
+    assert.equal(code, 1, 'this must fail, not pass and not read as unconfigured');
+    assert.match(out, /not an email address/);
+    assert.match(out, /SMTP_FROM/, 'the failure has to name the variable that fixes it');
+  });
+
+  test('an explicit SMTP_FROM gets past the check and on to the connection', () => {
+    // Proves the guard is about the ADDRESS and not about the provider: with a
+    // real From it stops being a From problem, and the run gets far enough to
+    // need nodemailer (absent here, so exit 3 - no information, not a finding).
+    const { code, out } = run({
+      SMTP_HOST: 'smtp.resend.com',
+      SMTP_USER: 'resend',
+      SMTP_PASSWORD: 're_not_a_real_key',
+      SMTP_FROM: 'coach@coachdiaz.app',
+    });
+    assert.notEqual(code, 1, 'a valid From must not be reported as a From failure');
+    assert.doesNotMatch(out, /not an email address/);
+  });
+
+  test('the From is checked BEFORE the connection', () => {
+    // A valid login with an unsendable From is still a mailbox that cannot
+    // deliver. Reporting PASS on it is this project's recurring defect: a green
+    // check over something that does not work.
+    // `await transport.verify()`, not `.verify()` - the bare form also appears
+    // in this script's own header comment EXPLAINING what verify does, which
+    // sits above the guard and made this assertion fail on correct code. The
+    // readSource/readRaw trap, third time in one session.
+    const fromCheck = source.indexOf('not an email address');
+    const connect = source.indexOf('await transport.verify()');
+    assert.ok(fromCheck > -1 && connect > -1);
+    assert.ok(fromCheck < connect, 'the From guard must run before the transport is verified');
+  });
+});

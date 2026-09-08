@@ -90,6 +90,35 @@ if (!host || !user || !pass) {
 }
 
 /*
+ * ── THE FROM HEADER, BEFORE THE CONNECTION ─────────────────────────────────
+ *
+ * env.js defaults SMTP_FROM to SMTP_USER, which is right for most providers
+ * because they reject a From that is not the authenticated mailbox. It is
+ * wrong for exactly one shape, and it is the shape in use: Resend's SMTP
+ * username is the fixed literal `resend`, so leaving SMTP_FROM unset builds a
+ * From header reading `resend` - not an address at all.
+ *
+ * That failure happens at the far end, at send time, on the one message this
+ * product sends. The athlete is told the link went. The parent never gets it.
+ * Nobody else is in a position to notice.
+ *
+ * Checked BEFORE connecting, because a valid login with an unsendable From is
+ * still a mailbox that cannot deliver, and reporting PASS on it would be this
+ * whole project's recurring defect in miniature - a green check over a thing
+ * that does not work.
+ */
+const from = (process.env.SMTP_FROM ?? '').trim() || user;
+if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(from)) {
+  console.error(`FAIL - the From header would be "${from}", which is not an email address.`);
+  console.error(
+    '\nSMTP_FROM is unset, so it fell back to SMTP_USER. That default suits providers\n' +
+      'whose username IS the mailbox; it does not suit Resend, whose SMTP username is\n' +
+      'the literal word `resend`. Set SMTP_FROM to an address on your verified domain.',
+  );
+  process.exit(1);
+}
+
+/*
  * A FOURTH OUTCOME: cannot check. Distinct from "broken" for the same reason
  * "not graded" is distinct from "failed" - a missing library says nothing
  * about whether the credentials work, and reporting it as a failure would send
@@ -129,7 +158,7 @@ const transport = nodemailer.createTransport({
 
 try {
   await transport.verify();
-  console.log(`PASS - connected and authenticated to ${host}:${port}.`);
+  console.log(`PASS - connected and authenticated to ${host}:${port}, sending as ${from}.`);
   console.log('No message was sent. The credentials work and the guardian link can go out.');
   process.exit(0);
 } catch (err) {
