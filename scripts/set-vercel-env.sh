@@ -32,6 +32,18 @@
 #   needs to read it back. The other server variables are not secrets, so they
 #   are left readable, which makes them debuggable.
 #
+#   SENSITIVITY FOLLOWS THE VALUE, NOT THE NAME. A variable is sensitive
+#   because of what is stored in it, not because of what it is called. See the
+#   SMTP block below for the case that proves it: SMTP_USER sounds like config
+#   and holds a token.
+#
+#   TWO CONSTRAINTS FROM VERCEL'S DOCS worth knowing before you run this:
+#   sensitivity CANNOT BE EDITED IN PLACE - to make an existing variable
+#   sensitive you must remove it and add it again, which this script does. And
+#   sensitive is only available on production and preview; a development-scope
+#   variable cannot be sensitive at all, which is one more reason nothing
+#   secret belongs in a development-scope variable.
+#
 # THE FLAG THAT IS NOT OPTIONAL. Recent Vercel CLI versions make `env add`
 # SENSITIVE BY DEFAULT. `--no-sensitive` is not a redundant restatement of the
 # default - it is the opt-out, and without it every build-time variable here is
@@ -90,8 +102,24 @@ SECRET_VARS="ANTHROPIC_API_KEY"
 #
 # Putting SMTP on preview would be a deliberate edit here, with a reason
 # written next to it. Same rule mailer.js uses for adding a second kind of mail.
-SMTP_VARS="SMTP_HOST SMTP_PORT SMTP_USER SMTP_FROM"
-SMTP_SECRET_VARS="SMTP_PASSWORD"
+# ── WHICH OF THESE ARE SENSITIVE ─────────────────────────────────────────────
+#
+# Sensitivity follows the VALUE a variable holds, not its name. The obvious
+# split - "the one called PASSWORD is the secret" - is wrong here, and it was
+# wrong in this file until it was fixed.
+#
+# Postmark authenticates SMTP with the Server API Token used as BOTH the
+# username and the password. SMTP_USER and SMTP_PASSWORD therefore carry the
+# same secret. Writing SMTP_USER non-sensitive would publish that secret in a
+# field anyone with dashboard access, or `vercel env ls`, can read back - which
+# defeats the protection on SMTP_PASSWORD entirely, because the attacker only
+# needs the value, not the variable it came from.
+#
+# Host, port and From are config: a public hostname, a port number, and the
+# address recipients see. Keeping them readable is what makes a bad send
+# debuggable without touching the token.
+SMTP_VARS="SMTP_HOST SMTP_PORT SMTP_FROM"
+SMTP_SECRET_VARS="SMTP_USER SMTP_PASSWORD"
 
 read_env() {
   grep -E "^$1=" .env | head -1 | sed -E "s/^$1=//" | sed -E 's/^"(.*)"$/\1/' | sed -E "s/^'(.*)'\$/\1/" | tr -d '\r' || true
