@@ -439,6 +439,35 @@ empty migrations directory reports "could not run", never "fine";
 `server/test/migrationLedger.test.js` pins that, and the guard was broken on
 purpose to confirm each assertion fails with the message it claims.
 
+**The preview database drifts, and on 2026-09-09 it was ten migrations
+behind.** Its ledger's last numbered entry is `0055`; production is at `0065`.
+Everything from the rate-limit cap (`0056`) onward is missing there, including
+`private.trial_usage` — so a preview exercising the free trial fails on a
+function that does not exist, and the environment built to prove the migrations
+are true has been proving nothing since 2026-09-01.
+
+Nothing applies migrations to preview automatically. `npm run db:replay`
+refuses a database that already has application tables, by design, so catching
+it up means applying `0056`–`0065` to the preview project **in order**, then
+re-running the ledger check against it:
+
+```sh
+DATABASE_URL='<preview SESSION POOLER URI>' npm run check:db
+```
+
+Do it after any change that touches `supabase/migrations/`, which is what
+ADR-18 already asks for and what had stopped happening. If the gap ever gets
+large enough that ordering is fiddly, deleting the preview project and
+replaying into a fresh empty one is the cheaper move — it is also the only
+thing that tests the replay end to end.
+
+**Replaying is what found `0061`.** That file used `create or replace` to add
+two output columns to `trial_status()`, which PostgreSQL refuses; production
+had the right function only because it was applied by hand with the drop
+included. `server/test/migrationReplay.test.js` now fails on any function
+replaced with a different return signature, so the same shape cannot sit
+unnoticed again.
+
 **A preview says so.** Every page carries a "Preview build — not
 coachdiaz.app" bar. Confusing a preview tab for the live site is the mistake a
 preview environment makes possible, and it is made by looking at a page that is

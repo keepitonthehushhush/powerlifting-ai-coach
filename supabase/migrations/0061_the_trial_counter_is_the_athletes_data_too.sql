@@ -53,6 +53,30 @@
 -- marketing cost.
 -- =============================================================================
 
+-- ── AMENDED 2026-09-09: THIS FILE COULD NOT REPLAY ──────────────────────────
+--
+-- 0057 created trial_status() returning three columns; this one returns five.
+-- CREATE OR REPLACE cannot do that: "will not let you change the return type
+-- of an existing function... To do that, you must drop and recreate the
+-- function" (PostgreSQL, CREATE FUNCTION). Adding output columns changes the
+-- anonymous composite type the result describes, so replaying 0057 and then
+-- this one into an empty database fails at exactly this statement with 42P13.
+--
+-- Production has the five-column function because it was applied by hand with
+-- the drop included, and the file was never brought back into line. That is
+-- the ADR-18 defect in its purest form: the database was right and the
+-- repository was wrong, and only replaying the files could show it.
+--
+-- The drop is added here rather than in a later migration because a later one
+-- would leave this file still unable to replay, and "the migration directory
+-- can rebuild the database" is the property worth having. It is idempotent and
+-- the grants below are re-applied in this same file, so a drop takes nothing
+-- with it that this file does not immediately put back.
+--
+-- migrationReplay.test.js now fails on any function replaced with a different
+-- return signature, so the next one cannot sit here for a month.
+drop function if exists public.trial_status();
+
 create or replace function public.trial_status()
 returns table(used integer, allowance integer, remaining integer,
               started_at timestamptz, last_reply_at timestamptz)
