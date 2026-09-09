@@ -1,7 +1,11 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readSource, readMigration, flatten } from './helpers/source.js';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { readSource, readMigration, flatten, stripComments } from './helpers/source.js';
 import {
   NUTRITION_DETAIL_LEVELS,
   DEFAULT_NUTRITION_DETAIL,
@@ -20,6 +24,7 @@ const migration = readMigration(
   new URL('../../supabase/migrations/0066_how_much_of_the_food_conversation_they_actually_want.sql', import.meta.url)
 );
 const schema = readSource(new URL('../src/lib/profileSchema.js', import.meta.url));
+const preferences = readSource(new URL('../src/routes/preferences.js', import.meta.url));
 const prompt = readSource(new URL('../src/prompts/systemPrompt.js', import.meta.url));
 
 const PROFILE = {
@@ -46,13 +51,53 @@ describe('the setting exists in one shape everywhere', () => {
     assert.equal(WEB_DEFAULT, DEFAULT_NUTRITION_DETAIL);
     for (const level of NUTRITION_DETAIL_LEVELS) {
       assert.match(migration, new RegExp(`'${level}'`), `the column does not allow ${level}`);
-      assert.match(schema, new RegExp(`'${level}'`), `the profile schema does not accept ${level}`);
+      // The route validates against the shared list rather than a copy, so
+      // what is checked here is that the list reaches it at all.
+      assert.match(preferences, /NUTRITION_DETAIL_LEVELS/);
     }
     // And nothing the column allows is missing from the code.
     const allowed = migration.match(/nutrition_detail in \(([^)]*)\)/);
     assert.ok(allowed, 'the column no longer constrains the value');
     const fromSql = allowed[1].match(/'([a-z]+)'/g).map((quoted) => quoted.replaceAll("'", ''));
     assert.deepEqual(fromSql.sort(), [...NUTRITION_DETAIL_LEVELS].sort());
+  });
+
+  test('there is exactly one way to write it', () => {
+    /*
+     * It is a column on user_profile, and PUT /api/profile is a strict schema
+     * over that table - so the obvious place for it was there, and that is the
+     * wrong place. That endpoint is the intake form's: it runs the age gate,
+     * stamps intake_completed_at, and writes with an upsert whose behavior on a
+     * partial payload this product has never exercised, with a failure mode of
+     * blanking somebody's injuries and lifts.
+     *
+     * Leaving it out of the strict schema means a whole-profile PUT carrying it
+     * is REFUSED rather than quietly taking a second path with different
+     * guarantees.
+     */
+    assert.doesNotMatch(schema, /nutrition_detail: z\./, 'the profile schema writes it too');
+    assert.match(preferences, /\.update\(\{ nutrition_detail: value \}\)/);
+    /*
+     * And it refuses a value the column would refuse anyway. The CHECK is the
+     * real backstop, so the harm without this is a 500 where a 400 belongs -
+     * which is a worse thing than it sounds, because a 500 is what somebody
+     * reports as "the app is broken" rather than as "it would not take my
+     * setting".
+     */
+    /*
+     * Scoped to this handler, not the whole file. The theme route above also
+     * throws invalid_request, and a whole-file match was satisfied by ITS
+     * throw while this one had been replaced - the same false green that
+     * readSource and readMigration exist for, in a third disguise.
+     */
+    const handler = preferences.slice(preferences.indexOf("preferencesRouter.put('/nutrition-detail'"));
+    assert.match(handler, /if \(!NutritionDetail\.has\(value\)\)/);
+    assert.match(handler, /codedError\('invalid_request'/);
+    assert.doesNotMatch(preferences, /\.upsert\(\{ user_id: req\.user\.id, nutrition_detail/);
+    // And the browser calls the one endpoint, not saveProfile.
+    const panel = readSource(new URL('../../web/src/components/NutritionSettings.jsx', import.meta.url));
+    assert.match(panel, /api\.saveNutritionDetail\(/);
+    assert.doesNotMatch(panel, /saveProfile/);
   });
 
   test('the default is what everybody already had', () => {
@@ -169,6 +214,33 @@ describe('what actually reaches the model', () => {
     assert.doesNotMatch(gated, /FUELING NUMBERS FOR THIS ATHLETE/);
   });
 
+  test('the coach offers the setting once, where it is useful, and not as an opening menu', () => {
+    /*
+     * A setting nobody finds is not a setting. The account page is one tap
+     * away and nothing points at it, so the coach says it exists at the one
+     * moment it means something: just after giving food detail somebody may
+     * not have wanted.
+     *
+     * The honest limitation, stated rather than glossed: "once" is scoped to
+     * the conversation, because that is the only thing the model can actually
+     * see. A new conversation can say it again. Making it once-ever would need
+     * a column and a write, and this is a sentence, not a policy notice.
+     */
+    assert.match(flatten(prompt), /TELL THEM THE SETTING EXISTS, ONCE, AT THE MOMENT IT IS USEFUL/);
+    assert.match(flatten(prompt), /Do not open with it/);
+    assert.match(flatten(prompt), /not a paragraph and not a menu/);
+  });
+
+  test('and it never offers the setting to somebody who has already chosen', () => {
+    // Being asked again about a choice you have already made reads as being
+    // talked out of it, which is the one thing the off setting must not feel
+    // like.
+    assert.match(flatten(prompt), /somebody who has already chosen does not need to be asked again/);
+    for (const level of ['off', 'ranges']) {
+      assert.ok(directiveFor(level), `${level} sends no directive, so the coach cannot know they chose`);
+    }
+  });
+
   test('the coach is told not to interrogate the setting', () => {
     const off = promptFor('off');
     assert.match(off, /Do not ask them why it is off/);
@@ -199,13 +271,55 @@ describe('where the value lives, and what that costs', () => {
   });
 
   test('and its value is never written to a log', () => {
-    // "Somebody set food talk to off" is an inference about a person that a
-    // log line has no reason to hold.
-    for (const file of ['../src/routes/profile.js', '../src/routes/chat.js', '../src/lib/nutritionDetail.js']) {
-      const source = readSource(new URL(file, import.meta.url));
-      const logging = source.match(/logger\.\w+\([^;]*;/g) ?? [];
-      for (const call of logging) {
-        assert.doesNotMatch(call, /nutrition_detail/, `${file} logs the setting`);
+    /*
+     * "Somebody set food talk to off" is an inference about a person that a
+     * log line has no reason to hold.
+     *
+     * Every server file that mentions the column, found rather than listed.
+     * A hand-written list of three files went stale the moment the write moved
+     * to routes/preferences.js - the log line there carried the value and this
+     * test was green, because it was looking at the file the write used to be
+     * in.
+     */
+    const root = fileURLToPath(new URL('../src/', import.meta.url));
+    const files = [];
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.js')) files.push(full);
+      }
+    };
+    walk(root);
+
+    const mentions = files.filter((file) => stripComments(readFileSync(file, 'utf8')).includes('nutrition_detail'));
+    /*
+     * Named rather than counted. A count is a canary that has to be edited
+     * every time a file is added or renamed and says nothing when it is wrong;
+     * these two are the file that WRITES the column and the file that READS
+     * it, and a walk that misses either is a walk that is not finding files.
+     */
+    const found = mentions.map((file) => file.replace(root, ''));
+    for (const required of ['routes/preferences.js', 'prompts/systemPrompt.js']) {
+      assert.ok(found.includes(required), `the walk did not reach ${required} - it found ${found.join(', ')}`);
+    }
+
+    for (const file of mentions) {
+      const source = stripComments(readFileSync(file, 'utf8'));
+      for (const call of source.match(/logger\.\w+\([^;]*;/g) ?? []) {
+        /*
+         * The EVENT NAME may say which setting changed; the VALUE may not.
+         * That is the line, and it is a real one rather than a dodge: "they
+         * changed their food setting" is what makes a save that did not stick
+         * debuggable, while "they set it to off" is the inference about a
+         * person that this column exists to keep out of a log.
+         *
+         * String literals are stripped before the check, so the event name
+         * `preferences.nutrition_detail_saved` passes and a field named
+         * nutrition_detail in the payload does not.
+         */
+        const payload = call.replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
+        assert.doesNotMatch(payload, /nutrition_detail/, `${file.replace(root, '')} logs the setting's value`);
       }
     }
   });

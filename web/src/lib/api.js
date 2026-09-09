@@ -221,6 +221,15 @@ async function endDeadSession() {
 
 export const api = {
   getProfile: () => request('/profile'),
+  /*
+   * The food setting is its own pair of calls, not a field on saveProfile.
+   * It is not health data, it must not be dragged through the intake schema
+   * and the age gate, and the write must touch exactly one column - see the
+   * route for why a partial whole-profile PUT was not good enough.
+   */
+  getNutritionDetail: () => request('/preferences/nutrition-detail'),
+  saveNutritionDetail: (nutrition_detail) =>
+    request('/preferences/nutrition-detail', { method: 'PUT', body: JSON.stringify({ nutrition_detail }) }),
   saveProfile: (profile) => request('/profile', { method: 'PUT', body: JSON.stringify(profile) }),
   getConversation: () => request('/chat/conversation'),
   sendMessage: (message, conversationId) =>

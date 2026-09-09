@@ -135,18 +135,17 @@ export const ProfileUpdate = z
     nutrition_notes: z.string().max(4000).nullish(),
 
     /*
-     * How much of the food conversation they want. NOT health data and
-     * deliberately outside private.health_fingerprint(): gating it behind
-     * active health consent would trap the people most likely to want it
-     * turned off, and a consent withdrawal would clear it - silently
-     * returning somebody to the full food conversation at the moment they
-     * asked for less. Migration 0066 states the argument in full.
+     * nutrition_detail is DELIBERATELY NOT HERE.
      *
-     * The enum is written out rather than read from nutritionDetail.js
-     * because z.enum wants a literal tuple; nutritionDetail.test.js asserts
-     * the two lists agree, which is the check that matters.
+     * It lives on this table but it is not written through this schema. This
+     * is the intake form's endpoint: it runs the age gate, stamps
+     * intake_completed_at, and writes with an upsert whose behavior on a
+     * partial payload has never been exercised in this product. The food
+     * setting gets PUT /api/preferences/nutrition-detail instead, which
+     * updates exactly one column, and leaving it out of this strict schema
+     * means there is exactly ONE way to write it rather than two with
+     * different guarantees. See migration 0066 and routes/preferences.js.
      */
-    nutrition_detail: z.enum(['off', 'ranges', 'meals']).optional(),
 
     // Personal data, not health data - see migration 0015 for why that
     // distinction decides which gate it sits behind.

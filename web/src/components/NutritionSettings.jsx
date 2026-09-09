@@ -30,9 +30,9 @@ export function NutritionSettings() {
   useEffect(() => {
     let live = true;
     api
-      .getProfile()
+      .getNutritionDetail()
       .then((result) => {
-        if (live) setLevel(resolveNutritionDetail(result?.profile?.nutrition_detail));
+        if (live) setLevel(resolveNutritionDetail(result?.nutrition_detail));
       })
       .catch(() => {
         // Nothing rendered rather than a wrong default. See above.
@@ -50,7 +50,7 @@ export function NutritionSettings() {
     setSaving(true);
     setError(null);
     try {
-      await api.saveProfile({ nutrition_detail: next });
+      await api.saveNutritionDetail(next);
     } catch (err) {
       setLevel(previous);
       setError(errorText(err));
