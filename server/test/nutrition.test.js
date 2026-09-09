@@ -74,6 +74,25 @@ describe('fuellingRanges', () => {
     assert.doesNotMatch(String(fuellingRanges), /days_per_week|trainingLoad|sessions/);
   });
 
+  test('the coach is told not to total the ranges it is handed', () => {
+    /*
+     * ── THE HOLE THE CARBOHYDRATE BANDS OPENED ────────────────────────────
+     *
+     * Before the ACSM/AND/DC bands were added, a maintaining athlete got
+     * protein and a fat floor and no carbohydrate figure, so there was no sum
+     * to form. Now all three are there, and 4/4/9 is one step from a calorie
+     * target - the number this whole design exists to not produce.
+     *
+     * Nobody has to ask for a target to get one. "So what does that come to
+     * in calories?" is a reasonable question in a reasonable tone, and a
+     * helpful model does the arithmetic without noticing what it just became.
+     */
+    assert.match(promptSource, /DO NOT ADD UP THE MACRONUTRIENT RANGES YOU HAVE BEEN GIVEN/);
+    assert.match(promptSource, phrase('four times the protein plus four times the carbohydrate'));
+    // And it must say WHY, or it is a rule somebody removes as pedantic.
+    assert.match(promptSource, phrase('is the step that makes it a prescription'));
+  });
+
   test('an unknown bodyweight produces nothing rather than a guess', () => {
     for (const bodyweight of [null, undefined, 0, -5, NaN, 'heavy']) {
       assert.equal(fuellingRanges({ bodyweight, units: 'lb' }), null);
