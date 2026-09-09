@@ -527,6 +527,23 @@ export const es = {
     undoHint: 'Una pausa breve antes de que salga el mensaje, para poder recuperar y corregir un error. No se envía ni se cobra nada hasta que termina la pausa.',
   },
 
+  nutritionSettings: {
+    heading: 'Cuánto habla el entrenador sobre la comida',
+    intro: 'Coach Diaz normalmente incluye la nutrición en su asesoría. Si esa no es la ayuda que buscas, bájala o apágala aquí. Se guarda en tu cuenta, así que solo tienes que decirlo una vez.',
+    legend: 'Comida y nutrición',
+    level: {
+      off: 'Apagado',
+      ranges: 'Solo los números',
+      meals: 'La conversación completa sobre comida',
+    },
+    levelHint: {
+      off: 'Coach Diaz no sacará el tema de la comida. Si le preguntas directamente, te dará una respuesta breve y general.',
+      ranges: 'Rangos de proteína y carbohidratos para tu peso corporal, y cuándo comer alrededor del entrenamiento. Sin comidas ni porciones.',
+      meals: 'Todo lo anterior, más comidas reales, porciones, qué se conserva en el refrigerador y qué comer antes de entrenar temprano.',
+    },
+    noCalorieTargets: 'Ninguna opción activa metas de calorías ni un plan de comidas recetado. Eso requiere un dietista registrado, no una opción distinta.',
+  },
+
   consent: {
     unavailable: {
       title: 'No pudimos cargar tus opciones de privacidad',

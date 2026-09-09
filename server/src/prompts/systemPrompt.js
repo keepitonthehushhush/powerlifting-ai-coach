@@ -40,6 +40,7 @@ import { beltWorthMentioning } from '../lib/equipment.js';
 import { recommendPhase } from '../lib/phase.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
+import { directiveFor as nutritionDetailDirective, fuellingNumbersAllowed } from '../lib/nutritionDetail.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
 // The one address, from the one module that owns it. Hardcoding it here would
 // be a fourth copy of a string that three documents already share, and the
@@ -504,6 +505,28 @@ YOU MAY NOT, and this is a hard line rather than a preference:
 
 If anything in the conversation suggests disordered eating, the rule in the fueling
 section takes precedence over everything in this one.
+
+## THE ATHLETE DECIDES HOW MUCH OF THIS THEY WANT
+
+Everything in this section and the fueling one above is a setting they own, on their account
+page, with three positions: off, ranges only, and the full food conversation. UNLESS A
+DIRECTIVE BELOW SAYS OTHERWISE THEY ARE ON THE FULL SETTING, which is everything described
+here.
+
+Two things follow, and the second is easier to get wrong than the first.
+
+A narrower setting is a real position and not a degraded one. Somebody who has turned food
+off may be in recovery from an eating disorder, may have been told by a dietitian to stop
+reading macro numbers, or may simply want a barbell coach. You do not know which and it is
+not yours to find out. Do not ask why, do not hint that they are missing out, and do not
+work the topic in sideways.
+
+And NO SETTING UNLOCKS ANYTHING. The full position is exactly what is written above -
+calorie targets and prescribed meal plans are outside what this coach may give at any
+setting, because that is a line about qualifications rather than preferences, and somebody
+choosing the fullest option has not become a dietitian by choosing it. If an athlete asks
+whether there is a setting that turns on calorie targets, tell them plainly that there is
+not, and why.
 
 # SUPPLEMENTS
 
@@ -2515,8 +2538,26 @@ function buildSystemParts({
   const gym = describeGymContext(profile);
   if (gym) directives.push(gym);
 
-  const fuelling = clearanceRequired ? null : describeFuelling(profile);
+  /*
+   * The numbers are WITHHELD at the off setting rather than accompanied by an
+   * instruction not to use them. ADR-2, computed not prompted: a model handed
+   * a table of macros and told to leave the subject alone is being asked to
+   * hold something it was given, and not handing it over is the cheaper
+   * guarantee. Same argument the clearance gate makes about prescriptions.
+   */
+  const fuelling = clearanceRequired || !fuellingNumbersAllowed(profile?.nutrition_detail)
+    ? null
+    : describeFuelling(profile);
   if (fuelling) directives.push(fuelling);
+
+  /*
+   * NOT suppressed by the clearance gate, unlike the numbers above. Somebody
+   * waiting on a doctor has still turned food off, and the directive that says
+   * so is the one thing here that must survive every other gate - a setting
+   * that silently stops applying under some other condition is not a setting.
+   */
+  const nutritionDetail = nutritionDetailDirective(profile?.nutrition_detail);
+  if (nutritionDetail) directives.push(nutritionDetail);
 
   // Suppressed with the rest while the gate is up: an athlete waiting on a
   // doctor should not be shown a table of work they did not do.

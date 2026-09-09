@@ -32,7 +32,7 @@ import { InfoHeader } from '../components/InfoHeader.jsx';
 export function AiProcessing() {
   return (
     <div className="page">
-      <InfoHeader title="How Coach Diaz uses AI" version="Version aip-2026-08-28a" />
+      <InfoHeader title="How Coach Diaz uses AI" version="Version aip-2026-09-09a" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -44,6 +44,15 @@ export function AiProcessing() {
 
       <div className="card prose">
         <h2 className="h3">What changed in this version</h2>
+        <p className="small">
+          <strong>aip-2026-09-09a.</strong> You can now choose how much the coach talks about
+          food, in your account settings. If you set it to anything other than the full setting,
+          that choice is sent as an instruction — &ldquo;do not raise eating&rdquo;, or
+          &ldquo;ranges only&rdquo; — because it has to reach the coach to have any effect. When
+          food is off, the fueling numbers our code works out are not sent at all. We are asking
+          you to agree again because the list below is longer than the one you agreed to, even
+          though nothing new is sent unless you change the setting yourself.
+        </p>
         <p className="small">
           <strong>aip-2026-08-28a.</strong> If your goal is losing fat, whether you use a
           GLP-1 medication is now sent, when you have given it. The coach is instructed that it
@@ -110,6 +119,13 @@ export function AiProcessing() {
             the moment the obstacle turns up, and it cannot do that without having read it.
           </li>
           <li>Your pronouns, and your gender if you gave one. Nothing physiological is inferred from either: where a figure genuinely differs, the coach is told to ask you rather than assume.</li>
+          <li>
+            <strong>How much you want the coach to talk about food</strong>, when you have set
+            that to anything other than the full setting. It is sent as an instruction rather
+            than a fact about you — "do not raise eating" or "ranges only" — and when food is
+            off, the fueling numbers our code worked out are not sent at all, rather than being
+            sent with a note asking the model to ignore them.
+          </li>
           <li>Which gym chains you ticked, and the optional branch note you typed. The note goes as written; it is never turned into an address or a location.</li>
           <li>Reference material of ours that says nothing about you: the coaching instructions, and the exercise library with its links to demonstration videos.</li>
         </ul>

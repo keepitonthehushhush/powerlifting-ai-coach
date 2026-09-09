@@ -134,6 +134,20 @@ export const ProfileUpdate = z
     nicotine_use: z.enum(['none', 'occasional', 'daily']).nullish(),
     nutrition_notes: z.string().max(4000).nullish(),
 
+    /*
+     * How much of the food conversation they want. NOT health data and
+     * deliberately outside private.health_fingerprint(): gating it behind
+     * active health consent would trap the people most likely to want it
+     * turned off, and a consent withdrawal would clear it - silently
+     * returning somebody to the full food conversation at the moment they
+     * asked for less. Migration 0066 states the argument in full.
+     *
+     * The enum is written out rather than read from nutritionDetail.js
+     * because z.enum wants a literal tuple; nutritionDetail.test.js asserts
+     * the two lists agree, which is the check that matters.
+     */
+    nutrition_detail: z.enum(['off', 'ranges', 'meals']).optional(),
+
     // Personal data, not health data - see migration 0015 for why that
     // distinction decides which gate it sits behind.
     date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),

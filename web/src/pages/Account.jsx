@@ -8,6 +8,7 @@ import { ActivityLog } from '../components/ActivityLog.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ChatSettings } from '../components/ChatSettings.jsx';
+import { NutritionSettings } from '../components/NutritionSettings.jsx';
 import { ThemePicker } from '../components/ThemePicker.jsx';
 import { MfaSettings } from '../components/MfaSettings.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -92,6 +93,7 @@ export function Account() {
 
       <MfaSettings />
       <ChatSettings />
+      <NutritionSettings />
 
       <section className="card stack">
         <h2 className="h3">{t('account.exportHeading')}</h2>

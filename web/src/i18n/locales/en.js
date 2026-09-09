@@ -551,6 +551,23 @@ export const en = {
     undoHint: 'A short pause before the message goes, so a typo can be pulled back and edited. Nothing is sent or charged until the pause ends.',
   },
 
+  nutritionSettings: {
+    heading: 'How much the coach talks about food',
+    intro: 'Coach Diaz normally works nutrition into its coaching. If that is not the help you want, turn it down or off here. This is saved to your account, so you only have to say it once.',
+    legend: 'Food and nutrition',
+    level: {
+      off: 'Off',
+      ranges: 'Numbers only',
+      meals: 'The full food conversation',
+    },
+    levelHint: {
+      off: 'Coach Diaz will not bring up eating. Ask a direct question and you will get a short, general answer.',
+      ranges: 'Protein and carbohydrate ranges for your bodyweight, and when to eat around training. No meals or portions.',
+      meals: 'Everything above, plus real meals, portions, what keeps in the fridge, and what to eat before an early session.',
+    },
+    noCalorieTargets: 'No setting turns on calorie targets or a prescribed meal plan. Those need a registered dietitian, not a different setting.',
+  },
+
   consent: {
     /* Shown when the consent state could not be READ. It has to do two things
        a redirect could not: say the problem is ours, and say their choices are

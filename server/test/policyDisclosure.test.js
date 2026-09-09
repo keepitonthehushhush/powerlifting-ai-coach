@@ -77,6 +77,14 @@ const SENT_TO_THE_MODEL = {
   pronouns: 'Your pronouns',
   gym_chains: 'Which gym chains you ticked',
   gym_label: 'branch note',
+  /*
+   * Sent as an INSTRUCTION rather than as a fact - "do not raise eating" -
+   * and only when it is not the default, so the model is never told "this
+   * athlete is on the full setting". Listed here anyway, because the honest
+   * question the page answers is whether the setting leaves the building, and
+   * it does.
+   */
+  nutrition_detail: 'How much you want the coach to talk about food',
   days_per_week: 'days per week',
   sleep_hours_typical: 'sleep',
   alcohol_units_per_week: 'alcohol',
