@@ -3,6 +3,7 @@ import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { StickToBottom } from '../components/StickToBottom.jsx';
 import { api, errorText } from '../lib/api.js';
+import { withLocalDate } from '../lib/proposedSession.js';
 import { isTransportFailure, recoverExchange } from '../lib/chatRecovery.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
@@ -212,17 +213,22 @@ export function Chat() {
     setError(null);
     try {
       /*
-       * THE DATE IS DECIDED HERE, IN THE BROWSER, when the coach did not give
-       * one. The server is in UTC and the athlete is not: somebody in
-       * California saying "hit a triple today" at nine in the evening is
-       * already on tomorrow by UTC, and every evening session would be filed a
-       * day late, forever, with nothing looking wrong. The browser is the only
-       * participant that knows what day it is where they are standing.
+       * The date was already decided when the card arrived - see
+       * withLocalDate. It is NOT recomputed here, because a retry that
+       * crossed midnight would otherwise post a different day, and the
+       * server's duplicate guard hashes the day. Two rows, one workout, on
+       * the one path this whole mechanism exists to close.
        */
-      const localDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
-        .toISOString()
-        .slice(0, 10);
-      await api.logSession({ date: mine.session.date ?? localDate, ...mine.session });
+      await api.logSession({
+        ...mine.session,
+        /*
+         * "This came from the card." The server derives the deduplication key
+         * itself from the body; all this says is that it should. The manual
+         * log form sends nothing, so two identical hand-typed sessions are
+         * still both kept.
+         */
+        from_coach: true,
+      });
       setLoggedSession(mine.session);
       setProposedSession((current) => (current === mine ? null : current));
     } catch (err) {
@@ -256,7 +262,7 @@ export function Chat() {
       setSavedProfile(result.savedProfile ?? null);
       // A new proposal replaces any previous one, and clears the confirmation
       // of the last: two cards on screen is two things to answer.
-      setProposedSession(result.proposedSession ?? null);
+      setProposedSession(withLocalDate(result.proposedSession));
       setLoggedSession(null);
       // Only ever what the server just said. Never decremented here: the
       // browser guessing at a number the database owns is how a screen and an

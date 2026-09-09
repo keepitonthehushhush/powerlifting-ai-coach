@@ -157,6 +157,69 @@ export function toProfileWeights(session, profileUnits) {
   return { ...session, exercises };
 }
 
+/**
+ * A stable key for a proposed session, so the same workout cannot be written
+ * twice.
+ *
+ * ── WHY IT IS DERIVED FROM THE CONTENT ────────────────────────────────────
+ *
+ * There are two ways one session becomes two rows, and only a content key
+ * closes both. A per-request token stops a RETRY after a save that failed
+ * late; it does nothing when the coach offers the same session again in a
+ * later turn, because that is a genuinely new request. The date and the
+ * movements are the same string both times.
+ *
+ * FNV-1a, and it does not need to be better than that. This is a duplicate
+ * guard, not a security boundary: the worst a collision does is refuse a
+ * second session that happened to hash the same, and the manual log form
+ * takes it. A cryptographic digest in the browser is async, which would put
+ * an await in the middle of a confirm handler to buy nothing.
+ *
+ * The canonical form sorts nothing and rounds nothing - two descriptions that
+ * differ in any field are different sessions, which is the safe direction to
+ * be wrong in.
+ */
+export function sessionKey(session) {
+  if (!session || !Array.isArray(session.exercises)) return null;
+  const canonical = JSON.stringify([
+    session.date ?? '',
+    session.exercises.map((m) => [m.exercise, m.sets ?? '', m.reps ?? '', m.weight ?? '', m.rpe ?? '', m.completed ?? '']),
+  ]);
+
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i += 1) {
+    hash ^= canonical.charCodeAt(i);
+    // The FNV prime, by shifts, because a 32-bit multiply overflows a double.
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    hash >>>= 0;
+  }
+  return hash.toString(16).padStart(8, '0');
+}
+
+/**
+ * The key a write actually gets: null for anything the athlete typed, a
+ * content key for something the coach proposed.
+ *
+ * This is a function rather than a ternary at the insert because the RULE is
+ * the interesting part and a ternary cannot be tested. Two properties matter
+ * and both are asserted directly:
+ *
+ *   - A MANUAL ENTRY IS NEVER GIVEN A KEY. Postgres allows many NULLs in a
+ *     unique index, so somebody logging the same workout by hand twice is
+ *     never fought. They meant it; they typed it twice.
+ *   - THE SAME PROPOSAL ALWAYS GETS THE SAME KEY, which is what makes a
+ *     retry and a re-offer land on one row.
+ *
+ * The flag comes from the browser, and that is the whole of what is trusted:
+ * "this came from the card." The key itself is derived HERE, from the body
+ * being written, so a client cannot hand over a string that quietly reserves
+ * a key some future real session would need.
+ */
+export function clientKeyForWrite({ fromCoach, date, exercises }) {
+  if (!fromCoach) return null;
+  return sessionKey({ date, exercises });
+}
+
 /** Removes every tag, opened or closed, matched or not. */
 function stripAll(text) {
   return text

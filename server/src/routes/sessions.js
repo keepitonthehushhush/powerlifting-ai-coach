@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { codedError } from '../lib/errorCodes.js';
+import { clientKeyForWrite } from '../lib/sessionLogBlock.js';
 import { logger } from '../lib/logger.js';
 
 export const sessionsRouter = Router();
@@ -19,6 +20,14 @@ const SessionCreate = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   exercises: z.array(Exercise).min(1).max(60),
   notes: z.string().max(4000).nullish(),
+  /*
+   * "This came from the coach's card, so deduplicate it." A boolean, not a
+   * key: the key is derived on this side from the body being written, so the
+   * browser cannot reserve a string that a future real session would need.
+   * Absent from the manual form, which is why identical hand entries are
+   * never refused. See migration 0065.
+   */
+  from_coach: z.boolean().optional(),
 });
 
 /** GET /api/sessions - most recent first. */
@@ -59,21 +68,70 @@ sessionsRouter.post('/', async (req, res, next) => {
     if (!parsed.success) {
       throw codedError('invalid_request', 'Invalid session data.', { fields: parsed.error.flatten().fieldErrors });
     }
-    const { program_id, date, exercises, notes } = parsed.data;
+    const { program_id, date, exercises, notes, from_coach: fromCoach } = parsed.data;
+
+    /*
+     * The date is resolved BEFORE the key is derived, so a retry hashes the
+     * same string the first attempt did. Deriving from `date` and letting the
+     * insert default separately would give two keys to one workout on every
+     * request the browser sent without one.
+     */
+    const day = date ?? new Date().toISOString().slice(0, 10);
+    const clientKey = clientKeyForWrite({ fromCoach, date: day, exercises });
 
     const { data: session, error: sessionError } = await req.supabase
       .from('workout_sessions')
       .insert({
         user_id: req.user.id,
         program_id: program_id ?? null,
-        date: date ?? new Date().toISOString().slice(0, 10),
+        date: day,
         exercises,
         notes: notes ?? null,
+        client_key: clientKey,
       })
       .select('*')
       .single();
 
-    if (sessionError) throw codedError('storage_unavailable', 'Could not save the session.', { cause: sessionError.code });
+    if (sessionError) {
+      /*
+       * ── ALREADY LOGGED IS NOT AN ERROR ────────────────────────────────
+       *
+       * 23505 on this table can only be the partial unique index on
+       * (user_id, client_key): the workout is already there, put there by an
+       * earlier attempt that committed and then failed to answer, or by the
+       * coach offering the same session twice.
+       *
+       * So the existing row is fetched and returned as a success. A person
+       * who taps yes twice should be told it is saved, because it is - an
+       * error screen would push them to tap again, which is the one thing
+       * that must not help.
+       *
+       * The lookup is deliberately narrow. If it finds nothing, this was some
+       * other collision and the original failure is raised unchanged rather
+       * than swallowed into a false confirmation.
+       */
+      if (sessionError.code === '23505' && clientKey) {
+        const { data: existing } = await req.supabase
+          .from('workout_sessions')
+          .select('*')
+          // user_id as well as the key: RLS already scopes this, and saying
+          // it here makes the lookup an index hit on the same pair the
+          // constraint is built on rather than a filter after the fact.
+          .eq('user_id', req.user.id)
+          .eq('client_key', clientKey)
+          .maybeSingle();
+
+        if (existing) {
+          logger.info('sessions.already_logged', { userId: req.user.id, sessionId: existing.id });
+          // 200, not 201: nothing was created. The client shows the same
+          // confirmation either way, because to the athlete it is the same
+          // fact.
+          res.status(200).json({ session: existing, derivedLogs: 0, duplicate: true });
+          return;
+        }
+      }
+      throw codedError('storage_unavailable', 'Could not save the session.', { cause: sessionError.code });
+    }
 
     const logRows = exercises
       .filter((e) => e.weight != null && e.reps != null)

@@ -157,6 +157,7 @@ erDiagram
         uuid program_id FK
         date date
         jsonb exercises
+        text client_key "coach proposals only; null for hand entries. ADR-21"
     }
     PROGRESS_LOGS {
         uuid id PK
@@ -1194,6 +1195,70 @@ than holding a second `14` — which is how the copy went on promising fourteen
 days while the charge did something else. On a subscription that auto-renews
 that is not a typo, it is the disclosure ROSCA and the state auto-renewal laws
 are written about.
+
+
+### ADR-21 · The idempotency key for a logged session is derived from the session
+
+**Context.** The coach reads a workout out of a sentence, shows it on a card,
+and writes nothing until the athlete taps yes. Two paths turn one tap into two
+rows, and an adversarial review found both before either had happened in
+production:
+
+1. **A save that committed and then failed to answer.** A proxy 502, a timeout,
+   a dropped connection. The card deliberately stays on screen after a failure —
+   a card that vanishes has silently answered no on somebody's behalf — so the
+   obvious response is to tap again, and the second tap inserts a second row.
+2. **The coach offering the same session again.** The `session_log` block is
+   stripped before the reply is stored (ADR-9), so the model's own transcript
+   holds no trace that it already offered one. The prompt tells it not to
+   repeat itself, which is asking it to remember something the pipeline erased.
+
+A duplicate is not a cosmetic problem. `progress_logs` is fanned out from the
+session, so the charts double it, and the progression and deload rules read it
+as volume that was never lifted. It is wrong in the way that is hardest to
+notice: it looks like data.
+
+**Decision.** The key is a hash of the session's content — its date and its
+movements, in order, with every field that distinguishes one workout from
+another — and the constraint is a partial unique index on
+`(user_id, client_key) where client_key is not null` (migration `0065`).
+
+**Why content and not a request token.** A per-request idempotency token, the
+usual answer, closes path 1 and does nothing about path 2: a re-offer is a
+genuinely new request and carries a new token. The date and the movements are
+the same string both times, so one constraint closes both doors. The cost of
+that generality is stated in the migration rather than discovered later — an
+athlete who trains twice in one day with identical movements, sets, reps and
+loads, and describes both to the coach, has the second one refused.
+
+**Why NULL is allowed.** Postgres permits many NULLs in a unique index, and
+that is the whole reason for this shape. The manual log form sends no key, so
+the same athlete can enter that repeated workout by hand and it is kept. The
+escape hatch is what makes the trade honest.
+
+**Why the browser does not choose the key.** It sends a boolean — "this came
+from the card" — and the server derives the key from the body it is about to
+write. A client that could supply the key could reserve a string that some
+future real session would need, and that session would come back "already
+logged" having never been written. The flag is the whole of what is trusted,
+and it is trusted because the worst it can do is deduplicate the sender's own
+writes.
+
+**Why the day is stamped when the card arrives.** The date is part of the hash
+and the browser decides it, because the server is in UTC and the athlete is
+not. Deciding it at the moment of the tap would mean a first attempt at 23:59
+and its retry at 00:01 hash differently and write two rows — defeating the
+guard on the exact path it exists for. `withLocalDate()` settles it once, when
+the proposal appears.
+
+**Consequence.** A duplicate is answered `200` with the row that is already
+there and `duplicate: true`, not an error. Somebody who taps yes twice should
+be told it is saved, because it is; an error screen would push them to tap
+again, which is the one thing that must not help. The route returns before the
+`progress_logs` fan-out, so a duplicate cannot produce a second set of derived
+rows either. A `23505` whose row cannot then be found is raised unchanged —
+that was not this guard firing, and swallowing it would answer "saved" for a
+write that did not happen.
 
 
 ## 5. Operational notes

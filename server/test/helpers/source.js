@@ -48,6 +48,34 @@ export function stripComments(source) {
 }
 
 /**
+ * A migration with its SQL comments stripped.
+ *
+ * ── WHY THIS IS NOT readSource ────────────────────────────────────────────
+ *
+ * readSource strips JS comments - `//` and slash-star - and a .sql file uses
+ * neither. Passing a migration through it returns the file essentially whole,
+ * heading comments and all, and this codebase comments migrations at length.
+ * That has now produced two false greens:
+ *
+ *   - a check that a `body` column existed matched the word "nobody" in a
+ *     paragraph of prose
+ *   - a check that a unique constraint existed was satisfied by the header
+ *     comment QUOTING that constraint, so the assertion passed with the
+ *     constraint deleted
+ *
+ * Both are the same bug as the three that produced readSource, in a file type
+ * readSource does not cover. Two occurrences is enough.
+ */
+export function readMigration(url) {
+  return stripSqlComments(readFileSync(url, 'utf8'));
+}
+
+/** The same, for a migration already read - structural assertions use this. */
+export function stripSqlComments(source) {
+  return source.replace(/--.*$/gm, '');
+}
+
+/**
  * Collapse all runs of whitespace to single spaces.
  *
  * ── WHY ───────────────────────────────────────────────────────────────────

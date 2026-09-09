@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readSource, readRaw, flatten } from './helpers/source.js';
+import { readSource, readRaw, flatten, stripSqlComments } from './helpers/source.js';
 
 import { POLICY_VERSIONS } from '../src/lib/policyVersions.js';
 
@@ -20,8 +20,10 @@ const migration = readFileSync(
  * satisfied by the comment above it explaining why the constraint matters -
  * so deleting the constraint left the test green. Structural assertions read
  * this; assertions about the prose read `migration`.
+ *
+ * Now a shared helper, because migration 0065 needed the same guard.
  */
-const migrationSql = migration.replace(/--.*$/gm, '');
+const migrationSql = stripSqlComments(migration);
 const checkSmtp = readFileSync(new URL('../../scripts/check-smtp.mjs', import.meta.url), 'utf8');
 
 /**

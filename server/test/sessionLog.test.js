@@ -1,17 +1,24 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, flatten } from './helpers/source.js';
+import { readSource, readMigration, flatten } from './helpers/source.js';
 
 import {
   MAX_BACKDATE_DAYS,
+  clientKeyForWrite,
   extractSessionLogBlock,
   isLoggableDate,
+  sessionKey,
   toProfileWeights,
 } from '../src/lib/sessionLogBlock.js';
+import { withLocalDate } from '../../web/src/lib/proposedSession.js';
 
 const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
 const page = readSource(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
 const prompt = readSource(new URL('../src/prompts/systemPrompt.js', import.meta.url));
+const proposal = readSource(new URL('../../web/src/lib/proposedSession.js', import.meta.url));
+const migration0065 = readMigration(
+  new URL('../../supabase/migrations/0065_the_same_workout_cannot_be_logged_twice.sql', import.meta.url)
+);
 
 const block = (json) => `Strong work.\n\n<session_log>${json}</session_log>`;
 const SQUAT = '{"exercises": [{"exercise": "Back squat", "sets": 1, "reps": 3, "weight": 245}]}';
@@ -131,7 +138,11 @@ describe('nothing is written until they say yes', () => {
   test('yes posts to the endpoint the athlete already owns', () => {
     // No new privilege: POST /api/sessions is their own write path. The coach's
     // reading of their sentence is a pre-filled form, and this is submit.
-    assert.match(page, /await api\.logSession\(\{ date: mine\.session\.date \?\? localDate, \.\.\.mine\.session \}\)/);
+    const fn = page.slice(page.indexOf('async function confirmSession'), page.indexOf('async function dispatch'));
+    assert.match(flatten(fn), /await api\.logSession\(\{ \.\.\.mine\.session,/);
+    // The whole proposal, not a rebuilt subset: a field dropped here is a
+    // field the athlete confirmed and did not get.
+    assert.doesNotMatch(fn, /exercises: mine/);
   });
 
   test('the browser decides the date, because the server is in UTC and nobody lives there', () => {
@@ -139,12 +150,15 @@ describe('nothing is written until they say yes', () => {
      * California, nine in the evening, "hit a triple today" - already tomorrow
      * by UTC. Letting the server default it files every evening session a day
      * late, for every US athlete, forever, with nothing looking wrong.
+     *
+     * It is decided when the card arrives rather than when it is tapped, so a
+     * retry that crosses midnight is still the same workout - see
+     * proposedSession.js and the duplicate guard below.
      */
-    const fn = page.slice(page.indexOf('async function confirmSession'));
-    assert.match(fn, /getTimezoneOffset\(\)/, 'the local date is not computed');
-    assert.ok(
-      fn.indexOf('getTimezoneOffset()') < fn.indexOf('api.logSession'),
-      'the date is resolved after the request'
+    assert.match(proposal, /getTimezoneOffset\(\)/, 'the local date is not computed');
+    assert.equal(
+      withLocalDate({ session: { exercises: [] } }).session.date,
+      new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
     );
   });
 
@@ -339,5 +353,233 @@ describe('what the coach is told', () => {
         assert.match(strings, new RegExp(`${key}:`), `${locale} is missing ${key}`);
       }
     }
+  });
+});
+
+/*
+ * ── THE SAME WORKOUT, WRITTEN TWICE ─────────────────────────────────────────
+ *
+ * Two paths turn one session into two rows, and both were named in the commit
+ * that shipped the logging feature as NOT fixed:
+ *
+ *   1. A save that committed and then failed to answer - a proxy 502, a
+ *      timeout. The card deliberately stays up so they can try again, and the
+ *      second yes inserts a second row.
+ *   2. The coach offering the same session again. The block is stripped before
+ *      the reply is stored, so the model's own transcript holds no trace that
+ *      it already offered one.
+ *
+ * A duplicate reads to the progression and deload rules as volume that was
+ * never lifted: wrong in a way that looks like data.
+ */
+describe('one workout cannot become two rows', () => {
+  const SESSION = {
+    date: '2026-09-08',
+    exercises: [
+      { exercise: 'Back squat', sets: 5, reps: 3, weight: 315, rpe: 8, completed: true },
+      { exercise: 'Bench press', sets: 3, reps: 5, weight: 225, completed: true },
+    ],
+  };
+
+  test('the same session hashes the same way every time', () => {
+    // This is the retry: the identical body, posted twice.
+    assert.equal(sessionKey(SESSION), sessionKey(structuredClone(SESSION)));
+  });
+
+  test('and a different session does not', () => {
+    // Every field is part of the key, so a workout that differs anywhere is a
+    // different workout. Wrong in the safe direction: two rows for two
+    // sessions, never one row for two.
+    const changes = [
+      { ...SESSION, date: '2026-09-09' },
+      { ...SESSION, exercises: [{ ...SESSION.exercises[0], weight: 320 }, SESSION.exercises[1]] },
+      { ...SESSION, exercises: [{ ...SESSION.exercises[0], reps: 4 }, SESSION.exercises[1]] },
+      { ...SESSION, exercises: [{ ...SESSION.exercises[0], sets: 4 }, SESSION.exercises[1]] },
+      { ...SESSION, exercises: [{ ...SESSION.exercises[0], rpe: 9 }, SESSION.exercises[1]] },
+      { ...SESSION, exercises: [{ ...SESSION.exercises[0], completed: false }, SESSION.exercises[1]] },
+      { ...SESSION, exercises: [SESSION.exercises[0]] },
+      // Order carries meaning in a training log - squats then bench is not
+      // bench then squats - and nothing is sorted before hashing.
+      { ...SESSION, exercises: [SESSION.exercises[1], SESSION.exercises[0]] },
+    ];
+    for (const changed of changes) {
+      assert.notEqual(sessionKey(changed), sessionKey(SESSION), `${JSON.stringify(changed)} hashed the same`);
+    }
+  });
+
+  test('a missing field and a field set to nothing are not silently the same', () => {
+    // `{sets: 5}` and `{sets: 5, rpe: undefined}` must agree, or a proposal
+    // and its retry could differ over a key that was never there.
+    const bare = { date: '2026-09-08', exercises: [{ exercise: 'Deadlift', reps: 1, weight: 405 }] };
+    const explicit = {
+      date: '2026-09-08',
+      exercises: [{ exercise: 'Deadlift', sets: undefined, reps: 1, weight: 405, rpe: undefined }],
+    };
+    assert.equal(sessionKey(bare), sessionKey(explicit));
+  });
+
+  test('the key it produces is one the column will accept', () => {
+    /*
+     * Read out of the migration rather than copied, so widening one and not
+     * the other cannot pass. A key the CHECK rejects is not a duplicate guard
+     * at all - it is every coach-proposed save failing.
+     */
+    const constraint = migration0065.match(/client_key ~ '(\^\[[^']+)'/);
+    assert.ok(constraint, 'the migration no longer constrains the shape of client_key');
+    const shape = new RegExp(constraint[1]);
+    for (const candidate of [SESSION, { ...SESSION, date: '2026-01-01' }, { exercises: SESSION.exercises }]) {
+      assert.match(sessionKey(candidate), shape);
+    }
+  });
+
+  test('nothing sensible to hash returns no key rather than a key for nothing', () => {
+    assert.equal(sessionKey(null), null);
+    assert.equal(sessionKey({}), null);
+    assert.equal(sessionKey({ exercises: 'squats' }), null);
+  });
+});
+
+describe('what gets a key and what deliberately does not', () => {
+  const BODY = { date: '2026-09-08', exercises: [{ exercise: 'Squat', sets: 3, reps: 5, weight: 275 }] };
+
+  test('a session the coach proposed is deduplicated', () => {
+    assert.equal(clientKeyForWrite({ fromCoach: true, ...BODY }), sessionKey(BODY));
+  });
+
+  test('a session they typed themselves is never refused as a duplicate', () => {
+    /*
+     * The whole reason the column is nullable and the index is partial.
+     * Somebody who trained twice in one day and enters both by hand meant it,
+     * and Postgres allows many NULLs, so they are never fought.
+     */
+    for (const fromCoach of [undefined, false, null]) {
+      assert.equal(clientKeyForWrite({ fromCoach, ...BODY }), null);
+    }
+  });
+
+  test('the browser says only that it came from the card - it does not choose the key', () => {
+    /*
+     * A client that could hand over a key could reserve a string some future
+     * real session would need, and that session would come back "already
+     * logged" having never been written. So the flag is the only thing
+     * trusted, and the key is derived here from the body being saved.
+     */
+    const route = readSource(new URL('../src/routes/sessions.js', import.meta.url));
+    assert.match(route, /from_coach: z\.boolean\(\)\.optional\(\)/);
+    assert.match(route, /clientKeyForWrite\(\{ fromCoach, date: day, exercises \}\)/);
+    assert.doesNotMatch(route, /client_key: z\./, 'the write path accepts a key from the browser');
+  });
+
+  test('the day is settled before the key is taken', () => {
+    /*
+     * Hashing `date` and letting the insert default separately gives one
+     * workout two keys on every request that arrives without a day - which is
+     * every manual save, and would be every proposal if the browser ever
+     * stopped filling it in.
+     */
+    const route = readSource(new URL('../src/routes/sessions.js', import.meta.url));
+    const day = route.indexOf('const day =');
+    const key = route.indexOf('clientKeyForWrite(');
+    const insert = route.indexOf(".from('workout_sessions')\n      .insert(");
+    assert.ok(day > -1 && key > day, 'the key is derived before the day is resolved');
+    assert.ok(insert > key, 'the key is derived after the insert');
+    assert.match(route, /date: day,/);
+  });
+});
+
+describe('being told it is already logged is not an error', () => {
+  const route = readSource(new URL('../src/routes/sessions.js', import.meta.url));
+  const failure = route.slice(route.indexOf('if (sessionError) {'), route.indexOf('const logRows'));
+
+  test('a unique violation returns the session that is already there', () => {
+    assert.match(failure, /sessionError\.code === '23505'/);
+    assert.match(failure, /res\.status\(200\)/);
+    assert.match(failure, /duplicate: true/);
+  });
+
+  test('and it returns before writing the derived logs a second time', () => {
+    /*
+     * progress_logs is fanned out from the session below. Falling through on
+     * the duplicate path would leave one workout with two sets of derived
+     * rows, which is the same corruption by another door - the charts would
+     * show it, even though workout_sessions looked right.
+     */
+    assert.ok(failure.trimEnd().endsWith('}'), 'the failure branch no longer closes before the fan-out');
+    assert.match(failure, /res\.status\(200\)[\s\S]*?return;/);
+    assert.ok(route.indexOf('const logRows') > route.indexOf('duplicate: true'));
+  });
+
+  test('a collision it cannot explain is still an error', () => {
+    // If the lookup finds nothing, this was not the duplicate guard firing.
+    // Swallowing that would answer "saved" for a write that did not happen.
+    assert.match(failure, /if \(existing\) \{/);
+    assert.match(failure, /throw codedError\('storage_unavailable'/);
+  });
+
+  test('the lookup stays inside the athlete', () => {
+    // req.supabase carries their token, so RLS scopes it - and user_id is
+    // named anyway, which is also what makes it an index hit.
+    assert.doesNotMatch(failure, /supabaseAdmin/);
+    assert.match(failure, /\.eq\('user_id', req\.user\.id\)/);
+    assert.match(failure, /\.eq\('client_key', clientKey\)/);
+  });
+});
+
+describe('the constraint that makes the guard real', () => {
+  test('the index is unique, per athlete, and partial', () => {
+    assert.match(migration0065, /create unique index[\s\S]*?on public\.workout_sessions \(user_id, client_key\)/);
+    // Not global: two athletes doing the same workout on the same day is the
+    // ordinary case, not a collision.
+    assert.match(migration0065, /where client_key is not null/);
+  });
+
+  test('the column is added without a default, so nothing existing is claimed', () => {
+    /*
+     * Scoped to the ALTER, because the index below legitimately says "where
+     * client_key is not null" and a whole-file assertion matches it - the same
+     * false-negative shape that made a comment satisfy a constraint check.
+     */
+    const alter = migration0065.slice(
+      migration0065.indexOf('alter table'),
+      migration0065.indexOf('comment on column')
+    );
+    assert.match(alter, /add column if not exists client_key text/);
+    assert.doesNotMatch(alter, /default/);
+    // Backfilling every session that already exists with a key would refuse a
+    // workout somebody legitimately repeats.
+    assert.doesNotMatch(alter, /not null/);
+    assert.doesNotMatch(alter, /update public\.workout_sessions/);
+  });
+});
+
+describe('the card cannot defeat its own guard', () => {
+  test('the browser says where the save came from', () => {
+    assert.match(page, /from_coach: true/);
+  });
+
+  test('the manual log form does not', () => {
+    // It sends what the form built and nothing else. If it ever said
+    // from_coach, two identical hand-entered sessions would become one.
+    const form = readSource(new URL('../../web/src/pages/LogSession.jsx', import.meta.url));
+    assert.doesNotMatch(form, /from_coach/);
+  });
+
+  test('the day is stamped when the card arrives, not when it is tapped', () => {
+    /*
+     * A first attempt at 23:59 and its retry at 00:01 would otherwise post
+     * different days, hash differently, and write two rows - defeating the
+     * guard on the exact path it exists for.
+     */
+    assert.match(page, /setProposedSession\(withLocalDate\(result\.proposedSession\)\)/);
+    const confirm = page.slice(page.indexOf('async function confirmSession'), page.indexOf('async function dispatch'));
+    assert.doesNotMatch(confirm, /getTimezoneOffset/, 'the day is recomputed when they tap');
+    assert.match(proposal, /getTimezoneOffset/);
+  });
+
+  test('a day the coach gave is left alone', () => {
+    // "I squatted on Saturday" is Saturday, not today.
+    assert.equal(withLocalDate({ session: { date: '2026-09-05', exercises: [] } }).session.date, '2026-09-05');
+    assert.equal(withLocalDate(null), null);
+    assert.equal(withLocalDate(undefined), null);
   });
 });
