@@ -46,3 +46,6 @@ safety-eval-results.txt
 # repository that drifts from the first.
 *.tar.gz
 scripts/safety-runs/
+
+# Screenshots taken for a design review. Regenerable, and large.
+.design-shots/
