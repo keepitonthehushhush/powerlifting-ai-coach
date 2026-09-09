@@ -484,6 +484,33 @@ instruction. `sanitize.js` strips all three block tags from athlete-authored
 text before it reaches the prompt, and the route requires the profile block to
 be the last thing in the reply, since a quoted one lands mid-sentence.
 
+**Extended 2026-09-09 — a fourth block, and the first that writes nothing.**
+`<session_log>` reads a session out of what the athlete said in conversation and
+hands it to the browser as a **proposal**: a card asking "log this workout?"
+with the movements listed and a yes and a no. Nothing reaches
+`workout_sessions` until they tap yes.
+
+That inversion is the point rather than a precaution. A training log is read
+back months later to decide whether somebody is getting stronger, and it feeds
+the progression and deload rules — so a log with invented sets in it is *worse
+than an empty one*, because it is wrong in a way that looks like data, and the
+person who would have to catch the mistake is the one who cannot remember what
+they lifted in March. The model is good at reading "worked up to a triple, then
+two back-offs" out of a sentence; it is not the right thing to be *certain*
+about it. So it proposes and the athlete decides.
+
+**The confirm path adds no privilege.** On yes, the browser posts to
+`POST /api/sessions` — the endpoint the athlete already owns and could always
+have called with anything. The coach's reading of their sentence is a
+pre-filled form, not a new door, which is why this needed no table, no policy
+and no grant.
+
+Two refusals worth naming. A **future date** is rejected, because a plan filed
+as a record makes everything downstream believe work happened that did not, and
+"log tomorrow's session for me" sounds perfectly reasonable. And the prompt
+forbids **inventing a number the athlete did not say** — "squatted heavy today"
+yields a movement and nothing else, which is a correct entry.
+
 ### ADR-10 · The safety eval reports a ratio, not a boolean
 
 **Context.** One adversarial scenario passed a run and failed the next two with

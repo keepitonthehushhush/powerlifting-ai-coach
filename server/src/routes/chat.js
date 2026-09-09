@@ -7,6 +7,7 @@ import { startersFor } from '../lib/starters.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
+import { extractSessionLogBlock } from '../lib/sessionLogBlock.js';
 import {
   extractProfileUpdateBlock,
   isPlausibleChange,
@@ -434,10 +435,30 @@ chatRouter.post('/', async (req, res, next) => {
     } = extractIntentionBlock(extracted);
 
     const {
-      reply: prose,
+      reply: withoutProfile,
       update: profileUpdate,
       problem: profileProblem,
     } = extractProfileUpdateBlock(withoutIntention);
+
+    /*
+     * ── THE ONLY BLOCK THAT DOES NOT WRITE ────────────────────────────────
+     *
+     * Parsed, validated, stripped - and then handed to the browser as a
+     * PROPOSAL. Nothing reaches workout_sessions here. A training log is read
+     * back months later to decide whether somebody is getting stronger, and a
+     * log with invented sets in it is worse than no log: wrong in a way that
+     * looks like data, feeding the progression rules, and the person who has
+     * to catch it is the one least able to remember what they lifted in March.
+     *
+     * On yes the browser posts it to POST /api/sessions, which the athlete
+     * already owns and could already call with anything. So this adds no
+     * privilege - it is a pre-filled form, not a new door.
+     */
+    const {
+      reply: prose,
+      session: proposedSession,
+      problem: sessionProblem,
+    } = extractSessionLogBlock(withoutProfile);
 
     // Appended after the blocks are stripped, so the notice is never mistaken
     // for part of the program and never lands inside the JSON.
@@ -447,6 +468,11 @@ chatRouter.post('/', async (req, res, next) => {
       // The reason and never the content: the obstacle is the athlete's own
       // words about what stops them, and that is health data.
       logger.warn('intention.block_unusable', { userId: req.user.id, problem: intentionProblem });
+    }
+    if (sessionProblem) {
+      // The reason, never the content: the block describes what somebody's
+      // body did today.
+      logger.warn('session.block_unusable', { userId: req.user.id, problem: sessionProblem });
     }
     if (profileProblem) {
       // The reason and never the value, for the same reason: a bodyweight is a
@@ -983,6 +1009,29 @@ chatRouter.post('/', async (req, res, next) => {
       // null unless a row actually landed. Never "probably".
       savedProgram,
       savedProfile,
+      /*
+       * A suggestion awaiting a tap. Never a record of anything.
+       *
+       * The units ride along because the coach page deliberately holds no
+       * profile - see the openers, which travel as i18n keys for the same
+       * reason - and "315" with no unit on it is not something anybody should
+       * be asked to confirm.
+       */
+      proposedSession: proposedSession
+        ? {
+          session: proposedSession,
+          /*
+           * resolveProfileUnits, not a ternary that collapses everything into
+           * pounds. A unit we cannot name comes back null and the card shows
+           * the number without a label - which is honest, and harmless here
+           * because sessions store the athlete's own figure either way.
+           * A WRONG label on a number somebody is being asked to confirm is
+           * the thing worth avoiding, and the ternary is how the bodyweight
+           * write nearly shipped a factor-of-2.2 error.
+           */
+          units: resolveProfileUnits(context.profile?.units),
+        }
+        : null,
       /*
        * Absent for everybody who is not on a trial, rather than present and
        * null. A paying athlete's client should have no field to render, and a

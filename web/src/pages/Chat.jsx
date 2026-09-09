@@ -89,6 +89,15 @@ export function Chat() {
    */
   const [savedProfile, setSavedProfile] = useState(null);
   /*
+   * A session the coach read out of what the athlete said, waiting on a tap.
+   * NOT a record of anything - nothing is written until they answer, and the
+   * answer is theirs. See server/src/lib/sessionLogBlock.js for why the coach
+   * proposes rather than logs.
+   */
+  const [proposedSession, setProposedSession] = useState(null);
+  const [loggingSession, setLoggingSession] = useState(false);
+  const [loggedSession, setLoggedSession] = useState(null);
+  /*
    * ── HOW MANY FREE REPLIES ARE LEFT, AND WHEN TO SAY SO ──────────────────
    *
    * Null for everybody who is not on a trial - the server omits the field
@@ -178,6 +187,30 @@ export function Chat() {
     expanded: showAllMessages,
   });
 
+  /**
+   * They said yes. Post it to the endpoint they already own.
+   *
+   * No new privilege: POST /api/sessions is the athlete's own write path and
+   * they could always call it. The coach's reading of their sentence is a
+   * pre-filled form, and this is the submit button.
+   */
+  async function confirmSession() {
+    if (!proposedSession || loggingSession) return;
+    setLoggingSession(true);
+    setError(null);
+    try {
+      await api.logSession(proposedSession.session);
+      setLoggedSession(proposedSession.session);
+      setProposedSession(null);
+    } catch (err) {
+      // The proposal stays on screen so they can try again. A card that
+      // vanishes on failure has silently answered no on their behalf.
+      setError(errorText(err));
+    } finally {
+      setLoggingSession(false);
+    }
+  }
+
   /** Actually dispatch. Only ever called once the undo window has elapsed. */
   async function dispatch(text, optimistic) {
     setHolding(null);
@@ -198,6 +231,10 @@ export function Chat() {
       setMessages(result.messages);
       setSavedProgram(result.savedProgram ?? null);
       setSavedProfile(result.savedProfile ?? null);
+      // A new proposal replaces any previous one, and clears the confirmation
+      // of the last: two cards on screen is two things to answer.
+      setProposedSession(result.proposedSession ?? null);
+      setLoggedSession(null);
       // Only ever what the server just said. Never decremented here: the
       // browser guessing at a number the database owns is how a screen and an
       // enforcement start disagreeing.
@@ -367,6 +404,42 @@ export function Chat() {
             </span>
             <Link className="link" to="/account">
               {t('chat.trialLink')}
+            </Link>
+          </div>
+        )}
+
+        {proposedSession && (
+          <div className="program-saved session-proposal" role="status">
+            <span>
+              {t('chat.logThis', { count: proposedSession.session.exercises.length })}
+            </span>
+            <ul className="proposed-exercises">
+              {proposedSession.session.exercises.map((movement, index) => (
+                <li key={index}>
+                  {movement.exercise}
+                  {movement.sets && movement.reps ? ` ${movement.sets}x${movement.reps}` : ''}
+                  {movement.weight != null
+                    ? ` @ ${proposedSession.units ? formatWeight(movement.weight, proposedSession.units) : movement.weight}`
+                    : ''}
+                </li>
+              ))}
+            </ul>
+            <div className="row">
+              <button type="button" className="primary" onClick={confirmSession} disabled={loggingSession}>
+                {loggingSession ? t('chat.logging') : t('chat.logYes')}
+              </button>
+              <button type="button" className="link" onClick={() => setProposedSession(null)} disabled={loggingSession}>
+                {t('chat.logNo')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loggedSession && (
+          <div className="program-saved" role="status">
+            <span>{t('chat.logged')}</span>
+            <Link className="link" to="/progress">
+              {t('chat.loggedLink')}
             </Link>
           </div>
         )}

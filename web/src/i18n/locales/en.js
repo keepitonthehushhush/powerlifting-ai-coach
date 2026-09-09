@@ -503,6 +503,12 @@ export const en = {
     programSavedLink: 'Open your program',
     bodyweightSaved: 'Your bodyweight is now {weight} on your profile.',
     bodyweightSavedLink: 'Change it',
+    logThis: 'Log this workout? {count} movement(s).',
+    logYes: 'Yes, log it',
+    logNo: 'No thanks',
+    logging: 'Saving…',
+    logged: 'Logged. It is in your history.',
+    loggedLink: 'See your progress',
     // Says what is left and what it costs to keep going, and claims nothing
     // about what the coaching will do. If the replies did not sell it, a
     // sentence here was not going to.

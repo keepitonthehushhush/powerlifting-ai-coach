@@ -2207,6 +2207,22 @@ form > button.primary {
    The app saying what the app knows. It sits with the coach's bubble rather
    than with the athlete's, because it belongs to the reply - but it is not a
    bubble, because it is not something the coach said. */
+/* The "log this workout?" card. Same frame as a saved program - it is the same
+   kind of interruption - with the movements listed so somebody can check what
+   they are agreeing to BEFORE they agree to it. A confirmation that hides what
+   it is confirming is a button, not a choice. */
+.session-proposal .proposed-exercises {
+  list-style: none;
+  margin: 0.5rem 0 0.7rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-variant-numeric: tabular-nums;
+}
+.session-proposal .proposed-exercises li { color: var(--muted); }
+.session-proposal .row { gap: 0.75rem; align-items: center; }
+
 .program-saved {
   align-self: flex-start;
   display: flex;
