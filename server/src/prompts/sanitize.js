@@ -90,7 +90,11 @@ const SECTION_HEADING = /^#{1,6}[ \t]+/gm;
  * quoted block lands mid-reply, and this stops the forgery reaching the prompt
  * in the first place.
  */
-const BLOCK_TAGS = ['program_data', 'training_intention', 'profile_update'];
+const BLOCK_TAGS = ['program_data', 'training_intention', 'profile_update', 'session_log'];
+// Four now. Adding a block tag without adding it here leaves the athlete able
+// to write that structure into the prompt, which is the hole this list exists
+// to close - so the list is asserted against the tags the extractors define
+// rather than kept in step by memory. See sessionLog.test.js.
 const BLOCK_PATTERN = new RegExp(`<\\s*/?\\s*(?:${BLOCK_TAGS.join('|')})\\b[^>]*>`, 'gi');
 
 /** Default ceiling per field. Long enough for any honest answer. */

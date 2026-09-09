@@ -480,7 +480,7 @@ reverted.
 *The echo path is closed at both ends.* The block is the one piece of model
 output with a side effect, so ADR-9's argument — the model only produces text —
 holds only while text the athlete supplies cannot come back out as an
-instruction. `sanitize.js` strips all three block tags from athlete-authored
+instruction. `sanitize.js` strips all four block tags from athlete-authored
 text before it reaches the prompt, and the route requires the profile block to
 be the last thing in the reply, since a quoted one lands mid-sentence.
 

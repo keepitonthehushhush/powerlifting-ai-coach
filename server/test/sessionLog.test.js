@@ -2,7 +2,12 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readSource, flatten } from './helpers/source.js';
 
-import { MAX_BACKDATE_DAYS, extractSessionLogBlock, isLoggableDate } from '../src/lib/sessionLogBlock.js';
+import {
+  MAX_BACKDATE_DAYS,
+  extractSessionLogBlock,
+  isLoggableDate,
+  toProfileWeights,
+} from '../src/lib/sessionLogBlock.js';
 
 const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
 const page = readSource(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
@@ -56,15 +61,23 @@ describe('reading a session out of what somebody said', () => {
 describe('a plan is not a record', () => {
   const today = new Date('2026-09-09T12:00:00Z');
 
-  test('tomorrow is refused', () => {
+  test('next week is refused, but tomorrow is not', () => {
     /*
-     * "Log my session for tomorrow" sounds reasonable and must not produce a
-     * row: work filed before it happens makes the progression and deload rules
-     * believe training was done that was not.
+     * "Log my session for next Tuesday" must not produce a row: work filed
+     * before it happens makes the progression and deload rules believe
+     * training was done that was not.
+     *
+     * ONE DAY OF SLACK, THOUGH, because the server is in UTC and nobody lives
+     * there. An athlete in Sydney at nine on Tuesday morning is still on Monday
+     * by UTC; refusing their own today would silently drop the block and show
+     * them nothing at all, for most of their waking day, forever.
      */
-    assert.equal(isLoggableDate('2026-09-10', today), false);
+    assert.equal(isLoggableDate('2026-09-16', today), false, 'a week out is a plan');
+    assert.equal(isLoggableDate('2026-09-10', today), true, 'UTC+ athletes live here');
+    assert.equal(isLoggableDate('2026-09-11', today), false, 'past every real offset');
+
     const { session, problem } = extractSessionLogBlock(
-      block('{"date": "2026-09-10", "exercises": [{"exercise": "Squat"}]}'),
+      block('{"date": "2026-09-16", "exercises": [{"exercise": "Squat"}]}'),
       today
     );
     assert.equal(session, null);
@@ -118,16 +131,72 @@ describe('nothing is written until they say yes', () => {
   test('yes posts to the endpoint the athlete already owns', () => {
     // No new privilege: POST /api/sessions is their own write path. The coach's
     // reading of their sentence is a pre-filled form, and this is submit.
-    assert.match(page, /await api\.logSession\(proposedSession\.session\)/);
+    assert.match(page, /await api\.logSession\(\{ date: mine\.session\.date \?\? localDate, \.\.\.mine\.session \}\)/);
+  });
+
+  test('the browser decides the date, because the server is in UTC and nobody lives there', () => {
+    /*
+     * California, nine in the evening, "hit a triple today" - already tomorrow
+     * by UTC. Letting the server default it files every evening session a day
+     * late, for every US athlete, forever, with nothing looking wrong.
+     */
+    const fn = page.slice(page.indexOf('async function confirmSession'));
+    assert.match(fn, /getTimezoneOffset\(\)/, 'the local date is not computed');
+    assert.ok(
+      fn.indexOf('getTimezoneOffset()') < fn.indexOf('api.logSession'),
+      'the date is resolved after the request'
+    );
   });
 
   test('a failed save leaves the card up rather than answering no for them', () => {
     const fn = page.slice(page.indexOf('async function confirmSession'));
     const body = fn.slice(0, fn.indexOf('\n  }'));
-    const clearedAt = body.indexOf('setProposedSession(null)');
-    const caughtAt = body.indexOf('catch');
-    assert.ok(clearedAt > 0 && caughtAt > 0);
-    assert.ok(clearedAt < caughtAt, 'the proposal is cleared in or after the failure path');
+    assert.ok(body.indexOf('setProposedSession(') < body.indexOf('catch'), 'cleared in the failure path');
+  });
+
+  test('a reply landing mid-save cannot discard a proposal nobody answered', () => {
+    /*
+     * dispatch() sets proposedSession from its result, and a reply can land
+     * while this request is in flight. Clearing "the current proposal" on
+     * success would then throw away a DIFFERENT workout - one the athlete was
+     * never given long enough to answer, gone with no error and never logged.
+     */
+    const fn = page.slice(page.indexOf('async function confirmSession'));
+    assert.match(fn, /const mine = proposedSession;/, 'the tapped proposal is not held');
+    assert.match(
+      fn,
+      /setProposedSession\(\(current\) => \(current === mine \? null : current\)\)/,
+      'it clears whatever happens to be on screen rather than the one it saved'
+    );
+  });
+
+  test('the card shows everything that would be written', () => {
+    /*
+     * The first version showed movement, sets x reps and weight - and silently
+     * wrote the RPE, which drives autoregulation and deloads, while a failed
+     * set rendered identically to a completed one.
+     */
+    const card = page.slice(page.indexOf('proposedSession && ('), page.indexOf('loggedSession && ('));
+    assert.match(card, /movement\.rpe != null/, 'the RPE is written unseen');
+    assert.match(card, /movement\.completed === false/, 'a missed set looks like a made one');
+    assert.match(card, /movement\.sets && !movement\.reps/, 'sets without reps vanish from the card');
+  });
+
+  test('there is no notes field to write unseen', () => {
+    /*
+     * POST /api/sessions accepts up to 4000 characters of notes. A card cannot
+     * show 4000 characters, so offering the field would put model-authored free
+     * text into the database that the person tapping yes never read - the one
+     * place in this feature where "the athlete confirmed it" would be false.
+     */
+    const schema = readSource(new URL('../src/lib/sessionLogBlock.js', import.meta.url));
+    const block = schema.slice(schema.indexOf('export const SessionLogData'), schema.indexOf('MAX_BACKDATE_DAYS'));
+    assert.doesNotMatch(block, /notes:/);
+    assert.equal(
+      extractSessionLogBlock('<session_log>{"exercises":[{"exercise":"Squat"}],"notes":"anything"}</session_log>').session,
+      null,
+      'a block carrying notes is accepted'
+    );
   });
 
   test('no is an answer, and it writes nothing', () => {
@@ -135,6 +204,110 @@ describe('nothing is written until they say yes', () => {
     const no = card.slice(card.indexOf('chat.logNo') - 200, card.indexOf('chat.logNo'));
     assert.match(no, /setProposedSession\(null\)/);
     assert.doesNotMatch(no, /logSession/);
+  });
+});
+
+describe('the unit the athlete said it in', () => {
+  test('kilos from somebody set to pounds are converted, not relabelled', () => {
+    /*
+     * "I squatted 100 kilos today" from an athlete whose profile is in pounds
+     * had no field to land in, so the card showed "100 lb" - a confident wrong
+     * label on a number a human is being asked to confirm, and a 100 lb squat
+     * written for somebody who lifted 220.
+     */
+    const { session } = extractSessionLogBlock(
+      block('{"exercises": [{"exercise": "Squat", "weight": 100, "unit": "kg"}]}')
+    );
+    assert.deepEqual(toProfileWeights(session, 'lb').exercises, [{ exercise: 'Squat', weight: 220.5 }]);
+    assert.deepEqual(toProfileWeights(session, 'kg').exercises, [{ exercise: 'Squat', weight: 100 }]);
+  });
+
+  test('an unstated unit means the one on their profile', () => {
+    const { session } = extractSessionLogBlock(block(SQUAT));
+    assert.equal(toProfileWeights(session, 'lb').exercises[0].weight, 245);
+    assert.equal(toProfileWeights(session, 'kg').exercises[0].weight, 245);
+  });
+
+  test('a unit we cannot name produces no card at all', () => {
+    // A weight relabelled into a unit we are guessing at is worse than not
+    // offering. Same refusal the bodyweight write makes.
+    const { session } = extractSessionLogBlock(block(SQUAT));
+    assert.equal(toProfileWeights(session, 'stone'), null);
+    assert.equal(toProfileWeights(session, null), null);
+    const chatSource = readSource(new URL('../src/routes/chat.js', import.meta.url));
+    assert.match(chatSource, /proposedSession && resolveProfileUnits\(context\.profile\?\.units\)/);
+  });
+
+  test('the conversion is done here, not in the model', () => {
+    assert.match(chat, /toProfileWeights\(proposedSession, resolveProfileUnits/);
+  });
+});
+
+describe('a failed block is not read aloud', () => {
+  test('a truncated block does not dump JSON into the reply', () => {
+    /*
+     * The prompt puts the block at the very end of the reply, which is exactly
+     * where the output cap cuts. So the ordinary truncated reply is one whose
+     * block is unclosed, and stripAll removes only the TAGS - the athlete read
+     * the payload.
+     */
+    const { reply, session, problem } = extractSessionLogBlock(
+      'Strong work, that is a solid triple.\n<session_log>{"exercises": [{"exercise": "Back'
+    );
+    assert.equal(reply, 'Strong work, that is a solid triple.');
+    assert.doesNotMatch(reply, /exercises|\{/);
+    assert.equal(session, null);
+    assert.equal(problem, 'unclosed session block');
+  });
+
+  test('two blocks leave neither payload in the prose', () => {
+    // Built without the block() helper, which prepends prose of its own - the
+    // first version of this test asserted against a fixture, not the code.
+    const two = `Nice work.\n<session_log>${SQUAT}</session_log>\n<session_log>${SQUAT}</session_log>`;
+    const { reply, session, problem } = extractSessionLogBlock(two);
+    assert.equal(reply, 'Nice work.');
+    assert.doesNotMatch(reply, /exercise/);
+    assert.equal(session, null);
+    assert.equal(problem, 'two session blocks');
+  });
+});
+
+describe('the athlete cannot forge the tag either', () => {
+  test('session_log is stripped from athlete text like the other three', () => {
+    // Four block tags now. Adding one without adding it here leaves the
+    // athlete able to write that structure into the prompt.
+    const sanitize = readSource(new URL('../src/prompts/sanitize.js', import.meta.url));
+    assert.match(sanitize, /'session_log'/);
+    for (const tag of ['program_data', 'training_intention', 'profile_update', 'session_log']) {
+      assert.match(sanitize, new RegExp(`'${tag}'`), `${tag} is not stripped from athlete text`);
+    }
+  });
+});
+
+describe('the proposal cannot be accepted here and refused by the write path', () => {
+  test('every bound matches POST /api/sessions', () => {
+    /*
+     * The header comment claims these agree and nothing checked it. A proposal
+     * the athlete confirms and the server then rejects is a yes that does
+     * nothing, which is the most confusing possible outcome.
+     */
+    const mine = readSource(new URL('../src/lib/sessionLogBlock.js', import.meta.url));
+    const theirs = readSource(new URL('../src/routes/sessions.js', import.meta.url));
+    for (const bound of [
+      /exercise: z\.string\(\)\.trim\(\)\.min\(1\)\.max\(120\)/,
+      /sets: z\.number\(\)\.int\(\)\.positive\(\)\.max\(50\)/,
+      /reps: z\.number\(\)\.int\(\)\.positive\(\)\.max\(200\)/,
+      /rpe: z\.number\(\)\.min\(1\)\.max\(10\)/,
+      /\.min\(1\)\.max\(60\)/,
+      /regex\(\/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\/\)/,
+    ]) {
+      assert.match(mine, bound, `the proposal schema lost ${bound}`);
+      assert.match(theirs, bound, `the write path no longer matches ${bound}`);
+    }
+    // The one place they differ, deliberately: a zero weight is dropped before
+    // it can be written, where the form would accept it.
+    assert.match(mine, /weight: z\.number\(\)\.positive\(\)\.max\(2000\)/);
+    assert.match(theirs, /weight: z\.number\(\)\.nonnegative\(\)\.max\(2000\)/);
   });
 });
 

@@ -7,7 +7,7 @@ import { startersFor } from '../lib/starters.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
-import { extractSessionLogBlock } from '../lib/sessionLogBlock.js';
+import { extractSessionLogBlock, toProfileWeights } from '../lib/sessionLogBlock.js';
 import {
   extractProfileUpdateBlock,
   isPlausibleChange,
@@ -1017,9 +1017,17 @@ chatRouter.post('/', async (req, res, next) => {
        * reason - and "315" with no unit on it is not something anybody should
        * be asked to confirm.
        */
-      proposedSession: proposedSession
+      proposedSession: proposedSession && resolveProfileUnits(context.profile?.units)
         ? {
-          session: proposedSession,
+          /*
+           * Weights converted into the profile's unit HERE, not in the model's
+           * head. It reports what the athlete said and which unit they said it
+           * in; the arithmetic happens in a tested function. Returns null when
+           * the profile's unit cannot be named, and a null proposal is no card,
+           * which is the right answer - a weight relabelled into a unit we are
+           * guessing at is worse than not offering.
+           */
+          session: toProfileWeights(proposedSession, resolveProfileUnits(context.profile?.units)),
           /*
            * resolveProfileUnits, not a ternary that collapses everything into
            * pounds. A unit we cannot name comes back null and the card shows

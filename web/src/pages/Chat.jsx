@@ -196,12 +196,35 @@ export function Chat() {
    */
   async function confirmSession() {
     if (!proposedSession || loggingSession) return;
+    /*
+     * ── HOLD THE ONE THEY TAPPED ──────────────────────────────────────────
+     *
+     * A reply can land while this request is in flight, and dispatch() sets
+     * proposedSession from its result. Clearing "the current proposal" on
+     * success would then discard a DIFFERENT workout - one the athlete was
+     * never given long enough to answer, gone with no error and never logged.
+     *
+     * So the tapped proposal is captured here and only it is cleared, and only
+     * if it is still the one on screen.
+     */
+    const mine = proposedSession;
     setLoggingSession(true);
     setError(null);
     try {
-      await api.logSession(proposedSession.session);
-      setLoggedSession(proposedSession.session);
-      setProposedSession(null);
+      /*
+       * THE DATE IS DECIDED HERE, IN THE BROWSER, when the coach did not give
+       * one. The server is in UTC and the athlete is not: somebody in
+       * California saying "hit a triple today" at nine in the evening is
+       * already on tomorrow by UTC, and every evening session would be filed a
+       * day late, forever, with nothing looking wrong. The browser is the only
+       * participant that knows what day it is where they are standing.
+       */
+      const localDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+        .toISOString()
+        .slice(0, 10);
+      await api.logSession({ date: mine.session.date ?? localDate, ...mine.session });
+      setLoggedSession(mine.session);
+      setProposedSession((current) => (current === mine ? null : current));
     } catch (err) {
       // The proposal stays on screen so they can try again. A card that
       // vanishes on failure has silently answered no on their behalf.
@@ -414,13 +437,29 @@ export function Chat() {
               {t('chat.logThis', { count: proposedSession.session.exercises.length })}
             </span>
             <ul className="proposed-exercises">
+              {/*
+                * EVERYTHING THAT WOULD BE WRITTEN, not a summary of it. The
+                * first version showed the movement, sets x reps and weight -
+                * and silently wrote the RPE, which drives autoregulation and
+                * deloads, and a failed set rendered identically to a completed
+                * one. A confirmation that hides part of what it is confirming
+                * is a button wearing a choice's clothes.
+                *
+                * `sets` alone is shown too: "Back squat, 5 sets" is what the
+                * athlete said and what gets stored, and dropping it because
+                * there is no rep count made the card quietly disagree with the
+                * row behind it.
+                */}
               {proposedSession.session.exercises.map((movement, index) => (
                 <li key={index}>
                   {movement.exercise}
                   {movement.sets && movement.reps ? ` ${movement.sets}x${movement.reps}` : ''}
+                  {movement.sets && !movement.reps ? ` ${t('chat.logSets', { count: movement.sets })}` : ''}
                   {movement.weight != null
                     ? ` @ ${proposedSession.units ? formatWeight(movement.weight, proposedSession.units) : movement.weight}`
                     : ''}
+                  {movement.rpe != null ? ` ${t('chat.logRpe', { rpe: movement.rpe })}` : ''}
+                  {movement.completed === false ? ` — ${t('chat.logMissed')}` : ''}
                 </li>
               ))}
             </ul>

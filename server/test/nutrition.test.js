@@ -93,6 +93,17 @@ describe('fuellingRanges', () => {
     assert.match(promptSource, phrase('is the step that makes it a prescription'));
   });
 
+  test('the energy-availability figure is guarded too', () => {
+    /*
+     * Closing the macro-summing route and then adding "45 kcal per kg of
+     * fat-free mass" in the same change would have been funny if it were not
+     * the same defect: it is kilocalories per kilo, so it is one invented body
+     * fat estimate away from the daily calorie target, cited to ACSM.
+     */
+    assert.match(promptSource, /DO NOT MULTIPLY THAT FIGURE BY ANYTHING/);
+    assert.match(promptSource, phrase('one estimate of body fat away from being a daily calorie target'));
+  });
+
   test('an unknown bodyweight produces nothing rather than a guess', () => {
     for (const bodyweight of [null, undefined, 0, -5, NaN, 'heavy']) {
       assert.equal(fuellingRanges({ bodyweight, units: 'lb' }), null);
