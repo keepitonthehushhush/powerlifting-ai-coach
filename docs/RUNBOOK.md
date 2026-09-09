@@ -439,34 +439,57 @@ empty migrations directory reports "could not run", never "fine";
 `server/test/migrationLedger.test.js` pins that, and the guard was broken on
 purpose to confirm each assertion fails with the message it claims.
 
-**The preview database drifts, and on 2026-09-09 it was ten migrations
-behind.** Its ledger's last numbered entry is `0055`; production is at `0065`.
-Everything from the rate-limit cap (`0056`) onward is missing there, including
-`private.trial_usage` — so a preview exercising the free trial fails on a
-function that does not exist, and the environment built to prove the migrations
-are true has been proving nothing since 2026-09-01.
+**The preview database drifts, and nothing catches it up on its own.** On
+2026-09-09 it was ten migrations behind: its ledger stopped at `0055` while
+production was at `0067`. `private.trial_usage` did not exist there, so any
+preview exercising the free trial failed on a missing function, and the
+environment built to prove the migrations are true had been proving nothing
+since 2026-09-01.
 
-Nothing applies migrations to preview automatically. `npm run db:replay`
-refuses a database that already has application tables, by design, so catching
-it up means applying `0056`–`0065` to the preview project **in order**, then
-re-running the ledger check against it:
+It was caught up the same day by applying `0056`-`0067` to the preview project
+in order, and the two are now schema-identical. **Verify it that way rather than
+by counting migrations**, because a ledger can agree while the schema does not -
+that is the whole finding behind ADR-18. Take a fingerprint per table on both
+projects and compare:
 
-```sh
-DATABASE_URL='<preview SESSION POOLER URI>' npm run check:db
+```sql
+with cols as (
+  select table_name, md5(string_agg(column_name||':'||data_type||':'||is_nullable||':'||coalesce(column_default,'-'), ',' order by column_name)) as h
+  from information_schema.columns where table_schema='public' group by table_name
+), pol as (
+  select tablename as table_name, md5(string_agg(policyname||':'||coalesce(qual,'-')||':'||coalesce(with_check,'-')||':'||cmd, ',' order by policyname)) as h
+  from pg_policies where schemaname='public' group by tablename
+), idx as (
+  select tablename as table_name, md5(string_agg(indexdef, ',' order by indexname)) as h
+  from pg_indexes where schemaname='public' group by tablename
+), con as (
+  select c.relname as table_name, md5(string_agg(pg_get_constraintdef(k.oid), ',' order by pg_get_constraintdef(k.oid))) as h
+  from pg_constraint k join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' group by c.relname
+)
+select cols.table_name, cols.h as columns, coalesce(pol.h,'-') as policies,
+       coalesce(idx.h,'-') as indexes, coalesce(con.h,'-') as constraints
+from cols left join pol using (table_name) left join idx using (table_name) left join con using (table_name)
+order by cols.table_name;
 ```
 
-Do it after any change that touches `supabase/migrations/`, which is what
-ADR-18 already asks for and what had stopped happening. If the gap ever gets
-large enough that ordering is fiddly, deleting the preview project and
-replaying into a fresh empty one is the cheaper move — it is also the only
-thing that tests the replay end to end.
+Eighteen rows, four hashes each, and every one has to match. On 2026-09-09 all
+72 did. Run it after any change that touches `supabase/migrations/`, which is
+what ADR-18 already asks for and what had stopped happening.
 
-**Replaying is what found `0061`.** That file used `create or replace` to add
-two output columns to `trial_status()`, which PostgreSQL refuses; production
-had the right function only because it was applied by hand with the drop
-included. `server/test/migrationReplay.test.js` now fails on any function
-replaced with a different return signature, so the same shape cannot sit
-unnoticed again.
+`npm run db:replay` is NOT the tool for this - it refuses a database that
+already has application tables, by design. It is for a fresh empty project,
+which is the cheaper move if the gap ever gets large enough that ordering is
+fiddly, and is also the only thing that tests the replay end to end.
+
+**The catch-up is what proved the `0061` fix.** That file used `create or
+replace` to add two output columns to `trial_status()`, which PostgreSQL
+refuses; production had the right function only because it was applied by hand
+with the drop included. Preview had the three-column version from `0057`, so
+applying `0061` there was the first real replay of that pair - it succeeded,
+and preview now returns the five-column signature.
+`server/test/migrationReplay.test.js` fails on any function replaced with a
+different return signature, so the same shape cannot sit unnoticed again.
 
 **A preview says so.** Every page carries a "Preview build — not
 coachdiaz.app" bar. Confusing a preview tab for the live site is the mistake a
