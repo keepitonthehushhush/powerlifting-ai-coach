@@ -104,6 +104,69 @@ export const MEAL_SPACING_HOURS = [3, 4];
 /** Carbohydrate, g per kg per day, in a fat-loss phase. */
 export const CARB_G_PER_KG_DEFICIT = [2, 5];
 
+/**
+ * Carbohydrate, g per kg per day, BY TRAINING LOAD.
+ *
+ * ── WHY THIS EXISTS, AND WHAT IT CORRECTS ─────────────────────────────────
+ *
+ * This file used to say, in a comment, that "carbohydrate is only given a
+ * per-kg band in the fat-loss literature" and that supplying one otherwise
+ * would be "exactly the kind of confident fabrication this codebase keeps out
+ * of the prompt". The prompt said the same thing in its own words: do not
+ * invent a band the literature does not give.
+ *
+ * The literature gives one. The Academy of Nutrition and Dietetics, Dietitians
+ * of Canada and the American College of Sports Medicine publish these four
+ * bands in their joint position statement on Nutrition and Athletic
+ * Performance. So the coach has been refusing a question it could answer from
+ * a professional position stand, inside the scope this file already permits -
+ * a published population range, times a bodyweight - and the refusal was
+ * itself the confident wrong answer it was written to prevent.
+ *
+ * ── THE BANDS ARE DEFINED BY HOURS A DAY, NOT SESSIONS A WEEK ─────────────
+ *
+ * This is the part that would be easy to get wrong and would matter. The
+ * position statement defines these categories by DURATION: roughly an hour a
+ * day at the bottom, four to five hours a day at the top. A powerlifter
+ * training five days a week for seventy-five minutes is not in the top band -
+ * they are near the bottom of the table, whatever their training feels like.
+ *
+ * Mapping sessions-per-week onto these rows would put a serious but ordinary
+ * lifter at 8-12 g/kg/day, which for a 90 kg athlete is over a kilogram of
+ * carbohydrate a day. The number would look authoritative, be cited, and be
+ * wrong by a factor of two. So the computed default below covers only the two
+ * bands a strength athlete actually occupies, and the coach is given the
+ * definitions for the case where somebody is also doing a great deal of
+ * conditioning.
+ */
+export const CARB_G_PER_KG_BY_LOAD = Object.freeze({
+  light: [3, 5],
+  moderate: [5, 7],
+  high: [6, 10],
+  very_high: [8, 12],
+});
+
+/**
+ * The band a barbell athlete is in unless they say otherwise: the light and
+ * moderate rows taken together, because an hour or so a day of lifting spans
+ * exactly those two and picking between them from data we do not have would
+ * be a guess wearing a decimal point.
+ */
+export const CARB_G_PER_KG_STRENGTH = [
+  CARB_G_PER_KG_BY_LOAD.light[0],
+  CARB_G_PER_KG_BY_LOAD.moderate[1],
+];
+
+/**
+ * Energy availability associated with energy balance and optimal health, kcal
+ * per kg of FAT-FREE mass per day, from the same position statement.
+ *
+ * Stated, never computed, for the reason ENERGY_AVAILABILITY_FLOOR gives
+ * below: the arithmetic needs a body-fat estimate this product does not have
+ * and must not guess at.
+ */
+export const ENERGY_BALANCE_KCAL_PER_KG_FFM = 45;
+
 /** Dietary fat floor, g per kg per day. Below this is an endocrine problem. */
 export const FAT_FLOOR_G_PER_KG = 0.5;
 
@@ -170,16 +233,20 @@ export function fuellingRanges({ bodyweight, units = 'lb', inDeficit = false } =
     ],
   };
 
-  // Carbohydrate is only given a per-kg band in the fat-loss literature. In a
-  // maintenance or gaining phase the honest answer is "enough to train on",
-  // and inventing a number to fill the field would be exactly the kind of
-  // confident fabrication this codebase keeps out of the prompt.
-  if (inDeficit) {
-    ranges.carbPerDayG = [
-      g(kg * CARB_G_PER_KG_DEFICIT[0]),
-      g(kg * CARB_G_PER_KG_DEFICIT[1]),
-    ];
-  }
+  /*
+   * Carbohydrate, from whichever literature applies.
+   *
+   * In a deficit the fat-loss band is the right one and is narrower. Outside
+   * one, the ACSM/AND/DC bands by training load apply - see the constant above
+   * for why a barbell athlete gets the light-to-moderate span rather than a
+   * row chosen from how many days a week they lift.
+   *
+   * This used to be omitted entirely outside a deficit, on the stated grounds
+   * that no band existed. One does.
+   */
+  const [cLow, cHigh] = inDeficit ? CARB_G_PER_KG_DEFICIT : CARB_G_PER_KG_STRENGTH;
+  ranges.carbPerDayG = [g(kg * cLow), g(kg * cHigh)];
+  ranges.carbBasis = inDeficit ? 'fat-loss phase' : 'light to moderate training load';
 
   return ranges;
 }

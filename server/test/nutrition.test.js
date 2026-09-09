@@ -8,6 +8,7 @@ import {
   PROTEIN_G_PER_KG,
   WEEKLY_LOSS_FRACTION,
   KG_PER_LB,
+  CARB_G_PER_KG_BY_LOAD,
 } from '../src/lib/nutrition.js';
 import { describeFuelling, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
 
@@ -41,11 +42,36 @@ describe('fuellingRanges', () => {
     assert.ok(cutting.proteinPerDayG[0] > maintaining.proteinPerDayG[1]);
   });
 
-  test('carbohydrate is only given where the literature gives a band', () => {
-    // Outside a deficit the honest answer is "enough to train on". Filling the
-    // field with a number nobody published would be fabrication.
-    assert.equal(fuellingRanges({ bodyweight: 80, units: 'kg' }).carbPerDayG, undefined);
-    assert.ok(fuellingRanges({ bodyweight: 80, units: 'kg', inDeficit: true }).carbPerDayG);
+  test('carbohydrate comes from whichever literature applies', () => {
+    /*
+     * This test used to assert that carbPerDayG was UNDEFINED outside a
+     * deficit, and both the code and the prompt said the literature gave no
+     * band there. It does: the ACSM/AND/DC joint position statement publishes
+     * four, by training load. The test was faithfully pinning a false belief,
+     * which is the most expensive kind of green.
+     */
+    const maintaining = fuellingRanges({ bodyweight: 80, units: 'kg' });
+    const cutting = fuellingRanges({ bodyweight: 80, units: 'kg', inDeficit: true });
+
+    assert.deepEqual(maintaining.carbPerDayG, [240, 560], '3-5 to 5-7 g/kg at 80 kg');
+    assert.equal(maintaining.carbBasis, 'light to moderate training load');
+    assert.deepEqual(cutting.carbPerDayG, [160, 400], '2-5 g/kg at 80 kg');
+    assert.equal(cutting.carbBasis, 'fat-loss phase');
+  });
+
+  test('a barbell athlete is never put in the endurance bands', () => {
+    /*
+     * The bands are defined by HOURS A DAY. Somebody lifting five days a week
+     * for seventy-five minutes is near the bottom of that table, and mapping
+     * sessions-per-week onto it would hand a 90 kg lifter 8-12 g/kg/day - over
+     * a kilogram of carbohydrate, cited, authoritative, and wrong by a factor
+     * of two.
+     */
+    const ninety = fuellingRanges({ bodyweight: 90, units: 'kg' });
+    assert.ok(ninety.carbPerDayG[1] <= 90 * CARB_G_PER_KG_BY_LOAD.moderate[1]);
+    assert.ok(ninety.carbPerDayG[1] < 90 * CARB_G_PER_KG_BY_LOAD.high[1], 'reached the endurance band');
+    // And the function takes nothing that could put them there by accident.
+    assert.doesNotMatch(String(fuellingRanges), /days_per_week|trainingLoad|sessions/);
   });
 
   test('an unknown bodyweight produces nothing rather than a guess', () => {

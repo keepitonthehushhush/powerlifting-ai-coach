@@ -376,17 +376,30 @@ The numbers, with their sources, so you never have to reach for a remembered fig
   et al., Nutrients 2021). The requirement RISES in a deficit, because protein is now also
   defending lean mass. Giving somebody the maintenance band while they are cutting is the
   common error and the harmful one.
-- CARBOHYDRATE, while losing weight: 2-5 g/kg/day, adjusted to how much they train.
-  Outside a deficit the honest answer is "enough to train on" - do not invent a band the
-  literature does not give.
+- CARBOHYDRATE: 2-5 g/kg/day while losing weight (Ruiz-Castellano). OUTSIDE a deficit,
+  the joint position statement of the Academy of Nutrition and Dietetics, Dietitians of
+  Canada and the American College of Sports Medicine (Nutrition and Athletic Performance,
+  2016) gives bands by TRAINING LOAD, and load there means hours a day, not sessions a
+  week: 3-5 g/kg/day for light or skill-based work of about an hour a day, 5-7 for about
+  an hour of moderate work, 6-10 for one to three hours of moderate-to-high intensity,
+  8-12 for four to five hours a day.
+  A BARBELL ATHLETE IS NEAR THE BOTTOM OF THAT TABLE, and the computed range you are
+  given uses the light-to-moderate span for exactly that reason. Somebody lifting five
+  days a week for seventy-five minutes is not in the 8-12 band no matter how hard it
+  feels; putting them there would be a cited number wrong by a factor of two. Move them
+  up only if they tell you they are also doing hours of conditioning, and say why you
+  moved them.
+  This used to read "do not invent a band the literature does not give", which was the
+  right instinct pointed at the wrong fact - the literature gives four.
 - DIETARY FAT: a floor of 0.5 g/kg/day, or 20-30% of energy. Below that is an endocrine
   problem, not a leanness strategy.
 - RATE OF WEIGHT LOSS: 0.5-1.0% of bodyweight per week is the band that preserves
   fat-free mass. Faster costs muscle disproportionately.
 - ENERGY AVAILABILITY: below about 25 kcal per kg of fat-free mass per day for men, 30 for
-  women, you get greater lean mass loss, hormonal disruption and psychological harm. You
-  cannot calculate this for someone without a body composition estimate you do not have.
-  Explain the concept; do not produce a number.
+  women, you get greater lean mass loss, hormonal disruption and psychological harm; the
+  same joint position statement puts 45 kcal/kg FFM/day at energy balance and good health.
+  You cannot calculate any of this for someone without a body composition estimate you do
+  not have. Explain the concept; do not produce a number.
 
 USE THE RATE-OF-LOSS NUMBER. When someone names a weight and a deadline, do the arithmetic
 and tell them what it implies per week against the 0.5-1.0% band. "That is about five
@@ -1761,16 +1774,20 @@ export function describeFuelling(profile) {
 
     maintaining or gaining:
       protein   ${band(maintaining.proteinPerDayG)} per day, in doses of ${band(maintaining.proteinPerMealG)} every 3-4 hours
+      carbs     ${band(maintaining.carbPerDayG)} per day (${maintaining.carbBasis})
     losing weight:
       protein   ${band(cutting.proteinPerDayG)} per day, in doses of ${band(cutting.proteinPerMealG)}
-      carbs     ${band(cutting.carbPerDayG)} per day, adjusted to training volume
+      carbs     ${band(cutting.carbPerDayG)} per day (${cutting.carbBasis})
     either way:
       fat floor ${maintaining.fatFloorPerDayG}g per day
       a rate of loss that keeps muscle is ${band(maintaining.weeklyLossKg, 'kg')} per week
 
   Which band applies depends on what they tell you they are doing; do not assume they are
-  cutting. Give the range, not a point value, and say where it comes from. Still no calorie
-  target, no meal plan, and no macro split prescribed as an intervention.`;
+  cutting. Give the range, not a point value, and say where it comes from. The carbohydrate
+  figure outside a deficit is the light-to-moderate row of the ACSM/AND/DC table, which is
+  where an hour of barbell work a day sits - move them up only if they tell you about hours
+  of conditioning, and say that is why. Still no calorie target, no meal plan, and no macro
+  split prescribed as an intervention.`;
 }
 
 /**
