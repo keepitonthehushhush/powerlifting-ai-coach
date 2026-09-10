@@ -122,6 +122,23 @@ export function Home() {
         <ProgramDemo />
       </section>
 
+      {/*
+        * ── THE CLAIM NOTHING ELSE ON THIS PAGE MAKES ──────────────────────
+        *
+        * Placed immediately after "log what actually happened", because it is
+        * the answer to the question that step raises: why would anybody log?
+        * Because the next block is built out of it AND says so - see ADR-23.
+        *
+        * It goes above the general-AI section deliberately. That one argues
+        * against an alternative; this one states what the product does, and a
+        * page that argues before it says what it is has the order backwards.
+        */}
+      <section className="home-section">
+        <h2 className="home-h2">{t('home.changeTitle')}</h2>
+        <p>{t('home.changeBody')}</p>
+        <p>{t('home.changeBasis')}</p>
+      </section>
+
       <section className="home-section">
         <h2 className="home-h2">{t('home.aiTitle')}</h2>
         <p>{t('home.aiBody')}</p>
@@ -132,9 +149,73 @@ export function Home() {
         </p>
       </section>
 
+      {/*
+        * ── THE EVIDENCE, INCLUDING THE PART THAT IS UNFLATTERING ──────────
+        *
+        * Two peer-reviewed reviews, cited by name and linked, and the second
+        * one is deliberately the weaker result: supervision produced a
+        * moderate strength advantage and essentially nothing for body
+        * composition, and this product is not supervision anyway - it cannot
+        * see a bar path.
+        *
+        * Saying so is not modesty for its own sake. Every competing page in
+        * this category claims a transformation; the one thing that separates
+        * an honest claim from that noise is being willing to print the
+        * finding that does not help.
+        *
+        * ── AND THE LINKS DO NOT OPEN A NEW TAB ────────────────────────────
+        *
+        * Same rule as the exercise library: target="_blank" opens a tab with
+        * no history, so Back is dead in it and the app is still open behind,
+        * which on a phone reads as "it will not let me come back". The link
+        * text says where it goes and a line underneath says both leave the
+        * site, so the choice is made knowingly rather than sprung.
+        */}
+      <section className="home-section">
+        <h2 className="home-h2">{t('home.evidenceTitle')}</h2>
+        <p>{t('home.evidenceBody')}</p>
+        <p>
+          <a className="link" href="https://link.springer.com/article/10.1007/s40279-022-01717-9">
+            {t('home.evidenceLoad')}
+          </a>
+        </p>
+        <p>{t('home.evidenceHonest')}</p>
+        <p>
+          <a className="link" href="https://journal.iusca.org/index.php/Journal/article/view/101">
+            {t('home.evidenceSupervision')}
+          </a>
+        </p>
+        <p className="fineprint">{t('home.evidenceLeaves')}</p>
+      </section>
+
       <section className="home-section">
         <h2 className="home-h2">{t('home.gymTitle')}</h2>
         <p>{t('home.gymBody')}</p>
+      </section>
+
+      {/*
+        * ── WHO IT IS NOT FOR, IN THE SAME BREATH ──────────────────────────
+        *
+        * A beginner reading this page cannot currently tell whether they
+        * qualify, and the funnel says two of seven signups never opened the
+        * intake form at all. Naming the person this suits is the cheap half.
+        *
+        * Naming the people it does not suit is the half that earns the first
+        * half. It costs a few signups from lifters who would have left anyway
+        * and it is the only paragraph on the page that a competitor would not
+        * write, which is precisely why it belongs beside "what it will not do"
+        * rather than buried in an FAQ.
+        */}
+      <section className="home-section">
+        <h2 className="home-h2">{t('home.forTitle')}</h2>
+        <p>{t('home.forBody')}</p>
+        <h3 className="home-h3">{t('home.forNotTitle')}</h3>
+        <p>{t('home.forNotBody')}</p>
+      </section>
+
+      <section className="home-section">
+        <h2 className="home-h2">{t('home.costTitle')}</h2>
+        <p>{t('home.costBody')}</p>
       </section>
 
       <section className="home-section">

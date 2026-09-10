@@ -1,5 +1,6 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { SELLING } from './helpers/selling.js';
 import { CAPABILITIES, NOT_WORTH_DESCRIBING, describeCapabilities } from '../../web/src/lib/appCapabilities.js';
 import { buildSystemPrompt } from '../src/prompts/systemPrompt.js';
 import { readSource } from './helpers/source.js';
@@ -78,12 +79,9 @@ describe('the capability list matches the app that actually exists', () => {
      * in words nobody listed. It catches the ones people actually reach for
      * when they start selling, which is the failure mode being guarded.
      */
-    const SELLING = [
-      /\bguarantee/i, /\bfastest\b/i, /\bbest\b/i, /\bexplode\b/i, /\btransform/i,
-      /\bunlock\b/i, /\bmaximi[sz]e\b/i, /\bskyrocket/i, /\bcrush\b/i,
-      /\bget (?:you )?(?:strong|jacked|huge)/i, /\bin (?:just )?\d+ (?:days|weeks)\b/i,
-      /\bbetter than a (?:real |human )?coach\b/i,
-    ];
+    // The list moved to helpers/selling.js when the landing page needed the
+    // identical rule. Two copies of a rule drift, and the one that drifts is
+    // always the one nobody is looking at.
     for (const capability of CAPABILITIES) {
       for (const pattern of SELLING) {
         assert.doesNotMatch(

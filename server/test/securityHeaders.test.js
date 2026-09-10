@@ -164,7 +164,9 @@ const LINK_OUT_ONLY = {
   'https://www.youtube.com':
     'Exercise demonstrations are linked, never embedded - the standing rule about copyrighted video, and a privacy decision on top of it.',
   'https://link.springer.com':
-    'A citation in the FAQ. A link to a paper, not a resource this app loads.',
+    'A citation in the FAQ, and the self-selected-load review cited on the landing page. A link to a paper, not a resource this app loads.',
+  'https://journal.iusca.org':
+    'The supervision meta-analysis cited on the landing page - the one whose finding is unflattering. A link to a paper, not a resource this app loads.',
   'https://placeholder.invalid':
     'A sentinel used when Supabase is unconfigured, so the client constructor does not throw. It is deliberately not a real host.',
 };

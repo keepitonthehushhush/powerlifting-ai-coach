@@ -123,6 +123,32 @@ export const es = {
     step3Body:
       'Las buenas sesiones y las malas. Una repetición fallada es información, no un fracaso: el siguiente bloque se construye con ella.',
 
+    changeTitle: 'El siguiente bloque te dice qué cambió y por qué',
+    changeBody:
+      'Cuando Coach te escribe un programa nuevo, la página del programa enlista lo que de verdad se movió: cada carga que subió o bajó, cada ejercicio que se agregó o se quitó, y si cambió el número de días. Junto a cada cambio te dice de dónde salió.',
+    changeBasis:
+      'O lo pidieron tus series registradas —completaste todas las repeticiones con la carga anterior, así que subió el peso— o lo decidió Coach y las cuentas sobre tu registro apuntaban a otra cosa. Ese segundo caso no es un error y no se esconde. Un entrenador se aparta de los números por razones que el registro no alcanza a ver: una semana que faltaste, un hombro que mencionaste, una sentadilla que pediste dejar ligera. Lo que nunca deberían darte es un programa nuevo sin explicar en qué se diferencia del anterior.',
+
+    evidenceTitle: 'Solos, casi todos entrenamos demasiado ligero',
+    evidenceBody:
+      'En 18 estudios con 368 personas, quienes eligieron su propio peso escogieron alrededor del 53% de lo máximo que podían levantar. Los autores son cuidadosos con lo que eso significa: con cinco a quince repeticiones alcanza para que un principiante se haga más fuerte, y deja de alcanzar conforme avanzas. Que alguien te diga el número es buena parte de lo que hace un programa.',
+    evidenceLoad: 'La revisión sobre la carga: Steele y colegas, Sports Medicine, 2022',
+    evidenceHonest:
+      'El resto de la evidencia sobre entrenar con coach es más modesta de lo que suele admitir quien vende coaching. Al juntar doce ensayos con 577 personas, tener a alguien supervisando el entrenamiento dio una ventaja moderada en fuerza y prácticamente ninguna en composición corporal. Coach Diaz no está parado junto a ti y no puede ver la trayectoria de tu barra. Lo que sí puede hacer es decidir la carga, recordar los últimos tres meses y decirte con claridad cuál es la diferencia.',
+    evidenceSupervision: 'La revisión sobre supervisión: Fisher y colegas, International Journal of Strength and Conditioning, 2022',
+    evidenceLeaves: 'Los dos enlaces salen de este sitio.',
+
+    forTitle: 'Para quién es esto',
+    forBody:
+      'Llevas entrenando entre unas semanas y un par de años, quieres que suban tu sentadilla, tu press de banca y tu peso muerto, y ahora mismo nadie te escribe el entrenamiento. Puedes ir al gimnasio de dos a cinco días por semana. No necesitas saber qué es un mesociclo, y nadie te lo va a preguntar.',
+    forNotTitle: 'Para quién no es',
+    forNotBody:
+      'Encaja peor si ya tienes un entrenador en quien confías: una segunda opinión que no sabe lo que hace tu entrenador no es una segunda opinión. Si eres un competidor avanzado afinando para una competencia, esto no le va a ganar a alguien que ve la velocidad de tu barra en el gimnasio. Y si estás entrenando con una lesión, se detiene y te pide confirmar que un médico te autorizó antes de escribirte nada.',
+
+    costTitle: 'Cuánto cuesta',
+    costBody:
+      'Nada, mientras se está construyendo y probando. Para darte una idea de a dónde apunta: el coaching en línea con una persona suele costar entre cien y ciento cincuenta dólares al mes, y esto busca ser una alternativa para quien nunca iba a gastar eso. Si aparece un precio, va a estar en esta página antes de que a nadie le pidan una tarjeta.',
+
     aiTitle: '¿Por qué no preguntarle a una IA general?',
     aiBody:
       'Puedes hacerlo, y te escribirá algo que parece correcto. No lo recordará el mes que viene y nunca sabrá que fallaste las dos últimas repeticiones de cada serie pesada. Cuando siete expertos en fuerza y acondicionamiento evaluaron programas de doce semanas escritos por tres versiones de ChatGPT, un mismo error apareció en todas: quince repeticiones al 85% del máximo, una carga con la que casi nadie pasa de cinco.',

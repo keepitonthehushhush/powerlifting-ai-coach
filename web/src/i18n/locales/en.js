@@ -118,6 +118,32 @@ export const en = {
     step3Body:
       'The good sessions and the bad ones. A missed rep is information rather than a failure — the next block is built out of it.',
 
+    changeTitle: 'The next block says what changed, and why',
+    changeBody:
+      'When the coach writes you a new program, the program page lists what actually moved: every load that went up or came down, every exercise added or dropped, and whether the number of days changed. Beside each one it says where the change came from.',
+    changeBasis:
+      'Either your logged sets asked for it — every rep completed at the old weight, so the load went up — or the coach decided it and the arithmetic over your log said something else. That second case is not an error and it is not hidden. A coach departs from the numbers for reasons a log cannot see: a week you missed, a shoulder you mentioned, a squat you asked to keep light. What you should never be handed is a new program with no account of how it differs from the last one.',
+
+    evidenceTitle: 'Left to ourselves, most of us train too light',
+    evidenceBody:
+      'Across 18 studies and 368 people, lifters told to choose their own weight picked about 53% of the most they could lift. The authors are careful about what that means: with five to fifteen reps it is enough for a beginner to get stronger, and it stops being enough as you advance. Being told the number is most of what a program does for you.',
+    evidenceLoad: 'The load review: Steele and colleagues, Sports Medicine, 2022',
+    evidenceHonest:
+      'The rest of the coaching evidence is smaller than people selling coaching tend to admit. Pooling twelve trials and 577 people, having somebody supervise your training produced a moderate advantage in strength and essentially none in body composition. Coach Diaz is not standing next to you and cannot see your bar path. What it can do is decide the load, remember the last three months, and be straight with you about the difference.',
+    evidenceSupervision: 'The supervision review: Fisher and colleagues, International Journal of Strength and Conditioning, 2022',
+    evidenceLeaves: 'Both links leave this site.',
+
+    forTitle: 'Who this is for',
+    forBody:
+      'You have been lifting somewhere between a few weeks and a couple of years, you want your squat, bench and deadlift to go up, and nobody is currently writing your training. You can get to a gym two to five days a week. You do not need to know what a mesocycle is, and you will not be asked to.',
+    forNotTitle: 'Who it is not for',
+    forNotBody:
+      'It is a worse fit if you already have a coach you trust — a second opinion that does not know what your coach is doing is not a second opinion. If you are an advanced lifter peaking for a meet, this will not beat a person watching your bar speed in the room. And if you are training around an injury, it will stop and ask you to get cleared before it writes you anything.',
+
+    costTitle: 'What it costs',
+    costBody:
+      'Nothing, while it is being built and tested. For a sense of where it is trying to land: online coaching from a person generally runs somewhere around a hundred to a hundred and fifty dollars a month, and this is meant to be an alternative for people who were never going to spend that. If a price appears, it will be on this page before anybody is asked for a card.',
+
     aiTitle: 'Why not just ask a general AI?',
     aiBody:
       'You can, and it will write you something that looks right. It will not remember it next month, and it will never know that you missed the last two reps of every top set. When seven strength-and-conditioning experts scored twelve-week programs from three versions of ChatGPT, one error appeared in all of them: fifteen repetitions at 85% of maximum, a load almost nobody gets past five.',
