@@ -15,7 +15,7 @@ question without one.
 ```sql
 select u.created_at::date as signed_up,
        right(u.id::text, 6) as who,
-       u.last_sign_in_at::date as last_seen,
+       u.last_sign_in_at::date as last_signed_in,  -- NOT last seen; see below
        (select count(*) from public.consent_records r where r.user_id = u.id) > 0 as consented,
        p.date_of_birth is not null and p.goal is not null as finished_intake,
        (select count(*) from public.conversations c where c.user_id = u.id) as conversations,
@@ -158,3 +158,92 @@ fixed on 09-07.
   seven are still on a stale policy version with nothing telling them.
 - **n is seven and one of them is the developer.** Everything above is a
   direction to look, not a measurement.
+
+---
+
+## 2026-09-10: whether they came back, and the two instruments that lie about it
+
+The question above is where people STOP. This one is whether anybody stays,
+and it now has a script of its own:
+
+```
+set -a; source .env; set +a; npm run retention
+```
+
+Same privacy rules as the funnel — eight characters of an account id, dates and
+counts, no names, no health information, no training content. The arithmetic is
+in `scripts/lib/retention.mjs`, where it is tested against fixtures; ADR-22 has
+the design.
+
+### What it said the day it was written
+
+Seven accounts. Three ever came back after their first day. One of those three
+reached a second week, and that one is 86% of every visit in the database.
+
+| window | | |
+|---|---|---|
+| came back at all (24h+) | 3 of 7 | 43% |
+| active in week 1 (1–7d) | 3 of 6 | 50% |
+| active in week 2 (8–14d) | **1 of 3** | 33% |
+| active in week 3 | — | nobody is old enough yet |
+
+The denominators shrink because accounts too young for a window are not counted
+as having failed it. Four of the seven are less than two weeks old; reporting
+"1 of 7 reached week two" would have been a false red of exactly the shape the
+funnel script already had to retract once.
+
+**Nobody who is not the heavy account has been active past day two.** That is
+the finding, and it is n=2, and both of those numbers matter.
+
+### Two instruments that were right there and are wrong
+
+Neither of these is a judgment call. Both were measured against production on
+2026-09-10 and both would have produced a confident, plausible, wrong number.
+
+**`usage_events` looks like the perfect activity log and starts too late.** Its
+first row is 2026-08-27T21:47:23Z, from migration 0020. Two of the first three
+athletes had finished with this app before that. Built on it, a retention
+report states that `d0513497` — ten messages across two days — never once used
+the product. The message `at` stamps inside `conversations.messages` reach back
+to 2026-08-25, the first day anybody used this at all, so that is the source.
+
+**`auth.sessions` is not a history, and `last_sign_in_at` is not a last-seen.**
+`645ed72f` has server-written proof of activity on twelve days between 08-25 and
+09-10 and exactly ONE row in `auth.sessions`, created that morning: Supabase
+Auth deletes sessions progressively once they expire or are superseded. The
+table lists who is signed in *now*. It never claimed otherwise; it just reads
+like a log.
+
+The mirror image is in the same schema. `8bc672cb` sent its last message on
+08-27 and has refresh-token rows updated on four days through 09-04 — a browser
+tab waking up, not a person deciding to train. Note also what that account
+proves about the column in the query above: its `last_sign_in_at` still says
+08-27 while its tokens refreshed into September, so **`last_sign_in_at` moves on
+a sign-in and not on a visit.** Somebody who stays signed in for a month shows a
+month-old "last seen" that is nothing of the kind. The column is renamed above
+rather than removed, because it is a true fact about sign-ins and only the label
+was a lie.
+
+### What still cannot be seen, and what was built for it
+
+An athlete who opens the app in the gym, reads the session, pockets the phone
+and squats writes NOTHING. Every number above counts writes, so all of them are
+floors. Migration `0068` adds `public.activity_days` — one row per account per
+UTC day, two columns, both of them the primary key, no timestamp and no route —
+and the report reads it once there is anything to read. It cannot help the
+cohorts above: nobody who joined earlier gains a visit retroactively.
+
+One return it will still miss, stated so nobody finds it later and calls it a
+bug: `requireAuth` refuses an aal1 token on an account with a second factor, so
+somebody who comes back, meets the authenticator prompt and gives up is a
+returning athlete this never records.
+
+### What to watch next
+
+- **Whether anybody other than the heavy account reaches week two.** The
+  concentration line in the report is there so this cannot be read past.
+- **`activity_days` against the write-based signals.** The gap between them is
+  the size of the blind spot every earlier number was computed inside.
+- **Sessions logged per program.** Still one `progress_logs` row against three
+  programs. The loop is prescribe → train → log → adapt, and the log step has
+  happened once in sixteen days.

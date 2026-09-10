@@ -114,6 +114,7 @@ erDiagram
     AUTH_USERS ||--o{ CONVERSATIONS : owns
     AUTH_USERS ||--o{ USAGE_EVENTS : owns
     AUTH_USERS ||--o{ CONSENT_RECORDS : owns
+    AUTH_USERS ||--o{ ACTIVITY_DAYS : owns
     CONVERSATIONS ||--o{ USAGE_EVENTS : "cost of"
     WORKOUT_PROGRAMS ||--o{ WORKOUT_SESSIONS : prescribes
     WORKOUT_SESSIONS ||--o{ PROGRESS_LOGS : "fans out into"
@@ -180,6 +181,10 @@ erDiagram
         text consent_type
         boolean granted "withdrawal is a new row, never an update"
         text policy_version "what they agreed to, not just that they agreed"
+    }
+    ACTIVITY_DAYS {
+        uuid user_id PK "half of the key; there are no other columns. ADR-22"
+        date day PK "UTC. no time, no route, no count, no address"
     }
     EXERCISE_LIBRARY {
         uuid id PK
@@ -1259,6 +1264,94 @@ again, which is the one thing that must not help. The route returns before the
 rows either. A `23505` whose row cannot then be found is raised unchanged —
 that was not this guard firing, and swallowing it would answer "saved" for a
 write that did not happen.
+
+
+### ADR-22 · Retention is measured from writes, and one table exists because that is not enough
+
+**Context.** `funnel.mjs` answers "did they ever say anything to the coach",
+which is the beginning of this product rather than the end of it. A strength
+program is a claim about the next three months and nothing here could say
+whether one athlete had been present for the second week of one. Every open
+decision — turn the paywall on, shorten the intake, build the next thing — was
+an argument about retention with no retention number to argue against.
+
+**Decision.** `npm run retention` computes the curve from data the database
+already holds, and migration `0068` adds exactly one table to cover the single
+thing that data cannot see.
+
+**What is read, and what is deliberately not.** Activity is the union of a
+message to the coach (`conversations.messages[].at`), a logged workout, a
+program written, and a day the app was open (`activity_days`).
+
+`usage_events` is not read, though it looks perfect for this. It began
+recording on 2026-08-27, and two of the first three athletes had finished with
+the app before that; built on it the report would state that an account with
+ten messages across two days never used the product. That is the failure
+`funnel.mjs` shipped and had to retract — an instrument's start date printed as
+a person's behavior — and it is the reason the message `at` stamps, which reach
+back to the first day anybody used this, are the activity source instead.
+
+`auth.sessions` is not read either, and that took measuring rather than
+assuming. On 2026-09-10 one account had server-written proof of activity on
+twelve days across two and a half weeks and exactly one row in `auth.sessions`, created
+that morning: Supabase Auth deletes sessions progressively once they expire or
+are superseded, so the table is who is signed in *now* and never claimed
+otherwise. The mirror image sits in the same schema — an account that stopped
+writing on 08-27 has refresh-token activity on four days through 09-04, which
+is a browser tab waking up rather than a person deciding to train. One side
+loses visits that happened and the other invents visits that did not.
+
+**Why the curve is in elapsed hours and not in days.** Nothing in this system
+knows anybody's timezone. A lifter training at nine in the evening in
+California is stamped the following calendar day in UTC, so one Tuesday evening
+becomes two active days and calendar arithmetic announces a return visit that
+did not happen. "Was there anything between 24 and 168 hours after this account
+signed up" means the same thing everywhere. Calendar days are still printed,
+labeled UTC, as texture.
+
+**Why every window prints its denominator.** An account created yesterday has
+not failed to reach week two. Each window counts only accounts old enough for
+it to have *closed*, and a window nobody is old enough for says so rather than
+reporting zero — the same false red as the funnel bug, in a different costume.
+
+**Why the report names concentration instead of removing it.** One enthusiastic
+account can be the overwhelming majority of the database; today one is 86% of
+every visit. Nothing in these tables marks a test account, and a script that
+guessed would be inventing its own denominator, so it measures the share and
+prints it.
+
+**Why `activity_days` is a table and not a column.** `last_active_on` answers a
+different question — *when* somebody was last here, which cannot separate an
+athlete who trained four days a week for three weeks from one who signed up,
+vanished, and looked once the same afternoon. A curve needs the days, not the
+maximum.
+
+**Why it holds two columns and both are the key.** A date. Not a timestamp, not
+a route, not a count, not an address, not a user agent. Each of those is one
+line to add, each would make some future question answerable, and their sum is
+a behavioral surveillance log inside an application that also holds people's
+injuries. What this supports is exactly: did they come back, on how many days,
+in which week. If a future question genuinely needs more, the honest move is a
+new table with its own disclosure and its own retention period, not a quiet
+column here.
+
+**Why the middleware awaits.** Fire-and-forget after `next()` never makes an
+athlete wait on telemetry and, on Vercel, silently loses writes — the function
+can be frozen the moment the response is finished. A retention log with holes
+is worse than no retention log because it looks complete, and here it would be
+answering "they never came back" about somebody who did. The cost is bounded:
+`requireAuth` already makes a round trip to the auth server on every request,
+this adds one insert in the same region, and only on the first request an
+instance serves for that account that day. Whatever happens, `next()` is
+called — the two funnel stamps follow the same rule, and a telemetry write that
+can 500 a request is worse than the blind spot it was added to fix.
+
+**Consequence, stated on every run.** The report prints what it cannot see. It
+is mounted before the rate limiters, because a throttled visit is still a
+visit, but it sits after `requireAuth` — so an athlete who returns, meets the
+authenticator prompt and gives up is a returning athlete this never records.
+And for any cohort older than `activity_days` itself, the numbers stay floors:
+nobody who joined earlier gains a visit retroactively.
 
 
 ## 5. Operational notes

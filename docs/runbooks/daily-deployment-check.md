@@ -249,6 +249,40 @@ itself rather than reporting a confident zero. It also treats a sent message as
 proof of arrival, because the first version did not and printed three people
 who were visibly talking to the coach as never having reached it.
 
+### And whether they came back
+
+```
+npm run retention
+```
+
+Same privacy rules, and the companion to the one above: the funnel stops at
+"sent a message", which is the beginning of the product rather than the end.
+This prints, per account, how many visits and days it has and how far from
+signup the last one was, then a return curve — came back at all, week one, week
+two, week three, week four.
+
+Three things to read it with, all of which the report prints for you:
+
+- **The denominators shrink on purpose.** A window counts only accounts old
+  enough for it to have CLOSED. An account created yesterday has not failed to
+  reach week two, and counting it as a failure is how a young product convinces
+  itself nobody stays.
+- **The curve is in elapsed hours, not calendar days,** because nothing here
+  knows anybody's timezone and a nine-in-the-evening session in California is
+  stamped the next UTC day. The calendar-day column is texture; the curve is
+  the evidence.
+- **The concentration line.** When one account is more than half of all
+  activity — today it is 86% — every percentage above it is a statement about
+  that account. The script will not exclude anybody, because nothing in these
+  tables marks a test account and a script that guessed would be inventing its
+  own denominator.
+
+Every number is a **floor**. A visit that wrote nothing — opened the app, read
+the session, went and trained — was invisible until migration 0068 added
+`activity_days`, and no cohort older than that table gains a visit
+retroactively. ADR-22 has the rest, including why `usage_events` and
+`auth.sessions` are both deliberately unread.
+
 ## 7. Is anybody stuck on a policy version we no longer offer?
 
 ```
