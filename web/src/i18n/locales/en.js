@@ -88,6 +88,17 @@ export const en = {
    * the same strength. server/test/landing.test.js holds them together.
    */
   home: {
+    demoSaid: 'Squat felt heavy today. Got four at 275 and missed the fifth.',
+    demoReplied:
+      "That is a miss at the top of your working range, not a bad day - you held 275 for four. Next week we hold the same weight and get the fifth rep rather than adding load on top of a set you did not finish.",
+    demoLogged: 'Back squat logged — 275 lb, 4 reps, one missed.',
+    demoCaption: 'An example conversation. Nothing is written to your log until you say yes.',
+    demoDay: 'Day 1 · Push',
+    demoBench: 'Bench press',
+    demoPlates1: '2 × 45 per side',
+    demoPlates2: '2 × 45, 1 × 10 per side',
+    demoPlates3: '2 × 45, 1 × 25 per side',
+    demoProgramCaption: 'An example of a written day. The plate math is worked out from the plates you say your gym has.',
     headline: 'A strength coach that reads what you actually lifted.',
     subhead:
       'Coach Diaz writes you a powerlifting program, then rebuilds it from the sessions you log — not from the sessions the plan assumed you would have.',

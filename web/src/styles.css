@@ -1859,6 +1859,72 @@ form > button.primary {
   margin-inline: auto;
 }
 
+/* ── THE PRODUCT, ON THE PAGE THAT SELLS IT ────────────────────────────────
+ *
+ * Live markup rather than a screenshot - components/HomeDemo.jsx argues that
+ * at length, and the short version is that there are twenty theme-and-mode
+ * combinations and a PNG is correct in one of them.
+ *
+ * Which means these rules do almost nothing: `.bubble`, `.program-saved` and
+ * `.program-table` are the app's own, and that is the point. What is here is
+ * the frame around them and the one override the marketing page needs, which
+ * is to stop centering text that is meant to look like an interface.
+ *
+ * Every spacing value comes off --space-*, because landing.test.js checks that
+ * and is right to: an arbitrary 22px beside a 24px is visible even when nobody
+ * can say why. It caught four raw rem values in the first draft of this block.
+ */
+.home-demo {
+  margin: 0 auto;
+  max-width: 34rem;
+  text-align: left;
+}
+
+/* The "screen". Recessed rather than raised: it is a picture of the app, and
+   a card that sits ON the page competes with the real cards elsewhere on it. */
+.home-demo-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: clamp(var(--space-2), 3vw, var(--space-3));
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--surface-2);
+}
+
+/* Wider than in the app, where a bubble leaves room for the next one beside
+   it. Here there is no conversation to make room for. */
+.home-demo-screen .bubble { max-width: 100%; }
+
+/* No motion. The check drawing itself is a signal that something just
+   happened; on a page somebody is scrolling it would fire on every visit and
+   mean nothing, which is how a signal becomes decoration. */
+.home-demo-card { animation: none; }
+.home-demo-card .saved-check path { animation: none; stroke-dashoffset: 0; }
+
+.home-demo-day {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+
+.home-demo-caption {
+  margin: var(--space-2) 0 0;
+  text-align: left;
+}
+
+/* Its own class rather than `.home-section home-demo-section`.
+ *
+ * Sharing the class put a padding-top: 0 override on the FIRST .home-section
+ * on the page, and check-computed-styles.mjs - which captures by selector -
+ * duly reported that .home-section's padding had changed. It had, for the
+ * element it happened to match first. A class that exists to be overridden
+ * immediately is two rules arguing; one class that says what it wants is one.
+ *
+ * Less top padding than a normal section on purpose: this sits directly under
+ * the call to action and is evidence for it, not a new subject. */
+.home-demo-section { padding: var(--space-4) 0 var(--space-6); }
+
 .home-honest {
   list-style: none;
   margin: 0 auto;

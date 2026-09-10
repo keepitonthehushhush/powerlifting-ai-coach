@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { Wordmark } from '../components/Logo.jsx';
+import { ConversationDemo, ProgramDemo } from '../components/HomeDemo.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 
 /**
@@ -82,6 +83,18 @@ export function Home() {
         <p className="muted small home-free">{t('home.free')}</p>
       </section>
 
+      {/*
+        * ── SHOW THE THING ──────────────────────────────────────────────────
+        *
+        * Directly under the offer, before "How it works", because the sentence
+        * that follows a promise should be evidence for it rather than three
+        * more paragraphs of promise. See components/HomeDemo.jsx for why this
+        * is live markup rather than a screenshot.
+        */}
+      <section className="home-demo-section">
+        <ConversationDemo />
+      </section>
+
       <section className="home-section">
         <h2 className="home-h2">{t('home.howTitle')}</h2>
         {/* An ordered list because the order is the point: it cannot program
@@ -101,6 +114,12 @@ export function Home() {
             <p>{t('home.step3Body')}</p>
           </li>
         </ol>
+
+        {/* After the steps rather than beside step 2: a table wedged into a
+            three-column grid on a laptop is unreadable, and the claim it
+            supports - "specific numbers, worked out in ordinary code" - is
+            step 2's whole point, so it reads fine underneath. */}
+        <ProgramDemo />
       </section>
 
       <section className="home-section">

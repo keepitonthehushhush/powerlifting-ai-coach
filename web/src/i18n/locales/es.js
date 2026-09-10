@@ -93,6 +93,17 @@ export const es = {
   },
 
   home: {
+    demoSaid: 'La sentadilla se sintió pesada hoy. Saqué cuatro con 275 y fallé la quinta.',
+    demoReplied:
+      'Eso es un fallo en la parte alta de tu rango de trabajo, no un mal día: aguantaste 275 por cuatro. La próxima semana mantenemos el mismo peso y sacamos la quinta repetición, en lugar de subir la carga sobre una serie que no terminaste.',
+    demoLogged: 'Sentadilla registrada — 275 lb, 4 repeticiones, una fallada.',
+    demoCaption: 'Una conversación de ejemplo. No se escribe nada en tu registro hasta que dices que sí.',
+    demoDay: 'Día 1 · Empuje',
+    demoBench: 'Press de banca',
+    demoPlates1: '2 × 45 por lado',
+    demoPlates2: '2 × 45, 1 × 10 por lado',
+    demoPlates3: '2 × 45, 1 × 25 por lado',
+    demoProgramCaption: 'Un ejemplo de un día escrito. El cálculo de discos se hace con los discos que dices que tiene tu gimnasio.',
     headline: 'Un entrenador de fuerza que lee lo que de verdad levantaste.',
     subhead:
       'Coach Diaz te escribe un programa de powerlifting y luego lo rehace a partir de las sesiones que registras, no de las que el plan daba por hechas.',
