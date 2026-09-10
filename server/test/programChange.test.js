@@ -79,6 +79,22 @@ describe('which block the new one replaced', () => {
     assert.equal(previousBlock(null, rows[0]), null);
   });
 
+  test('the coach still resolves the active block by its flag, not by being newest', () => {
+    /*
+     * The chat route used to ask for `is_active` directly and get one row.
+     * It now takes the newest three and picks, because it needs the block
+     * BEFORE the active one as well - and the tempting shortcut, rows[0], is
+     * wrong for the same reason previousBlock does not use rows[1]: a failed
+     * or retried save can leave a newer inactive row, and the coach would then
+     * be programming against a block nobody is training on.
+     */
+    const context = chat.slice(chat.indexOf('async function loadCoachingContext'));
+    assert.match(context, /programs\.find\(\(p\) => p\.is_active\) \?\? null/);
+    assert.doesNotMatch(context, /programs\[0\]/);
+    // And it must still ask for enough rows to contain a predecessor.
+    assert.match(context, /from\('workout_programs'\)[\s\S]{0,200}?\.limit\(3\)/);
+  });
+
   test('the route and the coach use the same function', () => {
     // Two callers deciding independently which block was the previous one is
     // exactly how a page and a coach come to disagree about somebody's own
