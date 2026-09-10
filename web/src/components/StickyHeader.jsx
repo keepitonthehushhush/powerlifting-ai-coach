@@ -56,6 +56,55 @@ export function StickyHeader({ children }) {
   const lastY = useRef(0);
   const ref = useRef(null);
 
+  /**
+   * ── TELL THE BROWSER HOW MUCH OF THE TOP IS SPOKEN FOR ────────────────────
+   *
+   * `scroll-padding-top` was `auto`, which means "flush to the top of the
+   * viewport" - and the top of the viewport is where this header is. So every
+   * scroll the BROWSER performs put its target underneath it: an anchor, a
+   * find-in-page match, and above all keyboard focus, which scrolls a control
+   * to the nearest edge whenever it is off-screen. On the intake form, which
+   * is long, tabbing upward hides the field you just moved to.
+   *
+   * The codebase already knew. ErrorSummary scrolls with `block: 'center'`
+   * and says why in a comment - "so the sticky header cannot cover it" - and
+   * Intake's deep link does the same. Those are two local workarounds for a
+   * document-level fact, and they only help the scrolls WE perform. The ones
+   * the browser performs on its own had nothing.
+   *
+   * So the height is published as a custom property and the stylesheet spends
+   * it once, on the scroll container. Measured rather than hardcoded for the
+   * same reasons NewVersionBanner measures itself: this header condenses,
+   * wraps on a phone, is taller in Spanish, and grows with the reader's font
+   * size. That component established the pattern; this follows it, including
+   * removing the property on the way out so a page without a sticky header
+   * does not inherit a reservation for one.
+   */
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    const root = document.documentElement;
+
+    let published = null;
+    const publish = () => {
+      const height = element.offsetHeight;
+      // Only on a real change: this runs inside a scroll-driven measurement
+      // and writing a custom property invalidates style on every frame.
+      if (height === published) return;
+      published = height;
+      root.style.setProperty('--sticky-header-height', `${height}px`);
+    };
+
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--sticky-header-height');
+    };
+  }, []);
+
   useEffect(() => {
     // Threshold, not raw delta: without it a one-pixel scroll jitter flips the
     // header back and forth and the page appears to vibrate.

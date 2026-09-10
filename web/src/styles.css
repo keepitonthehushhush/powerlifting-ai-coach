@@ -773,6 +773,32 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
    animates on every scroll gesture is precisely the movement that provokes
    vestibular symptoms, and "it looks nice" is not a reason to make somebody
    feel ill. */
+/* ── HOW MUCH OF THE TOP IS ALREADY SPOKEN FOR ─────────────────────────────
+ *
+ * scroll-padding-top was `auto`, and auto means "flush to the top of the
+ * viewport" - which is precisely where .sticky-header is. So every scroll the
+ * BROWSER performs landed its target underneath the header: anchors,
+ * find-in-page, and above all keyboard focus, which scrolls a control to the
+ * nearest edge whenever it is off-screen. Tabbing up a long form hid the field
+ * being moved to.
+ *
+ * Two places in this codebase already worked around it one scroll at a time -
+ * ErrorSummary and Intake's deep link both pass `block: 'center'` and both say
+ * why. That only fixes the scrolls we perform. This fixes the ones we do not,
+ * which are most of them, and it is the property the platform provides for
+ * exactly this.
+ *
+ * On :root because :root is the scroll container. Both heights are published
+ * by the components that own them and are absent otherwise, so on a page with
+ * no header and no banner this resolves to a small breathing space rather than
+ * to a gap somebody has to explain.
+ */
+:root {
+  scroll-padding-top: calc(
+    var(--banner-height, 0px) + var(--sticky-header-height, 0px) + var(--space-2)
+  );
+}
+
 .sticky-header {
   position: sticky;
   /* NOT 0. The new-version banner is also `sticky; top: 0`, and sticky does
