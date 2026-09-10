@@ -199,6 +199,21 @@ export function Program() {
                   ))}
                 </div>
               )}
+              {/*
+                * ── FIVE COLUMNS DO NOT FIT A PHONE ──────────────────────────
+                *
+                * Without this the table squeezed instead of scrolling, and the
+                * weight column - which carries a load AND its plate
+                * breakdown - wrapped to four lines per row: "225 lb / 2 x 45 /
+                * per / side". A prescription is a thing somebody reads at arm's
+                * length between sets, and that is the one place it must not
+                * turn into a column of fragments.
+                *
+                * The same treatment the coach's own tables already get, and
+                * the same argument: the table scrolls inside its own box and
+                * the page never scrolls sideways.
+                */}
+              <div className="program-table-scroll">
               <table className="program-table">
                 <thead>
                   <tr>
@@ -275,6 +290,7 @@ export function Program() {
                   ))}
                 </tbody>
               </table>
+              </div>
               {(() => {
                 const heaviest = heaviestLoadout(day);
                 if (!heaviest) return null;

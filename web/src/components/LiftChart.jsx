@@ -28,7 +28,20 @@ export function LiftChart({ title, points, units }) {
 
   if (points.length === 0) return null;
 
-  function onMove(event) {
+  /**
+   * ── THIS USED TO BE onMouseMove, AND ONLY onMouseMove ─────────────────────
+   *
+   * Which meant the readout under this chart was unreachable on a phone, on a
+   * tablet, and from a keyboard - and the caption cheerfully said "Hover a
+   * point for the details" to people whose devices have no hover. Most of the
+   * athletes using this product will never touch a mouse.
+   *
+   * `pointer` events rather than `mouse` events: one handler for a mouse, a
+   * finger and a pen, which is the whole reason the pointer model exists.
+   * `pointerdown` is what makes a tap work - on touch, `pointermove` only
+   * fires once a drag is already underway, so a plain tap would land nowhere.
+   */
+  function pick(event) {
     const svg = event.currentTarget;
     const rect = svg.getBoundingClientRect();
     // The SVG scales with the container, so client pixels must be converted
@@ -46,6 +59,39 @@ export function LiftChart({ title, points, units }) {
     setHover(nearest);
   }
 
+  /**
+   * Arrow keys walk the points, which is the whole of the keyboard story.
+   *
+   * The readout below is already `aria-live="polite"`, so moving the selection
+   * announces the new point without anything further - the accessible surface
+   * was built correctly and simply had no way to be driven. WCAG 2.1.1 is not
+   * satisfied by information that exists only under a pointer.
+   *
+   * Escape clears rather than trapping somebody on a point they landed on by
+   * accident, and Home/End are there because a chart of forty sessions should
+   * not need forty key presses to reach the last one.
+   */
+  function onKeyDown(event) {
+    const dots = chart.dots;
+    if (!dots.length) return;
+    const at = hover ? dots.findIndex((d) => d.date === hover.date) : -1;
+    let next;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = Math.min(at + 1, dots.length - 1);
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = at <= 0 ? 0 : at - 1;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = dots.length - 1;
+    else if (event.key === 'Escape') {
+      setHover(null);
+      return;
+    } else return;
+
+    // Only once the key is known to be one of ours: swallowing arrow keys the
+    // chart does not use would stop the page scrolling for no reason.
+    event.preventDefault();
+    setHover(dots[next]);
+  }
+
   return (
     <figure className="chart">
       <figcaption className="chart-title">{title}</figcaption>
@@ -55,8 +101,18 @@ export function LiftChart({ title, points, units }) {
         role="img"
         aria-label={t('progress.chartLabel', { lift: title, count: points.length })}
         className="chart-svg"
-        onMouseMove={onMove}
-        onMouseLeave={() => setHover(null)}
+        /* Focusable, so the arrow keys have somewhere to land. role="img"
+           with a label stays: the picture is still a picture, and the live
+           readout below is what actually speaks. */
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onPointerDown={pick}
+        onPointerMove={pick}
+        /* Not on pointerup: lifting a finger should leave the reading on
+           screen to be read, which is the entire point of tapping it. A mouse
+           leaving clears it, and Escape clears it. */
+        onPointerLeave={() => setHover(null)}
+        onBlur={() => setHover(null)}
       >
         <clipPath id={clipId}>
           <rect x={chart.plot.left} y={chart.plot.top} width={chart.plot.width} height={chart.plot.height} />
@@ -126,7 +182,16 @@ export function LiftChart({ title, points, units }) {
             {hover.completed ? '' : ` — ${t('progress.missed')}`}
           </>
         ) : (
-          <span className="muted">{t('progress.hoverHint')}</span>
+          /*
+           * Both strings render and CSS picks one, rather than a matchMedia
+           * read at mount. An iPad that gains a trackpad, or a laptop with a
+           * touchscreen, changes answer without a re-render - and neither
+           * needs this component to know it happened.
+           */
+          <>
+            <span className="muted hint-pointer">{t('progress.hoverHint')}</span>
+            <span className="muted hint-touch">{t('progress.tapHint')}</span>
+          </>
         )}
       </p>
 

@@ -93,6 +93,51 @@ const WATCHED = [
 ];
 
 /** The properties worth pinning. Layout and color, not everything. */
+/**
+ * Are these two computed values the same, allowing for the browser's own
+ * arithmetic drifting under us?
+ *
+ * ── WHY THIS IS NOT `a !== b` ANY MORE ────────────────────────────────────
+ *
+ * On 2026-09-10 this reported twelve changes that nobody had made:
+ *
+ *   was: oklab(0.36689 0.00072503 -0.00241879)
+ *   now: oklab(0.366916 0.000724034 -0.00241548)
+ *
+ * Every one of them was an `--elev-*` token, every one resolved through
+ * `color-mix(in oklab, ...)`, and every one differed in the fifth or sixth
+ * decimal place. Proven not to be ours by stashing the working tree and
+ * running the check on a clean checkout, where the same twelve appeared: a
+ * Chrome update had changed how it rounds a color-mix.
+ *
+ * THE DANGER IS NOT THE FALSE ALARM, IT IS WHAT A FALSE ALARM TEACHES. The
+ * documented response to this check failing is `-- --update`, and a check that
+ * cries wolf every time the browser updates trains the person running it to
+ * re-record without reading. The next real change then goes in under the same
+ * keystroke.
+ *
+ * So numbers compare numerically with a tolerance and everything else compares
+ * exactly. 1e-4 is far below anything a screen can show - a color channel
+ * would have to move ten thousand steps further to shift one 8-bit value - and
+ * far above the drift seen here.
+ */
+const NUMERIC_TOLERANCE = 1e-4;
+
+export function sameValue(a, b) {
+  if (a === b) return true;
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+
+  // The same structure with different numbers in it, or nothing.
+  const NUMBER = /-?\d*\.?\d+(?:e[+-]?\d+)?/gi;
+  if (a.replace(NUMBER, '#') !== b.replace(NUMBER, '#')) return false;
+
+  const left = a.match(NUMBER) ?? [];
+  const right = b.match(NUMBER) ?? [];
+  if (left.length !== right.length) return false;
+
+  return left.every((value, i) => Math.abs(Number(value) - Number(right[i])) <= NUMERIC_TOLERANCE);
+}
+
 const PROPS = [
   'color', 'backgroundColor', 'borderTopColor', 'borderTopWidth', 'borderRadius',
   'fontSize', 'fontWeight', 'lineHeight', 'fontFamily',
@@ -475,7 +520,7 @@ async function main() {
       for (const prop of Object.keys(was[selector])) {
         const a = was[selector][prop];
         const b = now[selector][prop];
-        if (a !== b) problems.push(`${key}  ${selector}  ${prop}\n        was: ${a}\n        now: ${b}`);
+        if (!sameValue(a, b)) problems.push(`${key}  ${selector}  ${prop}\n        was: ${a}\n        now: ${b}`);
       }
     }
   }
