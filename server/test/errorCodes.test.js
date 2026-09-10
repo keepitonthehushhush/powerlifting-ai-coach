@@ -2,7 +2,14 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { ERROR_CODES, ERROR_CODE_KEYS, RETIRED_IDS, codedError, displayCode } from '../src/lib/errorCodes.js';
-import { describeCoachReply, coachError, TRUNCATION_NOTICE } from '../src/lib/coachOutcome.js';
+import {
+  describeCoachReply,
+  coachError,
+  coachApiError,
+  classifyUpstreamFailure,
+  UPSTREAM_REASONS,
+  TRUNCATION_NOTICE,
+} from '../src/lib/coachOutcome.js';
 import { RECORDABLE_DETAIL_KEYS } from '../src/lib/errorRecord.js';
 import { readSource, readRaw, phrase } from './helpers/source.js';
 
@@ -308,5 +315,118 @@ describe('what the athlete sees', () => {
 
   test('and a missing code degrades to the sentence', () => {
     assert.match(api, /if \(!code \|\| !\(error\?\.status >= 500\)\) return message;/);
+  });
+});
+
+describe('why the model said no, in a word we chose', () => {
+  /*
+   * ── THE DAY THIS WAS WRITTEN ──────────────────────────────────────────────
+   *
+   * A 400 happened twice, five seconds apart, on 2026-09-10. Two rows landed
+   * in error_events carrying `upstreamStatus: 400` and nothing else, and a 400
+   * is the one status whose reason lives nowhere but the message.
+   *
+   * Instrumentation added the day before logs that reason to the platform's
+   * runtime log stream, which - asked for the ten minutes around the failure,
+   * five hours later - answered ExceedsBillingLimitError and returned nothing.
+   * Two attempts at the same question, both defeated by where the answer was
+   * put rather than by whether it was captured.
+   */
+  const upstream = (status, message = '') => ({ status, error: { error: { message } } });
+
+  test('a 400 is split by the only thing that can split it', () => {
+    assert.equal(
+      classifyUpstreamFailure(upstream(400, 'prompt is too long: 210000 tokens > 200000 maximum')),
+      UPSTREAM_REASONS.prompt_too_long
+    );
+    assert.equal(
+      classifyUpstreamFailure(upstream(400, 'max_tokens: 64000 > 8192, which is the maximum allowed')),
+      UPSTREAM_REASONS.max_tokens_too_large
+    );
+    assert.equal(
+      classifyUpstreamFailure(upstream(400, 'all messages must have non-empty content')),
+      UPSTREAM_REASONS.empty_content
+    );
+  });
+
+  test('a 400 nobody has seen is its own answer, not the nearest guess', () => {
+    /*
+     * `invalid_request_other` exists so the classifier never has to round a
+     * new failure into an old bucket. A count of "we do not know yet" is a
+     * true and useful number; a misfiled one is a wrong lead.
+     */
+    assert.equal(
+      classifyUpstreamFailure(upstream(400, 'something entirely new')),
+      UPSTREAM_REASONS.invalid_request_other
+    );
+  });
+
+  test('every other reason comes from the status, which is documented and stable', () => {
+    for (const [status, reason] of [
+      [429, UPSTREAM_REASONS.rate_limited],
+      [529, UPSTREAM_REASONS.overloaded],
+      [401, UPSTREAM_REASONS.credentials],
+      [403, UPSTREAM_REASONS.credentials],
+      [402, UPSTREAM_REASONS.billing],
+      [413, UPSTREAM_REASONS.request_too_large],
+      [500, UPSTREAM_REASONS.server_error],
+      [504, UPSTREAM_REASONS.timeout],
+    ]) {
+      assert.equal(classifyUpstreamFailure(upstream(status)), reason, `status ${status}`);
+    }
+  });
+
+  test('a timeout is a timeout however it arrives', () => {
+    // The SDK gives up on its own timer without a status at all, and that is
+    // the common case - the athlete waited and nothing came back.
+    assert.equal(classifyUpstreamFailure({ name: 'APIConnectionTimeoutError' }), UPSTREAM_REASONS.timeout);
+    assert.equal(classifyUpstreamFailure({ code: 'ETIMEDOUT' }), UPSTREAM_REASONS.timeout);
+  });
+
+  test('nothing at all is unclassified rather than a crash', () => {
+    assert.equal(classifyUpstreamFailure(null), UPSTREAM_REASONS.unclassified);
+    assert.equal(classifyUpstreamFailure({}), UPSTREAM_REASONS.unclassified);
+  });
+
+  test('THE REASON TRAVELS, THE VENDOR\'S SENTENCE DOES NOT', () => {
+    /*
+     * The line this whole mechanism exists under. error_events is built so a
+     * vendor's prose cannot end up in it: this product's messages are health
+     * information, and a vendor that ever quoted the offending content back
+     * would put it in a table the README promises holds none.
+     */
+    const err = upstream(400, 'prompt is too long: SQUAT 315 LEFT SHOULDER PAIN');
+    const coded = coachApiError(err);
+    assert.equal(coded.details.upstreamReason, UPSTREAM_REASONS.prompt_too_long);
+    const serialised = JSON.stringify(coded.details);
+    assert.doesNotMatch(serialised, /SHOULDER/i, 'the vendor message reached the details object');
+    assert.doesNotMatch(serialised, /upstreamMessage|upstreamType/, 'vendor prose or vendor vocabulary is being stored');
+  });
+
+  test('and it is a key the recorder may actually write', () => {
+    // A detail key the JS allowlist filters out is a field that looks recorded
+    // and is not - which is how upstreamStatus would have been lost too.
+    assert.ok(RECORDABLE_DETAIL_KEYS.includes('upstreamReason'));
+  });
+
+  test('every reason the classifier can produce is one the database accepts', () => {
+    /*
+     * The value CHECK is a closed list in SQL and UPSTREAM_REASONS is a closed
+     * list in JavaScript. A reason that is in one and not the other is either a
+     * rejected write - losing the whole row - or a constraint that is
+     * decorative. The same two-copies problem the detail whitelist has, and it
+     * is asserted the same way.
+     */
+    const dir = new URL('../../supabase/migrations/', import.meta.url);
+    const owner = readdirSync(new URL('.', dir).pathname)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+      .reverse()
+      .map((f) => readRaw(new URL(f, dir)))
+      .find((text) => text.includes('error_events_upstream_reason_shape'));
+    assert.ok(owner, 'no migration constrains the upstream reason');
+    const at = owner.indexOf("detail ->> 'upstreamReason' in (");
+    const inCheck = [...owner.slice(at, owner.indexOf(')', at)).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    assert.deepEqual(inCheck.sort(), Object.values(UPSTREAM_REASONS).sort());
   });
 });

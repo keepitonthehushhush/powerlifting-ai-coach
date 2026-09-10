@@ -1,5 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { readSource, readRaw, phrase } from './helpers/source.js';
 import {
   RECORDABLE_DETAIL_KEYS,
@@ -27,6 +29,32 @@ import {
  */
 
 const migration = readRaw(new URL('../../supabase/migrations/0034_error_events.sql', import.meta.url));
+
+/**
+ * The CHECK as the LATEST file states it, not as 0034 first wrote it.
+ *
+ * ── WHY THIS IS LOOKED UP RATHER THAN NAMED ───────────────────────────────
+ *
+ * The detail whitelist has been restated three times now - 0048 added the
+ * crash-report keys, 0060 added the platform ones, 0069 added the upstream
+ * reason - and each restatement is the whole list again, because that is what
+ * `drop constraint` / `add constraint` means. A test that reads 0034 is
+ * reading the first version of a list that has moved on twice, which is the
+ * same defect shape as reading the first migration that mentions a function
+ * and assuming it still describes it.
+ *
+ * The owner is read from function-owners.json, which migrationOrdering.test.js
+ * already holds to the files themselves - so the two tests cannot disagree
+ * about which file is current.
+ */
+const detailCheckOwner = (() => {
+  const ledger = JSON.parse(
+    readRaw(new URL('../../supabase/migrations/function-owners.json', import.meta.url))
+  );
+  const entry = ledger['constraint error_events_detail_check'];
+  assert.ok(entry?.owner, 'the ledger no longer records who owns the detail whitelist');
+  return readRaw(new URL(`../../supabase/migrations/${entry.owner}`, import.meta.url));
+})();
 const account = readSource(new URL('../src/routes/account.js', import.meta.url));
 const handler = readSource(new URL('../src/middleware/errorHandler.js', import.meta.url));
 const recorder = readRaw(new URL('../src/lib/errorRecord.js', import.meta.url));
@@ -72,19 +100,93 @@ describe('the table', () => {
 describe('what may be written about a person', () => {
   /** The whitelist as the CHECK constraint states it. */
   const inMigration = (() => {
-    const at = migration.indexOf("check (detail - array[");
+    const at = detailCheckOwner.indexOf('check (detail - array[');
     assert.notEqual(at, -1, 'the detail whitelist is not where this test looks for it');
-    const block = migration.slice(at, migration.indexOf(']', at));
+    const block = detailCheckOwner.slice(at, detailCheckOwner.indexOf(']', at));
     return [...block.matchAll(/'([A-Za-z]+)'/g)].map((m) => m[1]);
   })();
 
-  test('THE TWO COPIES OF THE WHITELIST AGREE, IN BOTH DIRECTIONS', () => {
-    // One list in Postgres and one in JavaScript is a thing that drifts. The
-    // duplication is deliberate - filtering only in the database loses the
-    // whole row on a rejected write, and filtering only in JS makes the
-    // constraint decorative - so the agreement is asserted instead.
+  /** The keys the browser's report may carry, as clientErrors.js validates them. */
+  const inClientSchema = (() => {
+    const route = readSource(new URL('../src/routes/clientErrors.js', import.meta.url));
+    const at = route.indexOf('const detailSchema = z');
+    assert.notEqual(at, -1, 'the client detail schema is not where this test looks for it');
+    const block = route.slice(at, route.indexOf('.strict()', at));
+    return [...block.matchAll(/^\s{4}([A-Za-z]+):/gm)].map((m) => m[1]);
+  })();
+
+  test('EVERY KEY THE DATABASE ACCEPTS IS ONE SOME WRITER ACTUALLY SENDS', () => {
+    /*
+     * ── WHY THIS IS A UNION AND NOT AN EQUALITY ───────────────────────────
+     *
+     * It used to assert that the CHECK and RECORDABLE_DETAIL_KEYS were the
+     * same list. That was true when the server was the only writer. It stopped
+     * being true at 0048, when the browser became the second one - and the
+     * test kept passing for a year because it was reading migration 0034, the
+     * FIRST file to state the whitelist, which 0048, 0060 and 0069 have each
+     * since restated in full.
+     *
+     * A stale copy that agrees with an old list is worse than no test: it
+     * reports agreement between two things it is not comparing.
+     *
+     * What has to hold with two writers is a union. Every key either writer
+     * can send must be accepted by the database, or the row is lost on write;
+     * and every key the database accepts must be sent by somebody, or it is
+     * surface nobody fills and nobody will notice going wrong.
+     *
+     * That second half is the one that mattered. `platform` and `standalone`
+     * were accepted by the database and sent by the browser and REJECTED by
+     * the server schema in between, so client crash reporting was answered 400
+     * and written nowhere from 2026-09-07 until this was found.
+     */
     assert.ok(inMigration.length >= 10, `parsed ${inMigration.length} keys from the CHECK`);
-    assert.deepEqual([...inMigration].sort(), [...RECORDABLE_DETAIL_KEYS].sort());
+    const writable = new Set([...RECORDABLE_DETAIL_KEYS, ...inClientSchema]);
+
+    const rejectedOnWrite = [...writable].filter((key) => !inMigration.includes(key)).sort();
+    assert.deepEqual(rejectedOnWrite, [], 'a writer can send keys the database CHECK would reject');
+
+    const nobodySends = inMigration.filter((key) => !writable.has(key)).sort();
+    assert.deepEqual(nobodySends, [], 'the database accepts keys no writer sends');
+  });
+
+  test('and the browser, the server and the database name the same nine platforms', () => {
+    // Three copies of one list, in three languages, none of which can import
+    // the others. The agreement is the only thing holding them together.
+    const route = readSource(new URL('../src/routes/clientErrors.js', import.meta.url));
+    const browser = readSource(new URL('../../web/src/lib/crashReport.js', import.meta.url));
+    const named = (source, marker) => {
+      const at = source.indexOf(marker);
+      assert.notEqual(at, -1, `${marker} is no longer where this test looks`);
+      return [...source.slice(at, source.indexOf(']', at)).matchAll(/'([a-z-]+)'/g)]
+        .map((m) => m[1])
+        .sort();
+    };
+    /*
+     * The platform VALUE check lives in whichever migration last restated it,
+     * which is not the one that last restated the KEY list - 0069 widened the
+     * keys and left the value constraints alone. Found by scanning rather than
+     * named, for the reason this whole file just learned: a hardcoded filename
+     * is a snapshot of who owned something on the day it was written.
+     */
+    const inCheck = (() => {
+      const dir = new URL('../../supabase/migrations/', import.meta.url);
+      const owner = readdirSync(fileURLToPath(dir))
+        .filter((f) => f.endsWith('.sql'))
+        .sort()
+        .reverse()
+        .map((f) => readRaw(new URL(f, dir)))
+        .find((text) => text.includes('error_events_platform_shape'));
+      assert.ok(owner, 'no migration defines the platform value check');
+      const at = owner.indexOf("detail ->> 'platform' in (");
+      return [...owner.slice(at, owner.indexOf(')', at)).matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
+    })();
+    const fromServer = named(route, 'const PLATFORMS = [');
+    const fromBrowser = named(browser, 'export const PLATFORMS = Object.freeze([');
+    assert.equal(fromServer.length, 9);
+    assert.deepEqual(fromServer, fromBrowser, 'the server and the browser disagree about the platforms');
+    for (const platform of fromServer) {
+      assert.ok(inCheck.includes(platform), `the database CHECK does not accept ${platform}`);
+    }
   });
 
   test('AND NOTHING IN IT CAN HOLD A SENTENCE SOMEBODY TYPED', () => {

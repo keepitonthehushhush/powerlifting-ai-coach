@@ -43,12 +43,51 @@ export const clientErrorsRouter = Router();
  * sending a `message` field that nobody notices is being ignored, right up
  * until somebody "fixes" the server to store it.
  */
+/**
+ * The nine buckets, restated here rather than imported.
+ *
+ * web/src/lib/crashReport.js owns the list and the browser resolves the bucket;
+ * the server imports nothing from web/, so this is a deliberate second copy and
+ * a test asserts the three copies - browser, server, database CHECK - agree.
+ */
+const PLATFORMS = [
+  'ios-safari', 'ios-other',
+  'android-chrome', 'android-other',
+  'mac-safari', 'mac-other',
+  'windows', 'linux', 'other',
+];
+
+/**
+ * ── THE TWO KEYS THAT WERE MISSING, AND WHAT IT COST ───────────────────────
+ *
+ * `.strict()` REJECTS an unknown key rather than dropping it, which is the
+ * right posture for a public write surface and is also how this endpoint went
+ * silently dead.
+ *
+ * Migration 0060 widened the database CHECK to accept `platform` and
+ * `standalone`, and the browser's describeError() began sending both. This
+ * schema - sitting between the two, and the only part of the change nobody
+ * touched - kept rejecting the whole report on the extra keys. Not degrading:
+ * REJECTING. Every crash report since 0060 was applied on 2026-09-07 was
+ * answered 400 and written nowhere.
+ *
+ * The evidence is in the table. Two server-side 502s on 2026-09-10 at 14:12,
+ * five seconds apart, each of which the browser also reports through
+ * noteRequestFailed - and not one `client_request_failed` row beside them. The
+ * last client report of any kind is dated 2026-09-04, three days before 0060.
+ *
+ * The test that should have caught it was comparing this project's key lists
+ * against migration 0034 - the FIRST file to state the whitelist, which two
+ * later migrations had restated. It agreed with a list that had moved on.
+ */
 const detailSchema = z
   .object({
     errorName: z.string().regex(/^[A-Za-z]{1,40}$/),
     topFrame: z.string().regex(TOP_FRAME_PATTERN).nullable(),
     frames: z.number().int().min(0).max(1000),
     build: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/),
+    platform: z.enum(PLATFORMS),
+    standalone: z.boolean(),
   })
   .strict();
 

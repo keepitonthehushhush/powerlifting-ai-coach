@@ -37,6 +37,12 @@ export const RECORDABLE_DETAIL_KEYS = Object.freeze([
   'blockTypes',
   'hadText',
   'upstreamStatus',
+  /*
+   * A label from UPSTREAM_REASONS in coachOutcome.js, never the vendor's own
+   * message and never the vendor's own type. See that file for why the
+   * classification is stored and the sentence is not.
+   */
+  'upstreamReason',
   'cause',
   'needs',
   'reason',

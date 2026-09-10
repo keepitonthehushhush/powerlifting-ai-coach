@@ -225,6 +225,35 @@ re-checking when anything about the domain changes.
 `npx vercel dns add coachdiaz.app <name> <type> <value>` or in the Vercel
 dashboard under Domains — not at the registrar, and not in Postmark.
 
+### Signup mail is on Supabase's built-in service, and that is a launch risk
+
+**State as of 2026-09-10: custom SMTP is NOT configured in Supabase Auth.**
+
+Address confirmation and password reset do not go through Postmark. They go
+through Supabase Auth's own SMTP setting, which is empty — so they use
+Supabase's built-in service. Their documentation is blunt about what that is:
+best-effort only, **two messages per hour**, no delivery SLA, and explicitly
+not for production.
+
+It has worked for every signup so far because seven accounts across seventeen
+days have never once needed two confirmations in the same hour. The third
+person to sign up within an hour is the first one who finds out, and what they
+see is a signup that fails — `over_email_send_rate_limit`, which the app
+already classifies as `auth_rate_limited` and reports honestly. The app handles
+it correctly. There is simply nothing to be done about it from the app's side.
+
+**`npm run check:smtp` does not cover this and says so on every run.** That
+script checks the application's own transport, which carries one message: the
+guardian consent link. A PASS there says the guardian link can go out and says
+nothing about whether anybody can create an account.
+
+**The fix is a dashboard change, not a deploy.** Project Settings →
+Authentication → SMTP Settings, pointed at a real provider. Once configured,
+Supabase applies 30 messages/hour initially and that is adjustable. Postmark is
+the intended provider and is still awaiting approval; while it is pending it
+can only send to `coachdiaz.app`, so pointing Supabase at it before approval
+would be worse than the present state, not better.
+
 ### Where people stop
 
 ```

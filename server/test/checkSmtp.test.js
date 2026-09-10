@@ -303,3 +303,45 @@ describe('it reads .env, like every other script in this repo', () => {
     assert.match(out, /\.env was loaded|dotenv is not installed/);
   });
 });
+
+describe('the mail this check does not cover', () => {
+  const script = readFileSync(new URL('../../scripts/check-smtp.mjs', import.meta.url), 'utf8');
+
+  test('it names the signup path it cannot see, on every successful run', () => {
+    /*
+     * ── WHY A PASS HERE IS NOT A PASS FOR MAIL ────────────────────────────
+     *
+     * This script checks the APPLICATION's transport, which carries one
+     * message: the guardian consent link. Address confirmation and password
+     * reset go through Supabase Auth's own SMTP setting, in a dashboard this
+     * script cannot read.
+     *
+     * On 2026-09-10 that setting was empty, so every confirmation this product
+     * has ever sent went through Supabase's built-in service - two per hour,
+     * no delivery SLA, documented as not for production. It has worked for
+     * seven signups over seventeen days and has never been asked for two in an
+     * hour.
+     *
+     * A green PASS over that is the same shape of failure this file already
+     * exists to prevent: the probe section was written because a PASS covered
+     * a Postmark account that could not mail a single real user. So the
+     * uncovered half is printed rather than remembered.
+     */
+    assert.match(script, /THIS DOES NOT COVER SIGNUP MAIL/);
+    assert.match(script, /Project Settings -> Authentication -> SMTP Settings/);
+  });
+
+  test('the notice is printed on the PASS path, not only defined', () => {
+    // A constant nobody logs is a comment with extra steps, and this codebase
+    // has shipped exactly that before.
+    const at = script.indexOf('await transport.verify();');
+    assert.notEqual(at, -1);
+    assert.match(script.slice(at, at + 400), /console\.log\(AUTH_MAIL_NOTICE\)/);
+  });
+
+  test('it does not claim to have checked what it has not', () => {
+    // The sentence that matters: this says the guardian link can go out, and
+    // says nothing about whether anybody can create an account.
+    assert.match(script, /says nothing about\\n' \+\s*'whether anybody can create an account/);
+  });
+});

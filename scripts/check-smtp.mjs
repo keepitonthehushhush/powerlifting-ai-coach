@@ -310,9 +310,41 @@ const transport = nodemailer.createTransport({
   socketTimeout: 15_000,
 });
 
+/**
+ * ── THE MAIL THIS CHECK DOES NOT COVER, SAID ON EVERY RUN ──────────────────
+ *
+ * This checks the APPLICATION's transport, which carries exactly one message:
+ * the guardian consent link. It says nothing at all about the mail that gates
+ * every signup - the address confirmation, the password reset - because those
+ * are sent by Supabase Auth through ITS OWN SMTP setting, configured in a
+ * dashboard this script cannot read and using credentials it does not hold.
+ *
+ * On 2026-09-10 that setting was empty. Every confirmation this product has
+ * ever sent went through Supabase's built-in service, which their own
+ * documentation describes as best-effort, rate-limited to two messages an
+ * hour, with no delivery SLA, and not for production. It has worked for seven
+ * signups spread over seventeen days and has never once been asked to send two
+ * in an hour.
+ *
+ * A green PASS here while THAT is the state is the exact shape of failure this
+ * file already exists to prevent - the probe section above was written because
+ * a PASS covered an account that could not mail a single real user. So the
+ * uncovered half is named in the output rather than left for somebody to
+ * remember, because nobody remembers.
+ */
+const AUTH_MAIL_NOTICE =
+  '\nTHIS DOES NOT COVER SIGNUP MAIL. Address confirmation and password reset are\n' +
+  'sent by Supabase Auth through its own SMTP setting, which this script cannot\n' +
+  'read. If that setting is empty, those messages go through Supabase\'s built-in\n' +
+  'service: two per hour, no delivery guarantee, and documented as not for\n' +
+  'production. Check it at Project Settings -> Authentication -> SMTP Settings.\n' +
+  'A green result below says the guardian link can go out. It says nothing about\n' +
+  'whether anybody can create an account.';
+
 try {
   await transport.verify();
   console.log(`PASS - connected and authenticated to ${host}:${port}, sending as ${from}.`);
+  console.log(AUTH_MAIL_NOTICE);
 
   if (!PROBE) {
     console.log('No message was sent. The credentials work and the guardian link can go out.');

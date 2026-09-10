@@ -19,9 +19,10 @@
   },
   "constraint error_events_detail_check": {
     "alsoIn": [
-      "0048_a_crash_that_can_report_itself.sql"
+      "0048_a_crash_that_can_report_itself.sql",
+      "0060_a_crash_report_says_which_platform.sql"
     ],
-    "owner": "0060_a_crash_report_says_which_platform.sql"
+    "owner": "0069_why_the_model_said_no_outlives_the_log.sql"
   },
   "constraint user_profile_goal_check": {
     "alsoIn": [
