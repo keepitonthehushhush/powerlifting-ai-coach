@@ -102,10 +102,22 @@ export const MAX_FIELD_LENGTH = 2000;
 
 /**
  * @param {unknown} value
- * @param {{maxLength?: number}} [options]
+ * @param {{maxLength?: number, singleLine?: boolean}} [options]
  * @returns {string} Safe to interpolate inside the fenced region.
+ *
+ * ── singleLine ─────────────────────────────────────────────────────────────
+ *
+ * For values interpolated into a DIRECTIVE rather than into the fenced athlete
+ * data block. The directives are joined outside that fence, so a field that
+ * carries newlines can leave the indented line it was written on and sit at
+ * the margin looking like prose the system wrote. Collapsing 3+ blank lines is
+ * enough inside the fence, where the surrounding tags say what the region is;
+ * it is not enough outside one.
+ *
+ * Pass it for anything that is a NAME - an exercise, a lift, a gym - where a
+ * newline was never a legitimate part of the value in the first place.
  */
-export function asData(value, { maxLength = MAX_FIELD_LENGTH } = {}) {
+export function asData(value, { maxLength = MAX_FIELD_LENGTH, singleLine = false } = {}) {
   if (value === null || value === undefined) return '';
 
   let text = typeof value === 'string' ? value : String(value);
@@ -124,6 +136,11 @@ export function asData(value, { maxLength = MAX_FIELD_LENGTH } = {}) {
   // Long runs of blank lines are how injected text visually separates itself
   // from the data around it and passes for a new section.
   text = text.replace(/\n{3,}/g, '\n\n');
+
+  // Every kind of line break, not only \n: a lone \r moves the cursor to the
+  // start of the line on a terminal and is a line break to most tokenizers,
+  // and U+2028/U+2029 are line breaks in JavaScript's own grammar.
+  if (singleLine) text = text.replace(/[\r\n\u2028\u2029]+/g, ' ').trim();
 
   return text;
 }

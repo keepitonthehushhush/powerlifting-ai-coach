@@ -17,6 +17,7 @@ import {
 import { needsMedicalClearance } from '../prompts/systemPrompt.js';
 import { adultGateDecision, MINIMUM_AGE, ABSOLUTE_MINIMUM_AGE, evaluateAgeGate } from '../lib/ageGate.js';
 import { recommendPhase } from '../lib/phase.js';
+import { previousBlock } from '../lib/programDiff.js';
 import { prescribeAll } from '../lib/progression.js';
 import { buildSystemBlocks } from '../prompts/systemPrompt.js';
 import { codedError } from '../lib/errorCodes.js';
@@ -61,7 +62,15 @@ async function loadCoachingContext(supabase) {
     supabase.from('workout_sessions').select('date, exercises, notes').order('date', { ascending: false }).limit(5),
     supabase.from('progress_logs').select('lift, weight, reps, rpe, date, completed')
       .order('date', { ascending: false }).order('created_at', { ascending: false }).limit(60),
-    supabase.from('workout_programs').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    /*
+     * The last three blocks rather than the active one alone. The coach needs
+     * the block it replaced in order to answer "why is my squat lighter this
+     * week" from the same computation the program page renders - and a page and
+     * a coach disagreeing about somebody's own training is a bug nobody would
+     * think to look for. Three, not two, so a duplicate or a retried save
+     * cannot push the genuine predecessor out of reach.
+     */
+    supabase.from('workout_programs').select('*').order('created_at', { ascending: false }).limit(3),
     supabase.from('exercise_library').select('slug, name, video_url, video_source').not('video_url', 'is', null),
   ]);
 
@@ -69,11 +78,15 @@ async function loadCoachingContext(supabase) {
     if (result.error) throw codedError('storage_unavailable', 'Could not load your training data.', { cause: result.error.code });
   }
 
+  const programs = program.data ?? [];
+  const activeProgram = programs.find((p) => p.is_active) ?? null;
+
   return {
     profile: profile.data,
     recentSessions: sessions.data ?? [],
     recentLogs: logs.data ?? [],
-    activeProgram: program.data,
+    activeProgram,
+    previousProgram: previousBlock(programs, activeProgram),
     exerciseLibrary: library.data ?? [],
   };
 }

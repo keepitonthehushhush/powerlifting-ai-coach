@@ -291,7 +291,14 @@ describe('THE ROUTE AND THE PAGE ACTUALLY SHOW IT', () => {
   });
 
   test('the page reads it out of the response and renders the shared half once', () => {
-    assert.match(page, /\.then\(\(\{ active, history, adherence, equipment, warmup \}\)/);
+    /*
+     * The property, not the literal. This asserted the whole destructuring
+     * list character for character and broke the first time the route grew a
+     * field that has nothing to do with warm-ups - which is a test failing
+     * about itself rather than about the thing it guards.
+     */
+    const destructured = page.match(/\.then\(\(\{([^}]*)\}\)/)?.[1] ?? '';
+    assert.match(destructured, /\bwarmup\b/, 'the page no longer reads warmup out of the response');
     assert.match(page, /state\.warmup && \(/);
     for (const key of ['warmupHeading', 'warmupGeneral', 'warmupMobility', 'warmupStretchBody']) {
       assert.ok(page.includes(`program.${key}`), `${key} is not rendered`);

@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { compareToProgram } from '../lib/adherence.js';
+import { diffPrograms, previousBlock } from '../lib/programDiff.js';
+import { prescribeAll } from '../lib/progression.js';
 import { warmupForProgram } from '../lib/warmup.js';
 
 export const programRouter = Router();
@@ -23,6 +25,7 @@ programRouter.get('/', async (req, res, next) => {
     const [
       { data, error },
       { data: sessionRows, error: sessionError },
+      { data: logRows },
       { data: profileRow },
     ] = await Promise.all([
       req.supabase
@@ -37,6 +40,23 @@ programRouter.get('/', async (req, res, next) => {
         .select('date, exercises')
         .order('date', { ascending: false })
         .limit(40),
+      /*
+       * The logged sets, oldest last, for `prescribeAll`. It is what turns
+       * "the squat went up ten pounds" into "the squat went up ten pounds
+       * BECAUSE every rep at 225 was completed" - the diff can see what
+       * changed with certainty and needs this to say anything about why.
+       *
+       * No error is destructured, on purpose. An unreadable log costs the
+       * change list its corroboration and nothing else: every entry falls back
+       * to `basis: 'unknown'`, which is the true answer when there is no log to
+       * read, and the program page still renders.
+       */
+      req.supabase
+        .from('progress_logs')
+        .select('lift, weight, reps, rpe, date, completed')
+        .order('date', { ascending: true })
+        .order('created_at', { ascending: true })
+        .limit(120),
       /*
        * Two columns, and deliberately only two.
        *
@@ -60,6 +80,21 @@ programRouter.get('/', async (req, res, next) => {
     const programs = data ?? [];
     const active = programs.find((p) => p.is_active) ?? null;
 
+    /*
+     * ── WHAT CHANGED SINCE THE LAST BLOCK ──────────────────────────────────
+     *
+     * The block the active one replaced: the newest superseded program older
+     * than it. Not simply `programs[1]`, which is the newest OTHER row and
+     * would pick a future-dated one, and not the oldest history entry either.
+     *
+     * Computed here rather than stored, exactly as the warm-up below is, and
+     * for the same three reasons - it is arithmetic over two things already in
+     * the database, a stored copy could disagree with the tables beside it,
+     * and it explains every program that already exists rather than only the
+     * ones written from now on.
+     */
+    const previous = previousBlock(programs, active);
+
     res.json({
       active,
       // Computed here rather than in the browser, for the same reason the
@@ -67,6 +102,26 @@ programRouter.get('/', async (req, res, next) => {
       // everywhere. A page and a coach disagreeing about whether somebody did
       // their squats is a bug nobody would ever think to look for.
       adherence: compareToProgram({ program: active, sessions: sessionRows ?? [] }),
+      /*
+       * Null when there is no previous block, which is the ordinary state of
+       * every athlete on their first program. A first block did not change
+       * anything and saying so would be noise.
+       */
+      changes: previous
+        ? diffPrograms({
+            previous: previous.program_data,
+            next: active.program_data,
+            prescriptions: prescribeAll({
+              logs: logRows ?? [],
+              units: profileRow?.units === 'kg' ? 'kg' : 'lb',
+              smallestPlatePair: profileRow?.smallest_plate_pair ?? null,
+            }),
+          })
+        : null,
+      /** So the page can date the comparison rather than implying "recently". */
+      previousProgram: previous
+        ? { id: previous.id, week_number: previous.week_number, phase: previous.phase, created_at: previous.created_at }
+        : null,
       /*
        * ── THE WARM-UP IS DERIVED, NOT STORED ────────────────────────────
        *

@@ -42,6 +42,7 @@ import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
 import { directiveFor as nutritionDetailDirective, fuellingNumbersAllowed } from '../lib/nutritionDetail.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
+import { BASIS, LOAD, diffPrograms } from '../lib/programDiff.js';
 // The one address, from the one module that owns it. Hardcoding it here would
 // be a fourth copy of a string that three documents already share, and the
 // flag is what stops the prompt naming a route before mail actually arrives.
@@ -1603,7 +1604,7 @@ export function describeAdherence({ program, sessions, supersededAt }) {
       const got = performed
         ? `${performed.sets}x${performed.reps}${performed.weight != null ? ` @ ${performed.weight}` : ''}`
         : '-';
-      return `    ${day.name} / ${asData(prescribed.lift, { maxLength: 60 })}: asked ${asked}, logged ${got} [${label[status]}]`;
+      return `    ${asData(day.name, { maxLength: 60, singleLine: true })} / ${asData(prescribed.lift, { maxLength: 60, singleLine: true })}: asked ${asked}, logged ${got} [${label[status]}]`;
     })
   );
 
@@ -1628,6 +1629,100 @@ ${lines.join('\n')}
 
   Do not read the list back to them, do not total it up into a score, and do not open with
   it. It is what you know before the conversation starts, not the conversation.`;
+}
+
+/**
+ * What changed between the last block and this one, and whether the log asked
+ * for it.
+ *
+ * ── WHY THE COACH IS TOLD THIS AT ALL ──────────────────────────────────────
+ *
+ * The athlete can see it. `GET /api/program` returns the same diff and the
+ * program page renders it, so "why is my squat lighter this week" is a
+ * question somebody arrives at the conversation already holding. A coach that
+ * reconstructs the answer from a conversation window that may have been
+ * trimmed will sometimes contradict the page the athlete is looking at, and a
+ * page and a coach disagreeing about somebody's own training is a bug nobody
+ * would ever think to look for. Same argument routes/program.js already makes
+ * about adherence; it applies twice over here, because this is the one an
+ * athlete asks about out loud.
+ *
+ * ── AND WHY IT IS FRAMED AS SOMETHING TO ANSWER WITH, NOT TO ANNOUNCE ──────
+ *
+ * Opening with a change list is the same mistake as opening with the adherence
+ * table. It is what the coach knows before the conversation starts.
+ */
+export function describeProgramChange({ previous, active, prescriptions }) {
+  const diff = diffPrograms({
+    previous: previous?.program_data,
+    next: active?.program_data,
+    prescriptions,
+  });
+  if (!diff) return null;
+
+  if (diff.identical) {
+    return `- THE PROGRAM YOU WROTE IS IDENTICAL TO THE ONE BEFORE IT. Same lifts, same loads, same
+  sets and reps. That is sometimes right - a repeated week after a bad one, or a hold while
+  something settles - and it is worth being able to say WHICH, because from where the athlete
+  sits an unchanged program and a coach who forgot look exactly the same.`;
+  }
+
+  const lines = [];
+
+  if (diff.phase) {
+    lines.push(`    phase: ${diff.phase.from} -> ${diff.phase.to}`);
+  }
+  if (diff.days) {
+    lines.push(`    training days per week: ${diff.days.from} -> ${diff.days.to}`);
+  }
+
+  for (const c of diff.changed) {
+    const name = asData(c.label, { maxLength: 60, singleLine: true });
+    const parts = [];
+    if (c.delta != null && c.load !== LOAD.SAME) {
+      parts.push(`${c.from.weight} -> ${c.to.weight} (${c.delta > 0 ? '+' : ''}${c.delta})`);
+    }
+    if (c.setsRepsChanged) {
+      parts.push(`${c.from?.sets}x${c.from?.reps} -> ${c.to?.sets}x${c.to?.reps}`);
+    }
+    if (c.timesPerWeek) {
+      parts.push(`${c.timesPerWeek.from}x -> ${c.timesPerWeek.to}x per week`);
+    }
+    const why =
+      c.basis === BASIS.PROGRESSION
+        ? '[the log asked for this]'
+        : c.basis === BASIS.COACH
+          ? '[YOU decided this - the log called for ' +
+            (c.expected?.weight != null ? `${c.expected.weight}` : c.expected?.action ?? 'something else') +
+            ']'
+          : '[no log to check it against]';
+    lines.push(
+      `    ${name}: ${parts.join(', ') || 'changed'} ${why}${c.comparedOnHeaviest ? ' (compared on the heaviest set of several)' : ''}`
+    );
+  }
+
+  for (const a of diff.added) lines.push(`    ${asData(a.label, { maxLength: 60, singleLine: true })}: ADDED`);
+  for (const r of diff.removed) lines.push(`    ${asData(r.label, { maxLength: 60, singleLine: true })}: REMOVED`);
+
+  if (lines.length === 0) return null;
+
+  return `- WHAT CHANGED SINCE THE LAST BLOCK, ALREADY COMPUTED. The athlete can see this list on
+  their program page, so answer from it rather than from memory.
+
+${lines.join('\n')}
+
+  HOW TO USE IT. Do not read it out and do not open with it. It is there so that "why is my
+  squat lighter this week" has one true answer instead of a reconstruction.
+
+  THE THREE TAGS MEAN DIFFERENT THINGS AND THE DIFFERENCE MATTERS.
+  "the log asked for this" - the progression rules over their own logged sets produced exactly
+  this number, and you can say so plainly.
+  "YOU decided this" - the arithmetic called for something else and a previous decision
+  departed from it. That is allowed and often right; a missed week, a shoulder they mentioned,
+  a lighter squat they asked for. But you do NOT have a computed reason, so do not invent one.
+  If you cannot remember why, say the honest thing and ask.
+  "no log to check it against" - there is nothing logged for that lift, so nobody can say why
+  it moved, including you. It does not mean the change was wrong.`;
 }
 
 /**
@@ -2399,6 +2494,7 @@ function buildSystemParts({
   recentSessions = [],
   recentLogs = [],
   activeProgram = null,
+  previousProgram = null,
   exerciseLibrary = [],
 } = {}) {
   const units = profile?.units ?? 'lb';
@@ -2579,6 +2675,14 @@ function buildSystemParts({
     ? null
     : describeAdherence({ program: activeProgram, sessions: recentSessions });
   if (adherence) directives.push(adherence);
+
+  // Suppressed with the rest under the clearance gate, for the same reason: an
+  // athlete waiting on a doctor should not be handed a discussion of how their
+  // programming has been evolving.
+  const changes = clearanceRequired
+    ? null
+    : describeProgramChange({ previous: previousProgram, active: activeProgram, prescriptions });
+  if (changes) directives.push(changes);
 
   if (missing.length) {
     directives.push(

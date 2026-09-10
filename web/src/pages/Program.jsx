@@ -9,6 +9,137 @@ import { PlateBar, plateWords } from '../components/PlateBar.jsx';
 import { loadBarbell, platesAvailable, LOADOUT_STATUS } from '../lib/plates.js';
 
 /**
+ * What changed since the last block, and whether the log asked for it.
+ *
+ * ── WHY THIS IS ON THE PAGE AND NOT ONLY IN THE CONVERSATION ──────────────
+ *
+ * The coach explains a new program once, in a message, and the message scrolls
+ * away. Six weeks later this page said "Week 3 · Novice — Sep 4" and nothing
+ * else, so nobody - not the athlete, not the coach, not anybody reading the
+ * database - could say why the squat came down ten pounds in week two.
+ *
+ * That is the difference between a coach and a program generator. A generator
+ * hands you a new plan. A coach tells you what changed and why.
+ *
+ * ── THE REASON IS LOCALIZED FROM THE ACTION, NOT COPIED FROM THE ENGINE ────
+ *
+ * lib/progression.js returns a `reason` sentence per lift, written to be read
+ * aloud, and it is English. It reaches the COACH, which speaks the athlete's
+ * language and can render it in Spanish. Printing it here would put an English
+ * paragraph on a Spanish page.
+ *
+ * So the page keys a short translated line off the engine's `action`, which is
+ * a five-value enum rather than prose. A test asserts every action the engine
+ * can return has a string here, because the failure mode of a missing one is a
+ * blank line where an explanation should be.
+ */
+function WhatChanged({ changes, previous, units, t, formatDate }) {
+  if (!changes) return null;
+
+  const why = (c) => {
+    if (c.basis === 'progression') {
+      // `why.<action>` or nothing. An unknown action renders no line rather
+      // than the key name, which is the one thing worse than silence.
+      const line = t(`program.changes.why.${c.expected?.action}`);
+      return line.startsWith('program.changes.why.') ? null : line;
+    }
+    if (c.basis === 'coach') {
+      if (c.expected?.weight == null) return t('program.changes.coachNoNumber');
+      // `units` is null whenever the profile could not be read - see the plate
+      // readout below, which degrades the same way. "pointed at 225 null" is
+      // the kind of string that only ever ships because nobody tried it with a
+      // missing profile.
+      return units
+        ? t('program.changes.coach', { expected: c.expected.weight, units })
+        : t('program.changes.coachNoUnits', { expected: c.expected.weight });
+    }
+    return t('program.changes.unknown');
+  };
+
+  return (
+    <section className="card stack">
+      <h2 className="h3">{t('program.changes.heading')}</h2>
+      {previous && (
+        <p className="muted small">
+          {t('program.changes.since', {
+            week: previous.week_number,
+            date: formatDate(previous.created_at),
+          })}
+        </p>
+      )}
+
+      {changes.identical ? (
+        <p>{t('program.changes.identical')}</p>
+      ) : (
+        <ul className="stack">
+          {changes.phase && (
+            <li>
+              {t('program.changes.phase', {
+                from: t(`program.phases.${changes.phase.from}`),
+                to: t(`program.phases.${changes.phase.to}`),
+              })}
+            </li>
+          )}
+          {changes.days && (
+            <li>{t('program.changes.days', { from: changes.days.from, to: changes.days.to })}</li>
+          )}
+          {changes.changed.map((c) => (
+            <li key={c.key}>
+              <strong>{c.label}</strong>
+              {c.delta != null && c.load !== 'same' && (
+                <>
+                  {' — '}
+                  {t(units ? 'program.changes.load' : 'program.changes.loadNoUnits', {
+                    from: c.from.weight,
+                    to: c.to.weight,
+                    units,
+                    // Signed, and the minus is a real minus sign rather than a
+                    // hyphen, because this is prose and not code.
+                    delta: c.delta > 0 ? `+${c.delta}` : `\u2212${Math.abs(c.delta)}`,
+                  })}
+                </>
+              )}
+              {c.setsRepsChanged && (
+                <>
+                  {' — '}
+                  {t('program.changes.setsReps', {
+                    from: `${c.from?.sets}×${c.from?.reps}`,
+                    to: `${c.to?.sets}×${c.to?.reps}`,
+                  })}
+                </>
+              )}
+              {c.timesPerWeek && (
+                <>
+                  {' — '}
+                  {t('program.changes.timesPerWeek', {
+                    from: c.timesPerWeek.from,
+                    to: c.timesPerWeek.to,
+                  })}
+                </>
+              )}
+              <p className="muted small">{why(c)}</p>
+              {c.comparedOnHeaviest && (
+                <p className="fineprint">{t('program.changes.heaviestNote')}</p>
+              )}
+            </li>
+          ))}
+          {changes.added.map((a) => (
+            <li key={`+${a.key}`}>
+              <strong>{a.label}</strong> — {t('program.changes.added')}
+            </li>
+          ))}
+          {changes.removed.map((r) => (
+            <li key={`-${r.key}`}>
+              <strong>{r.label}</strong> — {t('program.changes.removed')}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
  * The current training block, as a thing rather than as a message.
  *
  * ── WHY THIS PAGE EXISTS ──────────────────────────────────────────────────
@@ -38,8 +169,8 @@ export function Program() {
   useEffect(() => {
     api
       .getProgram()
-      .then(({ active, history, adherence, equipment, warmup }) =>
-        setState({ status: 'ready', active, history, adherence, equipment, warmup })
+      .then(({ active, history, adherence, equipment, warmup, changes, previousProgram }) =>
+        setState({ status: 'ready', active, history, adherence, equipment, warmup, changes, previousProgram })
       )
       .catch((err) => setState({ status: 'error', message: err.message }));
   }, []);
@@ -312,6 +443,14 @@ export function Program() {
               })()}
             </section>
           ))}
+
+          <WhatChanged
+            changes={state.changes}
+            previous={state.previousProgram}
+            units={units}
+            t={t}
+            formatDate={formatDate}
+          />
 
           {state.adherence && state.adherence.sessionsInWindow > 0 && (
             <div className="card stack">

@@ -1354,6 +1354,92 @@ And for any cohort older than `activity_days` itself, the numbers stay floors:
 nobody who joined earlier gains a visit retroactively.
 
 
+### ADR-23 · What changed between blocks is computed, not remembered
+
+**Context.** Every part of the adaptation already existed. `lib/adherence.js`
+cross-references the program against the log, `lib/progression.js` computes what
+goes on the bar next, `lib/phase.js` decides when linear progression is
+finished, and all three reach the coach before it writes a block.
+
+What did not exist was the **record**. A new program superseded the old one and
+nothing said what differed. The coach explained it once, in a message, and the
+message scrolled away. Six weeks later the program page showed "Week 3 ·
+Novice — Sep 4" and nothing else, so nobody — not the athlete, not the coach,
+not anybody reading the database — could say why the squat came down ten pounds
+in week two. That is the difference between a coach and a program generator: a
+generator hands you a new plan, a coach tells you what changed and why.
+
+**Decision.** `lib/programDiff.js` diffs the two stored `program_data` blocks.
+`GET /api/program` returns it, the program page renders it, and
+`describeProgramChange()` puts the same computation in front of the coach.
+
+**Why computed on read rather than stored.** The three reasons the warm-up is
+derived in `routes/program.js` rather than written into the block, and they
+apply unchanged: it is arithmetic over two things already in the database, a
+stored copy could disagree with the tables beside it, and a field the model can
+forget is a silent failure of the kind this codebase keeps finding. Deriving it
+also explains every program that already exists, which a new column never
+could. No migration.
+
+**Why it never invents a reason.** The diff sees WHAT changed with certainty.
+WHY is a different question, and each changed load carries the diff's fact plus,
+separately, what `nextPrescription` computed from the log:
+
+- the two agree → the log accounts for it, and the engine's own sentence is the
+  explanation;
+- they disagree → `basis: 'coach'`. **Not an error.** A coach departs from the
+  arithmetic for ordinary reasons the log cannot see — a missed week, a shoulder
+  mentioned in conversation, a lighter squat somebody asked for. The
+  disagreement is the output, and there is no explanation attached, because
+  there is none to attach;
+- there is no log → `basis: 'unknown'`, which is deliberately not folded into
+  `'coach'`. "Your coach overrode the data" and "there is no data" are different
+  sentences and only one is true for an athlete who has never logged anything.
+
+The same discipline as adherence.js, where NOT_LOGGED is reported as not logged
+rather than as skipped, and for the same reason: the alternative is an
+accusation the data does not support.
+
+**Why the comparison declares its own basis.** A lift can appear more than once
+in a week, and in intermediate programming it is supposed to — a heavy day and a
+light day on the same movement is the shape the whole phase change is *for*.
+Keying by lift name and keeping one weight silently picks an occurrence and
+reports it as "the squat", turning a correct light day into a phantom ten
+percent deload. Keying by `(day, lift)` does not survive either: day names are
+free text the model writes, so "Day A" becoming "Monday" unpairs every exercise
+and reports an entire program replaced. So the occurrences are collected, the
+heaviest is compared, and the entry carries a flag saying so.
+
+**Two things real data caught that fixtures did not.** Run against production
+rather than against a fixture, the first version reported **seven** changed
+movements in a block where three had moved. Accessories carry `weight: null` on
+both sides, `load` is then null, null is not `SAME`, and an
+`if (load !== SAME)` classification swept every side plank and broad jump into
+the change list with nothing visibly different beside it. Seven confident lines
+about nothing is worse than no section at all — it teaches the athlete that the
+section is noise. Null is not one state: unweighted on both sides is no change,
+while a weight that *arrived* or *left* is a real one.
+
+The second: `units` is null whenever the profile cannot be read — the plate
+readout on the same page already degrades that way — and the change line
+rendered "225 → 235 null (+10)" until a separate string was added for it.
+
+**Why the page does not print the engine's sentence.** `nextPrescription`
+returns prose written to be read aloud, and it is English. It reaches the coach,
+which speaks the athlete's language and can render it in Spanish. The page keys
+a short translated line off `action`, a five-value enum, and a test asserts every
+action the engine can return has a string in both catalogs — because the failure
+mode of a missing one is a blank line where an explanation should be.
+
+**Consequence.** The coach is handed the change list with the three tags spelled
+out and told not to open with it: it exists so that "why is my squat lighter this
+week" has one true answer instead of a reconstruction from a conversation window
+that may have been trimmed. Both the page and the coach resolve the previous
+block through the same `previousBlock()`, because two callers deciding that
+independently is exactly how a page and a coach come to disagree about somebody's
+own training.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
