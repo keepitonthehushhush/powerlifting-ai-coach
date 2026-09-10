@@ -600,7 +600,9 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   border: 0;
 }
 
-.h3 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+/* The section heading inside a screen. Was 1.05rem - off the scale, and
+   smaller than the body text it introduces. See --text-title-3. */
+.h3 { font-size: var(--text-title-3); margin: 0; font-weight: 600; }
 
 /* One step below .h3, for a heading INSIDE a card that already has one - the
    warm-up ramp under a training day. It exists so that heading can be an
@@ -1074,6 +1076,25 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .centered { text-align: center; }
 .empty { text-align: center; }
+
+/* ── AND THE POLICY ABOVE, APPLIED TO ITS OWN EXCEPTION ────────────────────
+ *
+ * `.centered` is the viewport-centering layout for the sign-in card - grid,
+ * place-items: center, declared 900 lines above this. Giving it text-align as
+ * well handed one class two jobs, and the second one inherits: every label,
+ * hint and paragraph inside that card was centered too.
+ *
+ * Which is how "Email" and "Password" came to sit centered above full-width
+ * inputs on the first screen anybody sees. The rule above already says field
+ * hints and body copy are not centered; this is that rule reaching the place
+ * that was quietly exempt from it.
+ *
+ * A form is entry, not display. A label centered over a full-width field puts
+ * its first character somewhere in the middle of the box it names, and the
+ * association it is meant to carry has to be worked out rather than seen.
+ */
+.centered form,
+.centered .fineprint { text-align: start; }
 
 /* ── WHAT IS MISSING, WHERE THE PERSON IS LOOKING ─────────────────────────
    Reported as: pressing Save on an incomplete profile says nothing, and the
@@ -1602,6 +1623,24 @@ form > button.secondary {
      own size, never so large it needs a horizontal scroll to read. */
   --text-large-title: clamp(2.125rem, 6.2vw, 3.5rem);
   --text-title: clamp(1.5rem, 3.4vw, 2rem);
+  /* ── THE RUNG THE SCALE WAS MISSING ────────────────────────────────────
+     Between 32px and 17px there was nothing, so every sub-heading in the app
+     was either a page title or the same size as the paragraph under it. The
+     policy pages, the FAQ and the account screen carry about sixty of them,
+     and they were all `.h3 { font-size: 1.05rem }` - 16.8px, hardcoded, off
+     this scale entirely, and a fifth of a pixel SMALLER than the body text
+     they introduce.
+
+     20pt is Apple's title3, which is exactly this role: the heading inside a
+     screen rather than the heading of one. Fixed rather than fluid, like the
+     two roles below it - only the two display sizes need to grow with the
+     viewport, because only they are large enough for the difference to
+     matter. */
+  --text-title-3: 1.25rem; /* 20pt */
+  /* headline and body are deliberately the same number. That is the HIG's own
+     definition - headline is 17pt SEMIBOLD, distinguished by weight rather
+     than size - and it is correct for a label above a control. It was never
+     the problem; the missing rung above was. */
   --text-headline: 1.0625rem; /* 17pt */
   --text-body: 1.0625rem; /* 17pt - the HIG default, and larger than the web's */
   --text-caption: 0.8125rem;
@@ -1877,7 +1916,10 @@ form > button.secondary {
 }
 
 .home-h3 {
-  font-size: var(--text-headline);
+  /* A step title is a sub-heading, not a label above a control. It sat at
+     --text-headline, which is body size, so the three steps had titles the
+     same size as their own paragraphs. */
+  font-size: var(--text-title-3);
   font-weight: 600;
   margin: 0 0 var(--space-2);
 }
@@ -2001,6 +2043,31 @@ form > button.secondary {
  * Less top padding than a normal section on purpose: this sits directly under
  * the call to action and is evidence for it, not a new subject. */
 .home-demo-section { padding: var(--space-4) 0 var(--space-6); }
+
+/* ── THE SAME POLICY, ON THE PAGE MOST PEOPLE SEE FIRST ────────────────────
+ *
+ * `.home` centers everything, and the rule stated 700 lines above says
+ * anything longer than about two lines should not be. Three blocks here break
+ * that and one badly: "Why not just ask a general AI?" is six lines of centered
+ * prose carrying the most specific, most persuasive claim on the page - seven
+ * experts, three versions, one error in all of them - and every line of it
+ * starts at a different x.
+ *
+ * The BLOCK stays centered; the TEXT inside it reads from a fixed left margin.
+ * That is what `margin-inline: auto` with `text-align: start` buys, and it is
+ * why the measure caps already on these elements are what make it look
+ * deliberate rather than ragged.
+ *
+ * The headline, the subhead, the section titles and the step numbers stay
+ * centered. They are short, they are the first thing the eye lands on, and
+ * they are what makes the page look composed rather than pinned to the left
+ * edge - the distinction the policy draws, applied rather than restated.
+ */
+.home-section > p,
+.home-honest > li,
+.home-steps > li p {
+  text-align: start;
+}
 
 .home-honest {
   list-style: none;

@@ -45,7 +45,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".home": {
       "color": "rgb(245, 243, 247)",
@@ -65,7 +66,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-hero": {
       "color": "rgb(245, 243, 247)",
@@ -85,7 +87,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-section": {
       "color": "rgb(245, 243, 247)",
@@ -105,7 +108,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-footer": {
       "color": "rgb(245, 243, 247)",
@@ -125,7 +129,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "h1": {
       "color": "rgb(245, 243, 247)",
@@ -145,7 +150,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-1.68px"
+      "letterSpacing": "-1.68px",
+      "textAlign": "center"
     },
     "h2": {
       "color": "rgb(245, 243, 247)",
@@ -165,7 +171,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.64px"
+      "letterSpacing": "-0.64px",
+      "textAlign": "center"
     },
     "h3": {
       "color": "rgb(245, 243, 247)",
@@ -173,9 +180,9 @@
       "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
-      "fontSize": "17px",
+      "fontSize": "20px",
       "fontWeight": "600",
-      "lineHeight": "25.5px",
+      "lineHeight": "30px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "paddingTop": "0px",
       "paddingLeft": "0px",
@@ -185,7 +192,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "p": {
       "color": "rgb(168, 158, 196)",
@@ -205,7 +213,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "li": {
       "color": "rgb(245, 243, 247)",
@@ -225,7 +234,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-headline": {
       "color": "rgb(245, 243, 247)",
@@ -245,7 +255,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-1.68px"
+      "letterSpacing": "-1.68px",
+      "textAlign": "center"
     },
     ".home-subhead": {
       "color": "rgb(168, 158, 196)",
@@ -265,7 +276,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-h2": {
       "color": "rgb(245, 243, 247)",
@@ -285,7 +297,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.64px"
+      "letterSpacing": "-0.64px",
+      "textAlign": "center"
     },
     ".home-h3": {
       "color": "rgb(245, 243, 247)",
@@ -293,9 +306,9 @@
       "borderTopColor": "rgb(245, 243, 247)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
-      "fontSize": "17px",
+      "fontSize": "20px",
       "fontWeight": "600",
-      "lineHeight": "25.5px",
+      "lineHeight": "30px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "paddingTop": "0px",
       "paddingLeft": "0px",
@@ -305,7 +318,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".muted": {
       "color": "rgb(168, 158, 196)",
@@ -325,7 +339,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".small": {
       "color": "rgb(168, 158, 196)",
@@ -345,7 +360,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-fineprint": {
       "color": "rgb(168, 158, 196)",
@@ -365,7 +381,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".wordmark": {
       "color": "rgb(245, 243, 247)",
@@ -385,7 +402,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "left"
     },
     ".wordmark-text": {
       "color": "rgb(245, 243, 247)",
@@ -405,7 +423,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.3264px"
+      "letterSpacing": "-0.3264px",
+      "textAlign": "left"
     },
     ".cta": {
       "color": "rgb(18, 16, 31)",
@@ -425,7 +444,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.17px"
+      "letterSpacing": "-0.17px",
+      "textAlign": "center"
     },
     "a": {
       "color": "rgb(18, 16, 31)",
@@ -445,7 +465,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.17px"
+      "letterSpacing": "-0.17px",
+      "textAlign": "center"
     },
     ".home-link": {
       "color": "rgb(168, 158, 196)",
@@ -465,7 +486,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".link": {
       "color": "rgb(34, 211, 211)",
@@ -485,7 +507,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "underline",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "label": {
       "color": "rgb(245, 243, 247)",
@@ -505,7 +528,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "left"
     },
     "select": {
       "color": "rgb(245, 243, 247)",
@@ -525,7 +549,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     }
   },
   "dark /login": {
@@ -574,7 +599,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".centered": {
       "color": "rgb(245, 243, 247)",
@@ -594,7 +620,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "h1": {
       "color": "rgb(245, 243, 247)",
@@ -614,7 +641,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.48px"
+      "letterSpacing": "-0.48px",
+      "textAlign": "center"
     },
     "p": {
       "color": "rgb(168, 158, 196)",
@@ -634,7 +662,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".muted": {
       "color": "rgb(168, 158, 196)",
@@ -654,7 +683,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".small": {
       "color": "rgb(168, 158, 196)",
@@ -674,7 +704,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".fineprint": {
       "color": "rgb(168, 158, 196)",
@@ -694,7 +725,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".brand": {
       "color": "rgb(245, 243, 247)",
@@ -714,7 +746,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.48px"
+      "letterSpacing": "-0.48px",
+      "textAlign": "center"
     },
     "a": {
       "color": "rgb(158, 158, 255)",
@@ -734,7 +767,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "underline",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".link": {
       "color": "rgb(34, 211, 211)",
@@ -754,7 +788,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "underline",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "button": {
       "color": "rgb(18, 16, 31)",
@@ -774,7 +809,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "button.primary": {
       "color": "rgb(18, 16, 31)",
@@ -794,7 +830,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".card": {
       "color": "rgb(245, 243, 247)",
@@ -814,7 +851,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".auth-card": {
       "color": "rgb(245, 243, 247)",
@@ -834,7 +872,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "input": {
       "color": "rgb(245, 243, 247)",
@@ -854,7 +893,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     "label": {
       "color": "rgb(245, 243, 247)",
@@ -874,7 +914,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "select": {
       "color": "rgb(245, 243, 247)",
@@ -894,7 +935,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".stack": {
       "color": "rgb(245, 243, 247)",
@@ -914,7 +956,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".turnstile": {
       "color": "rgb(245, 243, 247)",
@@ -934,7 +977,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".auth-alternative": {
       "color": "rgb(245, 243, 247)",
@@ -954,7 +998,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     }
   },
   "light /": {
@@ -1003,7 +1048,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".home": {
       "color": "rgb(26, 21, 38)",
@@ -1023,7 +1069,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-hero": {
       "color": "rgb(26, 21, 38)",
@@ -1043,7 +1090,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-section": {
       "color": "rgb(26, 21, 38)",
@@ -1063,7 +1111,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-footer": {
       "color": "rgb(26, 21, 38)",
@@ -1083,7 +1132,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "h1": {
       "color": "rgb(26, 21, 38)",
@@ -1103,7 +1153,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-1.68px"
+      "letterSpacing": "-1.68px",
+      "textAlign": "center"
     },
     "h2": {
       "color": "rgb(26, 21, 38)",
@@ -1123,7 +1174,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.64px"
+      "letterSpacing": "-0.64px",
+      "textAlign": "center"
     },
     "h3": {
       "color": "rgb(26, 21, 38)",
@@ -1131,9 +1183,9 @@
       "borderTopColor": "rgb(26, 21, 38)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
-      "fontSize": "17px",
+      "fontSize": "20px",
       "fontWeight": "600",
-      "lineHeight": "25.5px",
+      "lineHeight": "30px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "paddingTop": "0px",
       "paddingLeft": "0px",
@@ -1143,7 +1195,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "p": {
       "color": "rgb(93, 84, 112)",
@@ -1163,7 +1216,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "li": {
       "color": "rgb(26, 21, 38)",
@@ -1183,7 +1237,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-headline": {
       "color": "rgb(26, 21, 38)",
@@ -1203,7 +1258,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-1.68px"
+      "letterSpacing": "-1.68px",
+      "textAlign": "center"
     },
     ".home-subhead": {
       "color": "rgb(93, 84, 112)",
@@ -1223,7 +1279,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-h2": {
       "color": "rgb(26, 21, 38)",
@@ -1243,7 +1300,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.64px"
+      "letterSpacing": "-0.64px",
+      "textAlign": "center"
     },
     ".home-h3": {
       "color": "rgb(26, 21, 38)",
@@ -1251,9 +1309,9 @@
       "borderTopColor": "rgb(26, 21, 38)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
-      "fontSize": "17px",
+      "fontSize": "20px",
       "fontWeight": "600",
-      "lineHeight": "25.5px",
+      "lineHeight": "30px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "paddingTop": "0px",
       "paddingLeft": "0px",
@@ -1263,7 +1321,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".muted": {
       "color": "rgb(93, 84, 112)",
@@ -1283,7 +1342,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".small": {
       "color": "rgb(93, 84, 112)",
@@ -1303,7 +1363,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".home-fineprint": {
       "color": "rgb(93, 84, 112)",
@@ -1323,7 +1384,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".wordmark": {
       "color": "rgb(26, 21, 38)",
@@ -1343,7 +1405,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "left"
     },
     ".wordmark-text": {
       "color": "rgb(26, 21, 38)",
@@ -1363,7 +1426,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.3264px"
+      "letterSpacing": "-0.3264px",
+      "textAlign": "left"
     },
     ".cta": {
       "color": "rgb(255, 255, 255)",
@@ -1383,7 +1447,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.17px"
+      "letterSpacing": "-0.17px",
+      "textAlign": "center"
     },
     "a": {
       "color": "rgb(255, 255, 255)",
@@ -1403,7 +1468,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.17px"
+      "letterSpacing": "-0.17px",
+      "textAlign": "center"
     },
     ".home-link": {
       "color": "rgb(93, 84, 112)",
@@ -1423,7 +1489,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".link": {
       "color": "rgb(0, 112, 124)",
@@ -1443,7 +1510,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "underline",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "label": {
       "color": "rgb(26, 21, 38)",
@@ -1463,7 +1531,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "left"
     },
     "select": {
       "color": "rgb(26, 21, 38)",
@@ -1483,7 +1552,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     }
   },
   "light /login": {
@@ -1532,7 +1602,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".centered": {
       "color": "rgb(26, 21, 38)",
@@ -1552,7 +1623,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "h1": {
       "color": "rgb(26, 21, 38)",
@@ -1572,7 +1644,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.48px"
+      "letterSpacing": "-0.48px",
+      "textAlign": "center"
     },
     "p": {
       "color": "rgb(93, 84, 112)",
@@ -1592,7 +1665,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".muted": {
       "color": "rgb(93, 84, 112)",
@@ -1612,7 +1686,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".small": {
       "color": "rgb(93, 84, 112)",
@@ -1632,7 +1707,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".fineprint": {
       "color": "rgb(93, 84, 112)",
@@ -1652,7 +1728,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".brand": {
       "color": "rgb(26, 21, 38)",
@@ -1672,7 +1749,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "-0.48px"
+      "letterSpacing": "-0.48px",
+      "textAlign": "center"
     },
     "a": {
       "color": "rgb(0, 0, 238)",
@@ -1692,7 +1770,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "underline",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".link": {
       "color": "rgb(0, 112, 124)",
@@ -1712,7 +1791,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "underline",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "button": {
       "color": "rgb(255, 255, 255)",
@@ -1732,7 +1812,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "button.primary": {
       "color": "rgb(255, 255, 255)",
@@ -1752,7 +1833,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".card": {
       "color": "rgb(26, 21, 38)",
@@ -1772,7 +1854,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     ".auth-card": {
       "color": "rgb(26, 21, 38)",
@@ -1792,7 +1875,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "input": {
       "color": "rgb(26, 21, 38)",
@@ -1812,7 +1896,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     "label": {
       "color": "rgb(26, 21, 38)",
@@ -1832,7 +1917,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     },
     "select": {
       "color": "rgb(26, 21, 38)",
@@ -1852,7 +1938,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".stack": {
       "color": "rgb(26, 21, 38)",
@@ -1872,7 +1959,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".turnstile": {
       "color": "rgb(26, 21, 38)",
@@ -1892,7 +1980,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "start"
     },
     ".auth-alternative": {
       "color": "rgb(26, 21, 38)",
@@ -1912,7 +2001,8 @@
       "boxShadow": "none",
       "opacity": "1",
       "textDecorationLine": "none",
-      "letterSpacing": "normal"
+      "letterSpacing": "normal",
+      "textAlign": "center"
     }
   }
 }

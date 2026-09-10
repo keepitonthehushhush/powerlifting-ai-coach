@@ -143,6 +143,19 @@ const PROPS = [
   'fontSize', 'fontWeight', 'lineHeight', 'fontFamily',
   'paddingTop', 'paddingLeft', 'marginTop', 'gap', 'display',
   'boxShadow', 'opacity', 'textDecorationLine', 'letterSpacing',
+  /*
+   * textAlign was missing until 2026-09-10, and it was missing on the day a
+   * commit moved the alignment of every form label, every field hint and three
+   * blocks of prose on the front page. Every one of those changes was
+   * INVISIBLE to this check: it reported eight differences, all of them font
+   * sizes, and said nothing about the thing the change was actually for.
+   *
+   * A visual regression checker that cannot see alignment would let somebody
+   * re-center the sign-in form tomorrow and stay green. It is also inherited,
+   * which is what made the original defect spread from one layout class into
+   * every control inside it - so it is exactly the property worth watching.
+   */
+  'textAlign',
 ];
 
 const MIME = {
