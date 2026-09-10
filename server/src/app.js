@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 
 import { requireAuth } from './middleware/requireAuth.js';
+import { recordActivityDay } from './middleware/recordActivity.js';
 import { guardianRouter, guardianPublicRouter } from './routes/guardian.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -289,6 +290,20 @@ export function createApp() {
   // router added later is protected by default. Forgetting to add auth is the
   // easy mistake; this makes forgetting the safe outcome.
   app.use('/api', requireAuth);
+
+  /*
+   * And record that this account was here today - one row, one date, migration
+   * 0068. Mounted immediately after requireAuth and BEFORE the rate limiters,
+   * because somebody who gets rate limited still came back; the visit is a
+   * fact about the person and the 429 is a fact about us.
+   *
+   * It cannot see one kind of return, and the limit is stated here rather than
+   * discovered later: requireAuth refuses an aal1 token on an account with a
+   * verified second factor, so an athlete who opens the app, faces the
+   * authenticator prompt and gives up is a returning athlete this never
+   * records. That is a small number today and it is not zero.
+   */
+  app.use('/api', recordActivityDay);
 
   // Rate limits are applied per router rather than globally, because the
   // buckets differ by cost: a model call is expensive, a profile write is not,

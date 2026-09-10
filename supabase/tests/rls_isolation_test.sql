@@ -37,6 +37,11 @@ insert into public.progress_logs (user_id, lift, weight, reps)
   values (:A::uuid,'squat',225,5), (:B::uuid,'squat',500,5);
 insert into public.conversations (user_id, messages)
   values (:A::uuid,'[{"role":"user","content":"A private"}]'), (:B::uuid,'[{"role":"user","content":"B private"}]');
+-- Two days each, distinct, so a leak shows up as a count rather than as a
+-- coincidence of overlapping dates (migration 0068).
+insert into public.activity_days (user_id, day) values
+  (:A::uuid, date '2026-01-02'), (:A::uuid, date '2026-01-03'),
+  (:B::uuid, date '2026-01-04'), (:B::uuid, date '2026-01-05');
 
 -- --- become athlete A --------------------------------------------------------
 set local role authenticated;
@@ -52,6 +57,16 @@ begin
          'A must not be able to read B health data';
   assert (select count(*) from public.conversations where messages::text like '%B private%') = 0,
          'A must not be able to read B conversations';
+  /*
+   * When somebody trains is not health data, and it is still nobody else's
+   * business. The table added in 0068 holds nothing but (account, date), which
+   * makes it the easiest one to wave through - so it is asserted here beside
+   * the injury notes rather than treated as too dull to check.
+   */
+  assert (select count(*) from public.activity_days) = 2,
+         'A must see only their own activity days';
+  assert (select count(*) from public.activity_days where day >= date '2026-01-04') = 0,
+         'A can read the days B used the app';
 end $$;
 
 -- Silent-failure attacks: the policy filters the rows out, so these affect nothing.
@@ -65,6 +80,10 @@ begin
   delete from public.progress_logs where user_id='bbbbbbbb-0000-4000-8000-000000000002';
   get diagnostics touched = row_count;
   assert touched = 0, 'A must not be able to delete B progress logs';
+
+  delete from public.activity_days where user_id='bbbbbbbb-0000-4000-8000-000000000002';
+  get diagnostics touched = row_count;
+  assert touched = 0, 'A must not be able to delete the days B used the app';
 
   -- The catastrophic-mistake case: a DELETE with no WHERE clause at all.
   -- RLS scopes it to the caller's own rows, so it cannot become a mass deletion.
@@ -87,6 +106,25 @@ begin
     update public.user_profile set user_id='bbbbbbbb-0000-4000-8000-000000000002'
       where user_id='aaaaaaaa-0000-4000-8000-000000000001';
     raise exception 'A was able to reassign their own row to B';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.activity_days (user_id, day)
+      values ('bbbbbbbb-0000-4000-8000-000000000002', date '2026-02-01');
+    raise exception 'A was able to write a day onto B account';
+  exception when insufficient_privilege then null;
+  end;
+
+  /*
+   * There is no UPDATE policy and no UPDATE grant on this table, so the
+   * failure arrives as a privilege error from the GRANT rather than from a
+   * policy. Asserted because the two are easy to confuse and only one of them
+   * is what was intended here - see 0068's header.
+   */
+  begin
+    update public.activity_days set day = date '2026-03-01';
+    raise exception 'activity_days accepted an UPDATE';
   exception when insufficient_privilege then null;
   end;
 end $$;

@@ -136,6 +136,13 @@ export function PrivacyPolicy() {
             train.
           </li>
           <li>
+            <strong>The dates you used the app</strong> — one date per day on which your account
+            made a request. A date, and nothing else: not a time, not which page, not your
+            address. It exists so we can tell whether people keep training with this, which the
+            rest of our records cannot show — reading your program and going to the gym writes
+            nothing down.
+          </li>
+          <li>
             <strong>Error records</strong> when something fails: an error code, the route, and an
             HTTP status. Never the content of your message.
           </li>
@@ -229,6 +236,10 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Usage and cost records: 24 months.</strong>
+          </li>
+          <li>
+            <strong>The dates you used the app: 24 months.</strong> Long enough to compare one
+            year against the next, and then gone.
           </li>
           <li>
             <strong>Error records: 6 months.</strong>

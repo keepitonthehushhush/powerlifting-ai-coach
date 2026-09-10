@@ -69,7 +69,7 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, subscription, activity, board, trial, guardianRequests, policyNotices] = await Promise.all([
+    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, activityDays, subscription, activity, board, trial, guardianRequests, policyNotices] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       // Interface preferences are personal data too. Small, dull, and still
       // the subject's - an export that quietly omits a table is an export
@@ -85,6 +85,13 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       // status - but it is a record about them, so it belongs in a subject
       // access request like everything else here (migration 0034).
       req.supabase.from('error_events').select('*').order('seq'),
+      /*
+       * The dates this account used the app (migration 0068). A date per day
+       * and nothing else, which is the least interesting thing in this
+       * document and still theirs - the omission that made this route wrong
+       * in the first place was exactly this kind of table.
+       */
+      req.supabase.from('activity_days').select('*').order('day'),
       // Billing state is the person's own data and belongs in a subject access
       // request. It is a mirror of what Stripe holds; Stripe's own copy is
       // requestable from Stripe, and `not_included` says so.
@@ -192,6 +199,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       consent_records: consents,
       usage_events: usage,
       error_events: errors,
+      activity_days: activityDays,
       subscription,
       audit_events: activity,
       leaderboard_entry: board,
@@ -228,6 +236,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         consent_records: consents.data ?? [],
         usage_events: usage.data ?? [],
         error_events: errors.data ?? [],
+        activity_days: activityDays.data ?? [],
         subscription: subscription.data ?? null,
         audit_events: activity.data ?? [],
         // Zero rows when they never joined; one row when they did.
