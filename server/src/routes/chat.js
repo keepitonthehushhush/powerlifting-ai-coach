@@ -382,10 +382,35 @@ chatRouter.post('/', async (req, res, next) => {
       try {
         return await createCoachReply(system, apiMessages);
       } catch (err) {
+        /*
+         * ── A 400 WITH NOTHING ELSE IN IT IS NOT DIAGNOSABLE ─────────────
+         *
+         * Two of these landed in production on 2026-09-10 and all the log
+         * held was `upstreamStatus: 400`. A 400 from the Messages API is
+         * always OUR request being wrong - too many input tokens, a max_tokens
+         * past the model's ceiling, a malformed message sequence - and each
+         * has a different fix. With only the status there is no way to tell
+         * which, so the same failure can recur indefinitely and every
+         * investigation starts from nothing.
+         *
+         * ── AND WHY IT IS SAFE TO LOG ────────────────────────────────────
+         *
+         * The `type` is a fixed vocabulary from the vendor
+         * (`invalid_request_error`, `rate_limit_error`, ...) and carries
+         * nothing of ours. The MESSAGE is the risk: it is vendor prose, and
+         * this product's messages are health information, so a vendor that
+         * ever quoted the offending content back would put it in a log that
+         * the README promises will not hold any. So it is truncated hard and
+         * treated as a lead rather than a transcript - enough to read "prompt
+         * is too long: 210000 tokens > 200000 maximum" and act on it, far too
+         * short to be a place athlete text accumulates.
+         */
         logger.error('coach.call_failed', {
           userId: req.user.id,
           name: err?.name,
           upstreamStatus: err?.status ?? null,
+          upstreamType: err?.error?.error?.type ?? err?.error?.type ?? null,
+          upstreamMessage: String(err?.error?.error?.message ?? err?.error?.message ?? '').slice(0, 200) || null,
         });
         throw coachApiError(err);
       }

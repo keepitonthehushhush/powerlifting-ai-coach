@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from './AuthContext.jsx';
+import { useMfa } from './MfaContext.jsx';
 import { evaluateConsentGate } from '../lib/consentGate.js';
 
 /**
@@ -20,6 +21,11 @@ const ConsentContext = createContext(null);
 
 export function ConsentProvider({ children }) {
   const { user } = useAuth();
+  /*
+   * A half-finished sign-in is not a signed-in person. See the effect below;
+   * this is why MfaProvider sits above this one in App.jsx.
+   */
+  const { checked: mfaChecked, satisfied: mfaSatisfied } = useMfa();
   const userId = user?.id ?? null;
   const [state, setState] = useState(null);
   const [status, setStatus] = useState('idle');
@@ -33,25 +39,49 @@ export function ConsentProvider({ children }) {
     try {
       setState(await api.getConsents());
       setStatus('ready');
-    } catch {
-      // The error itself is deliberately not surfaced. A failure to READ
-      // consent tells the person nothing they can act on, and the gate treats
-      // an unreadable state as "not granted" anyway.
+    } catch (err) {
       setState(null);
-      setStatus('error');
+      /*
+       * ── "FINISH SIGNING IN" IS NOT "SOMETHING BROKE" ──────────────────
+       *
+       * A 401 carrying mfa_required means the token is aal1: the password
+       * went through and the second factor has not. Treating that as an error
+       * is what put "We could not load your privacy choices - that is a
+       * problem on our end" in front of somebody whose only mistake was
+       * having MFA turned on, on an ordinary sign-in, with nothing wrong.
+       *
+       * The effect below now waits for the challenge, so this should not be
+       * reachable on the sign-in path any more. It stays because the token can
+       * drop back to aal1 mid-session on a refresh, and because a state this
+       * alarming should need more than one thing to go right to appear.
+       *
+       * 'idle' rather than 'error': the answer is not known yet, which is
+       * exactly what idle means here, and ProtectedRoute renders the challenge
+       * above the consent gate anyway.
+       */
+      setStatus(err?.code === 'mfa_required' ? 'idle' : 'error');
     }
   }, []);
 
-  // Keyed on the user's id, not the session object. A refreshed token is the
-  // same person and must not trigger a refetch.
+  /*
+   * Keyed on the user's id, not the session object: a refreshed token is the
+   * same person and must not trigger a refetch.
+   *
+   * AND ON WHETHER THE SIGN-IN IS FINISHED. /api/consent requires a second
+   * factor from an account that has one, so asking before the challenge is
+   * answered spends a request to be told "not yet" - and the answer is
+   * indistinguishable, from here, from the server being down. When the factor
+   * lands, `mfaSatisfied` flips and this effect runs the load it was always
+   * going to run, once, at the moment it can succeed.
+   */
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !mfaChecked || !mfaSatisfied) {
       setState(null);
       setStatus('idle');
       return;
     }
     load();
-  }, [userId, load]);
+  }, [userId, mfaChecked, mfaSatisfied, load]);
 
   const value = useMemo(
     () => ({ state, status, refresh: load, gate: evaluateConsentGate(state) }),

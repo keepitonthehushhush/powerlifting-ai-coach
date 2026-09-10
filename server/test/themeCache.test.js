@@ -238,7 +238,35 @@ describe('THE PROVIDER, AND THE TWO WAYS THIS FIX UNDOES ITSELF', () => {
       loader.indexOf('if (loading)') < loader.indexOf('if (!userId)'),
       'the signed-out branch runs before auth has answered'
     );
-    assert.match(provider, /\}, \[userId, loading\]\);/);
+    /*
+     * The dependencies, by property rather than by literal. This pinned
+     * `[userId, loading]` exactly, so adding the second-factor wait broke a
+     * test that has no opinion about second factors - and a test that fails
+     * for a reason it does not describe is one somebody edits without reading.
+     */
+    const deps = (provider.match(/\}, \[([^\]]*)\]\);/g) ?? []).find((d) => d.includes('loading'));
+    assert.ok(deps, 'the palette effect has no dependency array');
+    assert.match(deps, /userId/);
+    assert.match(deps, /loading/);
+  });
+
+  test('the palette waits for a finished sign-in', () => {
+    /*
+     * /api/preferences needs aal2, so during an MFA challenge this 401'd - and
+     * the catch, which is right to stay quiet about a palette, swallowed it
+     * and never asked again, because the effect only re-ran on a change of
+     * user id and there had not been one.
+     *
+     * The cached hint hides it on a device they have used before. On a NEW
+     * device it is "my theme is gone", permanently, for everybody with MFA on.
+     */
+    assert.match(provider, /useMfa/);
+    assert.match(provider, /if \(!mfaChecked \|\| !mfaSatisfied\) return undefined;/);
+    const loader = provider.slice(provider.indexOf('if (loading) return undefined;'));
+    assert.ok(
+      loader.indexOf('mfaSatisfied') < loader.indexOf('api.getPreferences()'),
+      'the request goes out before the second factor is checked'
+    );
   });
 
   test('signing out drops the hint', () => {

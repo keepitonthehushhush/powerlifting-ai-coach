@@ -237,3 +237,39 @@ describe('it is disclosed like every other table', () => {
     assert.match(head, /set search_path = public, pg_temp/);
   });
 });
+
+describe('an upstream 400 says which 400 it was', () => {
+  const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
+  const failure = chat.slice(chat.indexOf("logger.error('coach.call_failed'"), chat.indexOf("throw coachApiError(err)"));
+
+  test('the vendor error type and a bounded message are recorded', () => {
+    /*
+     * Two of these landed in production on 2026-09-10 carrying only
+     * `upstreamStatus: 400`. A 400 from the Messages API is always OUR request
+     * being wrong - too many input tokens, a max_tokens past the model's
+     * ceiling, a malformed message sequence - and each has a different fix.
+     * With the status alone there is nothing to act on, so the same failure
+     * can recur forever and every investigation starts from zero.
+     */
+    assert.match(failure, /upstreamType:/);
+    assert.match(failure, /upstreamMessage:/);
+  });
+
+  test('and the message cannot become a place athlete text accumulates', () => {
+    /*
+     * The type is a fixed vendor vocabulary and carries nothing of ours. The
+     * message is vendor prose, and this product's messages are health
+     * information - so a vendor that ever quoted the offending content back
+     * would put it somewhere the README promises it will not be. Bounded hard,
+     * and it is a lead rather than a transcript.
+     */
+    assert.match(failure, /\.slice\(0, 200\)/);
+    assert.match(failure, /String\(/, 'an object logged unbounded is not bounded by slice');
+  });
+
+  test('the reply itself is still never logged', () => {
+    // The standing rule, restated where it can fail: whatever is added to this
+    // call, the coach's text and the athlete's text are not in it.
+    assert.doesNotMatch(failure, /\breply\b|\bmessages\b|\bcontent\b|req\.body/);
+  });
+});

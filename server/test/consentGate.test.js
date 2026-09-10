@@ -199,11 +199,50 @@ describe('the gate is actually wired up', () => {
   });
 
   test('consent is refetched per user, not per session object', () => {
+    /*
+     * This asserted the literal dependency array `[userId, load]`, which made
+     * it fail the moment a legitimate dependency was added - and the property
+     * it exists to protect has nothing to do with the array's length. What
+     * matters is that `session` is NOT in it: keying on the session object
+     * refetches on every token refresh, which Supabase does on tab focus.
+     */
     const consent = read('../../web/src/context/ConsentContext.jsx');
-    assert.match(
-      consent,
-      /\[userId, load\]/,
+    const deps = consent.match(/\}, \[([^\]]*)\]\);/g) ?? [];
+    assert.ok(deps.length, 'no effect dependencies found - this test is measuring nothing');
+    const loadEffect = deps.find((d) => d.includes('load'));
+    assert.ok(loadEffect, 'the consent load effect has no dependency array');
+    assert.match(loadEffect, /userId/, 'the load must re-run when the person changes');
+    assert.doesNotMatch(
+      loadEffect,
+      /\bsession\b/,
       'keying the effect on the session object refetches on every token refresh'
+    );
+  });
+
+  test('and it waits for the second factor before asking', () => {
+    /*
+     * /api/consent needs aal2 from an account that has MFA on it. Asking
+     * during the challenge returns 401 mfa_required, and this context turned
+     * that into status 'error', which ProtectedRoute renders as "We could not
+     * load your privacy choices - that is a problem on our end". Every
+     * MFA-enabled sign-in hit it. Nothing was wrong; the person had not
+     * finished signing in.
+     */
+    const consent = read('../../web/src/context/ConsentContext.jsx');
+    assert.match(consent, /useMfa/, 'the consent load cannot tell whether sign-in finished');
+    assert.match(consent, /if \(!userId \|\| !mfaChecked \|\| !mfaSatisfied\)/);
+    // And if one slips through anyway, it is not an error.
+    assert.match(consent, /err\?\.code === 'mfa_required' \? 'idle' : 'error'/);
+
+    // The provider has to be able to SEE the MFA context to do any of that.
+    const app = read('../../web/src/App.jsx');
+    assert.ok(
+      app.indexOf('<MfaProvider>') < app.indexOf('<ConsentProvider>'),
+      'ConsentProvider is outside MfaProvider, so useMfa() cannot work there'
+    );
+    assert.ok(
+      app.indexOf('<MfaProvider>') < app.indexOf('<ThemeProvider>'),
+      'ThemeProvider is outside MfaProvider, so it cannot wait for the second factor either'
     );
   });
 

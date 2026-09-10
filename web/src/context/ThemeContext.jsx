@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from './AuthContext.jsx';
+import { useMfa } from './MfaContext.jsx';
 import { applyTheme, currentMode, watchColorScheme } from '../lib/applyTheme.js';
 import { DEFAULT_THEME_ID, isThemeId } from '../lib/themes.js';
 import { readCachedTheme, cacheTheme, forgetCachedTheme } from '../lib/themeCache.js';
@@ -54,6 +55,9 @@ const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const { user, loading } = useAuth();
+  // The palette is account data, so it needs a finished sign-in like any
+  // other. See the effect below.
+  const { checked: mfaChecked, satisfied: mfaSatisfied } = useMfa();
   const userId = user?.id ?? null;
   // Lazy, and reading the same hint main.jsx painted from: a first render that
   // disagreed with the document would repaint the default over it.
@@ -86,6 +90,22 @@ export function ThemeProvider({ children }) {
     // this waits rather than guessing, and whatever was painted from the hint
     // stays on screen.
     if (loading) return undefined;
+
+    /*
+     * ── AND WAIT FOR THE SECOND FACTOR ────────────────────────────────────
+     *
+     * /api/preferences needs a finished sign-in from an account with MFA on
+     * it. Asking during the challenge got a 401, and the catch below - which
+     * is right to be quiet about a palette - swallowed it and never asked
+     * again, because the effect only re-ran when the user id changed and it
+     * had not.
+     *
+     * The cached hint hides that on a device they have used before, which is
+     * why nobody noticed: it only shows up as "my theme is gone" on a NEW
+     * device, forever, for anybody with MFA enabled. The 401 in the logs was
+     * the visible half of it.
+     */
+    if (!mfaChecked || !mfaSatisfied) return undefined;
 
     if (!userId) {
       setThemeId(DEFAULT_THEME_ID);
@@ -125,7 +145,7 @@ export function ThemeProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [userId, loading]);
+  }, [userId, loading, mfaChecked, mfaSatisfied]);
 
   const setTheme = useCallback(
     async (next) => {

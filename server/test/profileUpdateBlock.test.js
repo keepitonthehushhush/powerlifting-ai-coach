@@ -402,6 +402,19 @@ describe('what the athlete sees', () => {
     );
   });
 
+  test('the coach does not send them to the wrong page either', () => {
+    /*
+     * THE SAME BUG HAD A SECOND COPY. Fixing the link in the card left the
+     * prompt telling the coach to say the weight is "on their account page" -
+     * so an athlete who asked, rather than tapping, was sent to the same page
+     * with no bodyweight on it. One report, two places to fix, and only one of
+     * them was a link.
+     */
+    const coachPrompt = flatten(readSource(new URL('../src/prompts/systemPrompt.js', import.meta.url)));
+    assert.match(coachPrompt, /say it is on their PROFILE page/);
+    assert.doesNotMatch(coachPrompt, /say it is on their account page/);
+  });
+
   test('the destination puts them on the field rather than near it', () => {
     /*
      * A hash alone does nothing here. The router swaps the page in and the

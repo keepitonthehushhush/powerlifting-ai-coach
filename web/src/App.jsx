@@ -75,8 +75,18 @@ export function App() {
   return (
     <I18nProvider>
       <AuthProvider>
-        <ThemeProvider>
+        {/* ── MFA ABOVE THE TWO THINGS THAT FETCH ────────────────────────────
+            MfaProvider used to sit between ThemeProvider and ConsentProvider,
+            so the theme could not see it. Both of those load account data the
+            moment a session exists, and during a second-factor challenge the
+            session is aal1 - so both fired, both got 401 mfa_required, and one
+            of them turned that into "We could not load your privacy choices -
+            that is a problem on our end" on top of an ordinary sign-in.
+            Nothing was wrong; the person had simply not finished. They both
+            need to be able to ask whether the sign-in is done, so this moved
+            up. Nothing here depends on the theme. */}
         <MfaProvider>
+        <ThemeProvider>
         <ConsentProvider>
           <BrowserRouter>
             {/* Inside the router because it reads the router's own history,
@@ -214,8 +224,8 @@ export function App() {
             </Routes>
           </BrowserRouter>
         </ConsentProvider>
-        </MfaProvider>
         </ThemeProvider>
+        </MfaProvider>
       </AuthProvider>
     </I18nProvider>
   );
