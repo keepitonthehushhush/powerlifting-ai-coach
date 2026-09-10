@@ -1,258 +1,255 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSource, readRaw, phrase, latestDefinition } from './helpers/source.js';
-import { POLICY_VERSIONS } from '../src/lib/policyVersions.js';
+import { readFileSync } from 'node:fs';
+import {
+  DAY,
+  HOUR,
+  activeIn,
+  calendarDays,
+  concentration,
+  curve,
+  distinctVisits,
+  eligibleFor,
+} from '../../scripts/lib/retention.mjs';
+
+const script = readFileSync(new URL('../../scripts/retention.mjs', import.meta.url), 'utf8');
 
 /**
- * ── WHY RETENTION IS TIERED AND NOT ONE TTL ────────────────────────────────
+ * WHETHER THEY CAME BACK.
  *
- * "Delete everything older than N" is the obvious design and it is wrong,
- * because the categories are not alike:
+ * ── WHY THIS FILE IS UNUSUALLY SUSPICIOUS ─────────────────────────────────
  *
- *   - A three-year training log is the ATHLETE'S ASSET. Deleting it because
- *     somebody took a year off destroys what the product exists to build.
- *   - A stale injury is a LIABILITY. "Torn rotator cuff" from two years ago
- *     still shaping programming is bad coaching before it is a privacy
- *     problem.
- *   - Old chat is NEITHER: past the replay window nothing reads it, and it is
- *     where people mention injuries, weight and home life.
+ * Every mistake a retention report can make produces a NUMBER rather than an
+ * error, and the number gets quoted. funnel.mjs shipped one: a filter that
+ * named two accounts as evidence of a routing bug, printed with complete
+ * confidence, computed from a condition that could not tell "did not" from
+ * "there was no instrument yet". Its tests all passed - they read the script
+ * for the right strings, and the right strings were there.
  *
- * The tests below are mostly about the traps, not the periods.
+ * So these tests hand the arithmetic fixtures and check the answers, and the
+ * three assertions that read the script's source are there for the specific
+ * traps that have already been sprung in this repository once.
  */
 
-const migration = readRaw(new URL('../../supabase/migrations/0031_retention.sql', import.meta.url));
+const JAN = Date.parse('2026-01-01T00:00:00Z');
+const account = (id, joinedAt, instants) => ({ id, joinedAt, instants });
 
-/**
- * The sweep AS IT STANDS, not as 0031 wrote it.
- *
- * Reading 0031 for the sweep's behavior was a mistake this file made for a
- * week. Migration files are append-only: 0033 and 0034 both replaced
- * apply_retention() in full, and nothing they did could have made an assertion
- * about 0031's text fail. The most important assertion in this file - that the
- * sweep never touches training logs - was being made against a definition that
- * had been superseded twice.
- *
- * 0031 is still read below for its REASONING, which is where the reasoning
- * lives and where it cannot move.
- */
-const sweep = latestDefinition('function private.apply_retention').body;
-const policy = readSource(new URL('../../web/src/pages/HealthDataPolicy.jsx', import.meta.url));
-const invariants = readRaw(new URL('../../scripts/check-db-invariants.mjs', import.meta.url));
-
-describe('what is never swept', () => {
-  test('TRAINING LOGS ARE NOT TOUCHED BY ANY SWEEP', () => {
-    // The single most important assertion in this file. progress_logs must not
-    // appear in a delete or update inside apply_retention().
-    assert.ok(!/delete from public\.progress_logs/.test(sweep), 'the sweep deletes training logs');
-    assert.ok(!/update public\.progress_logs/.test(sweep), 'the sweep modifies training logs');
-    assert.ok(!/workout_sessions|workout_programs/.test(sweep), 'the sweep touches sessions or programmes');
-  });
-
-  test('and the policy says so in those words', () => {
-    assert.match(policy, phrase('Your logged training is never deleted automatically'));
-    assert.match(policy, phrase('a year away from the gym'));
-  });
-
-  test('consent records are not swept either', () => {
-    // They are the evidence that consent was obtained; deleting them on a
-    // timer would undo 0028's whole argument.
-    assert.ok(!/delete from public\.consent_records/.test(sweep));
-  });
-});
-
-describe('THE TIMESTAMP TRAP', () => {
-  test('health_restrictions gets its OWN timestamp, not user_profile.updated_at', () => {
-    // updated_at moves when any field changes, so expiring on it would let
-    // changing a bodyweight reset the injury clock - a restriction outliving
-    // its period while appearing to be swept.
-    assert.match(migration, /add column if not exists health_restrictions_updated_at timestamptz/);
-    assert.match(migration, phrase('would reset the injury clock'));
-  });
-
-  test('the trigger moves it only when the field itself changes', () => {
-    assert.match(migration, /new\.health_restrictions is distinct from old\.health_restrictions/);
-    // `is distinct from`, not `<>`: null-to-value and value-to-null are both
-    // changes and `<>` is null for either.
-    assert.match(migration, phrase('both changes, and `<>` is null for either'));
-  });
-
-  test('and clearing the field clears its timestamp too', () => {
-    assert.match(migration, /health_restrictions_updated_at :=\s*case when new\.health_restrictions is null then null/);
-  });
-});
-
-describe('expiry must not quietly make the coaching less safe', () => {
-  test('CLEARANCE IS RESET IN THE SAME STATEMENT AS THE INJURY', () => {
-    // Clearing an injury alone would leave somebody looking unrestricted to a
-    // coach that had been working around something. One statement, so there is
-    // no window where they are cleared and unrestricted.
-    const stmt = sweep
-      .slice(sweep.indexOf('update public.user_profile\n     set health_restrictions = null'))
-      .slice(0, 600);
-
+describe('one visit is not three events', () => {
+  test('writes inside the grain collapse into a single moment', () => {
     /*
-     * `false`, and this assertion used to demand `null`.
-     *
-     * cleared_to_train has been `boolean not null default false` since 0001,
-     * so the sweep could never have run: the first row to age past the health
-     * retention period would raise 23502 and abort every other category with
-     * it - conversations, audit, usage, Stripe and error events included.
-     * Reproduced against the preview database, then fixed in 0035.
-     *
-     * plpgsql does not plan a statement until it executes, which is why the
-     * function created cleanly and the nightly job reported success for as
-     * long as it had nothing to do. The test asserted the bug, and reading
-     * frozen file 0031 meant it would have gone on asserting it forever.
-     *
-     * `false` is what 0031 meant anyway: an athlete whose injury has expired
-     * is "treated exactly as somebody who has not answered yet", and that
-     * person's row says false.
+     * The real shape: an athlete finishes training, logs the session, and
+     * tells the coach about it. Three rows in three tables inside a minute.
+     * Counted as rows that is three visits, and "visits per week" is exactly
+     * the number somebody would put in a deck.
      */
-    assert.match(stmt, /cleared_to_train = false/);
-    assert.doesNotMatch(stmt, /cleared_to_train = null/);
+    const minute = 60 * 1000;
+    const visits = distinctVisits([JAN, JAN + minute, JAN + 2 * minute]);
+    assert.equal(visits.length, 1);
+    assert.equal(visits[0], JAN);
   });
 
-  test('and nothing records that a restriction ever existed', () => {
-    // A column saying "this person once had a health restriction" is an
-    // inference about health - the thing being deleted.
-    assert.ok(!/health_restrictions_expired|had_restrictions|restriction_history/i.test(migration));
-    assert.match(migration, phrase('would be an inference about health'));
-  });
-});
-
-describe('undateable chat messages', () => {
-  test('are judged by the conversation, not deleted for being undateable', () => {
-    // Messages written before `at` existed cannot be dated individually.
-    // Deleting something because its date is unknown is the wrong default for
-    // somebody's own record.
-    assert.match(migration, /not \(msg \? 'at'\) and c\.created_at >= now\(\)/);
-    assert.match(migration, phrase('deleting something because its date is unknown is the wrong default'));
-  });
-});
-
-describe('the destructive one is built and not switched on', () => {
-  test('DELETE_INACTIVE_ACCOUNTS IS DRY RUN BY DEFAULT', () => {
-    // A destructive function whose default is to destroy is one keystroke from
-    // a very bad afternoon.
-    assert.match(migration, /p_dry_run boolean default true/);
+  test('a morning session and an evening one stay two', () => {
+    assert.equal(distinctVisits([JAN, JAN + 10 * HOUR]).length, 2);
   });
 
-  test('it is never added to the cron schedule', () => {
-    const schedule = migration.slice(migration.indexOf('cron.schedule'));
-    assert.ok(!/delete_inactive_accounts/.test(schedule), 'the account deletion job is scheduled');
-    assert.match(invariants, /AND ACCOUNT DELETION IS NOT/);
+  test('an early moment arriving late is not swallowed', () => {
+    /*
+     * REST returns one array per table, so the union arrives unsorted: every
+     * message, then every session, then every program. Sorting first is
+     * load-bearing, and the way it fails is silent.
+     *
+     * The first version of this test used three timestamps two minutes apart
+     * and PASSED against an unsorted implementation, because comparing to a
+     * LATER moment yields a negative gap, which is never >= the grain, so the
+     * extra rows were dropped and the count came out right by accident. The
+     * case that actually distinguishes them is an early instant arriving after
+     * a much later one - unsorted, the morning visit vanishes into the
+     * evening's.
+     */
+    const morningThenEvening = distinctVisits([JAN, JAN + 10 * HOUR]);
+    const eveningThenMorning = distinctVisits([JAN + 10 * HOUR, JAN]);
+    assert.equal(morningThenEvening.length, 2);
+    assert.equal(eveningThenMorning.length, 2, 'a visit was lost because its row arrived second');
+    assert.deepEqual(eveningThenMorning, morningThenEvening, 'arrival order changed the answer');
   });
 
-  test('and the reason is the missing mailbox, written down', () => {
-    assert.match(migration, phrase('there is no way to warn anybody first'));
-    assert.match(migration, phrase('is hostile even where it is lawful'));
-  });
-
-  test('"inactive" uses every signal, not just last sign-in', () => {
-    // A session that refreshes silently, or a device that stays signed in, is
-    // not inactivity. Erring towards keeping is correct for something
-    // irreversible.
-    assert.match(migration, /greatest\(/);
-    assert.match(migration, /max\(p\.created_at\) from public\.progress_logs/);
-    assert.match(migration, phrase('a definition that missed that would delete active users'));
+  test('the grain is a parameter, because it is a judgment', () => {
+    assert.equal(distinctVisits([JAN, JAN + 45 * 60 * 1000]).length, 2);
+    assert.equal(distinctVisits([JAN, JAN + 45 * 60 * 1000], 2 * HOUR).length, 1);
   });
 });
 
-describe('the periods in the policy and the periods in the database agree', () => {
-  /**
-   * The check where the fact lives. A privacy policy stating one number while
-   * the sweep uses another is the documentation-drift failure this codebase
-   * keeps building checks for - except this one is a published commitment
-   * about health data.
+describe('the denominator', () => {
+  test('an account too young for a window is not counted as having failed it', () => {
+    /*
+     * THE FALSE RED. Seven accounts, four of them less than two weeks old: a
+     * week-two figure of "1 of 7" reads as a product nobody stays with, and
+     * it is really a product most of whose users have not had the chance yet.
+     */
+    const now = Date.parse('2026-01-10T00:00:00Z');
+    const week2 = { label: 'week 2', from: 7 * DAY, to: 14 * DAY };
+    assert.equal(eligibleFor(week2, Date.parse('2026-01-08T00:00:00Z'), now), false);
+    assert.equal(eligibleFor(week2, Date.parse('2025-12-20T00:00:00Z'), now), true);
+  });
+
+  test('an open-ended window closes as soon as it opens', () => {
+    // `to: Infinity` compared against `now` directly would make nobody, ever,
+    // eligible for "did they come back at all" - a window that can never be
+    // answered reports 0 of 0 forever and looks like a quiet product.
+    const now = Date.parse('2026-01-03T00:00:00Z');
+    const ever = { label: 'ever', from: DAY, to: Infinity };
+    assert.equal(eligibleFor(ever, Date.parse('2026-01-01T00:00:00Z'), now), true);
+    assert.equal(eligibleFor(ever, Date.parse('2026-01-02T18:00:00Z'), now), false);
+  });
+
+  test('nobody old enough reports null, not zero percent', () => {
+    const now = JAN + 2 * DAY;
+    const rows = curve([account('a', JAN + DAY, [])], now, [
+      { label: 'week 2', from: 7 * DAY, to: 14 * DAY },
+    ]);
+    assert.equal(rows[0].eligible, 0);
+    assert.equal(rows[0].percent, null, '0% and "ask again later" are different answers');
+  });
+
+  test('the curve names who is in each window rather than only how many', () => {
+    const now = JAN + 30 * DAY;
+    const rows = curve(
+      [account('kept', JAN, [JAN + 9 * DAY]), account('left', JAN, [JAN + 2 * HOUR])],
+      now,
+      [{ label: 'week 2', from: 7 * DAY, to: 14 * DAY }]
+    );
+    assert.deepEqual(rows[0].who, ['kept']);
+    assert.equal(rows[0].eligible, 2);
+  });
+});
+
+describe('the curve means the same thing in every timezone', () => {
+  /*
+   * ── THE REASON THE WINDOWS ARE IN HOURS ───────────────────────────────────
+   *
+   * A lifter training at nine in the evening in California is stamped the
+   * FOLLOWING calendar day in UTC. Measured in calendar days, that single
+   * Tuesday evening is a return visit. Measured in elapsed time from their own
+   * signup, it is what it is wherever they live.
    */
-  const seeded = Object.fromEntries(
-    [...migration.matchAll(/\('([a-z_]+)',\s*(\d+),/g)].map((m) => [m[1], Number(m[2])]),
-  );
+  const windows = [{ label: 'week 1', from: DAY, to: 7 * DAY }];
 
-  test('every seeded period is a number the policy states', () => {
-    assert.equal(seeded.health_restrictions, 12);
-    assert.equal(seeded.conversation_messages, 12);
-    assert.equal(seeded.audit_events, 24);
-    assert.equal(seeded.usage_events, 24);
-    assert.match(policy, /Injury and medical notes: 12 months/);
-    assert.match(policy, /Conversation messages: 12 months/);
-    assert.match(policy, /Account activity records: 24 months/);
-    assert.match(policy, /Usage and cost records: 24 months/);
+  test('shifting an entire account through the clock does not move it', () => {
+    const now = JAN + 30 * DAY;
+    const base = [JAN + 3 * HOUR, JAN + 2 * DAY + 3 * HOUR];
+    for (const shift of [-11 * HOUR, -6 * HOUR, 0, 6 * HOUR, 11 * HOUR]) {
+      const rows = curve([account('a', JAN + shift, base.map((t) => t + shift))], now, windows);
+      assert.equal(rows[0].active, 1, `shift ${shift / HOUR}h changed the answer`);
+    }
   });
 
-  test('the periods live in a table, not as numbers buried in a function', () => {
-    assert.match(migration, /create table if not exists public\.retention_periods/);
-    assert.match(migration, /select rp\.months from public\.retention_periods rp/);
+  test('and the calendar-day count, which is why it is not the curve, does move', () => {
+    // The contrast is the point: this is the number the first sketch used.
+    const evening = Date.parse('2026-01-01T23:30:00Z');
+    assert.equal(calendarDays([evening, evening + HOUR]), 2);
+    assert.equal(calendarDays([evening - 6 * HOUR, evening - 5 * HOUR]), 1);
   });
 
-  test('and the ambiguity that only running it revealed stays fixed', () => {
-    // The OUT parameter is also called `category`; plpgsql resolves an
-    // unqualified name to the variable, so the lookup raised 42702 and did
-    // nothing. A test reading the file could not have found this.
-    //
-    // Scoped to the DECLARE block rather than the file: the comment above the
-    // fix necessarily contains the broken form while explaining it, and an
-    // absence assertion over the whole file matches the explanation of why the
-    // thing is absent. That collision has now cost this suite four times.
-    const declare = migration.slice(
-      migration.indexOf('m_health int :='),
-      migration.indexOf('n bigint;'),
-    );
-    assert.equal(
-      (declare.match(/from public\.retention_periods rp where rp\.category/g) ?? []).length, 5,
-      'not every period lookup is aliased - an unqualified `category` resolves to the OUT parameter',
-    );
-    assert.ok(!/where category = '/.test(declare), 'an unqualified category lookup is back');
-    assert.match(migration, phrase('Found by running it'));
+  test('a window is half-open, so an instant on the boundary lands in one bucket only', () => {
+    const week1 = { label: 'week 1', from: DAY, to: 7 * DAY };
+    const week2 = { label: 'week 2', from: 7 * DAY, to: 14 * DAY };
+    const boundary = [JAN + 7 * DAY];
+    assert.equal(activeIn(week1, JAN, boundary), false);
+    assert.equal(activeIn(week2, JAN, boundary), true);
+  });
+
+  test('activity before signup is not activity in any window', () => {
+    // Timestamps come from four tables and one of them (activity_days) is a
+    // date widened to noon, so an instant can legitimately precede the profile
+    // row by hours. It must not be counted as a return.
+    const ever = { label: 'ever', from: DAY, to: Infinity };
+    // Two DAYS before, not five hours. A five-hour gap is inside the first
+    // window's opening edge either way, so it passes against an implementation
+    // that takes the absolute value of the elapsed time and calls a moment
+    // before signup a return visit two days later.
+    assert.equal(activeIn(ever, JAN, [JAN - 2 * DAY]), false);
+    assert.equal(activeIn(ever, JAN, [JAN - 5 * HOUR]), false);
   });
 });
 
-describe('the policy version moved, so people are asked again', () => {
-  test('retention is a term somebody consents to', () => {
-    /**
-     * This used to read /^chd-2026-08-28[a-z]$/, and it failed the next time
-     * the document changed for an unrelated reason - the Turnstile disclosure
-     * in chd-2026-08-29a. That is the SIXTH assertion in this suite to pin a
-     * literal and then refuse a correct change, so it is written as what it
-     * means instead: retention was a change to the terms, so the version had
-     * to move PAST the one that predated it, and it must never move back.
-     *
-     * These versions are `chd-YYYY-MM-DD<letter>`, which sorts lexically, so a
-     * string comparison is a date comparison. chd-2026-08-27b is the last
-     * version that did not describe retention.
+describe('when one account is the entire finding', () => {
+  test('a dominant account is named with its share', () => {
+    const heavy = concentration([
+      account('mine', JAN, new Array(90).fill(JAN)),
+      account('theirs', JAN, new Array(10).fill(JAN)),
+    ]);
+    assert.equal(heavy.length, 1);
+    assert.equal(heavy[0].id, 'mine');
+    assert.equal(heavy[0].percent, 90);
+  });
+
+  test('evenly spread activity raises nothing', () => {
+    const even = concentration([
+      account('a', JAN, [JAN, JAN]),
+      account('b', JAN, [JAN, JAN]),
+      account('c', JAN, [JAN, JAN]),
+    ]);
+    assert.deepEqual(even, []);
+  });
+
+  test('an empty database does not divide by zero', () => {
+    assert.deepEqual(concentration([account('a', JAN, [])]), []);
+    const rows = curve([account('a', JAN, [])], JAN + 30 * DAY);
+    assert.ok(rows.every((r) => r.percent === 0 || r.percent === null));
+  });
+
+  test('it reports the concentration rather than excluding the account', () => {
+    /*
+     * Nothing in these tables marks a test account. A script that dropped the
+     * developer's row would be inventing its own denominator, and the next
+     * person to read the output would have no way to know it had.
      */
-    const beforeRetention = 'chd-2026-08-27b';
-    assert.ok(
-      POLICY_VERSIONS.health_data_collection > beforeRetention,
-      `health_data_collection is ${POLICY_VERSIONS.health_data_collection}, which is not later ` +
-        `than ${beforeRetention} - the version that predated retention. Retention is a term ` +
-        'people consent to, so it cannot be described by a document nobody re-agreed to.'
+    assert.doesNotMatch(
+      readFileSync(new URL('../../scripts/lib/retention.mjs', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''),
+      /exclude|filter out|skip.*developer/i,
+      'the concentration check has started deciding whose data counts'
     );
-    assert.match(POLICY_VERSIONS.health_data_collection, /^chd-\d{4}-\d{2}-\d{2}[a-z]$/);
-
-    // The page must print the version the server records, or the consent names
-    // a document the reader never saw.
-    assert.ok(policy.includes(POLICY_VERSIONS.health_data_collection));
-    assert.match(policy, phrase('we are asking you to agree again'));
-
-    // And the retention entry must still be in the changelog. Moving the
-    // version forward past it is only honest if the page still says what it
-    // moved for.
-    assert.match(policy, phrase('Retention periods are now set rather than'));
-  });
-
-  test('and the database was updated to match', () => {
-    // The version moves whenever the document changes; this asserts the
-    // migration bumps it, not which letter it landed on.
-    assert.match(migration, /set version = 'chd-2026-08-28[a-z]'/);
   });
 });
 
-describe('the sweep runs whether or not anybody visits', () => {
-  test('it is scheduled in the database, and an invariant checks it', () => {
-    // A retention policy that is written down and never runs is worse than
-    // none: the policy states periods the database does not honor.
-    assert.match(migration, /cron\.schedule\('apply-retention'/);
-    assert.match(invariants, /THE RETENTION SWEEP IS ACTUALLY SCHEDULED/);
+describe('the two traps this repository has already fallen into', () => {
+  test('usage_events is not the activity source', () => {
+    /*
+     * It began recording in migration 0020, on 2026-08-27, and two of the
+     * first three athletes had finished with the app before that. A report
+     * built on it states that a person with ten messages never used the
+     * product - which is the same defect funnel.mjs shipped and retracted,
+     * where an instrument's start date was printed as a person's behavior.
+     */
+    const body = script.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.doesNotMatch(body, /usage_events/, 'activity is being read from an instrument younger than the cohort');
+  });
+
+  test('the report says out loud what it cannot see', () => {
+    // The floor-versus-measurement caveat is printed on every run, not left in
+    // a comment, because the number leaves the terminal and the comment does
+    // not.
+    const printed = [...script.matchAll(/console\.log\(([\s\S]*?)\);/g)].map((m) => m[1]).join('\n');
+    assert.match(printed, /floors?, not measurements|remain floors/);
+  });
+
+  test('message bodies are never read', () => {
+    // funnel.mjs and this script both fetch whole conversations because
+    // PostgREST cannot project into a jsonb array. Fetching is unavoidable;
+    // touching `content` is not.
+    const body = script.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.doesNotMatch(body, /\.content|\['content'\]|"content"/, 'training content is being read');
+    assert.match(body, /message\?\.role === 'user'/);
+    assert.match(body, /message\.at/);
+  });
+
+  test('no account id is printed at full length', () => {
+    const body = script.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.match(body, /const short = \(id\) => String\(id\)\.slice\(0, 8\)/);
+    // Every identifier that reaches a console.log goes through short(). The
+    // accounts built for the report carry the already-shortened id, so a
+    // later addition that prints `a.id` is safe by construction.
+    assert.match(body, /id: short\(p\.user_id\)/);
+    assert.doesNotMatch(body, /console\.log\([^)]*p\.user_id/);
   });
 });
