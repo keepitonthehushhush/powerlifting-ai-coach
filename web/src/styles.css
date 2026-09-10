@@ -349,7 +349,43 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .primary {
   background: var(--accent);
   color: var(--accent-text);
-  border: none;
+  /* Transparent rather than `none`, so that .secondary's 1px outline does not
+     make it 2px taller than its peer. Measured: 47px against 49px before this,
+     which is exactly the kind of difference nobody can name and everybody
+     sees. */
+  border: 1px solid transparent;
+  padding: 0.7rem 1.1rem;
+  font-weight: 600;
+}
+
+/* ── THE PEER TO .primary, WHICH THE MARKUP HAD BEEN ASKING FOR ────────────
+ *
+ * `className="secondary"` was already on three buttons and there was no rule -
+ * only `--secondary`, a COLOR token, which is presumably what somebody had in
+ * mind. The base `button` rule sets font, cursor and radius and nothing else,
+ * so all three rendered in the browser's own chrome: a gray fill, a 2px
+ * default border and black text. Measured, not assumed: rgb(239, 239, 239) on
+ * a 2px border.
+ *
+ * Two of the three are the DECLINE buttons on the guardian consent screen,
+ * beside a designed "I agree". A refusal that renders as browser default next
+ * to a styled acceptance is not a neutral pair of choices, and this codebase
+ * says in as many words that withdrawal must never be harder than consent.
+ * Making them look like peers is part of meaning it.
+ *
+ * Identical padding and weight to .primary on purpose: same size and shape,
+ * different emphasis. Outlined rather than filled so the one primary action on
+ * a screen stays the only filled thing on it - the argument the link color
+ * already makes further down this file.
+ *
+ * --field-border rather than --border: it is the token solved to clear 3:1
+ * against the page, which is what a control's boundary needs and what a
+ * hairline is explicitly not for.
+ */
+.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--field-border);
   padding: 0.7rem 1.1rem;
   font-weight: 600;
 }
@@ -1099,8 +1135,13 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
    `:not(.composer-row *)` is not needed - .composer-row is not a form - but
    the chat composer is the reason this comment exists: see the note on
    .composer for how this selector once ate the send button. */
+/* .secondary alongside .primary: two buttons that mean "yes" and "no" have to
+   be the same size, or the smaller one reads as the lesser option rather than
+   the other option. */
 .stack > button.primary,
-form > button.primary {
+.stack > button.secondary,
+form > button.primary,
+form > button.secondary {
   align-self: center;
   min-width: min(320px, 100%);
 }

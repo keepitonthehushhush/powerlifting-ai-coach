@@ -178,7 +178,10 @@ export function MfaSettings() {
           <p className="fineprint">{t('mfa.orTypeIt')}</p>
           <code className="mfa-secret">{enrolling.totp?.secret}</code>
 
-          <form onSubmit={confirmEnrollment} noValidate>
+          {/* Same omission as MfaChallenge, same fix: the container carries
+              the spacing here, and without `stack` the Confirm button touched
+              the last code box. */}
+          <form onSubmit={confirmEnrollment} className="stack" noValidate>
             <CodeInput
               label={t('mfa.codeLabel')}
               value={code}
@@ -197,7 +200,9 @@ export function MfaSettings() {
 
           <button
             type="button"
-            className="link-button"
+            // There is no .link-button rule in the stylesheet; this rendered
+            // as a bare native button. See MfaChallenge.jsx.
+            className="link"
             onClick={() => {
               setEnrolling(null);
               setCode('');

@@ -83,7 +83,17 @@ export function MfaChallenge() {
         <h1 className="page-title">{t('mfa.challengeHeading')}</h1>
         <p className="muted">{t('mfa.challengeIntro')}</p>
 
-        <form onSubmit={submit} noValidate>
+        {/*
+          * `stack`, like the other six forms in this app.
+          *
+          * Spacing here comes from the container, and this form did not have
+          * one - so the Verify button sat flush against the last code box,
+          * touching it, with nothing between them. Every other form
+          * (Login, Intake, LogSession, ResetPassword, GuardianPanel) carries
+          * this class; the two that did not were both MFA, which is why both
+          * looked wrong in the same way.
+          */}
+        <form onSubmit={submit} className="stack" noValidate>
           <CodeInput
             label={t('mfa.codeLabel')}
             value={code}
@@ -112,7 +122,15 @@ export function MfaChallenge() {
         </form>
 
         <p className="fineprint">{t('mfa.lostDevice')}</p>
-        <button type="button" className="link-button" onClick={signOut}>
+        {/*
+          * `link`, not `link-button`. There is no .link-button rule in the
+          * stylesheet - the only trace of it is a comment saying two of them
+          * used to exist - so this rendered as a bare native button: a gray
+          * pill with the operating system's blue text, in the middle of a
+          * designed screen. `.link` is what every other button-that-reads-as-a
+          * -link uses here.
+          */}
+        <button type="button" className="link" onClick={signOut}>
           {t('common.signOut')}
         </button>
       </div>
