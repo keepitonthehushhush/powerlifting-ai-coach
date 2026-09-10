@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadTurnstile, enabled, siteKey } from '../lib/turnstile.js';
 import { useI18n } from '../i18n/index.jsx';
 
@@ -37,6 +37,25 @@ export function Turnstile({ onToken, onUnavailable }) {
    * Refs hold the LATEST callbacks without being dependencies, so the widget
    * is created once and the parent may pass whatever it likes.
    */
+  /**
+   * ── THE HINT IS ABOUT WAITING, SO IT GOES WHEN THE WAITING DOES ──────────
+   *
+   * "A quick check that you are not a bot. It usually resolves on its own."
+   * was rendered unconditionally, so a solved challenge read:
+   *
+   *     [✓ Success!            CLOUDFLARE]
+   *     A quick check that you are not a bot. It usually resolves on its own.
+   *
+   * Not wrong, exactly - reassurance about a wait, offered to somebody who has
+   * finished waiting. Which makes a state that succeeded look like one that is
+   * still going, directly above the button it gates.
+   *
+   * Kept here rather than lifted to the form: the widget's own callbacks are
+   * the only thing that knows, and the parent already receives the token for
+   * its own reasons. Two consumers of one fact, neither derived from the other.
+   */
+  const [solved, setSolved] = useState(false);
+
   const onTokenRef = useRef(onToken);
   const onUnavailableRef = useRef(onUnavailable);
   onTokenRef.current = onToken;
@@ -55,11 +74,24 @@ export function Turnstile({ onToken, onUnavailable }) {
 
         widgetId.current = turnstile.render(container.current, {
           sitekey: siteKey(),
-          callback: (token) => onTokenRef.current?.(token),
+          callback: (token) => {
+            // A falsy token is not a solved challenge, whatever the callback
+            // is named - so the hint stays up rather than the widget going
+            // quiet with nothing to explain it.
+            setSolved(Boolean(token));
+            onTokenRef.current?.(token);
+          },
           // Both of these mean "the token you have is no longer good". Telling
-          // the form clears it, so the button disables instead of failing.
-          'expired-callback': () => onTokenRef.current?.(null),
-          'error-callback': () => onTokenRef.current?.(null),
+          // the form clears it, so the button disables instead of failing -
+          // and the hint comes BACK, because they are waiting again.
+          'expired-callback': () => {
+            setSolved(false);
+            onTokenRef.current?.(null);
+          },
+          'error-callback': () => {
+            setSolved(false);
+            onTokenRef.current?.(null);
+          },
         });
       })
       .catch(() => {
@@ -92,7 +124,19 @@ export function Turnstile({ onToken, onUnavailable }) {
   return (
     <div className="turnstile">
       <div ref={container} />
-      <span className="muted small">{t('auth.captcha.why')}</span>
+      {/*
+        * HIDDEN, NOT REMOVED. The submit button is directly below this. Taking
+        * a line out from under somebody's thumb at the moment the challenge
+        * happens to solve is how a tap lands on the wrong thing, and Turnstile
+        * decides when that moment is, not the reader.
+        *
+        * `visibility: hidden` keeps the line box and takes the text out of the
+        * accessibility tree, which is both halves of what is wanted: nothing
+        * moves, and nothing reads out a sentence about a wait that is over.
+        */}
+      <span className={solved ? 'muted small turnstile-why is-done' : 'muted small turnstile-why'}>
+        {t('auth.captcha.why')}
+      </span>
     </div>
   );
 }

@@ -141,10 +141,34 @@ describe('when the challenge cannot load', () => {
   });
 
   test('an expired token disables the button rather than being submitted', () => {
-    // Both handlers must clear the token; how they reach the parent is not the
-    // property under test.
-    assert.match(widget, /'expired-callback': \(\) => onToken(Ref\.current)?\?\.\(null\)/);
-    assert.match(widget, /'error-callback': \(\) => onToken(Ref\.current)?\?\.\(null\)/);
+    /*
+     * Both handlers must clear the token; how they reach the parent is not the
+     * property under test - and the comment said so while the assertion pinned
+     * the exact one-line arrow. It broke the moment those callbacks grew a
+     * second statement (retiring the hint), for a change that cannot affect
+     * what is being guarded here.
+     *
+     * So it reads each handler's BODY and asks whether the token is cleared in
+     * it, whatever else is in there.
+     */
+    for (const name of ['expired-callback', 'error-callback']) {
+      const start = widget.indexOf(`'${name}'`);
+      assert.ok(start > 0, `${name} is gone`);
+      /*
+       * Bounded to THIS handler. A fixed 240-character window ran into the
+       * next callback, so deleting the clear from `expired` left the regex
+       * matching `error`'s copy of it one line below - the assertion passed on
+       * the exact code it forbids. Found by a mutant; it is the same shape as
+       * a whole-file match satisfied by a different occurrence.
+       */
+      // Past this key's own closing quote: `'expired-callback'` contains the
+      // very string being searched for, so `start + 1` finds itself.
+      const next = widget.indexOf("-callback'", start + name.length + 2);
+      const end = next === -1 ? widget.indexOf('});', start) : next;
+      assert.ok(end > start, `could not bound the ${name} handler`);
+      const body = widget.slice(start, end);
+      assert.match(body, /onToken(Ref\.current)?\?\.\(null\)/, `${name} does not clear the token`);
+    }
     assert.match(login, /captchaEnabled\(\) && !captchaBlocked && !captchaToken/);
   });
 });

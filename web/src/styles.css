@@ -1411,6 +1411,16 @@ form > button.primary {
 /* The bot check. Given breathing room above the button it gates, and a
    min-height so the form does not jump when the widget finishes loading -
    layout shift under a submit button is how people click the wrong thing. */
+/* The hint under the challenge explains a WAIT. Once the widget says Success
+   the wait is over, so the sentence is retired - but its line box is kept,
+   because the submit button is directly below it and Turnstile decides when it
+   solves, not the reader. A line vanishing from under a thumb is how a tap
+   lands on the wrong control.
+
+   visibility rather than display: it keeps the box AND takes the text out of
+   the accessibility tree, which is both halves of what is wanted. */
+.turnstile-why.is-done { visibility: hidden; }
+
 .turnstile { display: flex; flex-direction: column; gap: 0.4rem; min-height: 70px; }
 
 
