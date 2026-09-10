@@ -2493,6 +2493,34 @@ form > button.secondary {
  * underneath a reply somebody is already reading, and anything larger competes
  * with the text instead of annotating it.
  */
+/* ── THE ONE DEAD CLASS THAT WAS HIDING A GAP ──────────────────────────────
+ *
+ * Twelve class names in the markup had no rule behind them. Eleven were
+ * vestigial modifiers and were deleted - a class in markup is a promise that
+ * something uses it, and an unkept one costs the next reader a search through
+ * 2,600 lines to find out that the answer is nothing.
+ *
+ * This was the twelfth, and it was the only class on its element: the notice
+ * that tells somebody how many free replies they have left. So it had NO
+ * styling at all - a bare div holding muted text and a link, sitting in a
+ * transcript where every other app-generated notice is a bordered card. The
+ * dead class was the evidence that somebody meant to style it and did not.
+ *
+ * Deliberately quieter than .program-saved next to it. That card announces
+ * something that just happened to your data and earns an accent edge; this is
+ * a standing fact about your account, and a countdown that shouts is a
+ * countdown people resent. Layout and breathing room, nothing else.
+ */
+.trial-remaining {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  align-self: flex-start;
+  max-width: 90%;
+  font-size: var(--text-caption);
+}
+
 .saved-notice {
   align-items: center;
   gap: 0.3rem 0.55rem;

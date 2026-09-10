@@ -515,7 +515,6 @@ export function Chat() {
            */
           <SavedNotice
             key={`${savedProfile.bodyweight}-${savedProfile.units}`}
-            className="profile-saved"
             to="/intake#bodyweight"
             linkText={t('chat.bodyweightSavedLink')}
           >
@@ -552,7 +551,7 @@ export function Chat() {
         )}
 
         {busy && (
-          <article className="bubble assistant pending">
+          <article className="bubble assistant">
             <div className="who">{t('chat.coach')}</div>
             <div className="content muted">
               {elapsed === 0 ? t('chat.thinking') : t('chat.thinkingElapsed', { seconds: elapsed })}

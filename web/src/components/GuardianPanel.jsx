@@ -87,7 +87,7 @@ export function GuardianPanel() {
   const refused = request && request.decided_at && request.decision === false;
 
   return (
-    <section className="card stack guardian-panel">
+    <section className="card stack">
       <h2 className="h3">{t('guardian.title')}</h2>
 
       {state.active ? (

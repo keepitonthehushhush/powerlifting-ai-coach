@@ -79,7 +79,7 @@ export function Loading({ size = 120 }) {
         <g className="lift-body">
           {/* The foot is outside the chain on purpose: it is the one part of
               a deadlift that does not move. */}
-          <line className="lift-foot" x1="76" y1="173" x2="112" y2="173" />
+          <line x1="76" y1="173" x2="112" y2="173" />
 
           <g className="lift-shin">
             <line x1="84" y1="168" x2="84" y2="132" />
@@ -128,7 +128,7 @@ export function Loading({ size = 120 }) {
 
         {/* Three referees. Written out rather than generated, because a test
             counts them and "there are exactly three" is the rule. */}
-        <g className="lift-lights">
+        <g>
           <g className="lift-light">
             <circle className="lift-light-ring" cx="64" cy="190" r="7" />
             <circle className="lift-lamp" cx="64" cy="190" r="7" />

@@ -47,7 +47,7 @@ export function PolicyFooter({ fallback = '/', offerConsentSettings = true }) {
   const { t } = useI18n();
 
   return (
-    <div className="row gap policy-footer">
+    <div className="row gap">
       <BackLink fallback={fallback} />
       {session && offerConsentSettings ? (
         <Link className="link" to="/consent">

@@ -65,7 +65,7 @@ export function CodeInput({
   }
 
   return (
-    <div className="field code-field">
+    <div className="code-field">
       <label htmlFor={id}>{label}</label>
 
       <div

@@ -93,7 +93,7 @@ export function Library() {
           )}
 
           {exercise.video_url && (
-            <p className="stack-tight">
+            <p>
               {/* Same tab, so Back returns here. noreferrer still applies: the
                   destination has no business knowing which page sent them. */}
               <a className="link strong leaves-app" href={exercise.video_url} rel="noreferrer">

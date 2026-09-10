@@ -48,7 +48,7 @@ export function Faq() {
         detail="Short answers, no jargon. If something here is unclear, that is our fault and worth telling us about."
       />
 
-      <div className="card prose faq">
+      <div className="card prose">
         <h2 className="h3">What is this, exactly?</h2>
         <p>
           A strength coach that writes you a powerlifting program, adjusts it based on what you

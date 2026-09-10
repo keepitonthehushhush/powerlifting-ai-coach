@@ -37,7 +37,7 @@ import { InfoHeader } from '../components/InfoHeader.jsx';
  */
 export function ForYourClinician() {
   return (
-    <div className="page prose-page">
+    <div className="page">
       <InfoHeader
         title="About Coach Diaz — information for your clinician"
         detail="Written to be printed or shown to a doctor, physical therapist, or other healthcare professional. Nothing on this page requires an account to read."

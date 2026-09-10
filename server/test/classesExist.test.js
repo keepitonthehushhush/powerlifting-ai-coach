@@ -41,42 +41,58 @@ const isStyled = (name) => new RegExp(`\\.${name.replace(/-/g, '\\-')}(?![\\w-])
  * checks buttons, and it checks the thing that actually went wrong: if you
  * name a class, it has to exist.
  */
-describe('a button that names a class gets that class', () => {
+describe('every class named in the markup exists in the stylesheet', () => {
   const offenders = [];
-  const buttons = [];
+  let classed = 0;
 
   for (const file of jsxFiles()) {
     const source = readSource(file);
-    for (const match of source.matchAll(/<button\b[^>]*?>/gs)) {
-      const declared = match[0].match(/className="([^"]*)"/);
-      // Buttons with NO className are a separate question - several are styled
-      // by a descendant selector, and conflating the two would make this noisy
-      // enough to ignore. The defect found was a class that does not exist.
-      if (!declared) continue;
-      const names = declared[1].trim().split(/\s+/).filter(Boolean);
-      buttons.push(names);
-      const dead = names.filter((name) => !isStyled(name));
-      if (dead.length === names.length) {
-        offenders.push(`${file.replace(root, '')}: className="${declared[1]}"`);
+    for (const match of source.matchAll(/className="([^"{}]+)"/g)) {
+      for (const name of match[1].trim().split(/\s+/).filter(Boolean)) {
+        classed += 1;
+        if (!isStyled(name)) offenders.push(`${file.replace(root, '')}: "${name}"`);
       }
     }
   }
 
-  test('the scan found buttons to check', () => {
+  test('the scan found classes to check', () => {
     // A walk that matches nothing passes every assertion under it.
-    assert.ok(buttons.length > 20, `only ${buttons.length} classed buttons found - this test is measuring nothing`);
+    assert.ok(classed > 300, `only ${classed} class uses found - this test is measuring nothing`);
   });
 
-  test('every classed button names at least one class the stylesheet defines', () => {
-    assert.deepEqual(offenders, [], `these render in the browser's default chrome:\n  ${offenders.join('\n  ')}`);
+  test('none of them is a promise nothing keeps', () => {
+    /*
+     * ── WHY THIS COVERS EVERYTHING NOW ────────────────────────────────────
+     *
+     * It used to check BUTTONS only, because that was where the damage was:
+     * `link-button` and `secondary` had no rules, the base button rule sets
+     * font and radius and nothing else, and all five of those buttons rendered
+     * in the browser's own chrome - two of them as the decline on a guardian
+     * consent form. A div with a dead class is inert; a button with one is
+     * loud.
+     *
+     * The scan that found those also found twelve more on non-button elements.
+     * Eleven were vestigial modifiers and are gone. The twelfth, on the trial
+     * notice, was the only class on its element and turned out to be evidence
+     * that somebody meant to style it and did not - so it has a rule now.
+     *
+     * With none left, the check no longer needs an allowlist, and an allowlist
+     * is the thing that would have made it meaningless. A class in markup is a
+     * promise that something uses it; an unkept one costs the next reader a
+     * search through 2,600 lines to learn the answer is nothing.
+     */
+    assert.deepEqual(offenders, [], `these class names have no rule behind them:\n  ${offenders.join('\n  ')}`);
   });
 
-  test('and the two dead names in particular are gone', () => {
-    // Named, so that reintroducing either fails with the reason attached.
+  test('and the two that caused it are named, so they fail loudly', () => {
     for (const dead of ['link-button']) {
       assert.ok(!isStyled(dead), `${dead} now has a rule, so this test is stale`);
       for (const file of jsxFiles()) {
-        assert.doesNotMatch(readSource(file), new RegExp(`className="[^"]*\\b${dead}\\b`), `${dead} is back in ${file.replace(root, '')}`);
+        assert.doesNotMatch(
+          readSource(file),
+          new RegExp(`className="[^"]*\\b${dead}\\b`),
+          `${dead} is back in ${file.replace(root, '')}`
+        );
       }
     }
   });

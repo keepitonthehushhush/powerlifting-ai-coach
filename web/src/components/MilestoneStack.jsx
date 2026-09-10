@@ -72,7 +72,7 @@ export function MilestoneStack({ lift, progress, units }) {
         <strong>{progress.remaining}</strong> {units} {t('progress.milestoneTo')}{' '}
         <strong>{progress.target}</strong> {units}
       </p>
-      <p className="muted micro">
+      <p className="muted">
         {t('progress.milestoneFrom', { floor: progress.floor, units, best: progress.best })}
       </p>
     </div>
