@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
 import { GuardianPanel } from '../components/GuardianPanel.jsx';
@@ -95,6 +95,7 @@ const GLP1_OPTIONS = ['none', 'using', 'considering', 'declined_to_say'];
 
 export function Intake() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { t } = useI18n();
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -231,6 +232,39 @@ export function Intake() {
     ...(missing.some((m) => m.name === name) ? { 'aria-invalid': 'true' } : {}),
   });
 
+  /**
+   * Take somebody to the field they were sent here for.
+   *
+   * ── WHY THIS IS NOT THE BROWSER'S JOB ─────────────────────────────────────
+   *
+   * A plain `#bodyweight` works on a server-rendered page because the element
+   * exists when the browser goes looking. Here it does not: the router swaps
+   * the page in, this component renders a spinner while the profile loads, and
+   * the browser has already given up on the hash by the time the form exists.
+   * So the scroll is done once loading finishes, which is the first moment the
+   * field is really there.
+   *
+   * It FOCUSES as well as scrolls. Somebody arriving from "change it" came to
+   * type a number, and putting the caret in the field is the difference
+   * between arriving at the answer and arriving near it. Focus also moves the
+   * screen reader, so the same click does the same thing without a pointer.
+   *
+   * `preventScroll` then an explicit scrollIntoView, rather than letting focus
+   * do both: focus scrolls the field to wherever it takes the least movement,
+   * which under a sticky header is often underneath it. 'center' puts it where
+   * somebody would have scrolled it themselves.
+   */
+  useEffect(() => {
+    if (loading || !hash) return;
+    const field = document.getElementById(hash.slice(1));
+    if (!field) return;
+    // Somebody who asked their operating system for less motion gets the jump
+    // rather than the glide - the same rule the stylesheet applies elsewhere.
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    field.focus({ preventScroll: true });
+    field.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  }, [loading, hash]);
+
   if (loading) return <div className="centered"><Loading /></div>;
 
   const reportedRestriction = form.health_restrictions.trim().length > 0;
@@ -340,6 +374,12 @@ export function Intake() {
           <label>
             {t('intake.bodyweight')} ({form.units})
             <input
+              /* Named, because something links here. The coach's "your
+                 bodyweight is now X - change it" card points at
+                 /intake#bodyweight, and a hash that matches no element drops
+                 somebody at the top of a long form to hunt for the field they
+                 were promised. */
+              id="bodyweight"
               type="number"
               min="0"
               step="0.5"

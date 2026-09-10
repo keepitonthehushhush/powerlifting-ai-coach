@@ -351,9 +351,72 @@ describe('what the athlete sees', () => {
   const page = readSource(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
 
   test('the recorded weight is shown with a way to change it', () => {
+    /*
+     * ── THIS TEST USED TO PIN THE BUG ─────────────────────────────────────
+     *
+     * It asserted `to="/account"`, and the failure message it carried was
+     * "nowhere to go and correct it" - a guard aimed at a fact that was not
+     * true. /account is titled "Your data": consent, export, delete, theme.
+     * It has never had a bodyweight field on it. So the assertion passed, the
+     * card shipped, and the athlete who pressed "change it" landed on a
+     * data-rights screen and reported it as "it randomly took me to your
+     * data".
+     *
+     * The lesson is the one this repository keeps re-learning in new costumes:
+     * asserting that a link points SOMEWHERE is not the same as asserting it
+     * points somewhere that can do the thing the words offer. So the check is
+     * now on the destination, and it reads the destination.
+     */
     assert.match(page, /chat\.bodyweightSaved/);
     const notice = page.slice(page.indexOf('savedProfile &&'), page.indexOf('savedProgram &&'));
-    assert.match(notice, /to="\/account"/, 'nowhere to go and correct it');
+    const target = notice.match(/to="(\/[^"]*)"/);
+    assert.ok(target, 'the recorded weight offers nowhere to go and correct it');
+
+    const [, route] = target;
+    const [path, fragment] = route.split('#');
+    const PAGES = { '/intake': 'Intake.jsx', '/account': 'Account.jsx' };
+    assert.ok(path in PAGES, `nothing here knows what is on ${path}`);
+
+    // The destination must actually contain a control bound to the bodyweight.
+    const destination = readSource(new URL(`../../web/src/pages/${PAGES[path]}`, import.meta.url));
+    assert.match(
+      destination,
+      /value=\{form\.bodyweight\}/,
+      `${PAGES[path]} has no bodyweight field, so "change it" leads somewhere that cannot`
+    );
+
+    /*
+     * A FRAGMENT IS REQUIRED, not merely checked when present.
+     *
+     * The first version of this said `if (fragment)`, and dropping the hash
+     * passed it - which is the same shape of hole as the assertion it
+     * replaced. /intake is a long form; landing at the top of it and hunting
+     * for the bodyweight field is most of the original complaint, minus the
+     * wrong page.
+     */
+    assert.ok(fragment, 'the link points at the form but not at the field, so they arrive and have to hunt');
+    assert.match(
+      destination,
+      new RegExp(`id="${fragment}"`),
+      `#${fragment} matches no element on ${PAGES[path]}, so the link lands at the top of the form`
+    );
+  });
+
+  test('the destination puts them on the field rather than near it', () => {
+    /*
+     * A hash alone does nothing here. The router swaps the page in and the
+     * form renders behind a spinner, so the browser has given up looking for
+     * the element long before it exists. Without the effect the link is
+     * cosmetically correct and behaviorally identical to linking at the top of
+     * a long form.
+     */
+    const intake = readSource(new URL('../../web/src/pages/Intake.jsx', import.meta.url));
+    assert.match(intake, /const \{ hash \} = useLocation\(\)/);
+    assert.match(intake, /document\.getElementById\(hash\.slice\(1\)\)/);
+    assert.match(intake, /\.focus\(\{ preventScroll: true \}\)/);
+    assert.match(intake, /scrollIntoView/);
+    // Not while the spinner is up - that is the whole reason it is an effect.
+    assert.match(intake, /if \(loading \|\| !hash\) return;/);
   });
 
   test('the number is written the way the reader writes numbers', () => {

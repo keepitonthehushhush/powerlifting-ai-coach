@@ -4,6 +4,7 @@ import { SiteNav } from '../components/SiteNav.jsx';
 import { StickToBottom } from '../components/StickToBottom.jsx';
 import { api, errorText } from '../lib/api.js';
 import { withLocalDate } from '../lib/proposedSession.js';
+import { SavedNotice } from '../components/SavedNotice.jsx';
 import { isTransportFailure, recoverExchange } from '../lib/chatRecovery.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
@@ -481,43 +482,64 @@ export function Chat() {
         )}
 
         {loggedSession && (
-          <div className="program-saved" role="status">
-            <span>{t('chat.logged')}</span>
-            <Link className="link" to="/progress">
-              {t('chat.loggedLink')}
-            </Link>
-          </div>
+          /*
+           * KEYED ON THE SESSION so a second confirmation re-mounts and plays
+           * its own animation. Without a key React reuses the element, the CSS
+           * animation does not restart, and the second workout somebody logs
+           * is confirmed by a card that silently changes its text - the exact
+           * "did that go through?" this was built to answer.
+           */
+          <SavedNotice key={loggedSession.date ?? 'logged'} to="/progress" linkText={t('chat.loggedLink')}>
+            {t('chat.logged')}
+          </SavedNotice>
         )}
 
         {savedProfile && (
-          <div className="program-saved profile-saved" role="status">
-            <span>
-              {t('chat.bodyweightSaved', {
-                // The shared formatter, for the reason it exists: 185.19 in
-                // English is 185,19 in Spanish, and a number the athlete is
-                // being asked to check should be written the way they write
-                // numbers. It rounds to one decimal and appends the unit.
-                weight: formatWeight(savedProfile.bodyweight, savedProfile.units),
-              })}
-            </span>
-            <Link className="link" to="/account">
-              {t('chat.bodyweightSavedLink')}
-            </Link>
-          </div>
+          /*
+           * ── THE LINK GOES TO THE FIELD, NOT TO A PAGE ABOUT DATA ────────
+           *
+           * This said /account and shipped that way. /account is titled "Your
+           * data" - consent, export, delete, theme - and holds no bodyweight
+           * field anywhere on it. "Change it" therefore promised an edit and
+           * delivered a data-rights screen, which is how it was reported:
+           * "it randomly took me to your data".
+           *
+           * Nothing caught it because both halves were separately correct. The
+           * card renders, the route exists, the link works. The only thing
+           * wrong was the belief that the destination could do the thing the
+           * words offered - and no test in this repository was asking that
+           * question about any link.
+           *
+           * /intake is the profile form, and the hash lands on the field
+           * itself rather than at the top of it. See the effect in Intake.jsx.
+           */
+          <SavedNotice
+            key={`${savedProfile.bodyweight}-${savedProfile.units}`}
+            className="profile-saved"
+            to="/intake#bodyweight"
+            linkText={t('chat.bodyweightSavedLink')}
+          >
+            {t('chat.bodyweightSaved', {
+              // The shared formatter, for the reason it exists: 185.19 in
+              // English is 185,19 in Spanish, and a number the athlete is
+              // being asked to check should be written the way they write
+              // numbers. It rounds to one decimal and appends the unit.
+              weight: formatWeight(savedProfile.bodyweight, savedProfile.units),
+            })}
+          </SavedNotice>
         )}
 
         {savedProgram && (
-          <div className="program-saved" role="status">
-            <span>
-              {t('chat.programSaved', {
-                week: savedProgram.week,
-                days: savedProgram.days,
-              })}
-            </span>
-            <Link className="link" to="/program">
-              {t('chat.programSavedLink')}
-            </Link>
-          </div>
+          <SavedNotice
+            key={`${savedProgram.week}-${savedProgram.days}`}
+            to="/program"
+            linkText={t('chat.programSavedLink')}
+          >
+            {t('chat.programSaved', {
+              week: savedProgram.week,
+              days: savedProgram.days,
+            })}
+          </SavedNotice>
         )}
 
         {holding !== null && (

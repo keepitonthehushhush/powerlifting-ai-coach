@@ -2238,6 +2238,57 @@ form > button.primary {
   max-width: 90%;
 }
 
+/* ── "That went through" ───────────────────────────────────────────────────
+ *
+ * The card the coach's three writes share - a program, a bodyweight, a logged
+ * session. See components/SavedNotice.jsx for why any of this moves; the short
+ * version is that a record changing hands used to look identical to the coach
+ * saying another sentence, in a transcript that was already scrolling.
+ *
+ * The rise is 6px and 260ms. Both numbers are small on purpose: this arrives
+ * underneath a reply somebody is already reading, and anything larger competes
+ * with the text instead of annotating it.
+ */
+.saved-notice {
+  align-items: center;
+  gap: 0.3rem 0.55rem;
+  animation: saved-notice-in 260ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.saved-notice-text { flex: 1 1 auto; }
+
+.saved-check {
+  flex: none;
+  /* The same ink as the card's own left edge, so the mark reads as part of
+     the card rather than as a badge stuck onto it. */
+  color: var(--secondary);
+}
+
+.saved-check path {
+  /* pathLength="1" on the element normalizes the geometry, so these are 1 and
+     not a measured constant that stops matching when the shape is edited. */
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: saved-check-draw 340ms cubic-bezier(0.65, 0, 0.35, 1) 120ms forwards;
+}
+
+@keyframes saved-notice-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes saved-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* The movement goes; the mark and the message do not. A reduced-motion branch
+   that also removed the check would hand the people who asked for less motion
+   a card with a hole in it. */
+@media (prefers-reduced-motion: reduce) {
+  .saved-notice { animation: none; }
+  .saved-check path { animation: none; stroke-dashoffset: 0; }
+}
+
 /* ── Theme gallery ─────────────────────────────────────────────────────────
    The swatches are painted from the theme's OWN tokens, passed in as
    --sw-* custom properties by the picker, so a preview cannot drift from the
