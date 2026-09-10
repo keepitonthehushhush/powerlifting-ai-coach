@@ -112,7 +112,7 @@ const now = Date.now();
 
 const profiles = await rest('user_profile?select=user_id,created_at&order=created_at');
 const conversations = await rest('conversations?select=user_id,messages');
-const sessions = await rest('workout_sessions?select=user_id,created_at');
+const sessions = await rest('workout_sessions?select=user_id,created_at,client_key');
 const programs = await rest('workout_programs?select=user_id,created_at');
 const activityDays = await rest('activity_days?select=user_id,day');
 
@@ -193,6 +193,46 @@ for (const heavy of concentration(accounts)) {
       '  being true. If it is a test account, the real curve is the table with this\n' +
       '  row removed - and that is a judgment for a person, not for a script.'
   );
+}
+
+/*
+ * ── THE LOOP, WHICH IS THE THING RETENTION IS MADE OF ──────────────────────
+ *
+ * prescribe -> train -> log -> adapt. The first and last steps are built and
+ * tested; the middle one is the only one that needs a person, and it is the
+ * one that decides whether any of the rest means anything. Every prescription
+ * after the first is computed from the log.
+ *
+ * On 2026-09-10 this read: three programs written, two sessions logged, ONE
+ * progress_logs row - and neither session came from a coach card, because both
+ * predate the column that marks one. An adaptation engine reading an empty log
+ * is a very good answer to a question nobody asked it.
+ *
+ * `client_key` is non-null exactly when a row came from the coach's card
+ * (migration 0065), so accepted offers are countable here. Offers MADE are
+ * not - they leave no row - which is why chat.js logs `session.log_offered`.
+ * Offered-minus-accepted is the decline rate, and the two halves live in
+ * different places on purpose: the acceptance is durable because it is a
+ * record, the offer is a log line because it is a diagnostic.
+ */
+console.log('\nThe loop: prescribe -> train -> log -> adapt.\n');
+
+const countBy = (rows, id) => (rows ?? []).filter((r) => r.user_id === id).length;
+const fromCard = (rows, id) => (rows ?? []).filter((r) => r.user_id === id && r.client_key != null).length;
+
+console.log(`  ${pad('acct', 10)}${num('programs', 10)}${num('sessions', 10)}${num('from a card', 13)}`);
+let anyLogged = 0;
+for (const p of profiles) {
+  const id = short(p.user_id);
+  const written = countBy(programs, p.user_id);
+  const logged = countBy(sessions, p.user_id);
+  if (logged > 0) anyLogged += 1;
+  if (written === 0 && logged === 0) continue;
+  console.log(`  ${pad(id, 10)}${num(written, 10)}${num(logged, 10)}${num(fromCard(sessions, p.user_id), 13)}`);
+}
+if (anyLogged === 0) {
+  console.log('  Nobody has logged a session. Every number above the line is about');
+  console.log('  people talking to a coach, not about anybody training with one.');
 }
 
 /*

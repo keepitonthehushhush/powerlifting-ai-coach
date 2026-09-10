@@ -3,7 +3,7 @@ import { JumpToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { StickToBottom } from '../components/StickToBottom.jsx';
 import { api, errorText } from '../lib/api.js';
-import { withLocalDate } from '../lib/proposedSession.js';
+import { nextProposal } from '../lib/proposedSession.js';
 import { SavedNotice } from '../components/SavedNotice.jsx';
 import { isTransportFailure, recoverExchange } from '../lib/chatRecovery.js';
 import { useI18n } from '../i18n/index.jsx';
@@ -261,9 +261,14 @@ export function Chat() {
       setMessages(result.messages);
       setSavedProgram(result.savedProgram ?? null);
       setSavedProfile(result.savedProfile ?? null);
-      // A new proposal replaces any previous one, and clears the confirmation
-      // of the last: two cards on screen is two things to answer.
-      setProposedSession(withLocalDate(result.proposedSession));
+      /*
+       * A new proposal replaces any previous one - two cards is two things to
+       * answer - but a reply carrying NONE leaves an unanswered card alone.
+       * See nextProposal: replacing unconditionally meant that typing a
+       * follow-up question instead of tapping silently threw the offer away,
+       * and the prompt then refused to make it again.
+       */
+      setProposedSession((current) => nextProposal(current, result.proposedSession));
       setLoggedSession(null);
       // Only ever what the server just said. Never decremented here: the
       // browser guessing at a number the database owns is how a screen and an

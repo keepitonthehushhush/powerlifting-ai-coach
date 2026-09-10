@@ -512,6 +512,31 @@ chatRouter.post('/', async (req, res, next) => {
       // body did today.
       logger.warn('session.block_unusable', { userId: req.user.id, problem: sessionProblem });
     }
+    if (proposedSession) {
+      /*
+       * ── THE HALF OF THE LOOP NOTHING COULD SEE ────────────────────────
+       *
+       * An accepted card is durable: workout_sessions.client_key is non-null
+       * exactly when a row came from one (migration 0065). An OFFER left no
+       * trace anywhere, so "the coach never offers" and "it offers and nobody
+       * takes it" were indistinguishable - and they have opposite fixes, one
+       * in the prompt and one in the product. Same shape as 0064, which had
+       * to add a timestamp to tell a routing bug from a design problem.
+       *
+       * A log line rather than a table, deliberately. The question is whether
+       * offers happen at all, which a week of logs answers; a durable decline
+       * record is worth building only if the answer turns out to be "often,
+       * and nobody accepts", and building it first would be building for a
+       * hypothesis nobody has tested.
+       *
+       * The COUNT, never the movements. What somebody's body did today is the
+       * one thing this line must not carry.
+       */
+      logger.info('session.log_offered', {
+        userId: req.user.id,
+        exercises: proposedSession.exercises?.length ?? 0,
+      });
+    }
     if (profileProblem) {
       // The reason and never the value, for the same reason: a bodyweight is a
       // fact about somebody's body.

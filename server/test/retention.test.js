@@ -212,6 +212,32 @@ describe('when one account is the entire finding', () => {
   });
 });
 
+describe('the loop the numbers are made of', () => {
+  test('the report shows programs against sessions logged', () => {
+    /*
+     * prescribe -> train -> log -> adapt. The first and last steps are built
+     * and tested; the middle one is the only one that needs a person, and it
+     * decides whether the rest means anything - every prescription after the
+     * first is computed from the log. A retention report that shows visits and
+     * not this describes people talking to a coach rather than training with
+     * one.
+     */
+    assert.match(script, /The loop: prescribe -> train -> log -> adapt/);
+    assert.match(script, /client_key/, 'accepted coach cards are not counted');
+  });
+
+  test('an accepted card is counted from the column that marks one', () => {
+    // Non-null exactly when a row came from the card (migration 0065).
+    assert.match(script, /r\.client_key != null/);
+    assert.match(script, /select=user_id,created_at,client_key/);
+  });
+
+  test('nobody logging anything is said out loud, not left as three zeroes', () => {
+    const printed = [...script.matchAll(/console\.log\(([\s\S]*?)\);/g)].map((m) => m[1]).join('\n');
+    assert.match(printed, /Nobody has logged a session/);
+  });
+});
+
 describe('the two traps this repository has already fallen into', () => {
   test('usage_events is not the activity source', () => {
     /*

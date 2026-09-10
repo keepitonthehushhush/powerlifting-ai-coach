@@ -10,7 +10,7 @@ import {
   sessionKey,
   toProfileWeights,
 } from '../src/lib/sessionLogBlock.js';
-import { withLocalDate } from '../../web/src/lib/proposedSession.js';
+import { nextProposal, withLocalDate } from '../../web/src/lib/proposedSession.js';
 
 const chat = readSource(new URL('../src/routes/chat.js', import.meta.url));
 const page = readSource(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
@@ -570,7 +570,26 @@ describe('the card cannot defeat its own guard', () => {
      * different days, hash differently, and write two rows - defeating the
      * guard on the exact path it exists for.
      */
-    assert.match(page, /setProposedSession\(withLocalDate\(result\.proposedSession\)\)/);
+    /*
+     * The property, not the literal. This pinned the exact call
+     * `setProposedSession(withLocalDate(result.proposedSession))` and broke
+     * when an unanswered card stopped being destroyed by the next reply -
+     * a change that leaves the stamping exactly where it was. What has to
+     * hold is that the proposal from a reply passes through the
+     * arrival-stamping path before it reaches state.
+     */
+    const dispatchBody = page.slice(page.indexOf('async function dispatch'));
+    assert.match(
+      dispatchBody.slice(0, dispatchBody.indexOf('setTrialLeft')),
+      /setProposedSession\([\s\S]*?(withLocalDate|nextProposal)\([\s\S]*?result\.proposedSession/,
+      'a reply sets the proposal without stamping the arrival day'
+    );
+    assert.match(proposal, /export function nextProposal/);
+    assert.match(
+      proposal.slice(proposal.indexOf('export function nextProposal')),
+      /withLocalDate\(arriving\)/,
+      'nextProposal no longer stamps the day of an arriving proposal'
+    );
     const confirm = page.slice(page.indexOf('async function confirmSession'), page.indexOf('async function dispatch'));
     assert.doesNotMatch(confirm, /getTimezoneOffset/, 'the day is recomputed when they tap');
     assert.match(proposal, /getTimezoneOffset/);
@@ -581,5 +600,113 @@ describe('the card cannot defeat its own guard', () => {
     assert.equal(withLocalDate({ session: { date: '2026-09-05', exercises: [] } }).session.date, '2026-09-05');
     assert.equal(withLocalDate(null), null);
     assert.equal(withLocalDate(undefined), null);
+  });
+});
+
+describe('an offer survives until it is answered', () => {
+  /*
+   * ── THE BUG ────────────────────────────────────────────────────────────
+   *
+   * The card used to be replaced unconditionally on every reply, so a reply
+   * carrying no block DESTROYED an unanswered one. The path is the most
+   * natural conversation there is:
+   *
+   *   athlete   "hit 245 for a triple today, felt heavy"
+   *   coach     coaching, plus a session_log block   -> the card appears
+   *   athlete   "should I keep going up?"            -> types instead of tapping
+   *   coach     an answer, no block                  -> THE CARD IS GONE
+   *
+   * Nothing logged, nothing failed, nothing recorded. And the prompt forbids
+   * offering the same session twice - a rule written for somebody who tapped
+   * no - so silence was read as a decline and the offer never came back.
+   *
+   * In sixteen days this product wrote ONE progress_logs row against three
+   * programs. This is the most likely reason and the only one that could be
+   * established from the code rather than guessed at.
+   */
+  const card = (weight) => ({ session: { date: '2026-09-10', exercises: [{ exercise: 'Squat', weight }] } });
+
+  test('a reply with no proposal leaves the unanswered one alone', () => {
+    const standing = card(245);
+    assert.equal(nextProposal(standing, null), standing);
+    assert.equal(nextProposal(standing, undefined), standing);
+  });
+
+  test('a new proposal replaces it, because two cards is two things to answer', () => {
+    const standing = card(245);
+    const arriving = card(255);
+    assert.equal(nextProposal(standing, arriving).session.exercises[0].weight, 255);
+  });
+
+  test('nothing standing and nothing arriving is null, not undefined', () => {
+    // It is rendered with `{proposedSession && ...}`; undefined would work by
+    // luck and is not what the rest of this file assumes.
+    assert.equal(nextProposal(null, null), null);
+    assert.equal(nextProposal(undefined, undefined), null);
+  });
+
+  test('the kept card keeps the day it arrived with', () => {
+    /*
+     * The whole point of stamping on arrival. A card that survives to the
+     * next day must still file the workout under the day the athlete
+     * described it, or the duplicate guard hashes differently and the day is
+     * wrong besides.
+     */
+    const standing = card(245);
+    assert.equal(nextProposal(standing, null).session.date, '2026-09-10');
+  });
+
+  test('an arriving proposal with no day is still stamped', () => {
+    const arriving = { session: { exercises: [{ exercise: 'Squat' }] } };
+    assert.match(nextProposal(null, arriving).session.date, /^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test('the page uses it, and no longer overwrites the proposal outright', () => {
+    const dispatchBody = page.slice(page.indexOf('async function dispatch'));
+    const body = dispatchBody.slice(0, dispatchBody.indexOf('setTrialLeft'));
+    assert.match(body, /setProposedSession\(\(current\) => nextProposal\(current, result\.proposedSession\)\)/);
+  });
+
+  test('tapping no is an answer and still clears it', () => {
+    // Persisting through a decline would be nagging, and the prompt already
+    // treats a no as final.
+    assert.match(page, /onClick=\{\(\) => setProposedSession\(null\)\}/);
+  });
+
+  test('tapping yes clears only the card that was tapped', () => {
+    // Unchanged by this fix and asserted beside it: a reply can land while the
+    // POST is in flight, and clearing "whatever is current" would discard a
+    // different workout the athlete never got to answer.
+    const confirm = page.slice(page.indexOf('async function confirmSession'), page.indexOf('async function dispatch'));
+    assert.match(confirm, /setProposedSession\(\(current\) => \(current === mine \? null : current\)\)/);
+  });
+});
+
+describe('whether an offer was ever made at all', () => {
+  test('a produced proposal is logged', () => {
+    /*
+     * An accepted card is durable - workout_sessions.client_key is non-null
+     * exactly when a row came from one - but an OFFER left no trace, so "the
+     * coach never offers" and "it offers and nobody takes it" could not be
+     * told apart. They have opposite fixes, one in the prompt and one in the
+     * product. Same shape as migration 0064.
+     */
+    assert.match(chat, /logger\.info\('session\.log_offered'/);
+  });
+
+  test('the line carries a count and never the movements', () => {
+    // What somebody's body did today is the one thing this line must not
+    // carry - the same rule session.block_unusable follows two lines above.
+    const line = chat.slice(chat.indexOf("logger.info('session.log_offered'"));
+    const call = line.slice(0, line.indexOf('});') + 3);
+    assert.match(call, /exercises: proposedSession\.exercises\?\.length/);
+    assert.doesNotMatch(call, /exercise:|\.exercises\[|weight|rpe|reps/);
+  });
+
+  test('it is logged only when a proposal actually exists', () => {
+    // "The coach offered a card" must not be recorded for a turn that offered
+    // nothing, or the rate it exists to measure is meaningless.
+    const at = chat.indexOf("logger.info('session.log_offered'");
+    assert.match(chat.slice(Math.max(0, at - 900), at), /if \(proposedSession\) \{/);
   });
 });

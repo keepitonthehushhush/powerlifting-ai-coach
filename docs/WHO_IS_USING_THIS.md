@@ -247,3 +247,68 @@ returning athlete this never records.
 - **Sessions logged per program.** Still one `progress_logs` row against three
   programs. The loop is prescribe → train → log → adapt, and the log step has
   happened once in sixteen days.
+
+---
+
+## 2026-09-10, later: the log step, and the bug that was eating it
+
+The retention report above measures whether people come back. Underneath it is
+a smaller number that decides whether coming back means anything:
+
+| | |
+|---|---|
+| programs written | 3 |
+| sessions logged | 2 |
+| `progress_logs` rows | 1 |
+| sessions that came from a coach card | **0** |
+
+The loop is prescribe → train → log → adapt. The first and last steps are built
+and tested — adherence cross-references the program against the log,
+progression computes the next load, phase decides when linear progression ends,
+and ADR-23 now records what changed between blocks. **All of it reads a log that
+has one row in it.**
+
+### The card was being destroyed by the next message
+
+Found in the code rather than guessed at. `Chat.jsx` replaced the proposal on
+every reply, so a reply carrying no `session_log` block deleted an unanswered
+one:
+
+```
+athlete   "hit 245 for a triple today, felt heavy"
+coach     coaching, plus a session_log block   → the card appears
+athlete   "should I keep going up?"            → types instead of tapping
+coach     an answer, no block                  → THE CARD IS GONE
+```
+
+Nothing was logged, nothing failed, and nothing anywhere recorded that an offer
+had been made and thrown away. It compounds: the prompt tells the coach never to
+offer the same session twice — a rule written for an athlete who tapped **no** —
+so silence was read as a decline and the offer never came back.
+
+Typing a follow-up question instead of tapping is the most natural thing a
+person does in a conversation. Fixed: an offer now survives until it is
+answered, and only a **new** proposal replaces it.
+
+### And whether an offer is ever made is now visible
+
+An accepted card is durable — `workout_sessions.client_key` is non-null exactly
+when a row came from one (migration 0065). An OFFER left no trace, so "the coach
+never offers" and "it offers and nobody takes it" were indistinguishable, and
+they have opposite fixes: one in the prompt, one in the product. Same shape as
+0064, which had to add a timestamp to tell a routing bug from a design problem.
+
+`chat.js` now logs `session.log_offered` with a count and never the movements.
+Offered minus accepted is the decline rate. A log line rather than a table on
+purpose: the open question is whether offers happen at all, which a week of logs
+answers, and a durable decline record is worth building only if the answer turns
+out to be "often, and nobody accepts".
+
+### What to watch
+
+- **`session.log_offered` against sessions with a `client_key`.** If offers are
+  frequent and acceptances are not, the card is the problem. If offers are rare,
+  the prompt is.
+- **Whether the fix alone moves it.** Nobody was ever asked twice before, so the
+  first athlete who describes a workout and then keeps talking is the first real
+  test of it.
