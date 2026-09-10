@@ -272,3 +272,52 @@ describe('the gate is actually wired up', () => {
     }
   });
 });
+
+describe('one dropped request is not a wall', () => {
+  /*
+   * Read here rather than borrowing the `read` helper declared inside the
+   * describe above it. Referencing an out-of-scope binding threw while the
+   * describe body ran, so these three tests never executed - and node reported
+   * "24 pass, 0 fail" with a `not ok` on the suite line that a summary-only
+   * grep does not show. Three planted mutants survived, which is how it was
+   * found: the mutants were more honest than the test run.
+   */
+  const consent = readFileSync(new URL('../../web/src/context/ConsentContext.jsx', import.meta.url), 'utf8');
+
+  test('a transient failure is retried before the dead end is shown', () => {
+    /*
+     * An athlete signed up on 2026-09-02, completed the whole intake, and the
+     * only thing in their error log is `storage_unavailable` on /api/consent.
+     * They sent no messages and never came back. ProtectedRoute already
+     * carries that date in a comment, because an earlier fix stopped this dead
+     * end being reached by a REDIRECT - and did not stop it being reached by
+     * one bad request, which is what happened to them.
+     *
+     * "That is a problem on our end" over a Try again button is honest, and it
+     * is also the last screen in the product for somebody with no reason yet
+     * to persist.
+     */
+    assert.match(consent, /withRetries\(\(\) => api\.getConsents\(\)\)/);
+    assert.match(consent, /RETRY_DELAYS_MS = \[400, 1200\]/);
+  });
+
+  test('and a refusal is not retried, because asking again cannot change it', () => {
+    /*
+     * The gate still fails closed and an unreadable state is still "not
+     * granted". Only failures that look transient are tried again: no status
+     * at all, which is a dropped connection, or a 5xx, which is us. Retrying a
+     * 4xx would be a loop rather than a recovery - and 401 has its own path.
+     */
+    assert.match(consent, /if \(status >= 400 && status < 500\) return false;/);
+    assert.match(consent, /if \(status == null\) return true;/);
+    const guard = consent.slice(consent.indexOf('async function withRetries'));
+    assert.match(guard, /!isTransient\(err\)\) throw err;/);
+  });
+
+  test('the retries are bounded', () => {
+    // An unbounded retry on a page that gates the whole product is an outage
+    // that looks like a spinner.
+    const guard = consent.slice(consent.indexOf('async function withRetries'));
+    assert.match(guard, /i >= RETRY_DELAYS_MS\.length/);
+  });
+});

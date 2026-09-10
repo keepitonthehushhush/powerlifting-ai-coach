@@ -127,11 +127,44 @@ for (const p of profiles) {
  * Called out rather than left in the table, because these are the only two
  * rows anybody should act on and they are easy to miss among the rest.
  */
+/**
+ * ── WHEN THIS INSTRUMENT STARTED WORKING ────────────────────────────────────
+ *
+ * coach_first_opened_at arrived in migration 0064, applied to production at
+ * 2026-09-08T21:54:17Z (supabase_migrations.schema_migrations, version
+ * 20260908215417). Nobody who used the app before that has a stamp, whatever
+ * they did.
+ *
+ * That is not a footnote, it is the difference between two opposite reports.
+ * This script used to compute one list and print it twice: once as "N finished
+ * the intake and NEVER REACHED the coach page. That is a bug - routing,
+ * loading, or an error nobody saw", naming two accounts to go and investigate,
+ * and then again, underneath, as "these accounts cannot have a stamp so the
+ * split means nothing for them". The two filters were character-for-character
+ * identical.
+ *
+ * A false red is worse than a false green here. It sends somebody hunting a
+ * routing bug that there is no evidence for, in an app where the evidence for
+ * it CANNOT EXIST for those accounts - and the one real signal in the data,
+ * a failed /api/consent read on 2026-09-02, sits unread underneath a louder
+ * claim that was never established.
+ *
+ * So: DID NOT and CANNOT SAY are different answers and are printed as such.
+ */
+const COACH_STAMP_RECORDING_SINCE = Date.parse('2026-09-08T21:54:17Z');
+
+/*
+ * A message is proof they arrived, whatever the timestamp says - the stamp is
+ * written on a page load and the earliest athletes here predate it entirely.
+ */
+const reachedCoach = (p) => p.coach_first_opened_at != null || sent.has(p.user_id);
+const measurable = (p) => Date.parse(p.created_at) >= COACH_STAMP_RECORDING_SINCE;
+
 const finishedButNeverArrived = profiles.filter(
-  // `!sent.has` matters: a message is proof they arrived, whatever the
-  // timestamp says. Without it this list reported three people who were
-  // demonstrably talking to the coach as never having reached the page.
-  (p) => p.intake_completed_at && !p.coach_first_opened_at && !sent.has(p.user_id)
+  (p) => p.intake_completed_at && !reachedCoach(p) && measurable(p)
+);
+const cannotSay = profiles.filter(
+  (p) => p.intake_completed_at && !reachedCoach(p) && !measurable(p)
 );
 const arrivedButNeverTyped = profiles.filter(
   (p) => p.coach_first_opened_at && !sent.has(p.user_id)
@@ -153,17 +186,18 @@ if (arrivedButNeverTyped.length > 0) {
       arrivedButNeverTyped.map((p) => `    ${short(p.user_id)}`).join('\n')
   );
 }
-
-/*
- * A signup before migration 0064 has no coach_first_opened_at no matter what
- * they did, so the two lists above are empty for them and would read as "no
- * problem here". Saying so is the difference between a quiet zero and a fact.
- */
-const blind = profiles.filter((p) => p.intake_completed_at && !p.coach_first_opened_at && !sent.has(p.user_id));
-if (blind.length > 0) {
+if (cannotSay.length > 0) {
   console.log(
-    `\nNOTE: accounts that signed up before migration 0064 have no coach_first_opened_at\n` +
-      'whatever they did, so they land in the first list by default. The split only\n' +
-      'means something for people who arrive from now on.'
+    `${cannotSay.length} finished the intake and CANNOT BE CLASSIFIED.\n` +
+      '  They signed up before coach_first_opened_at existed and sent no messages, so\n' +
+      '  there is no record either way. This is not a bug report and must not be read\n' +
+      '  as one - it is the instrument saying it was not switched on yet:\n' +
+      cannotSay.map((p) => `    ${short(p.user_id)}  joined ${day(p.created_at)}`).join('\n')
+  );
+}
+if (finishedButNeverArrived.length === 0 && arrivedButNeverTyped.length === 0) {
+  console.log(
+    'No account has finished the intake and then measurably failed to reach or use\n' +
+      'the coach. Every drop-off above is either earlier in the funnel or unmeasurable.'
   );
 }

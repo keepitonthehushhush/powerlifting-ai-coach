@@ -151,8 +151,71 @@ describe('the report', () => {
   });
 
   test('it admits what it cannot see about older accounts', () => {
-    // Everyone who signed up before 0064 lands in the first list by default.
-    // A quiet zero there would read as "no problem here".
-    assert.match(flatten(script), /accounts that signed up before migration 0064/);
+    /*
+     * This used to assert a FOOTNOTE - "accounts that signed up before
+     * migration 0064 have no coach_first_opened_at whatever they did" -
+     * printed underneath a list that had already called those same accounts a
+     * bug. The footnote was the thing that made the false claim survivable:
+     * the report asserted and retracted in the same breath, and the assertion
+     * was the part in bold.
+     *
+     * Admitting it properly means not making the claim. The unmeasurable
+     * accounts get their own heading, and it says in as many words that it is
+     * not a bug report.
+     */
+    assert.match(flatten(script), /CANNOT BE CLASSIFIED/);
+    assert.match(flatten(script), /This is not a bug report and must not be read/);
+    assert.doesNotMatch(
+      flatten(script),
+      /they land in the first list by default/,
+      'the retraction footnote is back, which means the false claim is back above it'
+    );
+  });
+});
+
+describe('the instrument says when it was not switched on', () => {
+  test('"did not reach" and "cannot say" are different answers', () => {
+    /*
+     * ── THIS SCRIPT REPORTED A BUG IT COULD NOT SEE ─────────────────────
+     *
+     * It computed one list and printed it twice: as "N finished the intake and
+     * NEVER REACHED the coach page. That is a bug - routing, loading, or an
+     * error nobody saw", naming two accounts to investigate, and then again
+     * underneath as "these accounts cannot have a stamp, so the split means
+     * nothing for them". The two filters were character-for-character
+     * identical.
+     *
+     * A false RED is worse than a false green. It sends somebody hunting a
+     * routing bug for which the evidence cannot exist, while the one real
+     * signal in the data - a failed /api/consent read on 2026-09-02 by an
+     * athlete who never returned - sits unread underneath a louder claim that
+     * was never established.
+     */
+    assert.match(script, /COACH_STAMP_RECORDING_SINCE/);
+    assert.match(script, /CANNOT BE CLASSIFIED/);
+    assert.match(script, /const measurable = \(p\) =>/);
+    // The bug list must be narrowed by measurability; the unmeasurable list by
+    // its negation. Identical predicates are what produced the false report.
+    assert.match(script, /finishedButNeverArrived = profiles\.filter\(\s*\(p\) => p\.intake_completed_at && !reachedCoach\(p\) && measurable\(p\)/);
+    assert.match(script, /cannotSay = profiles\.filter\(\s*\(p\) => p\.intake_completed_at && !reachedCoach\(p\) && !measurable\(p\)/);
+  });
+
+  test('the cutoff is the moment the column started recording, not a guess', () => {
+    // Migration 0064, applied to production at 2026-09-08T21:54:17Z - read out
+    // of supabase_migrations.schema_migrations, version 20260908215417.
+    assert.match(script, /Date\.parse\('2026-09-08T21:54:17Z'\)/);
+    assert.match(script, /20260908215417/, 'the ledger version that justifies the date is not cited');
+  });
+
+  test('a message still proves arrival, whatever the stamp says', () => {
+    // The stamp is written on a page load, and the earliest athletes predate
+    // it entirely - three of them were demonstrably talking to the coach.
+    assert.match(script, /const reachedCoach = \(p\) => p\.coach_first_opened_at != null \|\| sent\.has\(p\.user_id\)/);
+  });
+
+  test('and it says so when there is nothing to report', () => {
+    // A quiet zero and "we looked and found nothing" are different messages,
+    // and only one of them tells you the check ran.
+    assert.match(script, /No account has finished the intake and then measurably failed/);
   });
 });

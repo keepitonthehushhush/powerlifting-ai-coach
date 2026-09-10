@@ -17,6 +17,59 @@ import { evaluateConsentGate } from '../lib/consentGate.js';
  * an active consent regardless of what this context happens to hold. What it
  * is for is asking the person at the right moment.
  */
+/**
+ * How long to wait before trying a failed consent read again.
+ *
+ * ── WHY ONE DROPPED REQUEST MUST NOT BE A WALL ────────────────────────────
+ *
+ * An athlete signed up on 2026-09-02, completed the whole intake, and the only
+ * thing in their error log is `storage_unavailable` on /api/consent. They
+ * never sent a message and never came back. ProtectedRoute already carries
+ * that date in a comment, because a previous fix stopped this dead end being
+ * REACHED by a redirect - but it did not stop it being reached by one bad
+ * request, which is what actually happened to them.
+ *
+ * The screen they got says "That is a problem on our end" over a Try again
+ * button, which is honest and is also the last screen in the product for
+ * somebody with no reason to persist yet. A single transient failure should
+ * not be able to produce it.
+ *
+ * ── AND WHY THIS DOES NOT WEAKEN THE GATE ─────────────────────────────────
+ *
+ * Nothing here changes what happens on a definite answer. The gate still fails
+ * closed, an unreadable state is still "not granted", and a 4xx still stops
+ * immediately - retrying a refusal would be a loop, not a recovery. Only
+ * failures that look transient are tried again: no status at all, which is a
+ * dropped connection, or a 5xx, which is us.
+ *
+ * Two retries and roughly 1.6 seconds. Long enough to ride out a cold
+ * serverless start or a blip; short enough that somebody staring at a spinner
+ * is not being lied to about progress.
+ */
+const RETRY_DELAYS_MS = [400, 1200];
+
+/** A failure worth trying again, as opposed to an answer. */
+export function isTransient(err) {
+  const status = err?.status;
+  // No status is a network failure - the request never got an answer at all.
+  if (status == null) return true;
+  // A refusal is a decision. Asking again cannot change it, and 401 in
+  // particular is handled on its own path below.
+  if (status >= 400 && status < 500) return false;
+  return true;
+}
+
+async function withRetries(attempt) {
+  for (let i = 0; ; i += 1) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (i >= RETRY_DELAYS_MS.length || !isTransient(err)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[i]));
+    }
+  }
+}
+
 const ConsentContext = createContext(null);
 
 export function ConsentProvider({ children }) {
@@ -37,7 +90,7 @@ export function ConsentProvider({ children }) {
     // destroying whatever the person was typing.
     setStatus((prev) => (prev === 'ready' ? 'refreshing' : 'loading'));
     try {
-      setState(await api.getConsents());
+      setState(await withRetries(() => api.getConsents()));
       setStatus('ready');
     } catch (err) {
       setState(null);
