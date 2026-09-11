@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readSource, readMigration } from './helpers/source.js';
+import { readSource, readRaw, readMigration } from './helpers/source.js';
 import {
   CANONICAL_TEMPLATE_IDS,
   IGNORED_SET_TYPES,
@@ -20,9 +20,11 @@ import {
   MAX_PAGES_PER_RUN,
   PAGE_SIZE,
   backfillFloor,
-  backfillProgress,
   highWaterMark,
+  markToStore,
   nextStep,
+  pageProgress,
+  partitionEvents,
   withinWindow,
 } from '../src/lib/hevySync.js';
 import { summariseLift, nextPrescription } from '../src/lib/progression.js';
@@ -30,6 +32,12 @@ import { summariseLift, nextPrescription } from '../src/lib/progression.js';
 const lib = readFileSync(new URL('../src/lib/hevyImport.js', import.meta.url), 'utf8');
 const migration = readMigration(
   new URL('../../supabase/migrations/0070_where_a_logged_session_came_from.sql', import.meta.url)
+);
+const rename = readMigration(
+  new URL(
+    '../../supabase/migrations/0071_the_page_a_sync_resumes_at_is_not_only_the_backfill.sql',
+    import.meta.url
+  )
 );
 
 /**
@@ -294,9 +302,12 @@ describe('what is deliberately not brought across', () => {
   });
 });
 
-describe('the backfill is bounded, resumable, and terminates', () => {
+describe('the sync is bounded, resumable, and terminates', () => {
   const floor = backfillFloor(Date.parse('2026-09-11T00:00:00Z'));
-  const page = (n, start) => Array.from({ length: n }, () => ({ start_time: start }));
+  const page = (n, start) => Array.from({ length: n }, (_, i) => ({
+    type: 'updated',
+    workout: { id: `id-${i}`, start_time: start, updated_at: start },
+  }));
 
   test('the window is the one the rules actually read', () => {
     assert.equal(BACKFILL_DAYS, 90);
@@ -304,31 +315,50 @@ describe('the backfill is bounded, resumable, and terminates', () => {
   });
 
   test('the page size is their maximum', () => {
-    // More is rejected; less wastes a round trip against an undocumented limit.
+    // Their own parameter description: "Number of items on the requested page
+    // (Max 10)". More is rejected; less wastes a round trip against a rate
+    // limit that is not documented anywhere.
     assert.equal(PAGE_SIZE, 10);
   });
 
   for (const [name, input, expected] of [
-    ['an empty page ends it', { page: 3, pagesFetched: 1, workouts: [], pageCount: 9, floor }, true],
-    ['a short page ends it, whatever the count says', { page: 2, pagesFetched: 1, workouts: page(4, '2026-09-01T00:00:00Z'), pageCount: 9, floor }, true],
-    ['the last page ends it', { page: 9, pagesFetched: 1, workouts: page(10, '2026-09-01T00:00:00Z'), pageCount: 9, floor }, true],
-    ['reaching the window ends it', { page: 2, pagesFetched: 1, workouts: page(10, '2026-01-01T00:00:00Z'), pageCount: 99, floor }, true],
-    ['a full page inside the window continues', { page: 2, pagesFetched: 1, workouts: page(10, '2026-09-01T00:00:00Z'), pageCount: 99, floor }, false],
+    ['an empty page ends it', { page: 3, pagesFetched: 1, events: [], pageCount: 9 }, true],
+    ['a short page ends it, whatever the count says', { page: 2, pagesFetched: 1, events: page(4, '2026-09-01T00:00:00Z'), pageCount: 9 }, true],
+    ['the last page ends it', { page: 9, pagesFetched: 1, events: page(10, '2026-09-01T00:00:00Z'), pageCount: 9 }, true],
+    ['a full page continues', { page: 2, pagesFetched: 1, events: page(10, '2026-09-01T00:00:00Z'), pageCount: 99 }, false],
   ]) {
     test(name, () => {
-      assert.equal(backfillProgress(input).done, expected);
+      assert.equal(pageProgress(input).done, expected);
     });
   }
+
+  test('an old workout edited yesterday does NOT end the import', () => {
+    /*
+     * The bug this replaced. The first version stopped once a page's oldest
+     * `start_time` ran past the ninety-day floor, which is sound only if the
+     * pages are ordered by when the workout HAPPENED. They are ordered by when
+     * it was last TOUCHED. Somebody who fixes a typo in a workout from 2024
+     * puts a two-year-old start_time on page two of a ninety-day import, and
+     * that stop ended the import there - every later page unread, and the run
+     * reporting success.
+     */
+    const ancient = pageProgress({
+      page: 2, pagesFetched: 1, events: page(10, '2024-01-01T00:00:00Z'), pageCount: 99,
+    });
+    assert.equal(ancient.done, false, 'an old start_time stopped the import again');
+    assert.equal(ancient.nextPage, 3);
+    // It is still not IMPORTED - the window is enforced where it is true.
+    assert.equal(withinWindow(page(10, '2024-01-01T00:00:00Z').map((e) => e.workout), floor).length, 0);
+  });
 
   test('spending the page budget is NOT done, and the cursor advances', () => {
     /*
      * The one branch where `done` being wrong loses history permanently: mark
      * it finished here and the remaining pages are never fetched, and the
-     * incremental cursor then starts past a hole that `?since=` never looks
-     * back into.
+     * cursor then starts past a hole that `?since=` never looks back into.
      */
-    const out = backfillProgress({
-      page: 12, pagesFetched: MAX_PAGES_PER_RUN, workouts: page(10, '2026-09-01T00:00:00Z'), pageCount: 99, floor,
+    const out = pageProgress({
+      page: 12, pagesFetched: MAX_PAGES_PER_RUN, events: page(10, '2026-09-01T00:00:00Z'), pageCount: 99,
     });
     assert.equal(out.done, false);
     assert.equal(out.nextPage, 13);
@@ -340,7 +370,7 @@ describe('the backfill is bounded, resumable, and terminates', () => {
     // nextPage equal to page would loop forever on the same request.
     for (const rows of [0, 1, 9, 10]) {
       for (const fetched of [1, MAX_PAGES_PER_RUN]) {
-        const out = backfillProgress({ page: 5, pagesFetched: fetched, workouts: page(rows, '2026-09-01T00:00:00Z'), pageCount: 99, floor });
+        const out = pageProgress({ page: 5, pagesFetched: fetched, events: page(rows, '2026-09-01T00:00:00Z'), pageCount: 99 });
         assert.ok(out.done || out.nextPage > 5, `stuck at page 5 with ${rows} rows after ${fetched} fetches`);
       }
     }
@@ -349,6 +379,40 @@ describe('the backfill is bounded, resumable, and terminates', () => {
   test('a straddling last page is trimmed to the window', () => {
     const mixed = [{ start_time: '2026-09-01T00:00:00Z' }, { start_time: '2025-01-01T00:00:00Z' }];
     assert.equal(withinWindow(mixed, floor).length, 1);
+  });
+
+  test('an event type nobody has seen before is dropped, not guessed at', () => {
+    const { updated, deleted } = partitionEvents([
+      { type: 'updated', workout: { id: 'a' } },
+      { type: 'deleted', id: 'b' },
+      { type: 'archived', workout: { id: 'c' } },
+      { type: 'updated' },
+      { type: 'deleted' },
+    ]);
+    assert.deepEqual(updated, [{ id: 'a' }]);
+    assert.deepEqual(deleted, ['b']);
+  });
+});
+
+describe('one endpoint, because only one of them documents its order', () => {
+  test('a backfill is just a sync whose since is ninety days ago', () => {
+    const step = nextStep({ backfill_done: false }, Date.parse('2026-09-11T00:00:00Z'));
+    assert.equal(step.mode, 'backfill');
+    assert.equal(step.since, backfillFloor(Date.parse('2026-09-11T00:00:00Z')));
+    assert.equal(step.page, 1);
+  });
+
+  test('the reason the old stop is gone is written down where it was', () => {
+    /*
+     * A deleted branch leaves no trace, and the next person to read this file
+     * will reach for exactly that stop again.
+     *
+     * readRaw, not readSource: readSource strips comments, so asserting the
+     * PRESENCE of an explanation has to read the file as written. The reverse
+     * mistake - an absence check satisfied by a comment explaining the absence
+     * - is why readSource exists, and this is the other half of that pair.
+     */
+    assert.match(readRaw(new URL('../src/lib/hevySync.js', import.meta.url)), /ordered by when the workout HAPPENED/);
   });
 });
 
@@ -359,7 +423,7 @@ describe('incremental sync never starts before the history is in', () => {
      * ?since= never looks backwards - so those workouts are lost permanently
      * while everything downstream computes on a history with a month cut out.
      */
-    const step = nextStep({ backfill_done: false, backfill_page: 4, synced_through: '2026-09-01T00:00:00Z' });
+    const step = nextStep({ backfill_done: false, sync_page: 4, synced_through: '2026-09-01T00:00:00Z' });
     assert.equal(step.mode, 'backfill');
     assert.equal(step.page, 4);
   });
@@ -375,6 +439,15 @@ describe('incremental sync never starts before the history is in', () => {
     // the idempotency key absorbs it; missing one loses a session silently.
     const step = nextStep({ backfill_done: true, synced_through: '2026-09-10T12:00:00.000Z' });
     assert.ok(Date.parse(step.since) < Date.parse('2026-09-10T12:00:00.000Z'));
+  });
+
+  test('an incremental pass resumes by page too', () => {
+    // The reason `backfill_page` was renamed. Somebody who does not sync for
+    // two months comes back to more events than one invocation should fetch,
+    // and the pages left unread are the OLDEST ones.
+    const step = nextStep({ backfill_done: true, sync_page: 7, synced_through: '2026-09-10T12:00:00.000Z' });
+    assert.equal(step.mode, 'incremental');
+    assert.equal(step.page, 7);
   });
 
   test('the high-water mark is the newest event seen, never our own clock', () => {
@@ -393,6 +466,27 @@ describe('incremental sync never starts before the history is in', () => {
   test('a mark never goes backwards', () => {
     const older = [{ workout: { updated_at: '2026-08-01T00:00:00Z' } }];
     assert.equal(highWaterMark(older, '2026-09-01T00:00:00Z'), '2026-09-01T00:00:00Z');
+  });
+
+  test('a deletion carries the stream forward as much as an update does', () => {
+    // A pass that saw nothing but deletions still moved through the stream. A
+    // mark that ignored them would re-read those pages forever.
+    const events = [{ type: 'deleted', id: 'x', deleted_at: '2026-09-10T11:00:00Z' }];
+    assert.equal(highWaterMark(events, '2026-09-01T00:00:00Z'), '2026-09-10T11:00:00Z');
+  });
+
+  test('AN UNFINISHED PASS DOES NOT MOVE THE CURSOR AT ALL', () => {
+    /*
+     * The mirror of the backfill hole, in the phase nobody expected to need
+     * one. Events are newest first, so the pages an interrupted run did not
+     * reach are the OLDEST. Storing the newest mark would put the cursor past
+     * them, and ?since= never looks backwards - they are not delayed, they are
+     * gone.
+     */
+    const events = [{ workout: { updated_at: '2026-09-10T11:00:00Z' } }];
+    const previous = '2026-09-01T00:00:00Z';
+    assert.equal(markToStore({ done: false, events, previous }), previous);
+    assert.equal(markToStore({ done: true, events, previous }), '2026-09-10T11:00:00Z');
   });
 });
 
@@ -415,8 +509,23 @@ describe('the credential', () => {
   });
 
   test('reconnecting resets the cursor, because a new key can be a new account', () => {
-    const fn = migration.slice(migration.indexOf('function public.connect_hevy'));
-    assert.match(fn.slice(0, fn.indexOf('$$;')), /synced_through = null,\s*\n\s*backfill_page = null,\s*\n\s*backfill_done = false/);
+    // Read from 0071, which owns connect_hevy() now - reading 0070 here would
+    // assert against a version of the function that no database runs.
+    const fn = rename.slice(rename.indexOf('function public.connect_hevy'));
+    assert.match(fn.slice(0, fn.indexOf('$$;')), /synced_through = null,\s*\n\s*sync_page = null,\s*\n\s*backfill_done = false/);
+  });
+
+  test('the column the cursor lives in is named for what it holds', () => {
+    /*
+     * 0070 called it `backfill_page`, on the assumption that only the first
+     * import would ever stop half way. Once both phases read the same event
+     * stream an incremental pass can run out of budget too, and a column named
+     * `backfill_page` holding an incremental cursor is the kind of small lie
+     * that is still being believed three debugging sessions later.
+     */
+    assert.match(rename, /rename column backfill_page to sync_page/);
+    const sync = readSource(new URL('../src/lib/hevySync.js', import.meta.url));
+    assert.doesNotMatch(sync, /backfill_page/, 'the old name is back in the sync logic');
   });
 
   test('every definer function refuses an unauthenticated caller', () => {
