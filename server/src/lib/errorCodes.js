@@ -159,6 +159,37 @@ export const ERROR_CODES = Object.freeze({
    * this ever appears in error_events it is the first thing to look at.
    */
   withdrawal_incomplete: { id: 20, status: 502, retryable: false },
+
+  // ── An outside tracker ──────────────────────────────────────────────────
+  /**
+   * The tracker refused the stored key.
+   *
+   * Its own code rather than `auth_required`, which means "sign in here". This
+   * means "the credential you pasted for somebody else's service no longer
+   * works", and the only action that helps is reconnecting. Not retryable: the
+   * same key will be refused again, and a retry button on this is a button
+   * that lies.
+   */
+  tracker_key_rejected: { id: 26, status: 502, retryable: false },
+  /**
+   * Their API did not answer, or answered with a server error. Retryable, and
+   * deliberately separate from `tracker_key_rejected`, because the athlete
+   * should be told to wait rather than to go and generate a new key.
+   */
+  tracker_unavailable: { id: 27, status: 502, retryable: true },
+  /**
+   * Their rate limit, which is not documented anywhere and so is discovered
+   * rather than respected. Separate from this product's own `rate_limited`:
+   * the caller did nothing wrong and changing their own behavior will not
+   * help.
+   */
+  tracker_rate_limited: { id: 28, status: 502, retryable: true },
+  /**
+   * A sync was asked for and there is no connection to sync. Ordinary, not a
+   * fault - it is what a stale settings page in a second tab produces after
+   * disconnecting in the first.
+   */
+  tracker_not_connected: { id: 29, status: 409, retryable: false },
 });
 
 /**

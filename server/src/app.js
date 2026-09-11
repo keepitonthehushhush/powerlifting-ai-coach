@@ -15,6 +15,7 @@ import { sessionsRouter } from './routes/sessions.js';
 import { programRouter } from './routes/program.js';
 import { libraryRouter } from './routes/library.js';
 import { accountRouter } from './routes/account.js';
+import { integrationsRouter } from './routes/integrations.js';
 import { consentRouter } from './routes/consent.js';
 import { billingRouter } from './routes/billing.js';
 import { leaderboardRouter } from './routes/leaderboard.js';
@@ -342,6 +343,14 @@ export function createApp() {
   app.use('/api/preferences', rateLimit('write'), preferencesRouter);
   app.use('/api/client-errors', rateLimit('write'), clientErrorsRouter);
   app.use('/api/sessions', rateLimit('write'), sessionsRouter);
+  /*
+   * The write bucket, and a sync is genuinely a write: it can insert a hundred
+   * and twenty sessions and it makes a dozen outbound requests against a rate
+   * limit somebody else owns and does not document. Sharing the athlete's own
+   * write budget is the point - a sync-now button held down is spending the
+   * same allowance as logging, and both stop at the same place.
+   */
+  app.use('/api/integrations', rateLimit('write'), integrationsRouter);
   app.use('/api/program', programRouter);
   app.use('/api/library', libraryRouter);
   app.use('/api/account', accountRouter);
