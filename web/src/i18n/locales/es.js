@@ -809,6 +809,10 @@ export const es = {
       data_exported: 'Descargaste tus datos',
       account_deleted: 'Se solicitó borrar la cuenta',
       subscription_changed: 'Cambió el estado de la suscripción',
+      clearance_asserted: 'Confirmaste que un doctor o fisioterapeuta te autorizó a entrenar',
+      mfa_factor_removed: 'Se desactivó el inicio de sesión en dos pasos',
+      tracker_connected: 'Conectaste una app externa de entrenamiento',
+      tracker_disconnected: 'Desconectaste una app externa de entrenamiento',
     },
   },
   version: {

@@ -840,6 +840,10 @@ export const en = {
       data_exported: 'You downloaded your data',
       account_deleted: 'Account deletion requested',
       subscription_changed: 'Subscription status changed',
+      clearance_asserted: 'You confirmed a doctor or physical therapist cleared you to train',
+      mfa_factor_removed: 'Two-step sign-in was turned off',
+      tracker_connected: 'You connected an outside workout tracker',
+      tracker_disconnected: 'You disconnected an outside workout tracker',
     },
   },
   version: {
