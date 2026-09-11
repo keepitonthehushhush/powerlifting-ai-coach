@@ -226,6 +226,32 @@ silently.
 
 ---
 
+### Two gates on an audited action, and widening only one of them
+
+Recorded because it cost nothing to find and would have cost a great deal to
+discover later. There are **two** lists of permitted audit actions and they are
+deliberately different:
+
+- `audit_events_action_check` says which actions may **exist** in the table.
+- `record_audit_event()` says which ones a **user** may claim about themselves,
+  and it is shorter — `subscription_changed` is written by the Stripe webhook
+  and `mfa_factor_removed` by the function that removes the factor, so neither
+  is something a browser may assert.
+
+Adding the tracker integration, I widened the constraint and not the function.
+Nothing failed. The route called `record_audit_event('tracker_connected')`, the
+function refused it, the route logged a warning and carried on — so connecting
+worked, and **nothing would ever have been audited**. Reading either definition
+on its own shows a permitted action; it took running the round trip as the
+`authenticated` role against a real database to see it.
+
+Both lists are now widened, and `hevyIntegration.test.js` asserts that every
+action the route records passes both gates and that the narrower one is still
+narrower. The general lesson is the one this codebase keeps relearning: a
+permission that is expressed in two places is not checked until something
+exercises both.
+
+
 ## 3. Health data
 
 `user_profile.health_restrictions` holds user-reported injuries and medical
@@ -641,7 +667,9 @@ the list as the fact and the number as commentary.
   they pasted in themselves.
 - `public.record_hevy_sync(...)` — moves that athlete's own sync cursor. The
   worst a determined caller achieves is re-importing their own workouts, which
-  the idempotency key in 0065 absorbs.
+  the idempotency key in 0065 absorbs. Its second parameter is `p_sync_page`,
+  renamed from `p_backfill_page` in 0071 once it became clear that the
+  incremental phase resumes by page too.
 - `public.delete_my_account()`
 - `public.record_audit_event(text, jsonb)`
 - `public.record_error_event(...)`

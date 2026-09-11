@@ -82,7 +82,16 @@ time could not have caught them.
    Fitness, which has no Olympic barbell and no squat rack, and the coach is
    told to say so rather than quietly prescribing a squat to somebody with
    nowhere to rack a bar.
-9. **Something to hand your doctor.** [`/about`](https://coachdiaz.app/about)
+9. **The log they already keep.** An athlete who logs in Hevy can connect it,
+   and the coach reads those workouts instead of asking them to record the same
+   sets twice. Read-only and deliberately so — their API can create routines,
+   and writing into a training log somebody owns somewhere else is not
+   recoverable by disconnecting the way reading is. The key lives in a schema
+   the signed-in role holds no grant on, comes back out through exactly one
+   function, and is never in a log, a URL, the data export, or the prompt. The
+   window is ninety days, which is what the progression rules actually read.
+   See ADR-24.
+10. **Something to hand your doctor.** [`/about`](https://coachdiaz.app/about)
    explains to a clinician what this is, what it refuses to do, and how they
    can set restrictions through their patient. Public, printable, and held to
    the system prompt by tests so it cannot quietly stop being true.
@@ -205,6 +214,7 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 | The model as an attack surface | Mapped against the OWASP LLM Top 10 (2026) in [`docs/SECURITY.md`](docs/SECURITY.md) §4b. Athlete text is escaped before it enters the prompt's data region, the coach holds no tools, the context contains no secrets, and replies are rendered as text rather than markup. The organizing question is not whether the model can be fooled but what a fooled model can reach — which RLS bounds to the caller's own rows. |
 | Unauthenticated access | The `anon` role holds no table grants and matches no policy — refused before RLS is even consulted. |
 | When it breaks | `web/public/maintenance.html` is a standalone page with no imports, no build step and no external requests, so it survives a broken bundle, a failed deploy or a database refusing connections. It polls `/api/health` and says when the site is back. `ErrorBoundary.jsx` catches a render crash and links to it. Switching it on is one rewrite in `vercel.json` — see [`docs/RUNBOOK.md`](docs/RUNBOOK.md). |
+| A credential for another service | Connecting an outside tracker means holding a bearer token for somebody's paid account elsewhere. It goes in `private.hevy_connections`, a schema `authenticated` holds no `USAGE` on, reachable only through `SECURITY DEFINER` functions scoped to `auth.uid()` — the same shape as the trial counter, and no service-role client is involved, so ADR-12's count of one stays one. It is sent as a header and never as a query parameter, because a query string reaches every proxy access log in between. It is excluded from the data export by name and with the reason written down: an export is a file people email to themselves, and a live credential does not belong in one. Disconnecting deletes the row rather than blanking the column. |
 | Copyright | No video is hosted, embedded or mirrored. `exercise_library.video_url` links out to the rights holder. |
 
 ---

@@ -52,7 +52,16 @@ const FORBIDDEN = {
   'a Supabase secret or JWT': /sb_secret_|service_role|eyJ[A-Za-z0-9_-]{20,}\./,
   'a generic long secret assignment': /(secret|token|password|api[_-]?key)\s*[:=]\s*['"][A-Za-z0-9_-]{16,}/i,
   'the name of a database or hosting vendor': /\b(supabase|vercel|postgres|postgresql|cloudflare|stripe)\b/i,
-  'an internal table name': /\b(user_profile|workout_programs|workout_sessions|progress_logs|leaderboard_entries|usage_events|consent_records|audit_events|error_events|user_preferences)\b/,
+  'an internal table name': /\b(user_profile|workout_programs|workout_sessions|progress_logs|leaderboard_entries|usage_events|consent_records|audit_events|error_events|user_preferences|hevy_connections|trial_usage)\b/,
+  /*
+   * Added with the tracker integration. The prompt is the one place in this
+   * system where a third party's text and our own data are concatenated, and
+   * an imported workout's title is free text a stranger typed - so the
+   * function that hands back the credential must not be nameable in it either.
+   * `hevy_key_for_sync` is named conspicuously on purpose, and this is the
+   * other half of that: conspicuous in the source, absent from the prompt.
+   */
+  'the name of the function that returns a credential': /hevy_key_for_sync|connect_hevy|record_hevy_sync/i,
   'a source path': /\b(server\/src|web\/src|scripts\/lib|supabase\/migrations)\b/,
   'an environment variable name': /\b(ANTHROPIC_API_KEY|SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|TURNSTILE_SECRET|STRIPE_SECRET|VITE_[A-Z_]+)\b/,
   'a database connection string': /postgres(ql)?:\/\/|\bpsql\b/i,
@@ -84,6 +93,7 @@ describe('the system prompt carries nothing worth stealing', () => {
       'a generic long secret assignment': 'api_key: "abcdefghijklmnop123"',
       'the name of a database or hosting vendor': 'we run on Supabase',
       'an internal table name': 'select * from user_profile',
+      'the name of the function that returns a credential': 'call hevy_key_for_sync()',
       'a source path': 'see server/src/app.js',
       'an environment variable name': 'set ANTHROPIC_API_KEY first',
       'a database connection string': 'postgres://user:pw@host/db',

@@ -1440,6 +1440,103 @@ independently is exactly how a page and a coach come to disagree about somebody'
 own training.
 
 
+### ADR-24 · The coach reads the log they already keep, and reads it through the event stream
+
+**Context.** Every adaptation this product performs reads a training log.
+`progression.js` finds the working weight and the consecutive misses,
+`adherence.js` cross-references the block, `phase.js` decides when linear
+progression is finished, ADR-23's change list explains a block against the one
+before it. All of it reads `progress_logs`.
+
+`npm run retention` says what is actually in there: three programs, two logged
+sessions, one `progress_logs` row, none of them from a coach card. A real
+logging bug was found and fixed the day before — and there is a second
+explanation that no amount of UX work addresses. **Logging is a second app's
+job, and the people we want already have that app.** Hevy has sixteen million
+users and, as of September 2026, a "send workouts to ChatGPT & Claude" button on
+its finish-workout screen. A company that ships an export-to-assistant button
+and a public REST API has drawn a line around what it intends to build. The
+position is not to compete with them for the logging habit; it is to be the
+thing they point at.
+
+**Decision.** An athlete pastes a Hevy API key. The server reads their workouts
+and writes them into `workout_sessions` and `progress_logs` exactly as the
+manual form does. Read only: nothing is written back to their account.
+
+**Read only is a decision, not a stage.** Their API has `POST /workouts` and
+`POST /routines`, and pushing a coach-built block into somebody's routine folder
+is the obvious next feature. It is also the one that can damage something the
+athlete owns somewhere else. Reading is recoverable by disconnecting; writing
+into another product's data is not. Read first, ship it, and find out whether
+anybody connects at all before building the half that can break someone else's
+training log.
+
+**Why the event stream and not the workout list.** This is the part worth
+reading twice. `GET /v1/workouts` documents **no ordering** — their published
+OpenAPI document describes it as "Get a paginated list of workouts" and says
+nothing more. The first draft of the backfill walked that list and stopped once
+a page's oldest `start_time` ran past the ninety-day floor, which is correct
+only if the list is newest-first. It happens to be, on the account you test
+against. If it is ever not, the import stops on page one having written nothing
+and **reports success**.
+
+`GET /v1/workouts/events` states its order in the specification — "Events are
+ordered from newest to oldest" — takes an arbitrary `since`, and carries
+deletions as well as updates. So both phases read it: the first import is a sync
+whose `since` is ninety days ago. One code path, documented behavior, and a
+workout deleted in their app stops driving a deload here rather than lingering
+as a phantom session.
+
+The window stop went with it, and had to. Events are ordered by when a workout
+was last **touched**, not when it **happened**; somebody who fixes a typo in a
+session from two years ago puts a two-year-old `start_time` on page two of a
+ninety-day import. The window is enforced where it is actually true: `since`
+bounds the stream on their side, `withinWindow()` bounds the writes on ours.
+
+**Bounded, resumable, terminating.** `pageSize` maxes at ten, so a hundred
+workouts is ten round trips against a rate limit they do not document. Twelve
+pages per invocation, a cursor stored per connection, four stop reasons of which
+exactly one means "finished". The cursor only advances when the pass reached the
+end of the stream: events come back newest first, so the pages an interrupted
+run did not reach are the **oldest** ones, and `?since=` never looks backwards —
+storing the newest mark after a partial pass does not delay those events, it
+loses them. Migration 0071 renamed `backfill_page` to `sync_page` when it became
+clear the incremental phase needs the same protection.
+
+**Where the credential lives.** `private.hevy_connections`, in a schema
+`authenticated` holds no `USAGE` on — the same shape as `private.trial_usage`
+(ADR-12's one service-role client is still the Stripe webhook, and stays that
+way: the definer functions are called with the athlete's own RLS-scoped client).
+It comes back out through exactly one function, `hevy_key_for_sync()`, named
+conspicuously so that its appearance in a diff reads like an alarm. It is never
+logged, never in a URL, never in the export, never in the prompt, and there is
+no request that returns it to a browser.
+
+**The three mappings that corrupt a history silently.** A set taken to failure
+is a working set and a warm-up is not — drop the first and every e1RM falls,
+import the second and four sets become ten. The unit is the athlete's, never
+defaulted: an unrecognized unit produces `null` rather than a number in a unit
+we are guessing at. And `localDayOf()` honors the offset in the timestamp
+rather than taking the UTC date, because an athlete training at seven in the
+evening in Michigan is already on tomorrow by UTC for half the year, and
+`compareToProgram()` windows on the date.
+
+**What is deliberately empty.** `CANONICAL_TEMPLATE_IDS` maps their exercise
+template ids to the four competition lifts and contains nothing, because no live
+account has been read yet. A guessed id maps a movement to the wrong lift, which
+is worse than mapping none: an unmapped movement is stored under its own name
+and ignored by the progression rules, which is what a hand-entered accessory
+does today and is always safe. What must never go in that file is their exercise
+catalog — their titles, descriptions and categorizations are their content, and
+copying it is the one act in this integration with real exposure.
+
+**Consequence.** The product's hardest problem is no longer "will they log it".
+The new dependency is a platform we do not control: they can change their terms,
+their pricing, or their API. That is named rather than hidden — the imported
+sessions are ours once written, the manual form never goes away, and
+disconnecting deletes the credential and leaves the history.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

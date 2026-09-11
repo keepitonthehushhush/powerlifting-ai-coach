@@ -146,6 +146,43 @@ bounces is worse than printing none, because it looks like a route.
 
 ---
 
+## "My workouts are not coming in from Hevy"
+
+The settings card already shows the stored reason, so the athlete can usually
+tell you which of these it is. If they cannot, this is the query — run it as
+yourself in the SQL editor, **not** as the service role, and note what it does
+not select:
+
+```sql
+-- The state, never the key. There is no reason for an operator to read a
+-- credential, and a query that returns one is a query somebody pastes into a
+-- support ticket.
+select user_id, connected_at, synced_through, sync_page, backfill_done, last_error
+  from private.hevy_connections
+ order by updated_at desc;
+```
+
+| What it says | What it means | What to do |
+|---|---|---|
+| `last_error = 'tracker_key_rejected'` | Hevy refused the key. Usually revoked, occasionally a lapsed Pro subscription. | They generate a new key and reconnect. Nothing on our side helps. |
+| `last_error = 'tracker_rate_limited'` | Their undocumented limit. | Wait. If it repeats for one athlete, `MAX_PAGES_PER_RUN` is the dial. |
+| `last_error = 'tracker_unavailable'` | Their API did not answer, or answered with a 5xx. | Try again later. Check their status before assuming it is us. |
+| `backfill_done = false` **and** `sync_page` is set | Normal. The first import is bounded at twelve pages a run and resumes where it stopped. | Press sync again. It is not stuck; it is paced. |
+| `backfill_done = false` **and** `sync_page` is null **and** no error | The first pass reached the end of a short history. The next sync marks it done. | Nothing. |
+| `synced_through` not moving while syncs succeed | A pass that never reaches the end of the stream. | This is the one worth looking at. The mark is deliberately not advanced by a partial pass, so a connection that always runs out of budget never marks. Check how many events their account is producing. |
+
+**Nothing here is fixed by re-pasting the key.** Reconnecting resets the cursor
+on purpose — a new key can belong to a different account — so telling somebody
+to "just reconnect" restarts a backfill that was most of the way through.
+
+**If the import brought in nothing at all**, the likely answer is not a bug:
+`CANONICAL_TEMPLATE_IDS` is empty by design, so movements arrive under Hevy's
+own titles, and only warm-ups, dropsets and sets with no reps are dropped. An
+account whose workouts are all outside the ninety-day window imports nothing and
+is behaving correctly.
+
+---
+
 ## Where configuration lives
 
 **`.env` at the repository root.** Not `server/.env` — that file does not exist,

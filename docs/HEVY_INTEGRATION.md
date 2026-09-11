@@ -5,6 +5,13 @@ it down first is that three of the decisions below are easy to get wrong in a
 way that looks fine and corrupts training history quietly, and one of them
 touches a credential.
 
+> **Status, 2026-09-11.** The read-only half is built and deployed. What is
+> below is the proposal as it was written; the section **"What the build changed
+> about this plan"** at the end records where reality disagreed with it, which
+> is more useful than quietly editing the plan to look like it was right.
+> Write-back is still unbuilt and still gated on whether anybody connects.
+> ADR-24 in `ARCHITECTURE.md` is the decision record.
+
 ## The problem this is actually for
 
 `npm run retention` currently prints this:
@@ -288,3 +295,56 @@ layer to live outside their app.
    carries are the sets we already store.
 4. **Read-only first, or read and write-back together?** Read-only is shippable
    much sooner and proves whether anybody wants this at all.
+
+## What the build changed about this plan
+
+Three things, and the first one is the reason to write these documents at all.
+
+### The backfill cannot walk `GET /v1/workouts`
+
+The plan above says "the most recent N workouts, page size 10, with a stored
+cursor". That is only meaningful if the list is ordered newest-first, and
+**their published OpenAPI document does not say that it is** — the whole
+description of that endpoint is "Get a paginated list of workouts". The stop
+condition the first draft used, "this page's oldest `start_time` is past the
+floor", is correct only under an ordering nobody promised. Under the opposite
+ordering the import stops on page one having written nothing and reports
+success.
+
+`GET /v1/workouts/events` states its order in the specification — "Events are
+ordered from newest to oldest" — and takes an arbitrary `since`. So the backfill
+is a sync whose `since` is ninety days ago, both phases read the same endpoint,
+and deletions arrive on the same path instead of needing a second mechanism.
+
+This was caught by going back to the live specification before writing the code
+that depended on it, rather than by trusting the table in the section above,
+which I had written from that same specification the day before and which did
+not record the absence of an ordering guarantee. **An absence is a fact and it
+does not survive a summary.**
+
+### The incremental phase needs the backfill's cursor
+
+Not anticipated at all above. Events come back newest-first, so a pass that runs
+out of page budget has left the **oldest** pages unread — and the high-water
+mark is the newest thing it saw. Storing that mark loses them, because `?since=`
+never looks backwards. Both phases now resume by page and the mark only moves
+when a pass reaches the end of the stream. Migration 0071 renamed
+`backfill_page` to `sync_page` accordingly.
+
+### Connect validates against `/workouts/count`, not `/user/info`
+
+Cheaper, and it answers a second question. `/workouts/count` returns one
+integer, and that integer is the difference between "connected" and "connected
+to an empty account" — the first thing worth knowing when somebody reports that
+the import brought nothing in.
+
+### The open questions, answered
+
+1. **Backfill window** — ninety days. It is what the rules read.
+2. **Prefix on `client_key`** — yes, migration 0070. Telling two sources apart
+   by the *length* of a hash nobody promised to keep is a lie waiting for a
+   maintenance change.
+3. **Its own consent record** — no. A disclosure on the privacy policy, the
+   connection in the data export, and two new audit actions. It is a new
+   processing surface, not a new category of data.
+4. **Read-only first** — yes, and it shipped that way.
