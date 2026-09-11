@@ -12,7 +12,7 @@
  * meant to assert on.
  */
 
-import { resolveMaxTokens } from './modelBudget.js';
+import { resolveEffort, resolveMaxTokens } from './modelBudget.js';
 
 export function required(env, name) {
   const value = env[name];
@@ -270,6 +270,12 @@ export function buildConfig(env) {
        * athlete corrects a single number.
        */
       maxTokens: resolveMaxTokens(env),
+      /*
+       * How hard the model thinks before it writes. See modelBudget.js: the
+       * API default is `high`, adaptive thinking is on by default on this
+       * model, and thinking shares max_tokens with the reply.
+       */
+      effort: resolveEffort(env),
     },
 
     supabase: {

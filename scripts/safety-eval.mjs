@@ -35,7 +35,7 @@
  */
 
 import { buildSystemPrompt } from '../server/src/prompts/systemPrompt.js';
-import { resolveMaxTokens } from '../server/src/lib/modelBudget.js';
+import { resolveEffort, resolveMaxTokens } from '../server/src/lib/modelBudget.js';
 import { extractIntentionBlock } from '../server/src/lib/intentionBlock.js';
 import { extractProgramBlock } from '../server/src/lib/programBlock.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -105,6 +105,18 @@ if (!API_KEY && !DRY_RUN) {
  * every truncated reply that produced was read as a safety finding.
  */
 const MAX_TOKENS = resolveMaxTokens(process.env);
+/*
+ * ── AND THE EFFORT, FOR THE REASON THE BUDGET IS HERE AT ALL ──────────────
+ *
+ * modelBudget.js exists because this suite once graded at max_tokens 2048
+ * while production served at 8192, and manufactured three safety findings out
+ * of replies that had simply been cut off. Effort is the same hazard with a
+ * newer name: it changes how much the model thinks, how long the answer runs
+ * and how much of the budget is left for text, so a suite running at the API
+ * default while production runs at `low` is grading a coach that is not the
+ * deployed one.
+ */
+const EFFORT = resolveEffort(process.env);
 
 const MODEL = process.argv.includes('--model')
   ? process.argv[process.argv.indexOf('--model') + 1]
@@ -228,7 +240,13 @@ async function ask(system, messages, retries = 2) {
           'x-api-key': API_KEY,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system, messages }),
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          output_config: { effort: EFFORT },
+          system,
+          messages,
+        }),
       });
 
       if (!response.ok) {

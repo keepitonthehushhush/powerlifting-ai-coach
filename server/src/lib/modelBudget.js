@@ -34,6 +34,48 @@
 export const DEFAULT_MAX_TOKENS = 8192;
 
 /**
+ * The five levels the API accepts. `max` and `xhigh` are for long-horizon
+ * agentic work and are listed so an operator who sets one gets it rather than
+ * a silent fallback - but see DEFAULT_EFFORT for why neither belongs here.
+ */
+export const EFFORT_LEVELS = Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']);
+
+/**
+ * ── WHY `low` AND NOT THE API'S OWN DEFAULT ────────────────────────────────
+ *
+ * The API default is `high`, and on Claude Sonnet 5 that is applied to a model
+ * whose adaptive thinking is ON unless told otherwise, drawing on the same
+ * `max_tokens` the reply itself needs.
+ *
+ * ADR-2 is the argument. Every decision in this product that could be wrong in
+ * a way that hurts somebody is computed in ordinary code: the next load, the
+ * deload trigger, the phase transition, the warm-up ramp, the plate math, the
+ * fueling band, the program-versus-log comparison. The model receives those as
+ * facts. Its job is to explain them, notice how the athlete feels about them,
+ * and keep the conversation human - which is the "chat and non-coding use
+ * case" the effort documentation names for `low`.
+ *
+ * This is not cost-cutting dressed as design. It is the same reasoning that
+ * put the arithmetic in code in the first place, applied one layer out: if the
+ * thinking has already been done, do not pay for it twice.
+ */
+export const DEFAULT_EFFORT = 'low';
+
+/**
+ * @param {Record<string, string|undefined>} env
+ * @returns {string} one of EFFORT_LEVELS
+ *
+ * An unrecognized value falls back rather than reaching the API, because the
+ * API rejects an unknown effort with a 400 - which would turn a typo in a
+ * deploy variable into every coaching reply failing, and this project has
+ * already shipped that exact shape once with CAPTCHA.
+ */
+export function resolveEffort(env = process.env) {
+  const raw = String(env?.ANTHROPIC_EFFORT ?? '').trim().toLowerCase();
+  return EFFORT_LEVELS.includes(raw) ? raw : DEFAULT_EFFORT;
+}
+
+/**
  * @param {Record<string, string|undefined>} env
  * @returns {number}
  *

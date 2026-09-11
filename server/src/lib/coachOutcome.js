@@ -74,13 +74,26 @@ export function describeCoachReply(reply) {
    *
    * The empty check used to come first, so `max_tokens` with no text fell into
    * `coach_empty` - whose entire advice is "sending it again usually works".
-   * It cannot work. The request that exhausted the budget will exhaust it
-   * again, in the same place, and `coach_empty` is marked retryable so the
-   * route spent a second call discovering that.
+   * `coach_empty` is marked retryable, so the route spent a second call
+   * discovering that an identical request exhausts an identical budget.
    *
-   * That happened in production on 2026-08-29: one event, stop_reason
-   * max_tokens, no text. The same mistake this file was written to stop
-   * happening to `refusal` - advice that cannot work, given confidently.
+   * That happened in production on 2026-08-29, and again on 2026-09-11.
+   *
+   * ── AND THE SECOND TIME, THE REASONING HAD GONE STALE ──────────────────
+   *
+   * This comment used to end "the request that exhausted the budget will
+   * exhaust it again, in the same place", and that was true when the only
+   * variable was the request. It stopped being true when the model changed
+   * underneath it. The 2026-09-11 event came back with blockTypes
+   * ["thinking"] and no text: the budget had not gone into a long answer, it
+   * had gone into ADAPTIVE THINKING, which Sonnet 5 runs by default and which
+   * draws on the same max_tokens the reply needs.
+   *
+   * A retry with thinking DISABLED is therefore not the same request. It is
+   * the one request that can succeed where this one failed, because every
+   * token goes to text. So this is retryable after all - but only in that
+   * specific way, which is why it is a separate flag rather than `retry`.
+   * Retrying it unchanged would still be pointless.
    */
   if (TRUNCATING.has(stopReason)) {
     if (!text) {
@@ -88,6 +101,15 @@ export function describeCoachReply(reply) {
         ok: false,
         code: 'coach_cut_short',
         retry: false,
+        /**
+         * Ask again with `thinking: {type:'disabled'}`, once.
+         *
+         * Distinct from `retry` because they mean opposite things about the
+         * same request: `retry` says "the identical call may work", and this
+         * says "the identical call cannot, and here is the one change that
+         * makes it a different one".
+         */
+        retryWithoutThinking: true,
         truncated: false,
         message:
           'That reply ran out of room before the coach had written anything. Ask for a smaller piece of it - one training day rather than a whole block - and it will fit.',

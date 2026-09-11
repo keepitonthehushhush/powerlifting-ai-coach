@@ -391,9 +391,9 @@ chatRouter.post('/', async (req, res, next) => {
     // The SDK throwing is a different failure from the SDK returning
     // something unusable, and until now it had no handling at all: it became a
     // generic 500, indistinguishable from a bug of ours.
-    const ask = async () => {
+    const ask = async (options = {}) => {
       try {
-        return await createCoachReply(system, apiMessages);
+        return await createCoachReply(system, apiMessages, options);
       } catch (err) {
         /*
          * ── A 400 WITH NOTHING ELSE IN IT IS NOT DIAGNOSABLE ─────────────
@@ -442,6 +442,23 @@ chatRouter.post('/', async (req, res, next) => {
     if (!outcome.ok && outcome.retry) {
       logger.warn('coach.reply_unusable', { userId: req.user.id, attempt: 1, ...outcome.log });
       reply = await ask();
+      outcome = describeCoachReply(reply);
+    } else if (!outcome.ok && outcome.retryWithoutThinking) {
+      /*
+       * ── THE BUDGET WENT INTO THINKING, SO ASK AGAIN WITHOUT IT ──────────
+       *
+       * Sonnet 5 thinks by default and thinking shares `max_tokens` with the
+       * reply, so a hard question can consume the whole budget and produce no
+       * text - measured in production on 2026-09-11, blockTypes ["thinking"],
+       * hadText false, and the athlete got an error and was charged for it.
+       *
+       * Disabling thinking makes this a genuinely different request rather
+       * than the same one twice: every token now goes to text. Still exactly
+       * one retry, for the reason above - two is how a bad afternoon at the
+       * API becomes a bill.
+       */
+      logger.warn('coach.thinking_exhausted_budget', { userId: req.user.id, ...outcome.log });
+      reply = await ask({ thinking: { type: 'disabled' } });
       outcome = describeCoachReply(reply);
     }
 
