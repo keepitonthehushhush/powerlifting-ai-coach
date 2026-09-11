@@ -9,6 +9,7 @@ import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { ChatSettings } from '../components/ChatSettings.jsx';
 import { NutritionSettings } from '../components/NutritionSettings.jsx';
+import { TrackerSettings } from '../components/TrackerSettings.jsx';
 import { ThemePicker } from '../components/ThemePicker.jsx';
 import { MfaSettings } from '../components/MfaSettings.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -94,6 +95,10 @@ export function Account() {
       <MfaSettings />
       <ChatSettings />
       <NutritionSettings />
+      {/* Below the coaching settings and above the export: connecting a tracker
+          is a thing somebody does once, and it is about where the coach's
+          information comes from rather than about their data rights. */}
+      <TrackerSettings />
 
       <section className="card stack">
         <h2 className="h3">{t('account.exportHeading')}</h2>

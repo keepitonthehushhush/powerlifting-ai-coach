@@ -278,6 +278,20 @@ export const api = {
     request('/leaderboard/opt-in', { method: 'PUT', body: JSON.stringify({ optIn }) }),
   getAchievements: () => request('/achievements'),
 
+  /*
+   * An outside tracker.
+   *
+   * There is no getter for the key and there never will be: connecting is a
+   * POST, and the only thing that comes back is the STATE of the connection.
+   * A credential that can be read back is a credential that ends up in a
+   * screenshot, a bug report, or a support chat.
+   */
+  getHevyConnection: () => request('/integrations/hevy'),
+  connectHevy: (apiKey) =>
+    request('/integrations/hevy', { method: 'POST', body: JSON.stringify({ api_key: apiKey }) }),
+  disconnectHevy: () => request('/integrations/hevy', { method: 'DELETE' }),
+  syncHevy: () => request('/integrations/hevy/sync', { method: 'POST' }),
+
   // Data subject rights.
   exportData: () => request('/account/export'),
   getActivity: () => request('/account/activity'),
