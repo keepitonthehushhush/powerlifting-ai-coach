@@ -488,21 +488,35 @@ describe('what gets a key and what deliberately does not', () => {
     const route = readSource(new URL('../src/routes/sessions.js', import.meta.url));
     const day = route.indexOf('const day =');
     const key = route.indexOf('clientKeyForWrite(');
-    const insert = route.indexOf(".from('workout_sessions')\n      .insert(");
+    const write = route.indexOf('await writeSessionWithLogs(');
     assert.ok(day > -1 && key > day, 'the key is derived before the day is resolved');
-    assert.ok(insert > key, 'the key is derived after the insert');
+    assert.ok(write > key, 'the key is derived after the write');
     assert.match(route, /date: day,/);
+    // The insert itself moved to lib/sessionWrite.js when the import needed
+    // the same pair of writes. What must stay true here is the ORDER: day,
+    // then key, then hand both to the writer.
+    assert.doesNotMatch(route, /\.insert\(/, 'the route writes directly again - the two writes belong in one place');
   });
 });
 
 describe('being told it is already logged is not an error', () => {
+  /*
+   * In lib/sessionWrite.js since the import arrived. Both the button and the
+   * sync perform the same two writes, and the duplicate guard is the reason a
+   * sync can re-read a page it has already read for free - so a second copy of
+   * this branch is a second thing to keep correct.
+   */
+  const writer = readSource(new URL('../src/lib/sessionWrite.js', import.meta.url));
   const route = readSource(new URL('../src/routes/sessions.js', import.meta.url));
-  const failure = route.slice(route.indexOf('if (sessionError) {'), route.indexOf('const logRows'));
+  const failure = writer.slice(writer.indexOf('if (sessionError) {'), writer.indexOf('const logRows'));
 
   test('a unique violation returns the session that is already there', () => {
     assert.match(failure, /sessionError\.code === '23505'/);
-    assert.match(failure, /res\.status\(200\)/);
     assert.match(failure, /duplicate: true/);
+    // And the route still turns that into a confirmation rather than a
+    // failure. A person who taps yes twice must not be pushed to tap again.
+    assert.match(route, /if \(written\.duplicate\)/);
+    assert.match(route, /res\.status\(200\)/);
   });
 
   test('and it returns before writing the derived logs a second time', () => {
@@ -513,8 +527,8 @@ describe('being told it is already logged is not an error', () => {
      * show it, even though workout_sessions looked right.
      */
     assert.ok(failure.trimEnd().endsWith('}'), 'the failure branch no longer closes before the fan-out');
-    assert.match(failure, /res\.status\(200\)[\s\S]*?return;/);
-    assert.ok(route.indexOf('const logRows') > route.indexOf('duplicate: true'));
+    assert.match(failure, /duplicate: true[\s\S]*?\}/);
+    assert.ok(writer.indexOf('const logRows') > writer.indexOf('duplicate: true'));
   });
 
   test('a collision it cannot explain is still an error', () => {
@@ -528,8 +542,10 @@ describe('being told it is already logged is not an error', () => {
     // req.supabase carries their token, so RLS scopes it - and user_id is
     // named anyway, which is also what makes it an index hit.
     assert.doesNotMatch(failure, /supabaseAdmin/);
-    assert.match(failure, /\.eq\('user_id', req\.user\.id\)/);
+    assert.match(failure, /\.eq\('user_id', userId\)/);
     assert.match(failure, /\.eq\('client_key', clientKey\)/);
+    // And the caller hands it their own client, never an elevated one.
+    assert.match(route, /supabase: req\.supabase/);
   });
 });
 
