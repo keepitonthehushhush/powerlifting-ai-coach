@@ -217,8 +217,29 @@ export function sessionKey(session) {
  */
 export function clientKeyForWrite({ fromCoach, date, exercises }) {
   if (!fromCoach) return null;
-  return sessionKey({ date, exercises });
+  const key = sessionKey({ date, exercises });
+  return key === null ? null : `${COACH_KEY_PREFIX}${key}`;
 }
+
+/**
+ * ── WHY THE KEY SAYS WHERE IT CAME FROM ────────────────────────────────────
+ *
+ * A workout imported from an outside tracker uses that tracker's own workout
+ * id, which is a UUID - and with its dashes removed that is exactly 32 hex
+ * characters, which fits the constraint 0065 wrote for this column without a
+ * single change.
+ *
+ * That coincidence is the problem. Two sources would share one namespace and
+ * be told apart only by LENGTH: eight characters means the coach, thirty-two
+ * means an import. True today, and true only because of a hash width nobody
+ * promised to keep. Widen this hash to sixteen characters for a perfectly good
+ * reason next year and a coach-proposed session becomes indistinguishable from
+ * an imported one, in the column whose whole job is to say "this row is the
+ * same workout as that row".
+ *
+ * Migration 0070 widened the constraint and rewrote the existing rows.
+ */
+export const COACH_KEY_PREFIX = 'coach:';
 
 /** Removes every tag, opened or closed, matched or not. */
 function stripAll(text) {

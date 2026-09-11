@@ -69,7 +69,7 @@ accountRouter.get('/activity', async (req, res, next) => {
  */
 accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
   try {
-    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, activityDays, subscription, activity, board, trial, guardianRequests, policyNotices] = await Promise.all([
+    const [profile, preferences, programs, sessions, logs, conversations, consents, usage, errors, activityDays, hevy, subscription, activity, board, trial, guardianRequests, policyNotices] = await Promise.all([
       req.supabase.from('user_profile').select('*').maybeSingle(),
       // Interface preferences are personal data too. Small, dull, and still
       // the subject's - an export that quietly omits a table is an export
@@ -92,6 +92,19 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
        * in the first place was exactly this kind of table.
        */
       req.supabase.from('activity_days').select('*').order('day'),
+      /*
+       * The outside-tracker connection, through a function rather than a
+       * select - the table lives in `private`, where `authenticated` holds no
+       * grant, because it holds a bearer credential for somebody's account on
+       * another service (migration 0070).
+       *
+       * What comes back is the STATE: connected, since when, how far the sync
+       * has reached. NOT the key. An export is a file people email to
+       * themselves and put in cloud storage, and a live credential does not
+       * belong in one - the fact of the connection is their data, the secret
+       * is a liability we are holding on their behalf.
+       */
+      req.supabase.rpc('hevy_connection_status'),
       // Billing state is the person's own data and belongs in a subject access
       // request. It is a mirror of what Stripe holds; Stripe's own copy is
       // requestable from Stripe, and `not_included` says so.
@@ -200,6 +213,7 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
       usage_events: usage,
       error_events: errors,
       activity_days: activityDays,
+      hevy_connection: hevy,
       subscription,
       audit_events: activity,
       leaderboard_entry: board,
@@ -237,6 +251,8 @@ accountRouter.get('/export', rateLimit('export'), async (req, res, next) => {
         usage_events: usage.data ?? [],
         error_events: errors.data ?? [],
         activity_days: activityDays.data ?? [],
+        // One row when connected, none when not. The key is never in here.
+        hevy_connection: (hevy.data ?? [])[0] ?? null,
         subscription: subscription.data ?? null,
         audit_events: activity.data ?? [],
         // Zero rows when they never joined; one row when they did.

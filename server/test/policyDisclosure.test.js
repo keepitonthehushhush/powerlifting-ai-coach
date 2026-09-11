@@ -315,6 +315,15 @@ describe('the export contains everything, which is what it says it contains', ()
    */
   const EXCLUDED_BY_RPC = {
     leaderboard_entries: "rpc\\('my_leaderboard_entry'\\)",
+    /*
+     * hevy_connections lives in `private` (0070) because it holds a bearer
+     * credential for an account on another service. The export carries the
+     * connection's STATE through hevy_connection_status() and never the key:
+     * the fact of the connection is the subject's data, the secret is a
+     * liability held on their behalf, and an export is a file people email to
+     * themselves.
+     */
+    hevy_connections: "rpc\\('hevy_connection_status'\\)",
   };
 
   /**

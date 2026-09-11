@@ -58,6 +58,18 @@ const EXPORTED_VIA = {
   // is what makes the trial counter impossible to reset from a network tab.
   // Granting select for the sake of an export would undo the design.
   trial_usage: "rpc('trial_status')",
+  /*
+   * And the same again for an outside-tracker connection (0070), with one
+   * extra reason on top: the row holds a bearer credential for somebody's
+   * account on another service. The export carries the connection's STATE -
+   * connected, since when, how far the sync reached - and never the key.
+   *
+   * That is not the usual "this is not personal data" exemption. The
+   * connection IS the subject's data and it is in the document. The secret is
+   * a liability held on their behalf, and an export is a file people email to
+   * themselves and leave in cloud storage.
+   */
+  hevy_connections: "rpc('hevy_connection_status')",
 };
 
 /**

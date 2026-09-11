@@ -4,6 +4,7 @@ import { readSource, readMigration, flatten } from './helpers/source.js';
 
 import {
   MAX_BACKDATE_DAYS,
+  COACH_KEY_PREFIX,
   clientKeyForWrite,
   extractSessionLogBlock,
   isLoggableDate,
@@ -443,7 +444,14 @@ describe('what gets a key and what deliberately does not', () => {
   const BODY = { date: '2026-09-08', exercises: [{ exercise: 'Squat', sets: 3, reps: 5, weight: 275 }] };
 
   test('a session the coach proposed is deduplicated', () => {
-    assert.equal(clientKeyForWrite({ fromCoach: true, ...BODY }), sessionKey(BODY));
+    /*
+     * Namespaced since 0070. The hash is unchanged - what changed is that the
+     * key now records WHERE the row came from rather than leaving it to be
+     * inferred from the width of a hash nobody promised to keep, now that an
+     * imported workout id fits the same column.
+     */
+    assert.equal(clientKeyForWrite({ fromCoach: true, ...BODY }), `${COACH_KEY_PREFIX}${sessionKey(BODY)}`);
+    assert.equal(COACH_KEY_PREFIX, 'coach:');
   });
 
   test('a session they typed themselves is never refused as a duplicate', () => {

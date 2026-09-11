@@ -37,9 +37,10 @@
       "0034_error_events.sql",
       "0035_three_things_the_replay_found.sql",
       "0053_the_obstacle_is_named_before_the_plan.sql",
-      "0055_guardian_consent_round_trip.sql"
+      "0055_guardian_consent_round_trip.sql",
+      "0068_the_visit_that_wrote_nothing_down.sql"
     ],
-    "owner": "0068_the_visit_that_wrote_nothing_down.sql"
+    "owner": "0070_where_a_logged_session_came_from.sql"
   },
   "private.health_fingerprint(p public.user_profile)": {
     "alsoIn": [

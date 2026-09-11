@@ -624,6 +624,24 @@ the list as the fact and the number as commentary.
   why it is not worth defending against; the counter it writes lives in
   `private.trial_usage`, where `authenticated` holds no grant, so this
   function and `trial_status()` are the entire reach anybody has to it.
+- `public.hevy_connection_status()` — says whether this athlete has an outside
+  tracker connected and how far the sync has reached. Argument-free, and it
+  deliberately does NOT return the credential: the interface needs to render a
+  state, never the secret.
+- `public.connect_hevy(text)` — stores the key the athlete pasted, for the
+  athlete. Shape-checked against a UUID so a paste error is refused at the door
+  rather than an hour later. Takes no user id, so there is nothing to point at
+  another account.
+- `public.disconnect_hevy()` — deletes the row. Not a blanked column: an
+  integration that still holds the credential is not disconnected.
+- `public.hevy_key_for_sync()` — the ONE function that returns the credential,
+  and it returns it to the server acting as the athlete through their own
+  RLS-scoped client. Named conspicuously so that its appearance in a diff is
+  noticed. A signed-in person calling it directly gets their own key, which
+  they pasted in themselves.
+- `public.record_hevy_sync(...)` — moves that athlete's own sync cursor. The
+  worst a determined caller achieves is re-importing their own workouts, which
+  the idempotency key in 0065 absorbs.
 - `public.delete_my_account()`
 - `public.record_audit_event(text, jsonb)`
 - `public.record_error_event(...)`

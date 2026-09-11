@@ -136,6 +136,13 @@ export function PrivacyPolicy() {
             train.
           </li>
           <li>
+            <strong>A connection to an outside training app,</strong> if you choose to add one.
+            We hold the access key you paste in, in a place no part of the app can read back to
+            you or to anyone else, and we use it only to fetch the workouts you logged there.
+            Disconnecting deletes the key rather than hiding it. The key is deliberately left
+            out of your data export, because an export is a file you email to yourself.
+          </li>
+          <li>
             <strong>The dates you used the app</strong> — one date per day on which your account
             made a request. A date, and nothing else: not a time, not which page, not your
             address. It exists so we can tell whether people keep training with this, which the
@@ -236,6 +243,11 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Usage and cost records: 24 months.</strong>
+          </li>
+          <li>
+            <strong>A connection to an outside training app: 12 months</strong> from its last
+            sync. A key nobody is using is a key nobody should be holding; reconnecting takes
+            one paste.
           </li>
           <li>
             <strong>The dates you used the app: 24 months.</strong> Long enough to compare one
