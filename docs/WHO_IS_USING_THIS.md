@@ -330,17 +330,37 @@ instruments migrations 0062 and 0064 added for exactly this.
 | `645ed72f` | 08-25 | yes | 09-09 | 222 | 09-10, 09-11 |
 | `8bc672cb` | 08-26 | yes | never | 4 | — |
 | `9af1c695` | 08-28 | no | never | — | — |
-| `c45f674f` | 09-01 | yes | **never** | — | **09-11** |
+| `c45f674f` | 09-01 | yes | **never** | — | **09-11** (the developer, not a user) |
 | `873b84c7` | 09-02 | yes | never | — | — |
 | `a12541d0` | 09-06 | no | never | — | — |
 
-`645ed72f` is the developer. Read the rest.
+`645ed72f` is the developer. **So is `c45f674f`** — see the correction below,
+which was found a day late. Read the rest.
 
-The row that matters is `c45f674f`. They signed up on 09-01, completed intake,
-and **came back on 09-11** — ten days later, which for this product is the best
-retention signal it has ever produced. On that visit they made at least one
-authenticated request and then: no profile read, no conversation, nothing. They
-did not reach their own profile, let alone the coach.
+The row that looked like it mattered was `c45f674f`: signed up 09-01, completed
+intake, and **came back on 09-11** — ten days later, which for this product
+would have been the best retention signal it had ever produced.
+
+> **Correction, 2026-09-12.** `c45f674f` is **the developer's own second
+> account**, identified by matching its address. It is not a returning user. It
+> is Eduardo testing on a second account, and the "came back after ten days"
+> visit was him.
+>
+> So the conclusion from 2026-09-10 stands unchanged and unsoftened: **nobody
+> who is not the developer has been active past day two.** The one encouraging
+> number in this section was self-generated, and I reported it as a user for
+> most of a day before checking whose address it was.
+>
+> This is the third counting error in this section — six for five, and now a
+> test account read as a customer. The pattern in all three is the same: a row
+> that fit the story was not checked against the ledger. `645ed72f` was already
+> known to be the developer's, and the existence of a SECOND developer account
+> was never considered.
+>
+> The retention runbook already names why nothing catches this automatically:
+> *nothing in these tables marks a test account, and a script that guessed
+> would be inventing its own denominator.* That is still the right call for the
+> scripts. It is not an excuse for a human-written paragraph.
 
 ### Why
 
@@ -359,7 +379,7 @@ Counted properly, against the two required consents rather than by eye:
 | acct | terms_of_service | ai_processing | walled since |
 |---|---|---|---|
 | `645ed72f` | current | current | — (the developer, re-consented 09-09) |
-| `c45f674f` | current | `aip-2026-08-28a` | **09-09** |
+| `c45f674f` | current | `aip-2026-08-28a` | **09-09** (the developer's own second account) |
 | `873b84c7` | current | `aip-2026-08-28a` | **09-09** |
 | `8bc672cb` | `tos-2026-08-27b` | `aip-2026-08-27c` | **late August** |
 | `9af1c695` | `tos-2026-08-27b` | `aip-2026-08-27c` | **late August** |
@@ -397,8 +417,16 @@ open redirect until it refuses to be.
 
 ### What this does not fix, and is a decision rather than a defect
 
-**Five accounts are still holding a superseded consent and still do not know.**
-They find out by opening the app. Most will not open the app.
+**Five accounts are still holding a superseded consent and still do not know**
+— though one of the five is the developer's own second account, so the real
+number of PEOPLE to reach is four. They find out by opening the app. Most will
+not open the app.
+
+**Which of the four are real users is not answerable from these tables.** Two
+developer accounts have already been found in a set of seven, one of them a day
+late. Before writing to anybody, the accounts have to be identified by the one
+person who knows — and that is a question to ask, not a thing to infer from a
+signup date.
 
 **The tool to tell them already exists** — `npm run policy:notice`, section 7 of
 the daily runbook, with `--list`, a per-account `--user`, a separate `--send`,

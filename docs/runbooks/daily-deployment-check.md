@@ -382,6 +382,16 @@ That is `npm run check:smtp -- --probe you@example.com`, to an address outside
 protonmail, and until Postmark approval landed on 2026-09-12 a send to any of
 them would have been refused.
 
+**Proved once, on 2026-09-12:** a probe to a gmail address was accepted, no
+bounce, and **arrived in the inbox**. That is the first time this product has
+demonstrably delivered mail outside its own domain, and it is the fact that
+makes the notice runnable at all.
+
+**And before naming anybody: which accounts are real users?** That is not
+answerable from these tables — nothing in them marks a test account. Two
+developer accounts have already turned up in a set of seven, one of them found a
+day after being written up as a returning customer. Ask before sending.
+
 To write to one of them:
 
 ```
