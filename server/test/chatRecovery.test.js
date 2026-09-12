@@ -95,9 +95,25 @@ describe('recovering an exchange the browser stopped listening for', () => {
     assert.equal(call, 3);
   });
 
-  test('a failing recovery fetch means the connection really is down', async () => {
-    // Then the original error was right, and it should be shown - not
-    // replaced by more waiting.
+  test('A FAILED CHECK COSTS AN ATTEMPT, NOT THE WHOLE LOOP', async () => {
+    /*
+     * ── THIS TEST USED TO ASSERT THE OPPOSITE ──────────────────────────────
+     *
+     * It pinned `call === 1` with the comment "kept trying a connection that
+     * is not there", on the reasoning that a failed check proved the
+     * connection was down and the original error had been right.
+     *
+     * Production falsified that on 2026-09-11, on a phone:
+     *
+     *   21:04:11  client_request_timed_out   /api/chat
+     *   21:04:52  client_request_failed      /api/chat/conversation  <- check
+     *   21:04:53  the exchange is in the database
+     *
+     * One second. The athlete was told their message had not gone through
+     * while the coach's reply was already saved. A single failed request is
+     * not evidence of a dead connection - it is the same evidence that
+     * started the recovery, on the same flaky link.
+     */
     let call = 0;
     const outcome = await recoverExchange({
       fetchConversation: async () => {
@@ -110,7 +126,66 @@ describe('recovering an exchange the browser stopped listening for', () => {
     });
 
     assert.equal(outcome.recovered, false);
-    assert.equal(call, 1, 'kept trying a connection that is not there');
+    assert.equal(call, 3, 'one transient failure still collapses three attempts to one');
+    assert.equal(outcome.reason, 'unreachable');
+  });
+
+  test('and the check that succeeds after one that threw still recovers', async () => {
+    // The exact production sequence: the first check dies on a link that is
+    // coming back, and the reply is there a moment later.
+    let call = 0;
+    const outcome = await recoverExchange({
+      fetchConversation: async () => {
+        call += 1;
+        if (call === 1) throw new Error('offline');
+        return { conversation: { id: 'c1', messages: AFTER } };
+      },
+      baselineCount: BASE.length,
+      sentText: 'what should I squat today?',
+      wait: now,
+    });
+
+    assert.equal(outcome.recovered, true, 'the reply was in the database and was reported lost');
+    assert.equal(call, 2, 'it did not try again after the first check threw');
+    assert.equal(outcome.conversationId, 'c1');
+  });
+
+  test('the checks are SPACED, or polling is not polling', async () => {
+    /*
+     * Every test here injects a no-op `wait`, so the delays are invisible
+     * unless something looks at them - and a mutant that fired all three
+     * checks in the same millisecond survived the whole file.
+     *
+     * The spacing is the entire mechanism. "Coming back after eight seconds is
+     * different from coming back after ninety": three instant checks answer
+     * the same question three times and declare a reply lost that is still
+     * being written.
+     */
+    const waited = [];
+    await recoverExchange({
+      fetchConversation: async () => ({ conversation: { id: 'c1', messages: BASE } }),
+      baselineCount: BASE.length,
+      sentText: 'x',
+      wait: (ms) => { waited.push(ms); return Promise.resolve(); },
+    });
+
+    // Nothing before the first check: the common case is that the reply is
+    // already saved, and waiting two seconds to say so is its own bug.
+    assert.deepEqual(waited, [2000, 4000]);
+  });
+
+  test('checks that are answered and find nothing are a different fact', () => {
+    // "Nobody answered" and "the answer was no" should not reach whoever reads
+    // this next as one sentence.
+    return recoverExchange({
+      fetchConversation: async () => ({ conversation: { id: 'c1', messages: BASE } }),
+      baselineCount: BASE.length,
+      sentText: 'x',
+      wait: now,
+    }).then((outcome) => {
+      assert.equal(outcome.recovered, false);
+      assert.equal(outcome.reason, 'not_found');
+    });
   });
 
   test('a longer conversation alone is not the exchange landing', async () => {

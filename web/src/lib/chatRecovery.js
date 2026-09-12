@@ -30,6 +30,34 @@
  * It gives up rather than waiting forever: an athlete staring at a spinner
  * that never resolves is worse off than one told plainly that something went
  * wrong and their text is still in the box.
+ *
+ * ── AND WHY A FAILED CHECK IS NOT AN ANSWER ────────────────────────────────
+ *
+ * This used to stop on the first recovery fetch that threw, reasoning that a
+ * failed check was evidence the connection really was down and the original
+ * error had been right.
+ *
+ * Production disagreed, on 2026-09-11, on a phone:
+ *
+ *   21:04:11  client_request_timed_out   /api/chat
+ *   21:04:51  client_request_failed      /api/chat
+ *   21:04:52  client_request_failed      /api/chat/conversation   <- the check
+ *   21:04:53  the exchange is in the database
+ *
+ * One second. The check failed, this function concluded the connection was
+ * down and returned immediately, and the athlete was told their message had
+ * not gone through while the coach's reply was already saved.
+ *
+ * The reasoning was wrong in exactly the case this function exists for. A
+ * single failed request is not evidence of a dead connection - it is the SAME
+ * evidence that started the recovery, on the same flaky link, one second
+ * before the data arrived. Three spaced attempts existed and one transient
+ * failure collapsed them to zero.
+ *
+ * So a throw now costs an attempt rather than the whole loop. The price of
+ * being wrong the other way is about six seconds of spinner for somebody who
+ * is genuinely offline; the price of the old behavior was telling somebody
+ * their training question vanished when it had not.
  */
 
 /** The transport-shaped failures. Anything else is a real answer from the server. */
@@ -48,7 +76,11 @@ export function isTransportFailure(error) {
  * @param {string}   options.sentText           what the athlete typed
  * @param {number}   [options.attempts]
  * @param {Function} [options.wait]             injected for tests
- * @returns {Promise<{recovered: true, conversationId, messages} | {recovered: false}>}
+ * @returns {Promise<{recovered: true, conversationId, messages}
+ *   | {recovered: false, reason: 'unreachable'|'not_found'}>}
+ *   `unreachable` means every check threw, which is the only state that really
+ *   is a dead connection. `not_found` means the checks were answered and the
+ *   exchange is not there.
  */
 export async function recoverExchange({
   fetchConversation,
@@ -57,6 +89,8 @@ export async function recoverExchange({
   attempts = 3,
   wait = (ms) => new Promise((r) => setTimeout(r, ms)),
 }) {
+  let threw = 0;
+
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     // Spaced, and not on the first pass: the common case is that the reply is
     // already saved, and making somebody wait two seconds to be told so is a
@@ -67,9 +101,14 @@ export async function recoverExchange({
     try {
       ({ conversation } = (await fetchConversation()) ?? {});
     } catch {
-      // The recovery fetch failing is evidence the connection really is down.
-      // Stop: the original error was right after all.
-      return { recovered: false };
+      /*
+       * Costs an attempt, not the loop. See the note above: this returned
+       * here, and a check that failed one second before the reply was saved
+       * told an athlete their message was lost. The link that dropped the
+       * original request is the same link dropping this one.
+       */
+      threw += 1;
+      continue;
     }
 
     const messages = conversation?.messages ?? [];
@@ -78,7 +117,10 @@ export async function recoverExchange({
     return { recovered: true, conversationId: conversation.id, messages };
   }
 
-  return { recovered: false };
+  // Only "every check threw" is a connection nobody can reach. Answered checks
+  // that found nothing are a different fact, and the two should not be one
+  // sentence to whoever reads this next.
+  return { recovered: false, reason: threw === attempts ? 'unreachable' : 'not_found' };
 }
 
 /**
