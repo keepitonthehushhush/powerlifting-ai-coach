@@ -227,7 +227,9 @@ dashboard under Domains — not at the registrar, and not in Postmark.
 
 ### Signup mail is on Supabase's built-in service, and that is a launch risk
 
-**State as of 2026-09-10: custom SMTP is NOT configured in Supabase Auth.**
+**State as of 2026-09-12: custom SMTP is NOT configured in Supabase Auth — but
+nothing is blocking it any more. Postmark approval landed; see the bottom of
+this section for what to enter.**
 
 Address confirmation and password reset do not go through Postmark. They go
 through Supabase Auth's own SMTP setting, which is empty — so they use
@@ -249,10 +251,43 @@ nothing about whether anybody can create an account.
 
 **The fix is a dashboard change, not a deploy.** Project Settings →
 Authentication → SMTP Settings, pointed at a real provider. Once configured,
-Supabase applies 30 messages/hour initially and that is adjustable. Postmark is
-the intended provider and is still awaiting approval; while it is pending it
-can only send to `coachdiaz.app`, so pointing Supabase at it before approval
-would be worse than the present state, not better.
+Supabase applies 30 messages/hour initially and that is adjustable.
+
+**Postmark approval came through on 2026-09-12, so the blocker is gone.** While
+it was pending, Postmark could only send to `coachdiaz.app` — which is why
+pointing Supabase at it before approval would have been worse than the built-in
+service, not better. That is no longer true.
+
+What to enter, and the one field people get wrong:
+
+| field | value |
+| --- | --- |
+| Host | `smtp.postmarkapp.com` |
+| Port | `587` (STARTTLS; 25 and 2525 also work) |
+| Username | the **Server API Token** |
+| Password | the **same Server API Token**, again |
+| Sender email | `coach@coachdiaz.app` — it must be a **confirmed Sender Signature** |
+| Sender name | `Coach Diaz` |
+
+The username and password being the same token is Postmark's scheme, not a
+mistake. Their other credential type is an *SMTP Token*, which is a different
+object and is not what this is.
+
+**The token is typed into the Supabase dashboard and nowhere else.** Not into
+`.env`, not into this file, not into a chat window. It is already in Vercel for
+the application's own transport, marked sensitive.
+
+**Then prove a send, because a saved setting proves nothing.** Sign up with a
+real address you can open — a Gmail one, deliberately, since sending outside
+`coachdiaz.app` is exactly the capability approval unlocked — and confirm the
+mail arrives, including spam. Supabase's own test button proves the login, and
+this product has already been bitten once by the gap between an accepted
+handshake and a delivered message: Postmark accepts the credentials of a server
+whose Sender Signature is unconfirmed and then refuses every send with a 422.
+
+**Then come back and change the sentence at the top of this section**, which
+says custom SMTP is not configured. A runbook that describes a state the
+system left is worse than one that says nothing.
 
 ### Where people stop
 
