@@ -619,6 +619,7 @@ export const es = {
     required: '(obligatorio)',
     requiredToContinue: 'Debes aceptar las opciones obligatorias antes de continuar.',
     continue: 'Continuar al cuestionario',
+    continueBack: 'Continuar donde te quedaste',
     readBeforeAgreeing: 'Lee el {document} antes de aceptar →',
     readPolicy: 'Leer la Política de Privacidad de Datos de Salud',
     withdrawAnytime:

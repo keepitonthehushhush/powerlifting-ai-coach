@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useConsent } from '../context/ConsentContext.jsx';
 import { ConsentUnavailable } from './ConsentUnavailable.jsx';
@@ -25,6 +25,7 @@ import { MfaChallenge } from './MfaChallenge.jsx';
  */
 export function ProtectedRoute({ children, requireConsent = true }) {
   const { session, loading } = useAuth();
+  const location = useLocation();
   const { status, gate, refresh } = useConsent();
   const mfa = useMfa();
 
@@ -86,7 +87,25 @@ export function ProtectedRoute({ children, requireConsent = true }) {
      */
     if (status === 'error') return <ConsentUnavailable onRetry={refresh} />;
 
-    if (!gate.allowed && status !== 'refreshing') return <Navigate to="/consent" replace />;
+    /*
+     * ── WHERE THEY WERE GOING TRAVELS WITH THEM ───────────────────────────
+     *
+     * It did not, and the cost was paid by every athlete who signed up before
+     * a policy version changed. The redirect dropped the destination and
+     * /consent sent everybody to /intake afterwards, so a person who opened
+     * the app to talk to their coach, was stopped for a re-consent they did
+     * not know was coming, and agreed - was handed the intake form they
+     * filled in weeks ago.
+     *
+     * There is no way to read that as anything but "it lost my account".
+     *
+     * On 2026-09-09 the AI-processing policy changed, which made the stored
+     * consent of every account that existed superseded. Six of the seven were
+     * still holding one when this was found.
+     */
+    if (!gate.allowed && status !== 'refreshing') {
+      return <Navigate to="/consent" replace state={{ from: location.pathname + location.search }} />;
+    }
   }
 
   return children;

@@ -647,6 +647,12 @@ export const en = {
     required: '(required)',
     requiredToContinue: 'The required choices above must be accepted before you can continue.',
     continue: 'Continue to intake',
+    /* Shown when the gate interrupted somebody on their way somewhere else -
+       which, after a policy version changes, is every athlete who already had
+       an account. "Continue to intake" in front of a person who finished
+       intake a month ago reads as "start over", and that is the sentence that
+       loses them. */
+    continueBack: 'Continue where you left off',
     readBeforeAgreeing: 'Read the {document} before agreeing →',
     readPolicy: 'Read the Consumer Health Data Privacy Policy',
     withdrawAnytime:

@@ -312,3 +312,78 @@ out to be "often, and nobody accepts".
 - **Whether the fix alone moves it.** Nobody was ever asked twice before, so the
   first athlete who describes a workout and then keeps talking is the first real
   test of it.
+
+## 2026-09-12: the wall nobody was told about
+
+The funnel question this document has been circling since 2026-09-06 —
+*finished the intake and never reached the coach: a bug, or a design problem?*
+— has an answer, and it is a third thing neither option covered.
+
+### What the tables say
+
+Seven accounts. `coach_first_opened_at` and `profile_first_read_at` are the
+instruments migrations 0062 and 0064 added for exactly this.
+
+| acct | signed up | intake | opened coach | messages | active since 09-10 |
+|---|---|---|---|---|---|
+| `d0513497` | 08-25 | yes | never | 20 | — |
+| `645ed72f` | 08-25 | yes | 09-09 | 222 | 09-10, 09-11 |
+| `8bc672cb` | 08-26 | yes | never | 4 | — |
+| `9af1c695` | 08-28 | no | never | — | — |
+| `c45f674f` | 09-01 | yes | **never** | — | **09-11** |
+| `873b84c7` | 09-02 | yes | never | — | — |
+| `a12541d0` | 09-06 | no | never | — | — |
+
+`645ed72f` is the developer. Read the rest.
+
+The row that matters is `c45f674f`. They signed up on 09-01, completed intake,
+and **came back on 09-11** — ten days later, which for this product is the best
+retention signal it has ever produced. On that visit they made at least one
+authenticated request and then: no profile read, no conversation, nothing. They
+did not reach their own profile, let alone the coach.
+
+### Why
+
+`REQUIRED_CONSENTS` is `['terms_of_service', 'ai_processing']`, and a consent
+is recorded against a policy VERSION. On 2026-09-09, commit `c71b0b9a` shipped
+the nutrition-detail setting and moved `ai_processing` from `aip-2026-08-28a`
+to `aip-2026-09-09a` — correctly, because it changed what the product discusses
+with the model.
+
+Every account that existed at that moment was holding the old version. **Six of
+the seven still were when this was written.** Every one of them is behind a
+re-consent gate, and not one of them has been told.
+
+That is the mechanism working. It is a legal requirement and it is not a bug.
+
+### The bug is what happened next
+
+`ProtectedRoute` redirected to `/consent` **without recording where the person
+had been going**, and `/consent` called `navigate('/intake')` afterwards,
+hardcoded, under a button reading "Continue to intake".
+
+So the path for a returning athlete was: open the app to talk to your coach →
+be stopped by a screen you did not expect → agree → **be handed the intake form
+you filled in weeks ago.**
+
+There is no way to read that except "it lost my account". Fixed the same day:
+the destination now travels with the redirect, the button says "Continue where
+you left off", and `web/src/lib/afterConsent.js` refuses a destination that is
+not same-origin, because a stored string turned into a navigation target is an
+open redirect until it refuses to be.
+
+### What this does not fix, and is a decision rather than a defect
+
+**Six accounts are still holding a superseded consent and still do not know.**
+They find out by opening the app. Most will not open the app.
+
+Now that Postmark is approved, telling them is possible for the first time —
+one transactional message saying the AI-processing policy changed, what
+changed, and that renewing takes one tap. That is a new outbound email surface
+on a product holding health data, so it is a decision to make deliberately, not
+a thing to add quietly. Recorded here so it is made rather than forgotten.
+
+**And the instrument that found this only works going forward.** `activity_days`
+began on 09-10, so "came back on 09-11" is visible and "came back on 09-03" is
+not. The four accounts that went quiet in late August left no trace of whether
+they ever returned.

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ConsentPanel } from '../components/ConsentPanel.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { useConsent } from '../context/ConsentContext.jsx';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
+import { afterConsent, continueLabelKey } from '../lib/afterConsent.js';
 
 /**
  * The consent step, shown after signup and before intake.
@@ -15,8 +16,13 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher.jsx';
 export function Consent() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const { refresh } = useConsent();
   const [state, setState] = useState(null);
+
+  // Put there by ProtectedRoute when it interrupted them. Absent for a fresh
+  // signup, which is the only case that belongs on the intake form.
+  const from = location.state?.from ?? null;
 
   const canContinue =
     state && state.required.every((type) => state.consents[type]?.granted && !state.consents[type]?.stale);
@@ -44,10 +50,10 @@ export function Consent() {
             // person straight back here if it were still holding the answer
             // from before they consented.
             await refresh();
-            navigate('/intake');
+            navigate(afterConsent(from));
           }}
         >
-          {t('consent.continue')}
+          {t(continueLabelKey(from))}
         </button>
 
         {!canContinue && <p className="muted small">{t('consent.requiredToContinue')}</p>}
