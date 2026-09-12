@@ -350,11 +350,34 @@ the nutrition-detail setting and moved `ai_processing` from `aip-2026-08-28a`
 to `aip-2026-09-09a` — correctly, because it changed what the product discusses
 with the model.
 
-Every account that existed at that moment was holding the old version. **Six of
-the seven still were when this was written.** Every one of them is behind a
-re-consent gate, and not one of them has been told.
-
 That is the mechanism working. It is a legal requirement and it is not a bug.
+
+### Five accounts, and three of them were already walled
+
+Counted properly, against the two required consents rather than by eye:
+
+| acct | terms_of_service | ai_processing | walled since |
+|---|---|---|---|
+| `645ed72f` | current | current | — (the developer, re-consented 09-09) |
+| `c45f674f` | current | `aip-2026-08-28a` | **09-09** |
+| `873b84c7` | current | `aip-2026-08-28a` | **09-09** |
+| `8bc672cb` | `tos-2026-08-27b` | `aip-2026-08-27c` | **late August** |
+| `9af1c695` | `tos-2026-08-27b` | `aip-2026-08-27c` | **late August** |
+| `d0513497` | `tos-2026-08-24` | `aip-2026-08-24` | **late August** |
+
+`a12541d0` holds no consent rows at all — never agreed to anything, never
+finished intake. Not stale; incomplete. The notice does not apply to them.
+
+**Five, not six** — the first draft of this section said six by counting
+`a12541d0` among the stale, which is the same mistake this document exists to
+stop: a number written from a glance rather than from the ledger.
+
+And the correction that matters more than the count: the 09-09 bump did not
+create this group, it **added two people to a group that already had three in
+it**. `8bc672cb`, `9af1c695` and `d0513497` have been behind this gate since
+late August, across two earlier policy changes. The oldest of them has 20
+messages in their conversation — somebody who used the product, and has been
+unable to get past the front door for two weeks without knowing it.
 
 ### The bug is what happened next
 
@@ -374,14 +397,18 @@ open redirect until it refuses to be.
 
 ### What this does not fix, and is a decision rather than a defect
 
-**Six accounts are still holding a superseded consent and still do not know.**
+**Five accounts are still holding a superseded consent and still do not know.**
 They find out by opening the app. Most will not open the app.
 
-Now that Postmark is approved, telling them is possible for the first time —
-one transactional message saying the AI-processing policy changed, what
-changed, and that renewing takes one tap. That is a new outbound email surface
-on a product holding health data, so it is a decision to make deliberately, not
-a thing to add quietly. Recorded here so it is made rather than forgotten.
+**The tool to tell them already exists** — `npm run policy:notice`, section 7 of
+the daily runbook, with `--list`, a per-account `--user`, a separate `--send`,
+and a reservation row written before the send so a re-run cannot double-mail.
+It has never been used: `policy_notice_emails` is empty.
+
+It could not have been used until today. Postmark was restricted to sending
+within `coachdiaz.app` while approval was pending, so a notice run last week
+would have been refused for every recipient on a public mail host. Approval
+landed 2026-09-12, which is what turns a built tool into a usable one.
 
 **And the instrument that found this only works going forward.** `activity_days`
 began on 09-10, so "came back on 09-11" is visible and "came back on 09-03" is
