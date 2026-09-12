@@ -360,7 +360,29 @@ nothing could tell them to. An obligation that depends on somebody happening to
 return is not an obligation being met.
 
 `--list` reads and sends nothing. It prints the account ids and the versions
-they are on. To write to one of them:
+they are on.
+
+**Then `--check`, before anything else.** It resolves each account's address
+and reports whether this credential can actually see it — reserving nothing,
+sending nothing, and printing the domain rather than the address:
+
+```
+npm run policy:notice -- --check
+```
+
+It exists because the first irreversible thing `--send` does is write the
+reservation, and until `--check` there was no way to find out beforehand
+whether the key could even read an address. `UNREACHABLE ... the admin API
+refused this key (HTTP 401)` means `SUPABASE_SECRET_KEY` is the publishable key
+rather than the secret one; it does not mean anything about the account.
+
+**`--check` proves we can address them. It does not prove we can reach them.**
+That is `npm run check:smtp -- --probe you@example.com`, to an address outside
+`coachdiaz.app` — every one of the accounts on this list is on gmail, icloud or
+protonmail, and until Postmark approval landed on 2026-09-12 a send to any of
+them would have been refused.
+
+To write to one of them:
 
 ```
 npm run policy:notice -- --user <uuid>          # dry run, prints what it would do
@@ -381,6 +403,12 @@ Three deliberate refusals, and none of them is worth "fixing":
 Re-running is safe by construction rather than by care: the row in
 `policy_notice_emails` is written **before** the send is attempted and
 `(user_id, notice_key)` is unique, so a second run collides and sends nothing.
+
+The address lookup happens **before** that reservation, and deliberately: it is
+a read, it fails for reasons that have nothing to do with the person being
+written to — a wrong key, a typo in the URL — and it used to sit on the far
+side, where any of those spent an account's one notice on a request that never
+left the building.
 A row with no `delivered_at` is somebody who was **not** reached — that is a
 fact worth being able to see, which is why there is no `--retry`. Work out what
 happened first.

@@ -21,6 +21,12 @@
  * `--list` needs no ids at all: it reports who is on a superseded version, so
  * the ids you pass are read off a real query rather than remembered.
  *
+ * `--check` is the step before all of that: it resolves each address and
+ * reports whether this credential can see it, reserving nothing and sending
+ * nothing. Run it first. The first irreversible thing --send does is write a
+ * reservation, and finding out your key is wrong on the far side of that costs
+ * somebody their one notice.
+ *
  * ── THE SAFETY PROPERTY IS IN THE DATABASE, NOT IN THIS FILE ──────────────
  *
  * The row in policy_notice_emails is inserted BEFORE the message is attempted,
@@ -57,6 +63,9 @@ const userIds = args
   .filter((value) => typeof value === 'string' && value !== '');
 
 const LIST_ONLY = has('--list');
+/* Reads only. Proves the credential can see addresses before anything is
+   reserved, which is the question --send could not answer until afterwards. */
+const CHECK_ONLY = has('--check');
 const SEND = has('--send');
 
 const url = process.env.SUPABASE_URL;
@@ -78,10 +87,16 @@ if (bad.length > 0) {
   process.exit(2);
 }
 
-if (!LIST_ONLY && userIds.length === 0) {
+/*
+ * --check with no ids checks everybody who is stale, which is safe for the
+ * reason --send can never be: it reads. There is still no "everybody" mode for
+ * sending, and there is not going to be one.
+ */
+if (!LIST_ONLY && !CHECK_ONLY && userIds.length === 0) {
   console.error(
-    'Name the accounts. There is no "everybody" mode, deliberately.\n\n' +
+    'Name the accounts. There is no "everybody" mode for sending, deliberately.\n\n' +
       '  node scripts/send-policy-notice.mjs --list\n' +
+      '  node scripts/send-policy-notice.mjs --check                  (reads only, reserves nothing)\n' +
       '  node scripts/send-policy-notice.mjs --user <uuid> [--user <uuid>]\n' +
       '  node scripts/send-policy-notice.mjs --user <uuid> --send\n'
   );
@@ -135,12 +150,33 @@ function staleByUser(rows) {
   return stale;
 }
 
-/** Their own address, from Supabase Auth. Never stored, never logged. */
+/**
+ * Their own address, from Supabase Auth. Never stored, never logged.
+ *
+ * ── IT SAYS WHICH OF TWO THINGS WENT WRONG, BECAUSE IT USED TO SAY ONE ────
+ *
+ * This returned `null` for a refused request and for an account with no
+ * address, and the caller printed "no address on the account" either way.
+ * Every account in this database has a confirmed address, so that sentence
+ * could only ever have been the wrong one - it sends somebody to look at a
+ * user record when the problem is a key, a URL, or a permission.
+ *
+ * `reason` carries the HTTP status. The BODY is deliberately not read: an
+ * error body from the auth admin API can quote the record it was asked about.
+ */
 async function addressOf(userId) {
   const response = await rest(`/auth/v1/admin/users/${userId}`);
-  if (!response.ok) return null;
+  if (!response.ok) {
+    return {
+      email: null,
+      reason: response.status === 401 || response.status === 403
+        ? `the admin API refused this key (HTTP ${response.status}) - SUPABASE_SECRET_KEY must be the SECRET key, not the publishable one`
+        : `the admin API answered HTTP ${response.status}`,
+    };
+  }
   const user = await response.json();
-  return typeof user?.email === 'string' && user.email.includes('@') ? user.email : null;
+  const email = typeof user?.email === 'string' && user.email.includes('@') ? user.email : null;
+  return { email, reason: email ? null : 'the account really has no address on it' };
 }
 
 /** Reserve the send. Returns the row id, or null if this notice already exists. */
@@ -169,6 +205,47 @@ const noticeKeyFor = (versions) => versions.join('+');
 
 async function main() {
   const stale = staleByUser(await currentConsents());
+
+  /*
+   * ── --check: CAN THIS SCRIPT REACH THEM AT ALL ────────────────────────────
+   *
+   * Reads, and does nothing else. No reservation, no send, no row.
+   *
+   * It exists because the first thing --send does that cannot be taken back is
+   * write a reservation, and until this existed there was no way to find out
+   * beforehand whether the credential could even read an address. The honest
+   * order of operations is: prove you can reach people, then decide to write
+   * to them - not discover the credential is wrong by spending somebody's
+   * only notice on it.
+   *
+   * It prints the DOMAIN and never the address. Knowing the script can see a
+   * gmail.com address for an account is the whole question; the local part is
+   * somebody's name and this is a terminal that ends up in a screenshot.
+   */
+  if (CHECK_ONLY) {
+    const ids = userIds.length > 0 ? userIds : [...stale.keys()];
+    if (ids.length === 0) {
+      console.log('Nobody is on a superseded policy version, so there is nothing to check.');
+      return;
+    }
+    let reachable = 0;
+    for (const id of ids) {
+      const { email, reason } = await addressOf(id);
+      if (email) {
+        reachable += 1;
+        console.log(`  ${id}  OK  (@${email.split('@')[1]})`);
+      } else {
+        console.error(`  ${id}  UNREACHABLE  ${reason}`);
+      }
+    }
+    console.log(`\n${reachable} of ${ids.length} reachable. Nothing was reserved and nothing was sent.`);
+    if (reachable > 0) {
+      console.log('\nThe address is only half of it. `npm run check:smtp -- --probe you@example.com`');
+      console.log('proves the transport can actually deliver to an address outside coachdiaz.app.');
+    }
+    if (reachable !== ids.length) process.exit(1);
+    return;
+  }
 
   if (LIST_ONLY) {
     if (stale.size === 0) {
@@ -214,15 +291,33 @@ async function main() {
   let sent = 0;
   for (const { id, versions } of targets) {
     const noticeKey = noticeKeyFor(versions);
-    const reservation = await reserve(id, noticeKey);
-    if (!reservation) {
-      console.log(`${id}: already told about ${noticeKey}. Skipped.`);
+
+    /*
+     * ── THE READ HAPPENS BEFORE THE RESERVATION, AND THE SEND AFTER IT ────
+     *
+     * Looking up an address is a READ. It changes nothing, it can be repeated,
+     * and it fails for reasons that have nothing to do with this person - a
+     * wrong key, a typo in the URL, an auth API having a bad minute.
+     *
+     * It used to happen after the reservation, so any of those spent this
+     * account's one notice on a request that never left the building. There
+     * is no --retry, by design, so the cost of that ordering was: the people
+     * most in need of the message become the people who can no longer be sent
+     * it, and the printed reason blamed their user record.
+     *
+     * The safety property is untouched. The reservation still happens BEFORE
+     * the send and (user_id, notice_key) is still unique, so a second run
+     * cannot deliver a second copy. What moved is a read, out in front of it.
+     */
+    const { email: to, reason } = await addressOf(id);
+    if (!to) {
+      console.error(`${id}: ${reason}. Nothing reserved, nothing sent.`);
       continue;
     }
 
-    const to = await addressOf(id);
-    if (!to) {
-      console.error(`${id}: no address on the account. Row reserved, nothing sent.`);
+    const reservation = await reserve(id, noticeKey);
+    if (!reservation) {
+      console.log(`${id}: already told about ${noticeKey}. Skipped.`);
       continue;
     }
 
@@ -245,6 +340,20 @@ async function main() {
 }
 
 main().catch((err) => {
+  /*
+   * `fetch failed` is what Node says when a host does not resolve, and on its
+   * own it sends somebody to read this script rather than to check their
+   * network or their SUPABASE_URL. Name the likely cause; keep the original
+   * underneath, because a guess printed as a fact is its own problem.
+   */
+  if (err?.message === 'fetch failed' || err?.cause?.code === 'EAI_AGAIN' || err?.cause?.code === 'ENOTFOUND') {
+    console.error(
+      `Could not reach ${process.env.SUPABASE_URL ?? 'SUPABASE_URL'}.\n` +
+        'Nothing was read, reserved or sent. Check the URL and that this machine has a\n' +
+        `route to it - some sandboxes do not.\n\nUnderlying error: ${err.message}`
+    );
+    process.exit(1);
+  }
   console.error(err.message);
   process.exit(1);
 });

@@ -212,9 +212,21 @@ describe('who has been told, as a fact rather than a memory', () => {
 });
 
 describe('the script refuses more than it does', () => {
-  test('there is no "everybody" mode', () => {
-    assert.match(flatten(script), /There is no "everybody" mode, deliberately/);
+  test('there is no "everybody" mode FOR SENDING', () => {
+    /*
+     * The wording gained "for sending" when --check arrived, and the
+     * distinction is the point rather than a nicety. --check with no ids reads
+     * every stale account, which is safe for exactly the reason --send can
+     * never be: it reads. The guard below is what keeps that from sliding into
+     * a send-everybody mode by way of a convenience nobody argued for.
+     */
+    assert.match(flatten(script), /There is no "everybody" mode for sending, deliberately/);
     assert.doesNotMatch(script, /--all\b/);
+    assert.match(script, /if \(!LIST_ONLY && !CHECK_ONLY && userIds\.length === 0\)/);
+    // And the exemption is exactly two read-only modes, named. A third flag
+    // added to that condition is a flag that can send to everybody.
+    const guard = script.slice(script.indexOf('if (!LIST_ONLY && !CHECK_ONLY'));
+    assert.doesNotMatch(guard.slice(0, 120), /SEND/, '--send was added to the no-ids exemption');
   });
 
   test('naming the accounts is not enough; --send is a second decision', () => {
@@ -315,5 +327,112 @@ describe('the runbook says how to do this', () => {
       runbook.indexOf('--probe') < runbook.indexOf('policy:notice'),
       'the runbook has somebody emailing users before proving mail works'
     );
+  });
+});
+
+/**
+ * ── WHAT HAPPENS BEFORE THE RESERVATION, AND WHY IT MOVED ──────────────────
+ *
+ * The reservation is the first irreversible step: the row is written before
+ * the send, `(user_id, notice_key)` is unique, and `--retry` is deliberately
+ * not implemented. Everything above tests that this ordering holds.
+ *
+ * This block tests the other half, which was wrong. Resolving an address is a
+ * READ. It fails for reasons that are facts about a credential rather than
+ * about a person - a publishable key where the secret one belongs, a typo in
+ * a URL - and it used to sit on the far side of the reservation, so any of
+ * those spent an account's one notice on a request that never left the
+ * building. The printed reason then blamed the user's record, and every
+ * account in this database has a confirmed address, so that sentence could
+ * only ever have been the wrong one.
+ */
+const sendLoop = script.slice(script.indexOf('let sent = 0;'), script.indexOf('console.log(`\\n${sent} of'));
+const inLoop = (needle) => {
+  const index = sendLoop.indexOf(needle);
+  assert.notEqual(index, -1, `the send loop no longer contains ${needle}`);
+  return index;
+};
+
+describe('a read must not spend somebody their only notice', () => {
+  test('THE ADDRESS IS RESOLVED BEFORE THE RESERVATION', () => {
+    /*
+     * Both offsets come from inside the send loop, and that is load-bearing.
+     * The first version of this test used indexOf across the whole script -
+     * and `--check` also calls addressOf, earlier in the file, in a branch
+     * that reserves nothing. So the comparison was satisfied by an occurrence
+     * in the wrong branch and the mutant that put the reservation back in
+     * front survived. A test that reads the FIRST occurrence of something is
+     * a test answering a question nobody asked.
+     */
+    assert.ok(
+      inLoop('await addressOf(id)') < inLoop('await reserve(id, noticeKey)'),
+      'the reservation is written before the address is even read'
+    );
+  });
+
+  test('a failed lookup says nothing was reserved, because nothing was', () => {
+    assert.match(sendLoop, /Nothing reserved, nothing sent/);
+    assert.doesNotMatch(script, /no address on the account\. Row reserved/, 'the old message is back');
+  });
+
+  test('a refused credential names the key, not the user', () => {
+    assert.match(script, /response\.status === 401 \|\| response\.status === 403/);
+    assert.match(script, /SUPABASE_SECRET_KEY must be the SECRET key/);
+  });
+
+  test('another status is reported as itself rather than guessed at', () => {
+    assert.match(script, /the admin API answered HTTP \$\{response\.status\}/);
+  });
+
+  test('and an account that really has none says that instead', () => {
+    assert.match(script, /the account really has no address on it/);
+  });
+
+  test('the error BODY is never read', () => {
+    // An error body from the auth admin API can quote the record it was asked
+    // about, and this script's posture is that an address is read, used once,
+    // and never written down. `reserve` reads error bodies on purpose - those
+    // are about a row of ours - so this is scoped to the lookup.
+    const fn = script.slice(script.indexOf('async function addressOf'), script.indexOf('async function reserve'));
+    assert.doesNotMatch(fn, /response\.text\(\)/);
+  });
+});
+
+describe('--check answers the question --send could not answer in time', () => {
+  const block = script.slice(script.indexOf('if (CHECK_ONLY)'), script.indexOf('if (LIST_ONLY)'));
+
+  test('it reserves nothing and sends nothing', () => {
+    assert.doesNotMatch(block, /reserve\(/, '--check writes a reservation');
+    assert.doesNotMatch(block, /sendPolicyUpdateEmail/, '--check sends');
+    assert.match(block, /Nothing was reserved and nothing was sent/);
+  });
+
+  test('it prints the domain and never the address', () => {
+    // This is a terminal that ends up in a screenshot. Whether the script can
+    // see a gmail.com address is the whole question; the local part is a name.
+    assert.match(block, /email\.split\('@'\)\[1\]/);
+    assert.doesNotMatch(block, /\$\{email\}/, 'the whole address is printed');
+  });
+
+  test('and it says what it still has not proved', () => {
+    /*
+     * Being able to READ an address is not being able to REACH it. Every
+     * account on this list is on gmail, icloud or protonmail, and until
+     * Postmark approval landed on 2026-09-12 a send to any of them would have
+     * been refused while the handshake kept passing.
+     */
+    assert.match(block, /check:smtp -- --probe/);
+  });
+});
+
+describe('an unreachable host does not read as a bug in this script', () => {
+  test('it names the URL it could not reach, and what was not done', () => {
+    assert.match(script, /Could not reach \$\{process\.env\.SUPABASE_URL/);
+    assert.match(script, /Nothing was read, reserved or sent/);
+  });
+
+  test('and still prints the underlying error rather than replacing it', () => {
+    // A guess printed as a fact is its own problem.
+    assert.match(script, /Underlying error: \$\{err\.message\}/);
   });
 });
