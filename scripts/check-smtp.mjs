@@ -91,7 +91,7 @@
  * one that must always work - die on a module-resolution stack trace.
  */
 
-import { isSendableFrom } from '../server/src/lib/mailFrom.js';
+import { isSendableFrom, senderFrom } from '../server/src/lib/mailFrom.js';
 
 /*
  * ── LOAD .env, LIKE EVERY OTHER SCRIPT HERE ────────────────────────────────
@@ -191,9 +191,16 @@ if (!host || !user || !pass) {
  * whole project's recurring defect in miniature - a green check over a thing
  * that does not work.
  */
-const from = (process.env.SMTP_FROM ?? '').trim() || user;
-if (!isSendableFrom(from)) {
-  console.error(`FAIL - the From header would be "${from}", which is not an email address.`);
+const configuredFrom = (process.env.SMTP_FROM ?? '').trim() || user;
+/*
+ * The header production actually sends, composed by the same pure function
+ * mailer.js uses. The probe exists to prove what the real messages do; a From
+ * header built here independently would differ from theirs in exactly the way
+ * that went unnoticed until the first delivered message arrived from "coach".
+ */
+const from = senderFrom(configuredFrom);
+if (!isSendableFrom(configuredFrom)) {
+  console.error(`FAIL - the From header would be "${configuredFrom}", which is not an email address.`);
   console.error(
     '\nSMTP_FROM is unset, so it fell back to SMTP_USER. That default suits providers\n' +
       'whose username IS the mailbox; it does not suit Resend, whose SMTP username is\n' +

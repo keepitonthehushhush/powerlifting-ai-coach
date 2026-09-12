@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 
 import { config } from '../config.js';
+import { senderFrom } from './mailFrom.js';
 import { logger } from './logger.js';
 
 /**
@@ -229,7 +230,7 @@ export async function sendPolicyUpdateEmail({ to, versions }) {
 
   try {
     const info = await mail.sendMail({
-      from: config.smtp.from,
+      from: senderFrom(config.smtp.from),
       to,
       subject: 'Coach Diaz: our terms have changed',
       text: policyUpdateMessage({ versions: listed }),
@@ -260,7 +261,7 @@ export async function sendGuardianConsentEmail({ to, link, athleteName = null })
 
   try {
     const info = await mail.sendMail({
-      from: config.smtp.from,
+      from: senderFrom(config.smtp.from),
       to,
       subject: 'Permission needed: Coach Diaz',
       text: guardianMessage({ link, athleteName }),
