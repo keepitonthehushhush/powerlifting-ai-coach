@@ -67,6 +67,17 @@ export class ErrorBoundary extends Component {
 
     return (
       <div
+        /*
+         * The marker `scripts/check-app-mounts.mjs` looks for.
+         *
+         * It used to look for the string `/maintenance.html`, because this
+         * fallback links there - and so does the FAQ, in a perfectly ordinary
+         * answer about what to do when the site is down. So the moment that
+         * check was pointed at more than two routes it would have failed a
+         * working page and called it a crash. An attribute nothing else has
+         * any reason to carry says what the substring was only approximating.
+         */
+        data-error-boundary="crashed"
         style={{
           minHeight: '100vh',
           display: 'flex',

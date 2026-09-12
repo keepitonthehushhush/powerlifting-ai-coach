@@ -270,10 +270,57 @@ async function untranslatedKeys(dom) {
  * `/` was the only one until it stopped being the sign-in page. When the
  * landing page took the root, this check silently stopped exercising the
  * screen with the auth code and the third-party CAPTCHA widget on it - the
- * most breakable page in the app - and nothing would have said so. Two page
- * loads, a few seconds.
+ * most breakable page in the app - and nothing would have said so.
+ *
+ * ── WHY THE LIST GREW, ON 2026-09-12 ───────────────────────────────────────
+ *
+ * This script already detects untranslated i18n keys rendered as visible text.
+ * It found none, for a year, because it was pointed at two pages.
+ *
+ * Meanwhile the activity card on the account page had been rendering the
+ * literal string `activity.action.clearance_asserted` at every athlete who had
+ * ever confirmed medical clearance - eight rows in production, which was every
+ * row that card had ever had. The detector that exists precisely to catch that
+ * was running on two routes, neither of which was the one with the bug.
+ *
+ * So: every route a signed-out browser can reach. The account page itself
+ * still cannot be checked here - it is behind auth, and a signed-out load
+ * renders the sign-in screen rather than the page - which is a real remaining
+ * gap and is named in the list below rather than left to be rediscovered.
+ *
+ * Each route is one page load of a few hundred milliseconds. Eleven of them is
+ * still a check somebody will wait for.
  */
-const ROUTES = ['/', '/login'];
+const ROUTES = [
+  '/',
+  '/login',
+  // The public documents. Every one of them is prose somebody may be reading
+  // in order to decide whether to trust this product with health information,
+  // and every one is rendered entirely from the locale files.
+  '/about',
+  '/faq',
+  '/policies/privacy',
+  '/policies/terms',
+  '/policies/ai-processing',
+  '/policies/health-data',
+  '/policies/leaderboard',
+  '/policies/guardian-consent',
+  // Reached from an email link with a token this load does not have, so what
+  // renders is its own error state. That is the point: it is the state a
+  // person hits when a link has expired, and it has to be a page rather than a
+  // blank screen.
+  '/reset-password',
+];
+
+/*
+ * NOT CHECKED, AND WHY, SO THIS IS A KNOWN GAP RATHER THAN AN OVERSIGHT:
+ * /coach, /program, /progress, /library, /log, /intake, /leaderboard,
+ * /consent and /account are all behind ProtectedRoute. Loading them signed
+ * out renders the sign-in screen, so adding them here would produce eight
+ * more passing checks of the same page. Covering them needs a signed-in
+ * session, which needs a test account and a network this check deliberately
+ * cuts off.
+ */
 
 /** Everything a file cannot tell you, asked of one rendered page. */
 async function checkRoute(dom) {
@@ -291,10 +338,18 @@ async function checkRoute(dom) {
     failures.push('the rendered page does not contain "Coach Diaz" - something mounted, but not this app.');
   }
 
-  // ErrorBoundary's fallback links here. Reaching it means the app rendered
-  // its apology instead of itself, which a child count cannot tell apart from
-  // success.
-  if (dom.includes('/maintenance.html')) {
+  /*
+   * Reaching the ErrorBoundary means the app rendered its apology instead of
+   * itself, which a child count cannot tell apart from success.
+   *
+   * Detected by an attribute only that fallback carries. It used to be the
+   * substring `/maintenance.html`, which the fallback links to - and so does
+   * the FAQ, in an ordinary answer about what to do when the site is down. The
+   * first time this check was pointed at /faq it would have reported a crash
+   * on a page that renders perfectly. Caught on 2026-09-12 by loading the page
+   * before trusting the check, rather than after.
+   */
+  if (dom.includes('data-error-boundary')) {
     failures.push('the ErrorBoundary fallback rendered: a component threw during its first render.');
   }
 
