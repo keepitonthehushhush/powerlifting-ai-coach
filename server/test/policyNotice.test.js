@@ -436,3 +436,55 @@ describe('an unreachable host does not read as a bug in this script', () => {
     assert.match(script, /Underlying error: \$\{err\.message\}/);
   });
 });
+
+describe('naming somebody by address is refused, and the refusal teaches', () => {
+  /*
+   * The first real attempt at this script was `--user <an email address>
+   * --send`, which is the obvious thing to type. It got back "Not user ids:
+   * ..." - correct, unhelpful, and indistinguishable from a mistyped uuid.
+   */
+  test('an address is still refused, because a second way to name a person is a second way to get it wrong', () => {
+    /*
+     * The guard is the FILTER, not the presence of a regex somewhere above it.
+     * `const bad = []` leaves the pattern, the exit code and every message in
+     * the file exactly where they are, and accepts anything - which is what
+     * survived the first version of this assertion.
+     */
+    assert.match(script, /const bad = userIds\.filter\(\(id\) => !UUID\.test\(id\)\)/);
+    assert.match(script, /const UUID = \/\^\[0-9a-f\]\{8\}/);
+    assert.match(script, /process\.exit\(2\)/);
+  });
+
+  test('and it says what to type instead, by name', () => {
+    /*
+     * Scoped to the ADDRESS branch, not to everything between the guard and
+     * the next declaration. The wider slice also contains the usage text,
+     * which mentions --list on its own - so deleting the pointer from this
+     * message left the assertion passing against a different line. Twice in
+     * one file now: a substring found somewhere in the neighbourhood is not
+     * the same as the thing being present where it matters.
+     */
+    const branch = script.slice(
+      script.indexOf('const addresses = bad.filter'),
+      script.indexOf('console.error(`Not user ids')
+    );
+    assert.match(branch, /value\.includes\('@'\)/, 'an address is not told apart from a typo');
+    assert.match(branch, /ACCOUNT ID, not an email address/);
+    assert.match(branch, /npm run policy:notice -- --list/, 'the message does not say where the ids come from');
+  });
+
+  test('the reason is the one that matters, not "wrong format"', () => {
+    /*
+     * A mistyped uuid fails the regex and nothing happens. A mistyped ADDRESS
+     * is a valid address belonging to somebody else - so it would write to a
+     * stranger and record the notice against the account that was named. That
+     * is the sentence worth printing.
+     */
+    const branch = script.slice(
+      script.indexOf('const addresses = bad.filter'),
+      script.indexOf('console.error(`Not user ids')
+    );
+    assert.match(branch, /one mistyped character would write to somebody/);
+    assert.match(branch, /recording it against the account you named/);
+  });
+});

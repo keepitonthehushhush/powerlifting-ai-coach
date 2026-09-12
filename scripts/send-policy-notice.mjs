@@ -83,6 +83,32 @@ if (!url || !key) {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const bad = userIds.filter((id) => !UUID.test(id));
 if (bad.length > 0) {
+  /*
+   * ── WHY AN EMAIL ADDRESS GETS ITS OWN SENTENCE ────────────────────────────
+   *
+   * Because it is what a person reaches for. The first real attempt at this
+   * script was `--user eddydiaz10@gmail.com --send`, which is the obvious
+   * thing to type and got back "Not user ids: eddydiaz10@gmail.com" - correct,
+   * unhelpful, and indistinguishable from a typo in a uuid.
+   *
+   * The refusal itself stays. An address is a SECOND way to name a person, and
+   * the failure mode of a second way is mistyping one character of somebody
+   * else's address and writing to them instead - against a table keyed by
+   * user_id, which would then record the notice against the wrong account.
+   * The id comes off a real query; that is the whole point of --list.
+   */
+  const addresses = bad.filter((value) => value.includes('@'));
+  if (addresses.length > 0) {
+    console.error(
+      'This takes the ACCOUNT ID, not an email address.\n\n' +
+        'The address is looked up from the account at send time, so naming one here would be\n' +
+        'a second way to say who you mean - and one mistyped character would write to somebody\n' +
+        'else while recording it against the account you named.\n\n' +
+        'Get the ids from:\n\n' +
+        '  npm run policy:notice -- --list\n'
+    );
+    process.exit(2);
+  }
   console.error(`Not user ids: ${bad.join(', ')}`);
   process.exit(2);
 }
