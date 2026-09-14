@@ -232,6 +232,10 @@ export const api = {
     request('/preferences/nutrition-detail', { method: 'PUT', body: JSON.stringify({ nutrition_detail }) }),
   saveProfile: (profile) => request('/profile', { method: 'PUT', body: JSON.stringify(profile) }),
   getConversation: () => request('/chat/conversation'),
+  // "Hide this" on the first-week panel. Fire-and-check: the caller does not
+  // wait on it to take the panel off the screen, because a person who pressed
+  // Hide has already decided and a spinner there would be the app arguing.
+  hideOnboarding: () => request('/chat/onboarding/hide', { method: 'POST' }),
   sendMessage: (message, conversationId) =>
     request('/chat', { method: 'POST', body: JSON.stringify({ message, conversationId }) }),
   /*

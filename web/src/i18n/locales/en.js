@@ -598,6 +598,64 @@ export const en = {
     rateLimited: 'You have sent a lot of messages recently. Try again shortly.',
   },
 
+  /*
+   * ── THE FIRST-WEEK PANEL ──────────────────────────────────────────────
+   *
+   * Sits above the openers on the coach page and says what the week is
+   * supposed to look like. Every line is written as a JOB rather than as a
+   * feature - "your program lands on the Program tab", not "this is the
+   * Program tab". Feature-first framing is the named reason product tours
+   * get skipped: the step reads as a fact about the software rather than as
+   * something about to happen to the person reading it.
+   *
+   * Which steps appear, and which are done, is decided by
+   * server/src/lib/onboarding.js. Only ids and booleans cross the wire.
+   */
+  onboarding: {
+    title: 'Your first week',
+    // Not "four things" or "two things": the list is shorter for somebody
+    // waiting on clearance, and a heading that counts is a heading that has
+    // to be kept in step with a branch in another file.
+    subtitle: 'This marks itself off as you go.',
+    subtitleClearance: 'What you can do while you wait on your clearance.',
+    hide: 'Hide this',
+    // Read by screen readers in place of the tick. "Done" and "not done yet"
+    // rather than "complete" and "incomplete", because the second pair sounds
+    // like a judgment on the person.
+    stepDone: 'Done',
+    stepTodo: 'Not done yet',
+    steps: {
+      profile: {
+        title: 'Tell us about your training',
+        why: 'The coach cannot write anything useful without it.',
+        go: 'Finish your profile',
+      },
+      firstMessage: {
+        title: 'Tell the coach where you are starting',
+        why: 'It asks for what it needs before it writes anything.',
+      },
+      program: {
+        title: 'Your program lands on the Program tab',
+        why: 'Week by week, with the weights worked out.',
+        go: 'Open your program',
+      },
+      logSession: {
+        title: 'Log the session after you lift',
+        why: 'That is how next week gets heavier.',
+        go: 'Log a session',
+      },
+      // For somebody who reported a restriction and has not been cleared. It
+      // says plainly that the program is not coming yet, because the intake
+      // has already told them so and a screen that goes quiet about it reads
+      // as the app having forgotten.
+      clearanceAsk: {
+        title: 'Ask the coach what you can work on now',
+        why: 'It answers questions while you wait. It will not write you a program yet.',
+        go: 'Look up a lift in the Library',
+      },
+    },
+  },
+
   chatSettings: {
     heading: 'How the coach conversation behaves',
     intro: 'These are saved on this device only, so you can have one answer on your phone and another on your laptop.',

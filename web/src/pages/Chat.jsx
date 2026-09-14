@@ -9,6 +9,7 @@ import { isTransportFailure, recoverExchange } from '../lib/chatRecovery.js';
 import { useI18n } from '../i18n/index.jsx';
 import { Loading } from '../components/Loading.jsx';
 import { CoachMessage } from '../components/CoachMessage.jsx';
+import { FirstWeek } from '../components/FirstWeek.jsx';
 import { Link } from 'react-router-dom';
 import { readChatSettings, isSendKey } from '../lib/chatSettings.js';
 import { windowTranscript } from '../lib/transcriptWindow.js';
@@ -130,6 +131,20 @@ export function Chat() {
    */
   const [starters, setStarters] = useState([]);
   /*
+   * ── THE FIRST-WEEK PANEL ────────────────────────────────────────────────
+   *
+   * Ids and booleans from the server, same as the openers and for the same
+   * two reasons - see server/src/lib/onboarding.js. Null rather than an empty
+   * array: the server OMITS the field for anybody who has finished or hidden
+   * it, and null is "there is no panel" while [] would be "a panel with no
+   * steps", which is a thing the component refuses to draw anyway.
+   *
+   * Unlike the openers this is NOT only for an empty conversation. The
+   * athlete it most needs to reach is the one who has been talking to the
+   * coach for ten messages and still has no program on the Program tab.
+   */
+  const [onboarding, setOnboarding] = useState(null);
+  /*
    * Whether the whole conversation is mounted, or only its recent end.
    * Per visit, not per account, and deliberately so: somebody who opened the
    * full history once should not have their phone lay out the entire thing
@@ -143,13 +158,14 @@ export function Chat() {
   useEffect(() => {
     api
       .getConversation()
-      .then(({ conversation, limits, starters: offered }) => {
+      .then(({ conversation, limits, starters: offered, onboarding: firstWeek }) => {
         if (limits?.maxMessageLength) setMaxLength(limits.maxMessageLength);
         if (conversation) {
           setConversationId(conversation.id);
           setMessages(conversation.messages ?? []);
         }
         setStarters(Array.isArray(offered) ? offered : []);
+        setOnboarding(Array.isArray(firstWeek?.steps) ? firstWeek.steps : null);
       })
       .catch(() => setError(t('chat.loadFailed')))
       .finally(() => setLoading(false));
@@ -367,6 +383,24 @@ export function Chat() {
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
+  /*
+   * ── HIDING THE PANEL ──────────────────────────────────────────────────────
+   *
+   * Off the screen first, then tell the server. Somebody who pressed Hide has
+   * already decided, and a spinner on that button would be the app asking them
+   * to wait while it considers whether to listen.
+   *
+   * The failure is swallowed on purpose, and the cost of swallowing it is
+   * exactly one thing: the panel comes back on the next page load. That is a
+   * mild annoyance rather than a loss - nothing the athlete wrote is in it -
+   * and the alternative is an error message about a checklist, on a screen
+   * somebody is trying to use for something else.
+   */
+  function hideFirstWeek() {
+    setOnboarding(null);
+    api.hideOnboarding().catch(() => {});
+  }
+
   return (
     <div className="page chat-page">
       <StickToBottom contentKey={showAllMessages} />
@@ -380,6 +414,13 @@ export function Chat() {
 
       <div className="transcript" role="log" aria-live="polite">
         {loading && <Loading size={72} />}
+
+        {/* Above the openers and above the transcript, because it is the thing
+            that says what the openers are FOR. Rendered whether or not there
+            are messages: the athlete who has been talking for ten turns and
+            still has no program is the one it most needs to reach, and that
+            athlete's conversation is not empty. */}
+        {!loading && onboarding && <FirstWeek steps={onboarding} onHide={hideFirstWeek} />}
 
         {!loading && messages.length === 0 && (
           <div className="empty">

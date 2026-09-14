@@ -31,7 +31,13 @@ const page = readRaw(new URL('../../web/src/pages/Chat.jsx', import.meta.url));
  * assertion below into a check on an empty string.
  */
 function starterBlock() {
-  const from = route.indexOf('let starters = []');
+  /*
+   * The opening marker moved on 2026-09-14. The openers used to own this
+   * region; it now also holds the first-week panel, because both are derived
+   * from ONE profile read rather than two - see the block itself, and
+   * server/src/lib/onboarding.js.
+   */
+  const from = route.indexOf('── ONE PROFILE READ, TWO FEATURES');
   const to = route.indexOf('// The limit travels with the conversation', from);
   assert.notEqual(from, -1, 'the openers block is gone - this check did not run');
   assert.notEqual(to, -1, 'the end marker moved - this check did not run');
@@ -205,7 +211,7 @@ describe('an athlete awaiting clearance is offered what the coach can do', () =>
      * So it reads the RESPONSE BODY and names the columns, which is the
      * property rather than a guess at how it would be spelled.
      */
-    const from = route.indexOf('res.json({', route.indexOf('let starters = []'));
+    const from = route.indexOf('res.json({', route.indexOf('── ONE PROFILE READ, TWO FEATURES'));
     const to = route.indexOf('});', from);
     assert.notEqual(from, -1, 'the conversation response is gone - this check did not run');
     assert.notEqual(to, -1, 'the end of the response object moved - this check did not run');
@@ -226,28 +232,46 @@ describe('what crosses the wire, and what does not', () => {
      * about health data with teeth.
      */
     /*
-     * The read widened deliberately once - health_restrictions and
-     * cleared_to_train are needed to compute the clearance boolean. The list is
-     * pinned exactly, so the next widening is a decision somebody makes rather
-     * than a column that drifts in.
+     * The read has widened deliberately TWICE, and the list is pinned exactly
+     * so the next widening is a decision somebody makes rather than a column
+     * that drifts in.
+     *
+     * 1. health_restrictions and cleared_to_train, to compute the clearance
+     *    boolean. Health data, read here, never sent.
+     * 2. intake_completed_at and onboarding_hidden_at, for the first-week
+     *    panel. NEITHER IS HEALTH DATA - asserted rather than assumed: both
+     *    are declared 'bookkeeping' in the disclosure map, and
+     *    private.health_fingerprint() covers neither.
      */
     assert.match(
       route,
-      /\.select\('experience_level, goal, health_restrictions, cleared_to_train'\)/,
+      /\.select\(\s*'experience_level, goal, intake_completed_at, onboarding_hidden_at, health_restrictions, cleared_to_train',\s*\)/,
       'the profile read has changed - widening it sends more health data to a page that may not need it'
     );
     assert.doesNotMatch(route, /\.select\('\*'\)[\s\S]{0,120}user_profile/);
-    assert.match(route, /starters = startersFor\(profile, \{ awaitingClearance: needsMedicalClearance\(profile\) \}\)/);
+    assert.match(route, /const awaitingClearance = needsMedicalClearance\(profile\);/);
+    assert.match(route, /startersFor\(profile, \{ awaitingClearance \}\)/);
     // And the ids carry no copy with them.
     assert.doesNotMatch(route, /Where do we start/);
   });
 
   test('the openers are only computed for an empty conversation', () => {
-    // A returning athlete's page load should not pay for a query whose answer
-    // it would throw away.
-    assert.match(route, /if \(empty\) \{/);
-    const block = starterBlock();
-    assert.match(block, /messages\.length === 0/);
+    /*
+     * Still true of the OPENERS, and no longer true of the profile read that
+     * feeds them - which is the honest version of what changed on 2026-09-14.
+     *
+     * The read is now unconditional because the first-week panel needs it on
+     * every load: the athlete that panel most needs to reach is the one who
+     * has sent ten messages and still has no program, and that athlete's
+     * conversation is not empty. One read serves both features, which is one
+     * query per page load rather than the two that two conditional reads
+     * would have cost.
+     *
+     * The openers themselves are unchanged. A returning athlete still gets an
+     * empty list rather than a computation whose answer the page throws away.
+     */
+    assert.match(starterBlock(), /const empty = messages\.length === 0;/);
+    assert.match(starterBlock(), /const starters = empty \? startersFor\(profile, \{ awaitingClearance \}\) : \[\];/);
   });
 
   test('a failed profile read degrades to no openers, not to a broken page', () => {

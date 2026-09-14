@@ -574,6 +574,43 @@ export const es = {
     rateLimited: 'Has enviado muchos mensajes recientemente. Inténtalo de nuevo en un momento.',
   },
 
+  /* Ver en.js: por qué cada paso está escrito como algo que va a pasar y no
+     como una descripción de la aplicación. */
+  onboarding: {
+    title: 'Tu primera semana',
+    subtitle: 'Esto se va marcando solo conforme avanzas.',
+    subtitleClearance: 'Lo que puedes hacer mientras esperas tu autorización.',
+    hide: 'Ocultar',
+    stepDone: 'Hecho',
+    stepTodo: 'Todavía no',
+    steps: {
+      profile: {
+        title: 'Cuéntanos de tu entrenamiento',
+        why: 'Sin eso el coach no puede escribir nada que te sirva.',
+        go: 'Completar tu perfil',
+      },
+      firstMessage: {
+        title: 'Dile al coach de dónde estás partiendo',
+        why: 'Te pregunta lo que necesita antes de escribir nada.',
+      },
+      program: {
+        title: 'Tu programa aparece en la pestaña Programa',
+        why: 'Semana por semana, con los pesos ya calculados.',
+        go: 'Abrir tu programa',
+      },
+      logSession: {
+        title: 'Registra la sesión después de entrenar',
+        why: 'Así es como la próxima semana sube de peso.',
+        go: 'Registrar una sesión',
+      },
+      clearanceAsk: {
+        title: 'Pregúntale al coach qué puedes trabajar por ahora',
+        why: 'Responde tus preguntas mientras esperas. Todavía no te va a escribir un programa.',
+        go: 'Buscar un movimiento en la Biblioteca',
+      },
+    },
+  },
+
   chatSettings: {
     heading: 'Cómo se comporta la conversación con el coach',
     intro: 'Se guardan solo en este dispositivo, así puedes tener una configuración en el teléfono y otra en la computadora.',

@@ -532,6 +532,133 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   .starter:active { transform: none; }
 }
 
+/* ── THE FIRST-WEEK PANEL ────────────────────────────────────────────────────
+
+   Sits above the openers and says what the week is for. It is a QUIET object:
+   one border, one surface, no shadow and no accent fill. The accent appears
+   exactly twice - a filled tick on what is done, a ring on the step somebody
+   is on - because the panel's whole job is to point at one thing, and a
+   colored box that points at itself cannot do that.
+
+   Not a modal, and this is where that is enforced rather than merely intended:
+   no fixed position, no overlay, no z-index. It scrolls away with the page,
+   which is the difference between guidance and an obstacle.
+
+   `max-width: 32rem` and `margin-inline: auto` match `.starters` deliberately,
+   so the panel and the openers below it share one column and read as one
+   thing rather than two stacked cards. */
+.first-week {
+  max-width: 32rem;
+  margin: 0.5rem auto 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+}
+
+.first-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.first-week-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* A text button, not a control. Dismissing is allowed and is not the point of
+   the panel, so it takes the quietest treatment the design has. */
+.first-week-hide {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+  flex: none;
+}
+
+@media (hover: hover) { .first-week-hide:hover { color: var(--text); } }
+
+.first-week-sub {
+  margin: 0.15rem 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.first-week-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* A two-column grid rather than a flex row, so the second line of a wrapped
+   step title lines up under the first instead of under the tick. */
+.first-week-steps li {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.first-week-tick {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--field-border);
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  margin-top: 0.15rem;
+}
+
+.first-week-steps li.done .first-week-tick {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+/* The ring, not a fill: the live step is where to look, not something that has
+   happened. Using the same accent for "done" and "now" with different weights
+   keeps the panel to one color. */
+.first-week-steps li.live .first-week-tick {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.first-week-body { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.first-week-title { color: var(--text); font-size: 0.92rem; }
+
+/* Struck through AND muted. Either alone is ambiguous at a glance - muted
+   text reads as "not available yet", which is the opposite of done. The line
+   takes the border color so it marks the text without competing with it. */
+.first-week-steps li.done .first-week-title {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--border);
+}
+
+.first-week-why { color: var(--muted); font-size: 0.82rem; }
+
+.first-week-go {
+  align-self: start;
+  color: var(--link);
+  font-size: 0.82rem;
+}
+
 /* The composer is a COLUMN, and that is the fix rather than a detail.
    It used to be a flex row holding three things: the textarea, an optional
    character counter, and the send button. Two bugs came out of that.

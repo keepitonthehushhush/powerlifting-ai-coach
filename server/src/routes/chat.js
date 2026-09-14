@@ -4,6 +4,7 @@ import { createCoachReply } from '../lib/anthropic.js';
 import { cacheTtlHonored, costInMicrodollars } from '../lib/pricing.js';
 import { replayWindow, withHistoryCacheBreakpoint } from '../lib/conversationCache.js';
 import { startersFor } from '../lib/starters.js';
+import { firstWeekSteps, firstWeekComplete } from '../lib/onboarding.js';
 import { extractProgramBlock } from '../lib/programBlock.js';
 import { prescribesTraining, repairProgramBlock } from '../lib/programRepair.js';
 import { extractIntentionBlock } from '../lib/intentionBlock.js';
@@ -1228,22 +1229,105 @@ chatRouter.get('/conversation', async (req, res, next) => {
      * help, and the page without them is the page as it was - so it degrades
      * to an empty list rather than to a broken screen.
      */
-    let starters = [];
-    const empty = !data || !Array.isArray(data.messages) || data.messages.length === 0;
-    if (empty) {
-      /*
-       * `health_restrictions` and `cleared_to_train` ARE health data, unlike
-       * the two above, and they are read here for one reason: to compute a
-       * boolean that never leaves the server. needsMedicalClearance() turns
-       * them into `awaitingClearance`, startersFor() turns that into opener
-       * ids, and the ids are what cross the wire - the restriction text itself
-       * does not reach the chat page, and must not.
-       */
-      const { data: profile } = await req.supabase
-        .from('user_profile')
-        .select('experience_level, goal, health_restrictions, cleared_to_train')
-        .maybeSingle();
-      starters = startersFor(profile, { awaitingClearance: needsMedicalClearance(profile) });
+    /*
+     * ── ONE PROFILE READ, TWO FEATURES ────────────────────────────────────
+     *
+     * This used to run only for an EMPTY conversation, because the openers are
+     * the only thing that was rendered then. The first-week panel is not like
+     * that: the athlete who has sent ten messages and has no program is the
+     * one it most needs to reach, and that athlete's conversation is not
+     * empty. So the read happens on every load of this page now, and the two
+     * features share it rather than each paying for their own.
+     *
+     * TWO COLUMNS ADDED TO THE SELECT AND NEITHER IS HEALTH DATA - asserted
+     * rather than assumed: private.health_fingerprint() covers neither
+     * intake_completed_at nor onboarding_hidden_at, and both are declared
+     * 'bookkeeping' in the disclosure map.
+     *
+     * `health_restrictions` and `cleared_to_train` ARE health data and are
+     * read for one reason only: to compute a boolean that never leaves this
+     * function. needsMedicalClearance() turns them into `awaitingClearance`,
+     * startersFor() and firstWeekSteps() turn that into ids, and the ids are
+     * what cross the wire - the restriction text itself does not reach the
+     * chat page, and must not.
+     *
+     * A failed read is not an error worth showing anybody. Both features are
+     * a help, and the page without them is the page as it was.
+     */
+    const messages = Array.isArray(data?.messages) ? data.messages : [];
+    const empty = messages.length === 0;
+
+    const { data: profile } = await req.supabase
+      .from('user_profile')
+      .select(
+        'experience_level, goal, intake_completed_at, onboarding_hidden_at, health_restrictions, cleared_to_train',
+      )
+      .maybeSingle();
+
+    const awaitingClearance = needsMedicalClearance(profile);
+    const starters = empty ? startersFor(profile, { awaitingClearance }) : [];
+
+    /*
+     * ── THE FIRST-WEEK PANEL, AND WHY IT STOPS COSTING ANYTHING ───────────
+     *
+     * Two existence checks, and they run only while `onboarding_hidden_at` is
+     * null. The moment the fourth step is done this stamps that column and
+     * every later load of this page skips the block entirely - which is the
+     * whole reason migration 0072 adds a column for a feature that otherwise
+     * stores nothing.
+     *
+     * `head: true` with an exact count asks the database for a number and
+     * transfers no rows; existence is all that is wanted and a program row
+     * carries a whole week of training.
+     *
+     * IF EITHER READ FAILS, THE PANEL DOES NOT RENDER. Not "assume zero" -
+     * zero would put "you have no program yet" in front of somebody who has
+     * one, and a checklist that makes a false claim about the athlete's own
+     * account is the single thing lib/onboarding.js exists to prevent. The
+     * same reasoning as firstWeekComplete([]) refusing to call an empty list
+     * finished: a question nobody could answer is not an answer.
+     */
+    let onboarding;
+    if (profile && profile.onboarding_hidden_at == null) {
+      const [programs, sessions] = await Promise.all([
+        req.supabase.from('workout_programs').select('id', { count: 'exact', head: true }),
+        req.supabase.from('workout_sessions').select('id', { count: 'exact', head: true }),
+      ]);
+
+      if (!programs.error && !sessions.error) {
+        const steps = firstWeekSteps({
+          intakeComplete: profile.intake_completed_at != null,
+          hasSentMessage: messages.some((message) => message?.role === 'user'),
+          hasProgram: (programs.count ?? 0) > 0,
+          hasSession: (sessions.count ?? 0) > 0,
+          awaitingClearance,
+        });
+
+        if (firstWeekComplete(steps)) {
+          /*
+           * Done. Stamp it and send nothing - there is no value in a panel
+           * that says "you have finished" to somebody who can see their own
+           * program and their own logs in the navigation above it.
+           *
+           * Awaited inside its own try/catch and made write-once by
+           * `is(..., null)` for the two reasons the stamp above this gives in
+           * full: a serverless function is frozen when it responds, and two
+           * tabs opening together would both see a null here.
+           */
+          try {
+            await req.supabase
+              .from('user_profile')
+              .update({ onboarding_hidden_at: new Date().toISOString() })
+              .is('onboarding_hidden_at', null);
+          } catch {
+            // Deliberately silent. The conversation they asked for loaded, and
+            // the worst case is the panel appearing once more.
+          }
+        } else {
+          // Ids and booleans. No sentences, and nothing off the profile.
+          onboarding = { steps };
+        }
+      }
     }
 
     // The limit travels with the conversation so the client never hardcodes
@@ -1255,7 +1339,42 @@ chatRouter.get('/conversation', async (req, res, next) => {
       limits: { maxMessageLength: config.chat.maxMessageLength },
       // Keys, never sentences, and empty for anybody with a conversation.
       starters,
+      // OMITTED rather than null when there is no panel to draw. A field that
+      // is sometimes null is a field somebody eventually renders.
+      ...(onboarding ? { onboarding } : {}),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/chat/onboarding/hide - "Hide this" on the first-week panel.
+ *
+ * ── WHY THIS IS A ROUTE AND NOT A LINE OF localStorage ────────────────────
+ *
+ * A dismissal kept in the browser comes back on the next device, which makes
+ * the product look like it did not listen. And the browser is not where the
+ * saving happens anyway: the conversation route pays for two existence checks
+ * on every load while this column is null, so the dismissal has to be visible
+ * to the SERVER or the feature keeps costing something forever. See 0072.
+ *
+ * Idempotent by `is(..., null)` rather than by a check-then-write, and it
+ * answers 204 either way - pressing it twice, or pressing it after the fourth
+ * step stamped the column, is not an error and must not read as one.
+ *
+ * Through the caller's own RLS-scoped client, so there is no new privilege
+ * here to reason about: the policy that already protects user_profile is the
+ * whole security design, and ADR-12's single service-role client stays single.
+ */
+chatRouter.post('/onboarding/hide', async (req, res, next) => {
+  try {
+    const { error } = await req.supabase
+      .from('user_profile')
+      .update({ onboarding_hidden_at: new Date().toISOString() })
+      .is('onboarding_hidden_at', null);
+    if (error) throw codedError('storage_unavailable', 'Could not hide that.');
+    res.status(204).end();
   } catch (err) {
     next(err);
   }
