@@ -132,6 +132,52 @@ test('the controls it describes are the controls that exist', async (t) => {
     }
   });
 
+  await t.test('SECTION 9 STATES NO COUNT, BECAUSE A COUNT THERE IS NEVER CHECKED', () => {
+    /*
+     * The number in this section was wrong three times: seven while the list
+     * held nine, ten while the catalogue held twelve, and twelve while the
+     * catalogue held nineteen. Each time the LIST was right - the two
+     * assertions either side of this one keep it right - and the count beside
+     * it drifted, because it was prose and prose is not run.
+     *
+     * The section now carries no total, and this is what keeps it that way. A
+     * count is the one claim in that section nothing can verify from the file:
+     * the list can be checked against the migrations, and a number can only be
+     * checked against itself.
+     *
+     * Scoped to the section's OPENING PROSE, not the whole section. The
+     * function entries below it legitimately contain digits - migration
+     * numbers, `0052`, argument counts - and a check that fired on those would
+     * be switched off within a week.
+     */
+    const start = doc.indexOf('## 9. Accepted linter warnings');
+    assert.notEqual(start, -1, 'section 9 is gone - this check did not run');
+    const firstEntry = doc.indexOf('\n- `public.', start);
+    assert.notEqual(firstEntry, -1, 'the function list is gone - this check did not run');
+    const prose = doc.slice(start, firstEntry);
+    assert.ok(prose.includes('Supabase security advisor'), 'the wrong block was sliced - this check did not run');
+
+    /*
+     * Number WORDS as well as digits. "twelve" is how it was written every
+     * time it was wrong, so a check that only caught digits would have caught
+     * none of the three.
+     *
+     * The history sentences are excluded first. They quote the four stale
+     * values on purpose - that is what makes the paragraph worth reading - and
+     * a quotation of a past mistake is not a present claim.
+     */
+    const withoutHistory = prose
+      .split('\n')
+      .filter((line) => !/was wrong here|it read|There were two when this/i.test(line))
+      .join('\n');
+    const counts = [...withoutHistory.matchAll(/\b(there are|there were|holds|lists)\s+\*{0,2}(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\b/gi)];
+    assert.deepEqual(
+      counts.map(([whole]) => whole),
+      [],
+      'section 9 states a number of definer functions again - the list is the fact, and a count beside it is a claim nothing checks',
+    );
+  });
+
   await t.test('and the reverse: a user-callable definer function is not undocumented', () => {
     /**
      * The direction that actually matters. A function gaining owner rights and

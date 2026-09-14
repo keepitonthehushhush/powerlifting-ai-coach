@@ -631,14 +631,24 @@ that can break the application it monitors is worse than no monitoring tool.
 
 The Supabase security advisor reports one warning per `SECURITY DEFINER`
 function in `public` that `authenticated` may execute. There were two when this
-was written. Asked of the LIVE catalogue on 2026-09-01 there are **twelve**,
-every one callable by `authenticated` and two of them — `record_auth_failure`
-and `record_guardian_consent` — also by `anon`, each for a reason given below.
+was written. The current set is the list below — every one callable by
+`authenticated`, two of them — `record_auth_failure` and
+`record_guardian_consent` — also by `anon`, each for a reason given here.
+Checked against the live catalogue on 2026-09-14: the list and the catalogue
+agree exactly, and every function carries a pinned `search_path`.
 
-This number has now been wrong here twice: it read seven while the list held
-nine, and ten while the catalogue held twelve. A count written from memory is a
-claim nobody checked, and the test that pins this section pins the LIST. Read
-the list as the fact and the number as commentary.
+**There is deliberately no count in this section, and a test fails if one is
+written back in.** The number was wrong here three times — it read seven while
+the list held nine, ten while the catalogue held twelve, and twelve while the
+catalogue held nineteen. Each time the LIST was right and current, because a
+test pins it in both directions: every function named here must be created by a
+migration, and every user-callable definer function in the migrations must be
+named here. The count sat beside that list as prose nothing checked, and drifted
+on its own.
+
+The fix for a number nobody checks is not a better number. It is no number: the
+list is the fact, it is one line per function, and a reader who wants the total
+can count it and be right.
 
 - `public.consume_rate_limit(text)`
 - `public.trial_status()` — reads the caller's free-trial counter and never
