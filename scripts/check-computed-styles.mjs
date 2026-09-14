@@ -76,6 +76,45 @@ const BUDGET_MS = 10000;
  */
 const ROUTES = ['/', '/login'];
 
+/**
+ * ── AND THE NINETEEN SCREENS THE TWO ABOVE CANNOT REACH ───────────────────
+ *
+ * The two routes above are everything this check could see, because the
+ * browser it drives has no network and therefore no session. That is a real
+ * limitation and not a small one: the program table, the coach transcript, the
+ * charts, the log form and the account screens are ALL behind the login, which
+ * means the regression net covered two screens out of twenty and none of the
+ * ones with data in them.
+ *
+ * docs/DESIGN_REVIEW_2026-09-09.md ends by saying exactly this about itself.
+ *
+ * web/harness/ mounts the shipped page components with the network replaced by
+ * fixtures, so they render with no session and no server. Pointed at it, this
+ * check goes from 4 snapshot entries to 38 - which is what makes a token
+ * migration something that can be verified rather than hoped about.
+ *
+ * It is a SECOND build (`npm run harness`), never part of `npm run build`,
+ * because the harness hands itself a signed-in session and that must not exist
+ * on a public origin. See web/vite.harness.config.js.
+ */
+const harnessDir = path.resolve(repoRoot, process.env.HARNESS_DIR ?? 'web/harness-dist');
+
+const HARNESS_PAGES = [
+  'home', 'login', 'coach', 'program', 'log', 'progress', 'library',
+  'leaderboard', 'account', 'intake', 'faq', 'terms', 'privacy', 'health',
+  'ai', 'lbpolicy', 'clinician', 'consent',
+];
+
+const HARNESS_ROUTES = HARNESS_PAGES.map(
+  (page) => `/?page=${page}&mode=full${page === 'login' ? '&auth=out' : ''}`,
+);
+
+/** Where each set of routes is served from. */
+const SURFACES = [
+  { name: 'app', dir: distDir, routes: ROUTES, build: 'npm run build' },
+  { name: 'harness', dir: harnessDir, routes: HARNESS_ROUTES, build: 'npm run harness --prefix web' },
+];
+
 const WATCHED = [
   // structure and ground
   'body', '.home', '.home-hero', '.home-section', '.home-footer', '.centered',
@@ -90,6 +129,19 @@ const WATCHED = [
   // the sign-in page: form controls, where a cascade inversion shows first
   '.card', '.auth-card', 'input', 'label', 'select', '.stack',
   '.checklist li', '.turnstile', '.auth-alternative',
+  /*
+   * The signed-in app, reachable only through the harness. These are the
+   * selectors a spacing or type migration actually moves - every one of them
+   * was invisible to this check until the harness existed.
+   */
+  '.page', '.site-nav', '.nav-item', '.page-title', '.header-detail',
+  '.day-card', '.day-head', '.day-kind', '.day-count',
+  '.week-strip', '.week-chip', '.week-chip-name', '.week-chip-meta',
+  '.program-table', '.program-table th', '.program-table td', '.program-table thead th',
+  '.warmup-ramp', '.plate-words',
+  '.bubble', '.composer-row', '.composer-row textarea',
+  '.destructive', '.secondary', '.field', 'textarea',
+  '.consent-item', '.theme-option', '.empty', '.block',
 ];
 
 /** The properties worth pinning. Layout and color, not everything. */
@@ -348,16 +400,16 @@ async function exists(target) {
   try { await access(target, constants.R_OK); return true; } catch { return false; }
 }
 
-async function serveDist() {
-  const indexHtml = await readFile(path.join(distDir, 'index.html'), 'utf8');
+async function serveDist(dir) {
+  const indexHtml = await readFile(path.join(dir, 'index.html'), 'utf8');
   if (!indexHtml.includes('<head>')) throw new Error('index.html has no <head> to inject the probe into');
   const probed = indexHtml.replace('<head>', `<head>\n${PROBE}`);
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    const filePath = path.resolve(distDir, rel);
-    if (!filePath.startsWith(distDir)) { res.writeHead(403).end(); return; }
+    const filePath = path.resolve(dir, rel);
+    if (!filePath.startsWith(dir)) { res.writeHead(403).end(); return; }
     if (rel && (await exists(filePath))) {
       try {
         const body = await readFile(filePath);
@@ -430,9 +482,13 @@ const MIN_COVERAGE = 8;
 async function main() {
   const update = process.argv.includes('--update');
 
-  if (!(await exists(path.join(distDir, 'index.html')))) {
-    console.error(`No build at ${distDir}. Run \`npm run build\` first.`);
-    process.exit(1);
+  for (const surface of SURFACES) {
+    if (!(await exists(path.join(surface.dir, 'index.html')))) {
+      console.error(`No build at ${surface.dir}. Run \`${surface.build}\` first.`);
+      console.error('This check is deliberately not skippable per surface: skipping the harness');
+      console.error('would silently return this check to watching two screens out of twenty.');
+      process.exit(1);
+    }
   }
   const chrome = await findChrome();
   if (!chrome) {
@@ -442,34 +498,43 @@ async function main() {
     process.exit(1);
   }
 
-  const { server, port } = await serveDist();
   const captured = {};
-  try {
-    for (const scheme of ['dark', 'light']) {
-      for (const route of ROUTES) {
-        const key = `${scheme} ${route}`;
-        const dom = await dumpDom(chrome, `http://127.0.0.1:${port}${route}?__scheme=${scheme}`);
-        const styles = readProbe(dom);
-        if (!styles) throw new Error(`the probe wrote nothing for ${key} - did the app mount?`);
-        captured[key] = styles;
+  for (const surface of SURFACES) {
+    const { server, port } = await serveDist(surface.dir);
+    try {
+      for (const scheme of ['dark', 'light']) {
+        for (const route of surface.routes) {
+          const key = `${scheme} ${surface.name}${route}`;
+          // The harness routes already carry a query string, so the scheme
+          // joins with & rather than ?. Getting this wrong produced two
+          // identical captures and the check below is what would have caught
+          // it - but only after a confusing failure, so it is handled here.
+          const join = route.includes('?') ? '&' : '?';
+          const dom = await dumpDom(chrome, `http://127.0.0.1:${port}${route}${join}__scheme=${scheme}`);
+          const styles = readProbe(dom);
+          if (!styles) throw new Error(`the probe wrote nothing for ${key} - did the app mount?`);
+          captured[key] = styles;
+        }
       }
+    } finally {
+      server.close();
     }
-  } finally {
-    server.close();
   }
 
   // The two schemes must actually DIFFER. If they are identical the matchMedia
   // stub has stopped working and half these captures are measuring nothing -
   // which is how the first version of this check inflated its own coverage.
-  for (const route of ROUTES) {
-    const a = JSON.stringify(captured[`dark ${route}`]);
-    const b = JSON.stringify(captured[`light ${route}`]);
+  for (const surface of SURFACES) {
+   for (const route of surface.routes) {
+    const a = JSON.stringify(captured[`dark ${surface.name}${route}`]);
+    const b = JSON.stringify(captured[`light ${surface.name}${route}`]);
     if (a === b) {
-      console.error(`FAIL  the dark and light captures of ${route} are identical.`);
+      console.error(`FAIL  the dark and light captures of ${surface.name}${route} are identical.`);
       console.error('      The color scheme is not being forced, so one of them is measuring');
       console.error('      nothing. Fix the stub rather than lowering the expectation.');
       process.exit(1);
     }
+   }
   }
 
   // A token that failed to parse computes to `none` or an empty string. That is

@@ -49,3 +49,6 @@ scripts/safety-runs/
 
 # Screenshots taken for a design review. Regenerable, and large.
 .design-shots/
+
+# Built by scripts/check-computed-styles.mjs. The source is in web/harness.
+web/harness-dist/
