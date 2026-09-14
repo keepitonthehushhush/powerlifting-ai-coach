@@ -77,7 +77,32 @@ function fontSizePx(body) {
   if (rem) return parseFloat(rem[1]) * ROOT_PX;
   const px = value.match(/^([\d.]+)px$/);
   if (px) return parseFloat(px[1]);
-  return null; // inherit, a keyword, a var() - not a literal to judge
+
+  /*
+   * ── AND A TYPE TOKEN, RESOLVED RATHER THAN SHRUGGED AT ─────────────────
+   *
+   * This returned null for `var(--text-footnote)`, which was correct when no
+   * control took a token and wrong the moment one did: `.lang select` moved
+   * from `0.85rem` to the token holding the identical value, and this check
+   * concluded that nothing sized it below 16px and that its entry in the iOS
+   * floor was dead weight. A control that DOES need the floor was one commit
+   * from having it removed as unnecessary.
+   *
+   * The values are read out of the stylesheet's own :root rather than copied
+   * here, so the scale and this check cannot drift into disagreeing about what
+   * a rung is worth.
+   */
+  const token = value.match(/^var\(\s*(--text-[\w-]+)\s*\)$/);
+  if (token) {
+    const declared = CSS.match(new RegExp(`${token[1]}:\\s*([^;]+);`));
+    if (!declared) return null;
+    const asRem = declared[1].trim().match(/^([\d.]+)rem$/);
+    if (asRem) return parseFloat(asRem[1]) * ROOT_PX;
+    const asPx = declared[1].trim().match(/^([\d.]+)px$/);
+    if (asPx) return parseFloat(asPx[1]);
+    return null; // a clamp() display size - not a literal to judge either
+  }
+  return null; // inherit, a keyword, an unresolvable var()
 }
 
 const TOUCH_QUERY = '@media (pointer: coarse)';

@@ -74,13 +74,15 @@ describe('the home page follows its own policy', () => {
 });
 
 describe('the type scale has a rung between a page title and a paragraph', () => {
-  const tokens = rules.slice(rules.indexOf('--text-large-title:'), rules.indexOf('--text-caption:') + 40);
+  const tokens = rules.slice(rules.indexOf('--text-large-title:'), rules.indexOf('--text-caption-2:') + 40);
 
   test('title-3 exists and sits between title and body', () => {
     // There was nothing between 32px and 17px, so every sub-heading was either
     // a page title or the size of the paragraph under it.
     assert.match(tokens, /--text-title-3: 1\.25rem/);
-    const order = ['--text-large-title', '--text-title', '--text-title-3', '--text-headline', '--text-body', '--text-caption'];
+    /* Renamed: 13pt is Apple's footnote, not its caption. The four rungs below
+       body arrived with it - see typeScale.test.js, which owns them. */
+    const order = ['--text-large-title', '--text-title', '--text-title-3', '--text-headline', '--text-body', '--text-footnote'];
     let previous = -1;
     for (const name of order) {
       const at = tokens.indexOf(name);

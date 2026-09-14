@@ -260,7 +260,7 @@ describe("it follows Apple's guidelines, in the ways that are checkable", () => 
     assert.match(styles, /--text-body:\s*1\.0625rem/);
     assert.match(styles, /--text-large-title:/);
     assert.match(styles, /--text-headline:/);
-    assert.match(styles, /--text-caption:/);
+    assert.match(styles, /--text-footnote:/);
   });
 
   test('spacing comes off one scale rather than being invented per rule', () => {

@@ -241,7 +241,7 @@ h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
 .stack { display: flex; flex-direction: column; gap: 1rem; }
 .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; }
 
-label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem; font-weight: 500; }
+label { display: flex; flex-direction: column; gap: 0.35rem; font-size: var(--text-subheadline); font-weight: 500; }
 /* The whole row is the target, and it is at least a thumb tall - larger than
    the box it toggles, which is the point. */
 label.checkbox {
@@ -416,7 +416,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   color: var(--link);
   text-decoration: underline;
   padding: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-subheadline);
 }
 
 /* A fieldset is the right element for a group of related questions - it is
@@ -450,22 +450,22 @@ fieldset.sensitive {
   padding: 1.25rem;
   gap: 0.7rem;
 }
-legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
+legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 0.4rem; }
 
 /* The heading of a group of questions, rather than a caption on a box. Sized
    up from the default legend so the four sections of the intake form read as
    sections at a glance on a phone, where only one is on screen at a time. */
 .section-legend {
-  font-size: 1.02rem;
+  font-size: var(--text-callout);
   letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .muted { color: var(--muted); }
-.small, .fineprint { font-size: 0.82rem; }
+.small, .fineprint { font-size: var(--text-footnote); }
 .fineprint { color: var(--muted); border-top: 1px solid var(--border); padding-top: 0.8rem; margin-top: 0.4rem; }
-.error { color: var(--error); font-size: 0.9rem; }
-.warning { color: var(--warning); font-size: 0.87rem; margin: 0; }
+.error { color: var(--error); font-size: var(--text-subheadline); }
+.warning { color: var(--warning); font-size: var(--text-footnote); margin: 0; }
 
 /* --- chat ---------------------------------------------------------------- */
 .chat-page { display: flex; flex-direction: column; min-height: 100dvh; }
@@ -479,7 +479,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 .bubble.user { align-self: flex-end; background: var(--surface-2); }
 .bubble.assistant { align-self: flex-start; background: var(--surface); }
-.bubble .who { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.3rem; }
+.bubble .who { font-size: var(--text-caption-1); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.3rem; }
 .bubble .content { white-space: pre-wrap; }
 /* A reply can contain a run with no spaces in it - a URL, or the program block
    when a truncated reply left one behind (see server/src/lib/programBlock.js).
@@ -573,7 +573,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .first-week-head h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-callout);
   font-weight: 600;
   color: var(--text);
 }
@@ -586,7 +586,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   padding: 0;
   color: var(--muted);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-footnote);
   text-decoration: underline;
   cursor: pointer;
   flex: none;
@@ -597,7 +597,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .first-week-sub {
   margin: 0.15rem 0 0.85rem;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-footnote);
 }
 
 .first-week-steps {
@@ -625,7 +625,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   border: 1.5px solid var(--field-border);
   display: grid;
   place-items: center;
-  font-size: 0.7rem;
+  font-size: var(--text-caption-2);
   line-height: 1;
   margin-top: 0.15rem;
 }
@@ -647,7 +647,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .first-week-body { display: flex; flex-direction: column; gap: 0.15rem; }
 
-.first-week-title { color: var(--text); font-size: 0.92rem; }
+.first-week-title { color: var(--text); font-size: var(--text-subheadline); }
 
 /* Muted, and NOT struck through - which is the reverse of what this file said
    an hour ago, changed by looking at it.
@@ -667,12 +667,12 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   color: var(--muted);
 }
 
-.first-week-why { color: var(--muted); font-size: 0.82rem; }
+.first-week-why { color: var(--muted); font-size: var(--text-footnote); }
 
 .first-week-go {
   align-self: start;
   color: var(--link);
-  font-size: 0.82rem;
+  font-size: var(--text-footnote);
 }
 
 /* The composer is a COLUMN, and that is the fix rather than a detail.
@@ -727,7 +727,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .lang select {
   width: auto;
   padding: 0.3rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-footnote);
   background: var(--surface-2);
 }
 
@@ -752,7 +752,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
    <h3> in the document outline without looking like a second card title; a
    styled <p> would have read the same and been invisible to a screen reader
    moving by heading. */
-.h4 { font-size: 0.9rem; margin: 0; font-weight: 600; letter-spacing: 0.01em; }
+.h4 { font-size: var(--text-subheadline); margin: 0; font-weight: 600; letter-spacing: 0.01em; }
 
 .page > .card + .card { margin-top: 1.25rem; }
 
@@ -793,7 +793,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .consent-item + .consent-item { margin-top: 0.75rem; }
 .consent-item .checkbox { align-items: flex-start; }
 
-.required-tag { color: var(--accent); font-size: 0.8rem; font-weight: 600; }
+.required-tag { color: var(--accent); font-size: var(--text-footnote); font-weight: 600; }
 .indent { margin: 0.4rem 0 0 1.6rem; }
 
 .draft-banner {
@@ -814,7 +814,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   border-left: 3px solid var(--warning);
   border-radius: 0 var(--radius) var(--radius) 0;
   background: color-mix(in srgb, var(--warning) 8%, var(--surface));
-  font-size: 0.92rem;
+  font-size: var(--text-subheadline);
 }
 
 /* Buttons side by side, wrapping to a column on a narrow screen rather than
@@ -841,7 +841,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .config-missing {
   margin: 0.5rem 0;
   padding-left: 1.2rem;
-  font-size: 0.88rem;
+  font-size: var(--text-subheadline);
 }
 .config-missing code {
   background: var(--surface-2);
@@ -951,7 +951,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
 .chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .chart-axis-label { fill: var(--muted); font-size: 10px; }
-.chart-readout { min-height: 1.4em; margin: 0.25rem 0 0; font-size: 0.85rem; }
+.chart-readout { min-height: 1.4em; margin: 0.25rem 0 0; font-size: var(--text-footnote); }
 .chart-key { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; margin: 0.25rem 0 0; }
 .key-mark { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .key-completed { background: var(--chart-line); }
@@ -959,7 +959,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .key-mark + .key-mark { margin-left: 0.75rem; }
 
 .table-scroll { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.data-table { width: 100%; border-collapse: collapse; font-size: var(--text-subheadline); }
 .data-table th, .data-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
 .data-table th { color: var(--muted); font-weight: 600; }
 
@@ -1023,7 +1023,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 .sticky-header.condensed h1,
 .sticky-header.condensed .brand {
-  font-size: 0.95rem;
+  font-size: var(--text-subheadline);
   transition: font-size 160ms ease;
 }
 .sticky-header h1,
@@ -1090,7 +1090,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 .logo-mark { display: block; flex: 0 0 auto; }
 .wordmark-text {
   font-weight: 700;
-  font-size: 1.02rem;
+  font-size: var(--text-callout);
   letter-spacing: -0.02em;
   color: var(--text);
   white-space: nowrap;
@@ -1146,7 +1146,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   border: none;
   padding: 0.35rem 0.6rem;
   font: inherit;
-  font-size: 0.92rem;
+  font-size: var(--text-subheadline);
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
@@ -1156,7 +1156,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 }
 @media (hover: hover) { .nav-item:hover{ color: var(--text); background: var(--surface-2); } }
 .nav-item:focus-visible { outline: 2px solid var(--secondary); outline-offset: 1px; }
-.nav-item.quiet { font-size: 0.85rem; }
+.nav-item.quiet { font-size: var(--text-footnote); }
 
 .nav-item.active { color: var(--text); font-weight: 600; }
 /* A 2px bar rather than a filled pill: it marks the page without competing
@@ -1194,7 +1194,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   border-radius: 999px;
   padding: 0.2rem 0.65rem;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-footnote);
   color: var(--muted);
   cursor: pointer;
   white-space: nowrap;
@@ -1279,7 +1279,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
   background: var(--surface);
   padding: 0.9rem 1rem;
 }
-.error-summary h2 { font-size: 1rem; margin: 0 0 0.5rem; color: var(--error); }
+.error-summary h2 { font-size: var(--text-callout); margin: 0 0 0.5rem; color: var(--error); }
 /* A plain list, not a grid. As grid items the <li>s stopped being list-items
    in the layout sense and the markers drifted to the last wrapped line of a
    two-line entry - and these entries are questions, so they wrap. */
@@ -1307,7 +1307,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 /* Two pixels, not a hue change. A one-pixel border swapped from lavender to
    salmon is a difference most people do not see at all, and some cannot. */
 [aria-invalid='true'] { border-color: var(--error); border-width: 2px; }
-.field-error { color: var(--error); font-size: 0.85rem; }
+.field-error { color: var(--error); font-size: var(--text-footnote); }
 
 /* The submit button of a form sits under a centered title, so it centers too.
    Full width on a phone, where a centered button with dead space either side
@@ -1346,7 +1346,7 @@ form > button.secondary {
   background: none;
   border: 1px solid transparent;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-footnote);
   padding: 0.3rem 0.4rem;
   border-radius: 6px;
 }
@@ -1402,7 +1402,7 @@ form > button.secondary {
   .nav-places { gap: 0.1rem; }
   .nav-item { padding: 0.45rem 0.55rem; }
   .nav-account { gap: 0.15rem; }
-  .nav-item.quiet { font-size: 0.8rem; }
+  .nav-item.quiet { font-size: var(--text-footnote); }
 
   /* The condensed header gives the second row back rather than shrinking it
      into something unhittable: scrolling down means "I am reading", and the
@@ -1482,7 +1482,7 @@ form > button.secondary {
 
 .egg-kicker {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-caption-1);
   font-weight: 700;
   letter-spacing: 0.22em;
   color: var(--accent);
@@ -1554,7 +1554,7 @@ form > button.secondary {
   margin-bottom: 1rem;
   padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.9rem;
+  font-size: var(--text-subheadline);
 }
 .warmup-ramp p { margin: 0; font-variant-numeric: tabular-nums; }
 
@@ -1603,7 +1603,7 @@ form > button.secondary {
 .week-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .week-chip-name {
-  font-size: 0.82rem;
+  font-size: var(--text-footnote);
   font-weight: 600;
   /* One line. A wrapped day name makes the chips different heights and the
      row stops reading as a row. */
@@ -1611,7 +1611,7 @@ form > button.secondary {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.week-chip-meta { font-size: 0.75rem; color: var(--muted); }
+.week-chip-meta { font-size: var(--text-caption-1); color: var(--muted); }
 
 /* ── THE DAY HEADER ─────────────────────────────────────────────────────────
 
@@ -1634,7 +1634,7 @@ form > button.secondary {
 .day-count { margin-left: 0; }
 
 .day-kind {
-  font-size: 0.68rem;
+  font-size: var(--text-caption-2);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1703,14 +1703,14 @@ form > button.secondary {
  * plate groups, and never inside "2 x 45" or "per side".
  */
 .program-table .plate-words { white-space: normal; }
-.program-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.program-table { width: 100%; border-collapse: collapse; font-size: var(--text-subheadline); }
 .program-table th, .program-table td {
   text-align: left;
   padding: 0.5rem 0.6rem;
   border-bottom: 1px solid var(--border);
 }
 .program-table thead th {
-  font-size: 0.78rem;
+  font-size: var(--text-caption-1);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
@@ -1733,7 +1733,7 @@ form > button.secondary {
    the room and the three numeric columns are squeezed rather than wrapped. */
 @media (max-width: 480px) {
   .program-table th, .program-table td { padding: 0.45rem 0.3rem; }
-  .program-table thead th { font-size: 0.7rem; }
+  .program-table thead th { font-size: var(--text-caption-2); }
 }
 
 @media print {
@@ -1753,7 +1753,7 @@ form > button.secondary {
 .table-scroll { overflow-x: auto; }
 .board { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .board th, .board td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
-.board th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+.board th { color: var(--muted); font-weight: 600; font-size: var(--text-footnote); }
 .board tbody tr:last-child td { border-bottom: 0; }
 /* The reader's own row. A left rule and a wash rather than a color swap, so
    it is still findable when the hue is not. */
@@ -1769,7 +1769,7 @@ form > button.secondary {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
-  font-size: 0.9rem;
+  font-size: var(--text-subheadline);
 }
 
 /* The bot check. Given breathing room above the button it gates, and a
@@ -1808,7 +1808,7 @@ form > button.secondary {
   padding: 0.7rem 0.9rem;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
-  font-size: 0.9rem;
+  font-size: var(--text-subheadline);
   box-shadow: var(--elev-1);
 }
 
@@ -1819,7 +1819,7 @@ form > button.secondary {
   margin: 0;
   padding: 0.4rem 0.9rem;
   text-align: center;
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1945,7 +1945,41 @@ form > button.secondary {
      the problem; the missing rung above was. */
   --text-headline: 1.0625rem; /* 17pt */
   --text-body: 1.0625rem; /* 17pt - the HIG default, and larger than the web's */
-  --text-caption: 0.8125rem;
+
+  /* ── AND THE FOUR RUNGS BELOW BODY, WHICH WERE ALL MISSING ─────────────
+   *
+   * The same fault as --text-title-3 above, one octave down, and much bigger.
+   * Between body (17px) and the single small rung there was nothing, so every
+   * time somebody wanted "a little smaller than body" they wrote a literal.
+   *
+   * Measured on 2026-09-14 across the whole stylesheet: 64 hardcoded
+   * font-sizes, 23 distinct values, and 87% of them between 11px and 16.5px -
+   * the band that had exactly ONE rung in it. 0.85rem (13.6px) appeared 12
+   * times, 0.9rem (14.4px) 12 times, 0.92rem, 0.88rem, 0.82rem, 0.78rem,
+   * 0.72rem, 0.68rem all appeared repeatedly. Nobody was being careless. They
+   * were reaching for rungs that did not exist.
+   *
+   * 84% of those 64 land within 0.75px of a rung on Apple's own ladder, which
+   * is where this scale came from, so the rungs are taken from there rather
+   * than from a ratio invented for the occasion: callout 16, subheadline 15,
+   * footnote 13, caption1 12, caption2 11.
+   *
+   * ── WHAT THE SMALL ONES ARE FOR, AND WHAT THEY ARE NOT FOR ────────────
+   *
+   * Labels, metadata, table headers, badges. NOT running text. WCAG sets no
+   * minimum font size at all - Section508.gov says so explicitly - but its
+   * practical guidance is 15 to 16px for body copy, and that running text
+   * below about 9pt "is creating a barrier". Body stays at 17px. A paragraph
+   * must never take caption-1 or caption-2.
+   */
+  --text-callout: 1rem; /* 16pt */
+  --text-subheadline: 0.9375rem; /* 15pt */
+  /* Renamed from --text-caption. 13pt is Apple's FOOTNOTE; its caption1 is 12
+     and caption2 is 11. A token whose name says a different size than its
+     value is how the next person reaches for the wrong one. */
+  --text-footnote: 0.8125rem; /* 13pt */
+  --text-caption-1: 0.75rem; /* 12pt */
+  --text-caption-2: 0.6875rem; /* 11pt */
 }
 
 /* ── PLATES ────────────────────────────────────────────────────────────────
@@ -2009,7 +2043,7 @@ form > button.secondary {
   gap: var(--space-1);
 }
 .milestone__lift {
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -2199,7 +2233,7 @@ form > button.secondary {
 
 .home-free {
   margin: var(--space-4) 0 0;
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
 }
 
 /* Air between sections rather than hairlines. */
@@ -2266,7 +2300,7 @@ form > button.secondary {
   content: counter(home-step);
   display: block;
   margin-bottom: var(--space-2);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent);
@@ -2405,7 +2439,7 @@ form > button.secondary {
   max-width: 50ch;
   margin: 0 auto;
   color: var(--muted);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   line-height: 1.5;
 }
 
@@ -2428,7 +2462,7 @@ form > button.secondary {
   padding: 0 var(--space-2);
   border-radius: 8px;
   color: var(--muted);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   text-decoration: none;
   transition: color 120ms ease, background-color 120ms ease;
 }
@@ -2658,7 +2692,7 @@ form > button.secondary {
 }
 
 .loading-word {
-  font-size: 0.9rem;
+  font-size: var(--text-subheadline);
 }
 
 /* --- a coach reply, as typography ----------------------------------------
@@ -2680,7 +2714,7 @@ form > button.secondary {
    title, so it stays close to the text it introduces and is separated by
    weight and spacing rather than by size. */
 .coach-heading {
-  font-size: 0.95rem;
+  font-size: var(--text-subheadline);
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text);
@@ -2704,11 +2738,11 @@ form > button.secondary {
 /* A meet-prep block is five columns wide and a phone is not. The table
    scrolls inside its own box; the page never scrolls sideways. */
 .coach-table-scroll { overflow-x: auto; margin: 0 0 0.7rem; }
-.coach-table { border-collapse: collapse; font-size: 0.9rem; min-width: 100%; }
+.coach-table { border-collapse: collapse; font-size: var(--text-subheadline); min-width: 100%; }
 .coach-table th,
 .coach-table td { text-align: left; padding: 0.4rem 0.9rem 0.4rem 0; white-space: nowrap; }
 .coach-table th {
-  font-size: 0.75rem;
+  font-size: var(--text-caption-1);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -2725,10 +2759,10 @@ form > button.secondary {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.85rem;
+  font-size: var(--text-footnote);
   padding: 0.2rem 0.2rem 0;
 }
-.holding .link { font-size: 0.85rem; }
+.holding .link { font-size: var(--text-footnote); }
 
 /* The offer to finish a reply that stopped at its length limit.
 
@@ -2747,10 +2781,10 @@ form > button.secondary {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-footnote);
   padding: 0.2rem 0.2rem 0;
 }
-.continue-cut .link { font-size: 0.85rem; }
+.continue-cut .link { font-size: var(--text-footnote); }
 
 .notice { margin: 0.2rem 0 0; }
 
@@ -2760,7 +2794,7 @@ form > button.secondary {
    behind a tap. Borderless fieldset because the card already draws the box. */
 .setting-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; }
 .setting-group legend {
-  font-size: 0.78rem;
+  font-size: var(--text-caption-1);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -2797,7 +2831,7 @@ form > button.secondary {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.3rem 0.8rem;
-  font-size: 0.88rem;
+  font-size: var(--text-subheadline);
   padding: 0.55rem 0.9rem;
   border: 1px solid var(--border);
   border-left: 3px solid var(--secondary);
@@ -2842,7 +2876,7 @@ form > button.secondary {
   gap: var(--space-1) var(--space-2);
   align-self: flex-start;
   max-width: 90%;
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
 }
 
 .saved-notice {
@@ -2994,8 +3028,8 @@ form > button.secondary {
   background: var(--sw-secondary);
 }
 .theme-option-body { display: flex; flex-direction: column; gap: 0.1rem; }
-.theme-name { font-weight: 600; font-size: 0.92rem; }
-.theme-blurb { font-size: 0.78rem; line-height: 1.35; }
+.theme-name { font-weight: 600; font-size: var(--text-subheadline); }
+.theme-blurb { font-size: var(--text-caption-1); line-height: 1.35; }
 
 /* The control that mounts the rest of a long conversation. Quiet on purpose:
    it is a way back into history, not an action anybody needs to take. */
@@ -3009,7 +3043,7 @@ form > button.secondary {
   border-radius: var(--radius);
   color: var(--muted);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-footnote);
   cursor: pointer;
 }
 @media (hover: hover) { .show-earlier:hover{ color: var(--text); border-color: var(--field-border); } }
@@ -3035,7 +3069,7 @@ form > button.secondary {
 .mfa-secret {
   display: block;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9rem;
+  font-size: var(--text-subheadline);
   letter-spacing: 0.05em;
   overflow-wrap: anywhere;
   padding: var(--space-2);
