@@ -68,9 +68,13 @@
   --accent-text: #12101f;
   --accent-soft: rgba(255, 79, 154, 0.14);
   --secondary: #22d3d3;
+  /* The secondary hue's TEXT-safe member. Identical in dark; not in light. */
+  --secondary-text: #22d3d3;
   --link: #22d3d3;
   --warning: #ffb833;
   --error: #ff7a7a;
+  /* Ink for a control whose ground is --error. White on this pink is 2.52:1. */
+  --error-text: #12101f;
   --radius: 10px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -91,10 +95,13 @@
     --accent: #c4186b;
     --accent-text: #ffffff;
     --accent-soft: rgba(196, 24, 107, 0.10);
+    /* 3.70:1 on a card: fine as a border or an icon, never as a `color`. */
     --secondary: #0093a0;
+    --secondary-text: #00707c;
     --link: #00707c;
     --warning: #8a5a00;
     --error: #c62828;
+    --error-text: #ffffff;
   }
 }
 
@@ -751,9 +758,26 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .card.danger { border-color: color-mix(in srgb, var(--error) 45%, var(--border)); }
 
+/*
+ * ── THE ONE HARDCODED COLOR, AND WHAT IT COST ─────────────────────────────
+ *
+ * This was `color: #fff`. In LIGHT that is white on #c62828 - 5.62:1, fine.
+ * In DARK, --error is #ff7a7a, a light pink, and white on it computes to
+ * 2.52:1 against a 4.5:1 requirement. Measured off a real button with
+ * getComputedStyle: rgb(255,255,255) on rgb(255,122,122).
+ *
+ * The button is "Delete my account". The most consequential control in the
+ * product was the one that could not be read, on the theme almost everybody
+ * uses.
+ *
+ * A literal is correct in exactly one theme by definition - it cannot move
+ * with its ground. --error-text is chosen the same way --accent-text already
+ * was: whichever of dark ink or white actually measures higher against the
+ * swatch it sits on.
+ */
 .destructive {
   background: var(--error);
-  color: #fff;
+  color: var(--error-text);
   border: none;
   padding: 0.7rem 1.1rem;
   font-weight: 600;
@@ -1620,7 +1644,9 @@ form > button.secondary {
   color: var(--muted);
 }
 .day-kind[data-kind='training'] { color: var(--accent); border-color: var(--accent); }
-.day-kind[data-kind='recovery'] { color: var(--secondary); border-color: var(--secondary); }
+/* The BORDER may be --secondary (3:1 is the bar for a boundary). The TEXT may
+   not: in light that token is 3.70:1 on a card and this badge is 10.88px. */
+.day-kind[data-kind='recovery'] { color: var(--secondary-text); border-color: var(--secondary); }
 
 /* A rest day is not a training day with less in it. It recedes. */
 .day-card[data-kind='rest'] { opacity: 0.72; }

@@ -46,7 +46,7 @@ export const THEME_TOKENS = [
   'bg', 'wash-cool', 'wash-cool-end', 'wash-warm', 'wash-warm-end',
   'surface', 'surface-2', 'border', 'field-border',
   'text', 'muted', 'accent', 'accent-text', 'accent-soft',
-  'secondary', 'link', 'warning', 'error', 'chart-grid',
+  'secondary', 'secondary-text', 'link', 'warning', 'error', 'error-text', 'chart-grid',
 ];
 
 export const MODES = ['dark', 'light'];
@@ -85,9 +85,18 @@ const MIAMI = {
     'accent-text': '#12101f',
     'accent-soft': 'rgba(255, 79, 154, 0.14)',
     secondary: '#22d3d3',
+    /*
+     * The member of the secondary hue that is safe as TEXT. In dark it is the
+     * same cyan; in light it is not, and that difference is the whole reason
+     * this token exists - see the light palette below.
+     */
+    'secondary-text': '#22d3d3',
     link: '#22d3d3',
     warning: '#ffb833',
     error: '#ff7a7a',
+    /* Dark ink on a light pink. White on #ff7a7a computes to 2.52:1, which is
+       what "Delete my account" was rendering at. */
+    'error-text': '#12101f',
     'chart-grid': '#322c4f',
   },
   light: {
@@ -105,10 +114,22 @@ const MIAMI = {
     accent: '#c4186b',
     'accent-text': '#ffffff',
     'accent-soft': 'rgba(196, 24, 107, 0.10)',
+    /*
+     * #0093a0 is 3.70:1 on a card and 3.20:1 on surface-2. That is fine for a
+     * border or an icon, which need 3:1, and NOT fine for text, which needs
+     * 4.5 - so it must never be a `color`.
+     *
+     * Miami is the one theme whose palette is written out rather than solved
+     * (see the ladder below), which is how a value that every other theme has
+     * checked against AA_TEXT came to ship unchecked in the default.
+     */
     secondary: '#0093a0',
+    'secondary-text': '#00707c',
     link: '#00707c',
     warning: '#8a5a00',
     error: '#c62828',
+    /* White clears #c62828 at 5.62:1 here, unlike in dark. */
+    'error-text': '#ffffff',
     'chart-grid': '#e7dfe6',
   },
 };
@@ -228,7 +249,23 @@ function generate(seed, mode) {
   const surface = dark ? hsl(nH, nS * 0.85, 13) : '#ffffff';
   const surface2 = dark ? hsl(nH, nS * 0.8, 18) : hsl(nH, nS * 0.3, 93.5);
   const border = dark ? hsl(nH, nS * 0.75, 22) : hsl(nH, nS * 0.28, 88);
-  const grounds = [bg, surface];
+  /*
+   * ── ALL THREE GROUNDS, NOT TWO ────────────────────────────────────────
+   *
+   * This was [bg, surface]. surface-2 is a ground text genuinely sits on -
+   * consent rows, week chips, the inside of a field - and leaving it out meant
+   * the solver guaranteed AA against two of the three places its output lands.
+   *
+   * Measured before the change: nothing failed against bg or surface, and
+   * SIXTEEN pairings failed against surface-2 across six themes, all in light
+   * mode, all between 4.25 and 4.47 against a 4.5 requirement. Near misses, so
+   * nothing looked broken - which is exactly why nobody found it by looking.
+   *
+   * Adding it moves those colors by about half a lightness step. A guarantee
+   * that excludes one of the three grounds is not a guarantee; it is a
+   * guarantee about the grounds somebody happened to list.
+   */
+  const grounds = [bg, surface, surface2];
   const lighter = dark;
 
   const from = (h, sat, preferred, target = AA_TEXT) =>
@@ -286,9 +323,34 @@ function generate(seed, mode) {
     'accent-text': accentText,
     'accent-soft': `rgba(${rgbOf(accent)}, ${dark ? 0.14 : 0.1})`,
     secondary,
+    /*
+     * Solved against the grounds to AA_TEXT, so a hue whose readable form is
+     * darker than its decorative form gets both. For most themes these are the
+     * same value; for a low-chroma hue in light mode they are not.
+     */
+    'secondary-text': solveFromPreferredOklch(
+      secondaryHue,
+      seed.secondaryChroma ?? C.secondary.c,
+      C.secondary.l,
+      grounds,
+      AA_TEXT,
+      { lighter },
+    ),
     link: secondary,
     warning: solveFromPreferredOklch(C.warning.h, C.warning.c, C.warning.l, grounds, AA_TEXT, { lighter }),
     error: solveFromPreferredOklch(C.error.h, C.error.c, C.error.l, grounds, AA_TEXT, { lighter }),
+    /*
+     * The ink for a button whose GROUND is --error, chosen the same way
+     * accent-text is: measured against the actual swatch rather than assumed
+     * to be white. A light error color needs dark ink, and getting it wrong
+     * fails the one control somebody must read before pressing it.
+     */
+    'error-text': (() => {
+      const err = solveFromPreferredOklch(C.error.h, C.error.c, C.error.l, grounds, AA_TEXT, { lighter });
+      return [hsl(nH, seed.accentChroma === 0 ? 0 : 25, 8), '#ffffff'].reduce((best, ink) =>
+        contrast(ink, err) > contrast(best, err) ? ink : best
+      );
+    })(),
     'chart-grid': border,
   };
 }

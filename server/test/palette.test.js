@@ -129,6 +129,80 @@ describe('the palette is readable, measured rather than asserted', () => {
       );
     });
 
+    test(`${mode}: the destructive button is legible against its own label`, () => {
+      /*
+       * The sibling of the primary-button test above, and it did not exist,
+       * which is how `.destructive { color: #fff }` shipped. In light that is
+       * white on #c62828 and clears comfortably; in DARK, --error is a light
+       * pink and white on it measures 2.52:1 - on "Delete my account", the
+       * most consequential control in the product.
+       *
+       * A literal cannot move with its ground, so it is right in at most one
+       * mode by construction. This asserts the TOKEN, in both.
+       */
+      const err = token('error', mode) ?? token('error', 'dark');
+      const ink = token('error-text', mode) ?? token('error-text', 'dark');
+      assert.ok(ink, `--error-text is not defined for ${mode}`);
+      const ratio = contrast(ink, err);
+      assert.ok(ratio >= AA_TEXT, `destructive label on --error is ${ratio.toFixed(2)}:1`);
+      // And the stylesheet must actually reach for it rather than a literal.
+      assert.match(css, /\.destructive \{[^}]*color: var\(--error-text\)/);
+      assert.doesNotMatch(css, /\.destructive \{[^}]*color: #[0-9a-fA-F]{3,8}/);
+    });
+
+    test(`${mode}: the text-safe secondary is safe as text, on every ground`, () => {
+      /*
+       * --secondary is allowed to be a 3:1 color: it is a border, an icon, a
+       * left edge. --secondary-text is the member of the same hue that may be
+       * a `color`, and the two are NOT interchangeable - in light they are
+       * #0093a0 (3.70:1 on a card) and #00707c (5.82:1).
+       *
+       * A recovery badge took the wrong one and shipped at 3.70:1.
+       */
+      const ink = token('secondary-text', mode) ?? token('secondary-text', 'dark');
+      assert.ok(ink, `--secondary-text is not defined for ${mode}`);
+      for (const ground of ['bg', 'surface', 'surface-2']) {
+        const g = token(ground, mode) ?? token(ground, 'dark');
+        const ratio = contrast(ink, g);
+        assert.ok(ratio >= AA_TEXT, `${mode}: secondary-text on ${ground} is ${ratio.toFixed(2)}:1`);
+      }
+    });
+
+    test(`${mode}: nothing uses the decorative secondary as a text color`, () => {
+      /*
+       * The rule this file can enforce that the palette alone cannot: it is
+       * not enough for a safe token to exist, nothing may reach for the unsafe
+       * one as ink. `border-color: var(--secondary)` is fine and stays fine.
+       */
+      /*
+       * ── AND WHY THIS IS A LIST AND NOT A ZERO ──────────────────────────
+       *
+       * One rule does legitimately paint with it: `.saved-check`, an SVG tick
+       * that takes its ink from `currentColor`. A graphic needs 3:1 (WCAG
+       * 1.4.11), which --secondary clears, and the stylesheet's reason for
+       * matching it to the card's left edge is a real one.
+       *
+       * (The first version of this matched `border-color: var(--secondary)`
+       * too, because `color:` is a substring of it, and the two recovery
+       * borders showed up as text. A lookbehind fixes it. Widening the
+       * exception list to make the red go away would have hidden the rule
+       * this test exists to enforce.)
+       *
+       * A regex cannot tell a tick from a sentence. So the exception is named
+       * rather than the rule weakened: the set must be EXACTLY this, which
+       * means a new `color: var(--secondary)` anywhere else still fails, and
+       * deleting this one fails too rather than silently rotting.
+       */
+      const NON_TEXT_USES = ['.saved-check'];
+      const selectorsUsingIt = [...css.matchAll(/([^{}]+)\{[^}]*?(?<![-a-z])color:\s*var\(--secondary\)[^}]*\}/g)]
+        .map(([, sel]) => sel.trim().split(/\s*\n\s*/).pop().trim())
+        .filter((sel) => !sel.startsWith('--'));
+      assert.deepEqual(
+        selectorsUsingIt, NON_TEXT_USES,
+        'use --secondary-text for text; --secondary is only guaranteed to 3:1',
+      );
+    });
+
     test(`${mode}: warning and error are readable, not just alarming`, () => {
       for (const name of ['warning', 'error']) {
         const colour = token(name, mode) ?? token(name, 'dark');

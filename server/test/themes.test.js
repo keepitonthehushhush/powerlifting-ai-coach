@@ -274,3 +274,47 @@ describe('the themes are actually different from one another', () => {
     }
   });
 });
+
+/**
+ * ── THE TWO INKS THAT SIT ON SOMETHING OTHER THAN A GROUND ────────────────
+ *
+ * Every other token in this system is checked against bg / surface /
+ * surface-2. Two are not, and both were wrong because of it:
+ *
+ *   --error-text sits on --error, which is a button, not a ground. The
+ *   stylesheet hardcoded `#fff`, correct on light mode's #c62828 and 2.52:1
+ *   on dark mode's #ff7a7a. That is "Delete my account".
+ *
+ *   --secondary-text is the member of the secondary hue that may be a
+ *   `color`. --secondary itself is a 3:1 color - a border, an icon, a card's
+ *   left edge - and a badge that took it rendered at 3.70:1 in light.
+ *
+ * Checked across EVERY theme rather than the default, because the default is
+ * the one whose palette is written out by hand instead of solved, and so the
+ * one most likely to carry a value nothing ever checked.
+ */
+describe('the inks that are not checked against a ground', () => {
+  for (const theme of THEMES) {
+    for (const mode of MODES) {
+      test(`${theme.id}/${mode}: a destructive button's label clears AA on its own button`, () => {
+        const t = tokensFor(theme.id, mode);
+        const ratio = contrast(t['error-text'], t.error);
+        assert.ok(
+          ratio >= AA_TEXT,
+          `${theme.id}/${mode}: error-text on error is ${ratio.toFixed(2)}:1`,
+        );
+      });
+
+      test(`${theme.id}/${mode}: the text-safe secondary clears AA on every ground`, () => {
+        const t = tokensFor(theme.id, mode);
+        for (const ground of ['bg', 'surface', 'surface-2']) {
+          const ratio = contrast(t['secondary-text'], t[ground]);
+          assert.ok(
+            ratio >= AA_TEXT,
+            `${theme.id}/${mode}: secondary-text on ${ground} is ${ratio.toFixed(2)}:1`,
+          );
+        }
+      });
+    }
+  }
+});
