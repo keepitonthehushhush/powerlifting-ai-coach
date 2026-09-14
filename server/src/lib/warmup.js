@@ -38,7 +38,7 @@
  * Pure functions. No I/O.
  */
 
-import { BAR, canonicalLift, roundToLoadable, smallestLoadableIncrement } from './progression.js';
+import { BAR, canonicalLift, rampableLift, roundToLoadable, smallestLoadableIncrement } from './progression.js';
 
 /** The empty barbell, which is where every ramp starts. */
 export { BAR as BAR_WEIGHT } from './progression.js';
@@ -306,7 +306,16 @@ export function warmupForProgram({ program, units = 'lb', smallestPlatePair = nu
     for (const exercise of Array.isArray(day?.exercises) ? day.exercises : []) {
       // First spelling wins. A day that programs squats twice is warmed up
       // once, at the load the first entry names.
-      const lift = canonicalLift(exercise?.lift);
+      /*
+       * rampableLift, not canonicalLift. An athlete training on a Smith
+       * machine writes "bench press (Smith)", the exact-match table returned
+       * null for every main lift in the week, and this function's own guard
+       * below then returned null for the entire warm-up - no general warm-up,
+       * no mobility, no stretching section, no ramp on any day. See the
+       * reasoning beside rampableLift for why the strict version stays strict
+       * everywhere else.
+       */
+      const lift = rampableLift(exercise?.lift);
       if (!lift || lift in prescriptions) continue;
       prescriptions[lift] = { weight: exercise.weight };
     }

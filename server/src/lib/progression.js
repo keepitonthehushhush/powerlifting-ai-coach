@@ -139,6 +139,77 @@ export function canonicalLift(name) {
 }
 
 /**
+ * The same four lifts, for the ONE question where the equipment does not
+ * change the answer: what should this person warm up to.
+ *
+ * ── THE BUG THIS EXISTS FOR ───────────────────────────────────────────────
+ *
+ * An athlete who trains on a Smith machine writes "bench press (Smith)" and
+ * "squat (Smith)". canonicalLift() is an exact-match table, so both returned
+ * null - correctly - and warmupForProgram() found nothing rampable in any day
+ * of the week. Its own guard then returned null for the WHOLE warm-up, so the
+ * Program page rendered no general warm-up, no mobility line, no stretching
+ * section and no ramp for any day. Not a missing ramp on one day: the entire
+ * section, silently absent, for every session of a 21-week program.
+ *
+ * Reported as "it failed to add the day 1 warmups", because day one is the
+ * first day somebody looks at.
+ *
+ * ── WHY NOT JUST LOOSEN canonicalLift ─────────────────────────────────────
+ *
+ * Because the strictness is load-bearing and is documented three lines above
+ * as deliberate. canonicalLift() decides whether two entries are THE SAME LIFT
+ * for progression, personal records, adherence and the public leaderboard. A
+ * Smith-machine squat is not a barbell squat, it should not set a leaderboard
+ * total, and it should not feed a linear-progression rule built on free-weight
+ * evidence. Loosening the table would have made all four of those wrong to fix
+ * a fifth.
+ *
+ * Two different questions were sharing one answer. "Is this the same lift?" is
+ * an identity question and stays strict. "What should they work up to?" is
+ * about the load on the bar in front of them, and the rack it sits in does not
+ * change it - somebody about to put 225 on a Smith bench still should not have
+ * their first rep of the day be at 225.
+ *
+ * ── WHAT IT REMOVES, AND WHAT IT STILL WILL NOT DO ────────────────────────
+ *
+ * Parenthetical qualifiers, wherever they sit, and nothing else. "(Smith)",
+ * "(paused)", "(close grip)" are the same movement to a warm-up whether the
+ * athlete writes them before or after the lift.
+ *
+ * The first draft only stripped a TRAILING one, and mutation testing found
+ * that my tests could not tell the two apart - a mutant that stripped anywhere
+ * passed every assertion. Widening was the better answer than a sharper test:
+ * an athlete who writes "(Smith) bench press" has exactly the problem this
+ * function exists to fix, and refusing them a warm-up on a punctuation detail
+ * would be the same bug with a different spelling.
+ *
+ * What it is still NOT is a substring search. The comment above LIFT_SPELLINGS
+ * says what that cost the last time: matching the word "squat" anywhere inside
+ * whatever text the athlete typed, newlines included. Remove the parentheses
+ * and what is left must be an EXACT spelling from the table, so "bench press
+ * (Smith) extra" is not rampable, and that is the honest answer rather than a
+ * guessed one.
+ *
+ * Used by warmup.js and by nothing else. A test asserts that by reading every
+ * file under server/src, so a second caller is a decision somebody has to make
+ * in front of this comment.
+ */
+export function rampableLift(name) {
+  const exact = canonicalLift(name);
+  if (exact) return exact;
+  if (typeof name !== 'string') return null;
+
+  // Global: a qualifier at either end, or both. Collapsed to single spaces so
+  // "bench press (Smith)" and "(Smith) bench press" reduce to the same string.
+  const withoutQualifiers = name.replace(/\([^()]*\)/g, ' ').trim().replace(/\s+/g, ' ');
+  // Unchanged means there was no parenthetical at all, so there is nothing
+  // this function knows that canonicalLift did not already try.
+  if (withoutQualifiers === name.trim().replace(/\s+/g, ' ') || withoutQualifiers === '') return null;
+  return canonicalLift(withoutQualifiers);
+}
+
+/**
  * The smallest jump the athlete can physically make.
  *
  * Adding weight to a barbell means adding it to BOTH ends, so the smallest
