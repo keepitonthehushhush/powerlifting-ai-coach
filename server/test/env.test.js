@@ -92,10 +92,24 @@ describe('buildConfig', () => {
   test('applies documented defaults', () => {
     const config = buildConfig(VALID);
     assert.equal(config.anthropic.model, 'claude-sonnet-5');
-    // Raised from 4,096 after a reply hit the ceiling and came back with no
-    // text at all - CD-021. A ceiling is not a spend; output tokens are billed
-    // as generated. Sonnet 5 allows 128K, so this bound is about latency.
-    assert.equal(config.anthropic.maxTokens, 8192);
+    /*
+     * Raised from 4,096 after a reply hit the ceiling and came back with no
+     * text at all - CD-021. A ceiling is not a spend; output tokens are billed
+     * as generated. Sonnet 5 allows 128K, so this bound is about latency.
+     *
+     * Raised again to 16,384 on 2026-09-14: five of the 101 replies this
+     * product had produced came back at exactly 8,192 output tokens, which is
+     * what truncation looks like in the usage table. See modelBudget.js for
+     * why not higher - past the point a full reply outruns the client's 150
+     * second wait, raising this converts a truncation into a timeout.
+     *
+     * AND `.env.example` CARRIES THE SAME NUMBER, which is the reason this
+     * assertion earns its place: the example file is what gets copied into a
+     * deployment's environment, and an env var set to the old value silently
+     * overrides the constant. The code default and the documented default have
+     * to move together or production keeps the number nobody meant to keep.
+     */
+    assert.equal(config.anthropic.maxTokens, 16384);
     assert.equal(config.chat.historyWindow, 30);
     // Raised from 4,000 after a real user hit it mid-sentence and got
     // "Invalid request." See server/test/messageLimit.test.js.

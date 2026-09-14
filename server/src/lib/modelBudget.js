@@ -30,8 +30,68 @@
  * Claude Sonnet 5 permits far more; this ceiling is ours and it is about
  * latency, not capability. A reply the athlete waits three minutes for is its
  * own kind of failure.
+ *
+ * ── RAISED FROM 8192 ON 2026-09-14, AND WHAT THE NUMBER COST ──────────────
+ *
+ * Read out of usage_events: 5 of the 101 replies this product has ever
+ * produced came back at exactly 8192 output tokens, and 7 were at or above
+ * 7000. Landing exactly on max_tokens is not a coincidence, it is the
+ * definition of truncation - those five replies stopped mid-sentence.
+ *
+ * The tail of a coaching reply is not padding. It is where the cool-down and
+ * the accessory work go, and it is where the machine-readable program block
+ * goes. "It does not give the full workout and it skips the stretches" is what
+ * a truncated reply looks like from the outside, and a truncated reply is also
+ * the most likely reason a week of training never reached workout_programs.
+ *
+ * THE CEILING IS NOT THE WHOLE FIX AND MUST NOT BE TREATED AS ONE. Sonnet 5
+ * thinks by default and thinking draws on this same budget, so doubling the
+ * number doubles what an over-thinking turn can spend before writing anything.
+ * It ships with a prompt rule that stops the coach restating a week in prose
+ * before tabling it - the padding is what made 8192 reachable - and the
+ * stop_reason column from migration 0073, so the next person can COUNT this
+ * rather than infer it from output_tokens hitting a round number. That
+ * inference stops working the moment this constant changes, which is now.
+ *
+ * ── THE TIME CEILING MOVES WITH IT, AND THIS WAS NEARLY GOT WRONG ─────────
+ *
+ * The first version of this change raised the token ceiling alone, with a
+ * comment claiming 16384 was chosen to stay inside the client's 150-second
+ * wait. Then error_events was actually read: TWO `client_request_timed_out`
+ * rows on 2026-09-11, 18:22 and 21:04, in the same evening as the truncation
+ * at 18:31.
+ *
+ * So the 150-second wall was not a bound this change had to stay under. It was
+ * a wall real replies were ALREADY hitting at the old 8,192-token ceiling. The
+ * coach was running out of room and running out of time in the same session.
+ *
+ * Raising max_tokens on its own would therefore have made the athlete's
+ * experience worse, not better: a reply that was cut short and delivered
+ * becomes a reply that never arrives. Losing the last few sentences at least
+ * leaves the words and a notice explaining them; a timeout leaves nothing and
+ * has nothing to attach a notice to.
+ *
+ * Both ceilings move together. TIMEOUTS.chat in web/src/lib/api.js is now 240
+ * seconds, under the 300 vercel.json pins for the function so the browser
+ * still gives up first - thinkingBudget.test.js asserts that ordering, and
+ * replyCeiling.test.js asserts this pairing, because a comment saying two
+ * numbers move together is not a control.
+ *
+ * ── AND WHY 16384 RATHER THAN MORE ────────────────────────────────────────
+ *
+ * Claude Sonnet 5 permits 128K of output (checked against the model
+ * documentation on 2026-09-14, not remembered), so the model is not the limit
+ * and neither is the platform. What limits this is a person holding a phone.
+ * 16384 doubles the room for the replies that were being cut; the fix for a
+ * reply that needs more than that is the prompt rule against restating a week
+ * in prose, not another doubling. A ceiling raised until nothing is ever cut
+ * is a ceiling nobody waits out.
+ *
+ * Deploy note: ANTHROPIC_MAX_TOKENS overrides this. /api/health reports
+ * `maxOutputTokens` from the resolved config, so the deployed value is
+ * readable without guessing at the dashboard.
  */
-export const DEFAULT_MAX_TOKENS = 8192;
+export const DEFAULT_MAX_TOKENS = 16384;
 
 /**
  * The five levels the API accepts. `max` and `xhigh` are for long-horizon

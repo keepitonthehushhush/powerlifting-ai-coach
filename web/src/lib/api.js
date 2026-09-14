@@ -82,7 +82,30 @@ export function errorText(error) {
  * timeout tuned to a normal API would cut off the product's main feature and
  * be a far worse bug than the one being fixed.
  */
-const TIMEOUTS = { default: 20_000, chat: 150_000, session: 8_000 };
+/*
+ * ── WHY THE CHAT WAIT IS 240 SECONDS AND NOT 150 ──────────────────────────
+ *
+ * It was 150, and error_events says that was a wall real replies hit: two
+ * `client_request_timed_out` rows on 2026-09-11, at 18:22 and 21:04, in the
+ * same evening as the truncation at 18:31. So at the OLD output ceiling of
+ * 8,192 tokens the coach was already running out of both room and time.
+ *
+ * That is what makes raising max_tokens on its own the wrong change, and it
+ * was nearly made: doubling the token ceiling while leaving this at 150 turns
+ * a reply that was cut short into a reply that never arrives - the athlete
+ * loses every word instead of the last few, and with no notice explaining why,
+ * because a timeout has nothing to attach one to.
+ *
+ * 240 rather than 300: `vercel.json` pins the function at 300 seconds, and the
+ * browser has to give up FIRST or a server timeout reaches the page as a
+ * connection dying rather than as a message. thinkingBudget.test.js asserts
+ * that ordering; the 60 seconds between them is the margin for a cold start
+ * and the network, not spare wait.
+ *
+ * This is a ceiling, not an expectation. The prompt rule that stops the coach
+ * restating a week in prose is what should keep replies far away from it.
+ */
+const TIMEOUTS = { default: 20_000, chat: 240_000, session: 8_000 };
 
 /** Reads the token, but never waits forever for one. */
 async function accessToken() {
