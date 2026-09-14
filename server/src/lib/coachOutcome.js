@@ -163,6 +163,35 @@ export function coachError(outcome) {
 }
 
 /**
+ * Stop reasons this product is willing to store, and the bucket for the rest.
+ *
+ * Mirrors usage_events_stop_reason_check in migration 0073. Two lists for one
+ * rule is how this repository has been bitten before - a CHECK widened without
+ * the code that feeds it, and an integration that worked and audited nothing -
+ * so the pairing is asserted by a test rather than remembered.
+ *
+ * Anything unrecognized becomes 'other' rather than being passed through. A
+ * vendor is free to add a stop reason tomorrow; it is not free to start
+ * writing values into our table. Null stays null: "the reply carried no stop
+ * reason" and "the reply stopped for a reason we do not have a name for" are
+ * different facts and the first one is not a finding.
+ */
+export const RECORDABLE_STOP_REASONS = Object.freeze([
+  'end_turn',
+  'max_tokens',
+  'model_context_window_exceeded',
+  'stop_sequence',
+  'refusal',
+  'tool_use',
+]);
+
+/** @param {string|null|undefined} stopReason */
+export function recordableStopReason(stopReason) {
+  if (stopReason == null) return null;
+  return RECORDABLE_STOP_REASONS.includes(stopReason) ? stopReason : 'other';
+}
+
+/**
  * The line appended to a reply that stopped early.
  *
  * Deliberately in the athlete's reply rather than in a banner: they are about

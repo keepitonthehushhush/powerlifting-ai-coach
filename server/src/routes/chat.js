@@ -27,6 +27,7 @@ import {
   coachError,
   coachApiError,
   TRUNCATION_NOTICE,
+  recordableStopReason,
 } from '../lib/coachOutcome.js';
 import { entitlement, requiresSubscription, PAID_FEATURE } from '../lib/entitlement.js';
 import { consumeTrialReply, loadSubscription, loadTrialStatus } from '../lib/subscriptions.js';
@@ -1057,6 +1058,28 @@ chatRouter.post('/', async (req, res, next) => {
         cache_read_tokens: reply.usage?.cache_read_input_tokens ?? 0,
         cache_write_tokens: reply.usage?.cache_creation_input_tokens ?? 0,
         cost_microdollars: costMicrodollars,
+        /*
+         * ── HOW THE REPLY ENDED, NEXT TO WHAT IT COST ────────────────────
+         *
+         * Migration 0073. Until this column existed, "how often does a reply
+         * hit its ceiling" could only be inferred from output_tokens landing
+         * exactly on max_tokens - which worked, found five of them, and stops
+         * working the moment max_tokens changes. It changed in the same
+         * commit series as this line.
+         *
+         * The athlete was already being told (TRUNCATION_NOTICE). Nobody
+         * could COUNT it: coach.reply_truncated is a logger.warn and this
+         * platform's log retention is a day.
+         *
+         * Mapped through a closed set of our own rather than passed through.
+         * A vendor adding a stop reason must not start writing values into
+         * this table that nothing here has planned for - the same argument
+         * errorRecord.js makes for storing upstreamReason and not the
+         * vendor's sentence. The CHECK in 0073 is the second half of it,
+         * because one of the two eventually gets edited by somebody in a
+         * hurry.
+         */
+        stop_reason: recordableStopReason(reply.stopReason),
       });
       if (error) logger.warn('usage.record_failed', { userId: req.user.id, message: error.message });
     } catch (err) {
@@ -1085,6 +1108,23 @@ chatRouter.post('/', async (req, res, next) => {
     res.json({
       conversationId: conversation.id,
       reply: replyText,
+      /*
+       * ── THE REPLY STOPPED EARLY, AS A FACT RATHER THAN AS PROSE ─────────
+       *
+       * TRUNCATION_NOTICE is appended to the text and goes into the stored
+       * conversation, where it belongs: an athlete scrolling back next week
+       * should see that the reply they are reading was cut off.
+       *
+       * It is not a thing the CLIENT can act on. Detecting it would mean
+       * string-matching a sentence, which breaks the first time the sentence
+       * is reworded and is the shape of defect this repository keeps finding.
+       * So the fact travels as a boolean, and the page can offer a one-tap way
+       * to ask for the rest instead of leaving the athlete to type it.
+       *
+       * Omitted rather than sent as false: a field that is sometimes falsy is
+       * a field somebody eventually renders.
+       */
+      ...(outcome.truncated ? { truncated: true } : {}),
       // What the database now holds, not what this request believed it would.
       messages: storedTail,
       // null unless a row actually landed. Never "probably".

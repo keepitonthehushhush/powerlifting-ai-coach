@@ -582,10 +582,23 @@ export const en = {
     trialLink: 'See the subscription',
     thinking: 'Thinking…',
     thinkingElapsed: 'Writing your reply… {seconds}s',
-    thinkingLong: 'Still writing. A full training week takes a minute or so.',
+    // No longer names a duration. It said "a minute or so" while real replies
+    // were running past 150 seconds and timing out - a reassurance that is
+    // wrong is worse than none, because the person starts assuming something
+    // has broken at the moment it has not.
+    thinkingLong: 'Still writing. A full training week takes a while — the counter above is moving.',
     sendingUndo: 'Sending in {seconds}…',
     undo: 'Undo',
     undone: 'Not sent. Your message is back in the box.',
+    /*
+     * Shown under a reply that hit its length limit. The reply itself already
+     * says so in the coach's own voice; this pair is the one-tap way to ask
+     * for the rest, so it is short and does not repeat the explanation.
+     */
+    truncated: 'That reply ran out of room.',
+    continueCut: 'Ask it to finish',
+    // Goes into the composer, not onto the wire. The athlete presses Send.
+    continueDraft: 'That got cut off. Carry on from where it stopped.',
     placeholder: 'How did that session go?',
     // The composer asks about a session, which is the right question for
     // somebody who has trained and the wrong one for somebody on their first

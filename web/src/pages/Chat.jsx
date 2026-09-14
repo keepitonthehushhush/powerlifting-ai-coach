@@ -85,6 +85,19 @@ export function Chat() {
    */
   const [savedProgram, setSavedProgram] = useState(null);
   /*
+   * ── THE LAST REPLY STOPPED AT ITS LENGTH LIMIT ───────────────────────────
+   *
+   * A boolean from the server, never a string match on the reply. The reply
+   * itself already carries a sentence saying it was cut off, and that sentence
+   * is stored with the conversation where it belongs - but asking the page to
+   * recognize it would mean matching prose, which stops matching the first
+   * time somebody rewords it and fails silently when it does.
+   *
+   * Cleared on every send, because it is a fact about ONE reply. A stale flag
+   * here would offer to finish a reply that already finished.
+   */
+  const [replyTruncated, setReplyTruncated] = useState(false);
+  /*
    * The bodyweight the coach just recorded, if it recorded one. Shown rather
    * than filed silently: it is a setting the athlete owns, and the reason it is
    * safe to write from a conversation at all is that they see it happen and can
@@ -276,6 +289,7 @@ export function Chat() {
       setConversationId(result.conversationId);
       setMessages(result.messages);
       setSavedProgram(result.savedProgram ?? null);
+      setReplyTruncated(result.truncated === true);
       setSavedProfile(result.savedProfile ?? null);
       /*
        * A new proposal replaces any previous one - two cards is two things to
@@ -572,6 +586,28 @@ export function Chat() {
               weight: formatWeight(savedProfile.bodyweight, savedProfile.units),
             })}
           </SavedNotice>
+        )}
+
+        {/* One tap instead of typing it out. It FILLS the composer and does
+            not send - the same rule the openers follow, and for the same two
+            reasons: the athlete sees the words going out under their name
+            before they go, and a mis-tap does not spend a reply. It also side-
+            steps the question of whether finishing a cut-off reply should cost
+            a trial reply, because the athlete is still the one pressing Send. */}
+        {replyTruncated && !busy && (
+          <div className="continue-cut" role="status">
+            <span className="muted">{t('chat.truncated')}</span>
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                setDraft(t('chat.continueDraft'));
+                inputRef.current?.focus();
+              }}
+            >
+              {t('chat.continueCut')}
+            </button>
+          </div>
         )}
 
         {savedProgram && (

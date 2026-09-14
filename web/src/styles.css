@@ -2564,6 +2564,28 @@ form > button.secondary {
 }
 .holding .link { font-size: 0.85rem; }
 
+/* The offer to finish a reply that stopped at its length limit.
+
+   Deliberately the same shape as .holding above - a muted sentence and a text
+   link, sitting at the end of the transcript. It is an offer, not a warning:
+   the reply itself already carries the coach saying it was cut off, and a
+   second alarm-colored banner for the same fact would read as something having
+   gone wrong with the app rather than with the length of one answer.
+
+   NOT align-self: flex-end. That is right for .holding, which is about a
+   message the athlete just sent and belongs on their side; this is about the
+   coach's reply and belongs on its side, which in this transcript is the
+   default. */
+.continue-cut {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.2rem 0;
+}
+.continue-cut .link { font-size: 0.85rem; }
+
 .notice { margin: 0.2rem 0 0; }
 
 /* --- chat settings -------------------------------------------------------
