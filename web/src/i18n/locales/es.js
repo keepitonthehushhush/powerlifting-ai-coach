@@ -646,6 +646,25 @@ export const es = {
     noCalorieTargets: 'Ninguna opción activa metas de calorías ni un plan de comidas recetado. Eso requiere un dietista registrado, no una opción distinta.',
   },
 
+  /* Ver en.js: cada línea está sujeta a la evidencia, y ninguna promete
+     recuperación ni prevención de lesiones. */
+  mobilitySettings: {
+    heading: 'Cuánto estiramiento y movilidad recibes',
+    intro: 'Coach Diaz solo agrega ejercicios de movilidad cuando hay una razón específica. Si quieres una rutina de estiramiento después de cada sesión — o ninguna — dilo aquí. Se guarda en tu cuenta, así que solo tienes que decirlo una vez.',
+    legend: 'Estiramiento y movilidad',
+    level: {
+      off: 'Ninguno',
+      brief: 'Solo cuando haya una razón',
+      full: 'Un bloque después de cada sesión',
+    },
+    levelHint: {
+      off: 'Sin estiramientos ni movilidad en tus sesiones. Tu calentamiento no cambia — esa parte no es opcional.',
+      brief: 'Uno o dos ejercicios cuando algo específico lo pida, como la profundidad de la sentadilla o un hombro que no aguanta la barra. Esta es la opción normal.',
+      full: 'De tres a cinco movimientos después de cada sesión, enfocados en los rangos que usó esa sesión.',
+    },
+    notRecovery: 'Esto es para el rango de movimiento. Estirarse no acelera la recuperación ni previene lesiones, y ninguna opción aquí te va a decir lo contrario. Los estiramientos sostenidos van después de entrenar, nunca antes — te quitan fuerza en la barra.',
+  },
+
   consent: {
     unavailable: {
       title: 'No pudimos cargar tus opciones de privacidad',

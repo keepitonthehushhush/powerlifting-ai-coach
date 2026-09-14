@@ -41,6 +41,7 @@ import { recommendPhase } from '../lib/phase.js';
 import { assessProfileNumbers, worstSeverity } from '../lib/plausibility.js';
 import { fuellingRanges } from '../lib/nutrition.js';
 import { directiveFor as nutritionDetailDirective, fuellingNumbersAllowed } from '../lib/nutritionDetail.js';
+import { directiveFor as mobilityDetailDirective } from '../lib/mobilityDetail.js';
 import { compareToProgram, STATUS } from '../lib/adherence.js';
 import { BASIS, LOAD, diffPrograms } from '../lib/programDiff.js';
 // The one address, from the one module that owns it. Hardcoding it here would
@@ -2694,6 +2695,19 @@ function buildSystemParts({
    */
   const nutritionDetail = nutritionDetailDirective(profile?.nutrition_detail);
   if (nutritionDetail) directives.push(nutritionDetail);
+
+  /*
+   * Beside the food one, and for the same reason: an athlete who wants more
+   * mobility work - or none - has no way to say so that outlives the
+   * conversation window, so they say it every session until they stop.
+   *
+   * Null at the default, so an athlete on `brief` pays nothing for this.
+   * See lib/mobilityDetail.js for why `full` is allowed to WIDEN where the
+   * food setting may only narrow, and for the three findings that bound what
+   * it is allowed to claim.
+   */
+  const mobilityDetail = mobilityDetailDirective(profile?.mobility_detail);
+  if (mobilityDetail) directives.push(mobilityDetail);
 
   // Suppressed with the rest while the gate is up: an athlete waiting on a
   // doctor should not be shown a table of work they did not do.

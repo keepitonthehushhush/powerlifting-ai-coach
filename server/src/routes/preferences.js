@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { codedError } from '../lib/errorCodes.js';
 import { logger } from '../lib/logger.js';
 import { NUTRITION_DETAIL_LEVELS } from '../lib/nutritionDetail.js';
+import { MOBILITY_DETAIL_LEVELS } from '../lib/mobilityDetail.js';
 
 export const preferencesRouter = Router();
 
@@ -108,6 +109,7 @@ preferencesRouter.put('/', async (req, res, next) => {
  * request did not name.
  */
 const NutritionDetail = new Set(NUTRITION_DETAIL_LEVELS);
+const MobilityDetail = new Set(MOBILITY_DETAIL_LEVELS);
 
 preferencesRouter.get('/nutrition-detail', async (req, res, next) => {
   try {
@@ -157,6 +159,66 @@ preferencesRouter.put('/nutrition-detail', async (req, res, next) => {
     logger.info('preferences.nutrition_detail_saved', { userId: req.user.id });
 
     res.json({ nutrition_detail: value });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+/**
+ * GET /api/preferences/mobility-detail
+ * PUT /api/preferences/mobility-detail
+ *
+ * How much mobility and stretching work the athlete wants programmed. Same
+ * shape as the food setting above and here for the same reasons - the value is
+ * a fact about the athlete so it lives on user_profile, the route is here so
+ * it does not drag a preference change through the intake form's age gate,
+ * whole-profile schema and upsert.
+ *
+ * See lib/mobilityDetail.js for the one way this setting is NOT like the food
+ * one: its top level widens what the coach does rather than narrowing it.
+ * Nothing about that changes this route, which writes one constrained string.
+ */
+preferencesRouter.get('/mobility-detail', async (req, res, next) => {
+  try {
+    const { data, error } = await req.supabase
+      .from('user_profile')
+      .select('mobility_detail')
+      .maybeSingle();
+    if (error) throw codedError('storage_unavailable', 'Could not load your settings.');
+    // Null rather than a guessed default, for the reason the food route gives.
+    res.json({ mobility_detail: data?.mobility_detail ?? null });
+  } catch (err) {
+    next(err);
+  }
+});
+
+preferencesRouter.put('/mobility-detail', async (req, res, next) => {
+  try {
+    const value = req.body?.mobility_detail;
+    if (!MobilityDetail.has(value)) {
+      throw codedError('invalid_request', `That is not a mobility setting. Choose one of: ${MOBILITY_DETAIL_LEVELS.join(', ')}.`);
+    }
+
+    const { data, error } = await req.supabase
+      .from('user_profile')
+      .update({ mobility_detail: value })
+      .eq('user_id', req.user.id)
+      .select('user_id');
+    if (error) throw codedError('storage_unavailable', 'Could not save your settings.');
+
+    if (!data?.length) {
+      const { error: insertError } = await req.supabase
+        .from('user_profile')
+        .insert({ user_id: req.user.id, mobility_detail: value });
+      if (insertError) throw codedError('storage_unavailable', 'Could not save your settings.');
+    }
+
+    // The event, never the value. Same rule as the food setting: that it
+    // changed is enough to debug a save that did not stick.
+    logger.info('preferences.mobility_detail_saved', { userId: req.user.id });
+
+    res.json({ mobility_detail: value });
   } catch (err) {
     next(err);
   }

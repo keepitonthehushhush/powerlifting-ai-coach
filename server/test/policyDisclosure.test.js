@@ -85,6 +85,7 @@ const SENT_TO_THE_MODEL = {
    * it does.
    */
   nutrition_detail: 'How much you want the coach to talk about food',
+  mobility_detail: 'How much stretching and mobility work you want programmed',
   days_per_week: 'days per week',
   sleep_hours_typical: 'sleep',
   alcohol_units_per_week: 'alcohol',

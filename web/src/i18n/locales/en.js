@@ -701,6 +701,32 @@ export const en = {
     noCalorieTargets: 'No setting turns on calorie targets or a prescribed meal plan. Those need a registered dietitian, not a different setting.',
   },
 
+  /*
+   * ── THE MOBILITY SETTING ──────────────────────────────────────────────
+   *
+   * Every line here is held to the evidence by mobilityDetail.test.js, which
+   * fails on a recovery or injury-prevention claim. Stretching improves range
+   * of motion; it does not speed recovery and it does not prevent injury, and
+   * a settings screen is exactly where somebody would expect to be told
+   * otherwise.
+   */
+  mobilitySettings: {
+    heading: 'How much stretching and mobility work you get',
+    intro: 'Coach Diaz only adds mobility drills when there is a specific reason to. If you want a stretch routine after every session — or none at all — say so here. It is saved to your account, so you only have to say it once.',
+    legend: 'Stretching and mobility',
+    level: {
+      off: 'None',
+      brief: 'Only when there is a reason',
+      full: 'A block after every session',
+    },
+    levelHint: {
+      off: 'No stretching or mobility drills in your sessions. Your warm-up is unchanged — that part is not optional.',
+      brief: 'A drill or two when something specific calls for it, like squat depth or a shoulder that does not like the bar. This is the normal setting.',
+      full: 'Three to five movements after each session, aimed at the ranges that session used.',
+    },
+    notRecovery: 'This is for range of motion. Stretching does not speed recovery or prevent injury, and no setting here will tell you it does. Held stretches also stay after training, never before — they cost you force on the bar.',
+  },
+
   consent: {
     /* Shown when the consent state could not be READ. It has to do two things
        a redirect could not: say the problem is ours, and say their choices are

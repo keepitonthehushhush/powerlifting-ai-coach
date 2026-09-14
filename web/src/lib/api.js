@@ -253,6 +253,9 @@ export const api = {
   getNutritionDetail: () => request('/preferences/nutrition-detail'),
   saveNutritionDetail: (nutrition_detail) =>
     request('/preferences/nutrition-detail', { method: 'PUT', body: JSON.stringify({ nutrition_detail }) }),
+  getMobilityDetail: () => request('/preferences/mobility-detail'),
+  saveMobilityDetail: (mobility_detail) =>
+    request('/preferences/mobility-detail', { method: 'PUT', body: JSON.stringify({ mobility_detail }) }),
   saveProfile: (profile) => request('/profile', { method: 'PUT', body: JSON.stringify(profile) }),
   getConversation: () => request('/chat/conversation'),
   // "Hide this" on the first-week panel. Fire-and-check: the caller does not

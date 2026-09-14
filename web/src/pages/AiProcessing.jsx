@@ -126,6 +126,14 @@ export function AiProcessing() {
             off, the fueling numbers our code worked out are not sent at all, rather than being
             sent with a note asking the model to ignore them.
           </li>
+          <li>
+            <strong>How much stretching and mobility work you want programmed</strong>, when you
+            have set that to anything other than the normal setting. Like the food setting it
+            goes as an instruction rather than as a fact about you — "do not program mobility
+            work", or a description of the block to write after a session — and the instruction
+            carries no reason, because why somebody wants more or less of it is not something
+            this product asks or sends.
+          </li>
           <li>Which gym chains you ticked, and the optional branch note you typed. The note goes as written; it is never turned into an address or a location.</li>
           <li>Reference material of ours that says nothing about you: the coaching instructions, and the exercise library with its links to demonstration videos.</li>
         </ul>
