@@ -301,6 +301,18 @@ export const en = {
     recentTitle: 'Recent sessions',
   },
   program: {
+    // One header for two numbers. Five columns measured 416px inside a
+    // 309px box on a phone and the WEIGHT is what fell off the edge.
+    setsReps: 'Sets × reps',
+    setsRepsValue: '{sets} × {reps}',
+    weekStripLabel: 'Jump to a day',
+    movements: '{count} movements',
+    workingSets: '{count} sets',
+    kind: {
+      training: 'Training',
+      recovery: 'Recovery',
+      rest: 'Rest',
+    },
     title: 'Your program',
     none: 'Coach has not written you a program yet.',
     askCoach: 'Talk to Coach and ask for one →',
@@ -322,7 +334,8 @@ export const en = {
       not_logged: 'nothing logged',
     },
     supersededNote: 'This is the program Coach most recently wrote you. Ask for changes in the conversation and a new version replaces it here; the old ones are kept below.',
-    platesPerSide: '{plates} per side',
+    // per\u00a0side: one unit of meaning, never split across a line.
+    platesPerSide: '{plates} per\u00a0side',
     platesBarLabel: 'A barbell loaded to {weight} {units}: {plates} per side.',
     platesNotLoadable: 'Cannot be built from your plates — nearest is {nearest} {units}.',
     platesBarOnly: 'Empty bar ({weight} {units})',

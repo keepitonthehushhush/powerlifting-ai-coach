@@ -1536,14 +1536,147 @@ form > button.secondary {
 
 /* The box the table scrolls inside. `min-width` on the table rather than a
    fixed one, so it still fills a laptop and only overflows where it must. */
+/* ── THE WEEK STRIP ─────────────────────────────────────────────────────────
+
+   The shape of the week before any of its detail. Seven cards of five-column
+   tables is a wall; this is the only thing the page can answer at a glance.
+
+   A scrolling row rather than a wrapping grid: seven chips wrap to three
+   ragged lines on a phone and stop reading as a sequence, and a week IS a
+   sequence. It scrolls inside its own box, so the page never scrolls sideways
+   - the same treatment the nav and the tables already get. */
+.week-strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.15rem 0.5rem;
+  margin-bottom: 0.25rem;
+  scrollbar-width: thin;
+}
+
+.week-chip {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 8.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  /* The kind reads as a left edge rather than a fill: a row of seven colored
+     blocks is louder than the days it is indexing. */
+  border-left-width: 3px;
+}
+
+.week-chip[data-kind='training'] { border-left-color: var(--accent); }
+.week-chip[data-kind='recovery'] { border-left-color: var(--secondary); }
+.week-chip[data-kind='rest'] { border-left-color: var(--border); }
+
+@media (hover: hover) { .week-chip:hover { border-color: var(--accent); } }
+.week-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.week-chip-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  /* One line. A wrapped day name makes the chips different heights and the
+     row stops reading as a row. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.week-chip-meta { font-size: 0.75rem; color: var(--muted); }
+
+/* ── THE DAY HEADER ─────────────────────────────────────────────────────────
+
+   A full rest day and twelve movements had identical weight on this page. The
+   badge and the count are what separate them, and both are read from what the
+   day PRESCRIBES rather than from its name. */
+.day-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.65rem;
+  margin-bottom: 0.4rem;
+}
+.day-head h2 { margin: 0; }
+/* `margin-left: auto` pushed the count to the far right, and because the row
+   wraps on a phone it landed alone on a second line, right-aligned under a
+   left-aligned heading. It follows the badge instead: on a wide screen the
+   three sit on one line, and on a narrow one it wraps beneath the heading
+   where the eye already is. */
+.day-count { margin-left: 0; }
+
+.day-kind {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.day-kind[data-kind='training'] { color: var(--accent); border-color: var(--accent); }
+.day-kind[data-kind='recovery'] { color: var(--secondary); border-color: var(--secondary); }
+
+/* A rest day is not a training day with less in it. It recedes. */
+.day-card[data-kind='rest'] { opacity: 0.72; }
+
+/* ── ONE MOVEMENT, SEVERAL SETS ─────────────────────────────────────────────
+
+   The rowSpan does the naming; this is what makes the grouping visible. A
+   rule above the first row of each movement separates movements from the sets
+   inside one, so four ramped bench sets read as one block rather than four
+   prescriptions.
+
+   `:first-child` is excluded because the first movement of a day already has
+   the header above it, and a second line there reads as a mistake. */
+.program-table tr.movement-start:not(:first-child) > * {
+  border-top: 1px solid var(--border);
+}
+
+/* The continuation rows have no name cell, so their numbers would sit under
+   the movement column's left edge with nothing to anchor them. The name cell
+   spans them; this keeps the remaining cells quiet so the eye reads down the
+   sets rather than across them. */
+.program-table tr.movement-set > td:first-of-type { color: var(--muted); }
+
 .program-table-scroll { overflow-x: auto; }
-.program-table { min-width: 26rem; }
-/* Load and plate breakdown on one line each: this column wrapping into
-   fragments - "2 x 45 / per / side" down four lines - is the whole reason the
-   box above exists, and letting it wrap again inside a scroller would keep the
-   fault and add a scrollbar to it. The class is `plate-words`, taken from the
-   markup rather than guessed at. */
-.program-table .plate-words { white-space: nowrap; }
+/*
+ * 26rem was 416px, and the box it sits in on a 390px phone is 309px. The two
+ * columns that fell off the right edge were WEIGHT and the logged status -
+ * the weight being the one number somebody is standing at a rack to read.
+ * Merging sets and reps into one column (see Program.jsx) bought the room;
+ * this number has to come down with it or the box just scrolls as before.
+ *
+ * It is not zero: a very long movement name can still push past 309px, and a
+ * table that scrolls a little is better than one that squeezes "chest-
+ * supported dumbbell row" into six lines. What changed is what you see
+ * FIRST, with no scrolling at all.
+ */
+.program-table { min-width: 20rem; }
+/* The name column takes whatever it asks for otherwise - 203px of a 309px box
+   on day one - and starves the numbers. Capped, it wraps once per MOVEMENT
+   rather than once per set, because the rowSpan grouping already merged them. */
+.program-table tbody th { max-width: 9.5rem; overflow-wrap: break-word; }
+.program-table .sets-reps { white-space: nowrap; }
+/*
+ * This was `white-space: nowrap`, to stop the column wrapping into fragments -
+ * "2 x 45 / per / side" down four lines. It worked, and it cost more than it
+ * saved: rendered with the athlete's real units, week 21's heaviest bench set
+ * reads "310 lb / 2 x 45, 1 x 35, 1 x 5, 1 x 2.5 per side", which on one
+ * unbreakable line held the weight column open at 265px inside a 309px card.
+ * The table came to 487px on a phone and the LOAD was off the right edge - the
+ * exact fault the nowrap was added to prevent, arrived at from the other side.
+ *
+ * The groups are now individually unbreakable (see plateWords and
+ * platesPerSide), so this can be `normal`: it wraps at the commas, between
+ * plate groups, and never inside "2 x 45" or "per side".
+ */
+.program-table .plate-words { white-space: normal; }
 .program-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 .program-table th, .program-table td {
   text-align: left;
@@ -1562,6 +1695,13 @@ form > button.secondary {
 .program-table tbody tr:last-child th,
 .program-table tbody tr:last-child td { border-bottom: none; }
 .block { display: block; }
+
+/* A program summary is written by the model, and week 21's was a single
+   slash-joined run - "push/lower-power/recovery/pull/posterior/..." - with no
+   space in it to break at. It hung 68px outside its card and was the only
+   reason the whole page scrolled sideways on a phone. `break-word` rather than
+   `anywhere` so it does not change how anything else is measured. */
+.card p { overflow-wrap: break-word; }
 
 /* Narrow screens: the numbers are what matter, so the movement name is given
    the room and the three numeric columns are squeezed rather than wrapped. */

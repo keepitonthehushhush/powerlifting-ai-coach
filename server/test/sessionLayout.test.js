@@ -65,15 +65,41 @@ describe('the layout matches the page the athlete already reads', () => {
      * with it - rather than the two drifting into different shapes for the
      * same information.
      */
-    const columns = [...programPage.matchAll(/t\('program\.(movement|sets|reps|weight)'\)/g)].map(
-      ([, key]) => en.program[key]
-    );
-    assert.deepEqual(
-      columns,
-      ['Movement', 'Sets', 'Reps', 'Weight'],
-      'the Program page columns have changed - the prompt must change with them'
-    );
     assert.match(prompt, phrase('| Movement | Sets | Reps | Weight |'));
+
+    /*
+     * ── WHY THIS COUNTS FIELDS AND NOT COLUMNS ─────────────────────────────
+     *
+     * It compared the page's four column headers to the prompt's four, which
+     * held until the page merged Sets and Reps into one "Sets x reps" column.
+     * Five columns measured 416px inside a 309px card on a phone and the load
+     * was off the right edge; the merge is how it came back.
+     *
+     * That merge is not the drift this guard exists to catch. The failure that
+     * matters is a FIELD going missing - the coach writing a rep count into a
+     * chat table that the stored program never shows - and a header count
+     * cannot tell the two apart. So the assertion moved to the four fields
+     * themselves, wherever the page chooses to draw them.
+     *
+     * The prompt's own table is deliberately left alone. Its shape reaches the
+     * cached prefix, the judge's evidence matching and the safety eval, and
+     * changing what the coach WRITES is not a side effect a column width gets
+     * to cause.
+     */
+    assert.match(programPage, /t\('program\.movement'\)/, 'the movement column has gone');
+    assert.match(programPage, /t\('program\.weight'\)/, 'the weight column has gone');
+
+    // Both numbers still reach the athlete, merged into one cell or not. A
+    // mutant that drops either side of the interpolation fails here.
+    assert.match(
+      programPage,
+      /t\('program\.setsRepsValue', \{ sets: exercise\.sets, reps: exercise\.reps \}\)/,
+      'the sets or reps value is no longer rendered'
+    );
+    for (const key of ['setsReps', 'setsRepsValue']) {
+      assert.equal(typeof en.program[key], 'string', `program.${key} is missing from en`);
+    }
+    assert.match(en.program.setsRepsValue, /\{sets\}.*\{reps\}/, 'the cell drops a number');
   });
 
   test('one movement per row, and no empty Weight cell', () => {

@@ -148,6 +148,18 @@ export function PlateBar({ loadout, label }) {
  *  printed sheet, and anybody the drawing does not reach. */
 export function plateWords(loadout) {
   return tallyPlates(loadout.plates)
-    .map(({ plate, count }) => `${count} × ${plate}`)
+    /*
+     * NON-BREAKING spaces inside each group, on purpose. The whole string
+     * used to be pinned with `white-space: nowrap` so that "2 x 45 per
+     * side" could not wrap into fragments - and on week 21, rendered with
+     * the athlete's real units, "2 x 45, 1 x 35, 1 x 5, 1 x 2.5 per side"
+     * held the weight column open at 265px inside a 309px card. The table
+     * was 487px wide on a phone and the load was off the edge again.
+     *
+     * A group is what must not break. The COMMAS are fine to break at -
+     * that is what they are for - so the line wraps between plate groups
+     * and never inside one.
+     */
+    .map(({ plate, count }) => `${count}\u00a0×\u00a0${plate}`)
     .join(', ');
 }

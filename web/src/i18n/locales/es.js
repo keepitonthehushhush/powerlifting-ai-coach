@@ -286,6 +286,18 @@ export const es = {
     recentTitle: 'Sesiones recientes',
   },
   program: {
+    // One header for two numbers. Five columns measured 416px inside a
+    // 309px box on a phone and the WEIGHT is what fell off the edge.
+    setsReps: 'Series × reps',
+    setsRepsValue: '{sets} × {reps}',
+    weekStripLabel: 'Ir a un día',
+    movements: '{count} movimientos',
+    workingSets: '{count} series',
+    kind: {
+      training: 'Entrenamiento',
+      recovery: 'Recuperación',
+      rest: 'Descanso',
+    },
     title: 'Tu programa',
     none: 'El entrenador todavía no te ha escrito un programa.',
     askCoach: 'Habla con el entrenador y pídele uno →',
@@ -307,7 +319,7 @@ export const es = {
       not_logged: 'sin registrar',
     },
     supersededNote: 'Este es el programa más reciente que te ha escrito el entrenador. Pide cambios en la conversación y una versión nueva sustituirá a esta; las anteriores se conservan abajo.',
-    platesPerSide: '{plates} por lado',
+    platesPerSide: '{plates} por\u00a0lado',
     platesBarLabel: 'Una barra cargada a {weight} {units}: {plates} por lado.',
     platesNotLoadable: 'No se puede armar con tus discos: lo más cercano es {nearest} {units}.',
     platesBarOnly: 'Barra vacía ({weight} {units})',

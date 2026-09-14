@@ -6,6 +6,7 @@ import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { Loading } from '../components/Loading.jsx';
 import { PlateBar, plateWords } from '../components/PlateBar.jsx';
+import { groupExercises, dayKind, movementCount } from '../lib/programGroups.js';
 import { loadBarbell, platesAvailable, LOADOUT_STATUS } from '../lib/plates.js';
 
 /**
@@ -271,6 +272,47 @@ export function Program() {
           </div>
 
           {/*
+            ── THE SHAPE OF THE WEEK, BEFORE ANY OF ITS DETAIL ──────────────
+
+            Seven cards of five-column tables is a wall. This is the one thing
+            the page could not previously answer at a glance: how many days,
+            which of them are training, and which is the heavy one. Each chip
+            links to its own day, so a phone can jump rather than scroll past
+            ninety table rows to reach Friday.
+
+            Counted in MOVEMENTS rather than rows - see lib/programGroups.js
+            for why those are different numbers and which one the athlete
+            actually does.
+
+            ── AND WHY IT IS ABOVE THE WARM-UP AND NOT BELOW IT ───────────
+
+            It was below, in the first draft, on the reasoning that the
+            warm-up is what you read first. Rendering the real week 21 put
+            the strip at y=1196 on a 390px screen with day one starting at
+            y=1270: a control whose entire purpose is to save you from
+            scrolling, placed seventy pixels above the thing it scrolls to.
+            Anybody who had already scrolled far enough to see it no longer
+            needed it.
+
+            It is navigation, so it sits where navigation sits - directly
+            under the line naming the week, above everything it indexes.
+          */}
+          {data.days.length > 1 && (
+            <nav className="week-strip" aria-label={t('program.weekStripLabel')}>
+              {data.days.map((day, index) => (
+                <a className="week-chip" key={`chip-${index}`} href={`#day-${index}`} data-kind={dayKind(day)}>
+                  <span className="week-chip-name">{day.name}</span>
+                  <span className="week-chip-meta">
+                    {dayKind(day) === 'rest'
+                      ? t('program.kind.rest')
+                      : t('program.movements', { count: movementCount(day) })}
+                  </span>
+                </a>
+              ))}
+            </nav>
+          )}
+
+          {/*
             ── THE WARM-UP, AND WHY IT IS ONE CARD PLUS A BLOCK PER DAY ────
 
             "The program is not showing the stretch or warm up exercises." It
@@ -296,9 +338,29 @@ export function Program() {
             </section>
           )}
 
+
           {data.days.map((day, index) => (
-            <section className="card" key={`${day.name}-${index}`}>
-              <h2 className="h3">{day.name}</h2>
+            <section
+              className="card day-card"
+              key={`${day.name}-${index}`}
+              id={`day-${index}`}
+              data-kind={dayKind(day)}
+            >
+              {/* The badge carries the day's KIND, read from what it prescribes
+                  rather than from its name - names are written by the model and
+                  translated by nobody. A full rest day and twelve movements had
+                  identical weight on this page before. */}
+              <header className="day-head">
+                <h2 className="h3">{day.name}</h2>
+                <span className="day-kind" data-kind={dayKind(day)}>
+                  {t(`program.kind.${dayKind(day)}`)}
+                </span>
+                {dayKind(day) !== 'rest' && (
+                  <span className="day-count muted small">
+                    {t('program.movements', { count: movementCount(day) })}
+                  </span>
+                )}
+              </header>
               {rampFor(index).length > 0 && (
                 <div className="stack warmup-ramp">
                   <h3 className="h4">{t('program.warmupRampHeading')}</h3>
@@ -349,23 +411,63 @@ export function Program() {
                 <thead>
                   <tr>
                     <th scope="col">{t('program.movement')}</th>
-                    <th scope="col">{t('program.sets')}</th>
-                    <th scope="col">{t('program.reps')}</th>
+                    {/* One column, not two. Five columns measured 416px
+                        inside a 309px box on a phone: the WEIGHT and the
+                        logged status were both off-screen, and the weight
+                        is the number somebody is standing at a rack to
+                        read. "4 x 10" is also how a lifter writes it. */}
+                    <th scope="col">{t('program.setsReps')}</th>
                     <th scope="col">{t('program.weight')}</th>
                     <th scope="col">{t('program.logged')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {day.exercises.map((exercise, i) => (
-                    <tr key={`${exercise.lift}-${i}`}>
-                      <th scope="row">
-                        {exercise.lift}
-                        {exercise.notes && (
-                          <span className="muted small block">{exercise.notes}</span>
-                        )}
-                      </th>
-                      <td>{exercise.sets}</td>
-                      <td>{exercise.reps}</td>
+                  {/*
+                    ── ONE ROW PER SET, ONE NAME PER MOVEMENT ────────────────
+
+                    Week 21 day one stores nine entries, four of which are
+                    `bench press (Smith)` at 225, 245, 280 and 310 - one
+                    movement worked up to a top set. As nine equal rows those
+                    four read as four separate prescriptions, and the athlete
+                    is left to notice the ascending weights and infer it.
+
+                    Nothing is merged, summed or dropped: every set the coach
+                    prescribed is still its own row with its own weight and
+                    reps. The movement is simply named once, with rowSpan, so
+                    the table says five things instead of nine.
+
+                    `i` is the index in the STORED array, carried through the
+                    grouping, because adherence was computed against that array
+                    and knows nothing about this layout. Renumbering would put
+                    the right words on the wrong row.
+                  */}
+                  {groupExercises(day.exercises).flatMap((group) =>
+                    group.sets.map(({ index: i, exercise }, setIndex) => (
+                    <tr
+                      key={`${exercise.lift}-${i}`}
+                      className={setIndex === 0 ? 'movement-start' : 'movement-set'}
+                    >
+                      {setIndex === 0 && (
+                        <th scope="row" rowSpan={group.sets.length}>
+                          {exercise.lift}
+                          {group.sets.length > 1 && (
+                            <span className="muted small block">
+                              {t('program.workingSets', { count: group.sets.length })}
+                            </span>
+                          )}
+                          {group.sets
+                            .map(({ exercise: e }) => e.notes)
+                            .filter((note, at, all) => note && all.indexOf(note) === at)
+                            .map((note) => (
+                              <span className="muted small block" key={note}>
+                                {note}
+                              </span>
+                            ))}
+                        </th>
+                      )}
+                      <td className="sets-reps">
+                        {t('program.setsRepsValue', { sets: exercise.sets, reps: exercise.reps })}
+                      </td>
                       {/* A null weight is not a zero. Bodyweight movements and
                           "work up to a heavy single" both arrive as null, and
                           printing 0lb would be a different instruction. */}
@@ -418,7 +520,8 @@ export function Program() {
                         {statusFor(index, i) ? t(`program.status.${statusFor(index, i)}`) : '—'}
                       </td>
                     </tr>
-                  ))}
+                    )),
+                  )}
                 </tbody>
               </table>
               </div>

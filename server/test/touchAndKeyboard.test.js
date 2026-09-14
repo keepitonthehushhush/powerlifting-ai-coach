@@ -143,14 +143,79 @@ describe('a prescription does not become a column of fragments', () => {
      */
     assert.match(program, /className="program-table-scroll"/);
     assert.match(css, /\.program-table-scroll \{ overflow-x: auto; \}/);
-    assert.match(css, /\.program-table \{ min-width:/);
+
+    /*
+     * ── THE BUDGET, NOT JUST THE DECLARATION ───────────────────────────────
+     *
+     * This asserted only that a min-width EXISTED, and that is what let the
+     * page ship at 26rem. Measured in a browser against the athlete's real
+     * week 21, the arithmetic is:
+     *
+     *   390px viewport - 16px x2 page gutter - 1px x2 card border
+     *                  - 24px x2 card padding                     = 309px
+     *
+     * of usable width inside a day card on the narrowest phone this product
+     * supports. 26rem is 416px. The table overflowed its own scroller by 107px
+     * and the two columns that fell off the right edge were the WEIGHT and
+     * whether it had been logged - the weight being the single number somebody
+     * is standing at a rack holding the phone to read.
+     *
+     * So the number is the control, not its presence. 20rem is 320px: inside
+     * the 309px box but for a hair, which is deliberate - see the reasoning in
+     * styles.css for why the target is what you see FIRST rather than zero
+     * scrolling at any cost.
+     */
+    const minWidth = css.match(/\.program-table \{ min-width: ([\d.]+)rem; \}/);
+    assert.ok(minWidth, 'the program table has no min-width budget');
+    const CARD_INNER_PX_AT_390 = 309;
+    assert.ok(
+      Number(minWidth[1]) * 16 <= CARD_INNER_PX_AT_390 + 16,
+      `min-width ${minWidth[1]}rem puts the weight column off a 390px phone again`
+    );
   });
 
-  test('and the plate words stay on one line', () => {
-    // Wrapping again inside a scroller keeps the fault and adds a scrollbar.
-    assert.match(css, /\.program-table \.plate-words \{ white-space: nowrap; \}/);
+  test('and a summary the model wrote cannot hang outside its card', () => {
+    /*
+     * Week 21's summary is one slash-joined run with no space to break at:
+     * "7-day push/lower-power/recovery/pull/posterior/conditioning/rest split".
+     * It measured 377px inside a 309px card, hung 68px past the border, and
+     * was the only reason the whole page scrolled sideways on a phone.
+     *
+     * The model writes this text, so no amount of care in our own copy fixes
+     * it - the stylesheet has to be able to break a word that has nowhere to
+     * break. `break-word` rather than `anywhere` so nothing else is measured
+     * differently.
+     */
+    assert.match(css, /\.card p \{ overflow-wrap: break-word; \}/);
+  });
+
+  test('and a plate group never breaks across a line, though the list may', () => {
+    /*
+     * This asserted `white-space: nowrap` on the whole string, which held the
+     * weight column open at 265px inside a 309px card on week 21 and pushed
+     * the load itself off the right edge - the fault the rule existed to
+     * prevent, reached from the other direction.
+     *
+     * What must hold is narrower than "one line": no group may break. So the
+     * guarantee is now carried by non-breaking spaces INSIDE each group, and
+     * the column is free to wrap at the commas between them. Asserting the
+     * source of the guarantee rather than the CSS declaration means a mutant
+     * that deletes the nbsp and leaves the rule alone still fails.
+     */
+    assert.match(css, /\.program-table \.plate-words \{ white-space: normal; \}/);
     // The class is the one the markup actually uses, not one invented here.
     assert.match(program, /plate-words/);
+
+    const plateBar = readSource(new URL('../../web/src/components/PlateBar.jsx', import.meta.url));
+    assert.match(plateBar, /\$\{count\}\\u00a0\u00d7\\u00a0\$\{plate\}/);
+
+    // "per side" and "por lado" are each one unit of meaning in their own
+    // language, and a guard that only checked English would let the Spanish
+    // page keep the bug.
+    for (const locale of ['en', 'es']) {
+      const file = readRaw(new URL(`../../web/src/i18n/locales/${locale}.js`, import.meta.url));
+      assert.match(file, /platesPerSide: '\{plates\} \w+\\u00a0\w+',/, locale);
+    }
   });
 });
 
