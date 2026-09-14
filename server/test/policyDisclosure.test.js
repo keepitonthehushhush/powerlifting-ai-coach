@@ -131,6 +131,7 @@ const NOT_SENT = {
     'answer is tells the model nothing it can coach on.',
   intake_completed_at: 'bookkeeping',
   coach_first_opened_at: 'bookkeeping',
+  onboarding_hidden_at: 'bookkeeping',
   created_at: 'bookkeeping',
   updated_at: 'bookkeeping',
 };
