@@ -28,6 +28,7 @@ import {
   coachApiError,
   TRUNCATION_NOTICE,
   recordableStopReason,
+  recordableProgramOutcome,
 } from '../lib/coachOutcome.js';
 import { entitlement, requiresSubscription, PAID_FEATURE } from '../lib/entitlement.js';
 import { consumeTrialReply, loadSubscription, loadTrialStatus } from '../lib/subscriptions.js';
@@ -1080,6 +1081,19 @@ chatRouter.post('/', async (req, res, next) => {
          * hurry.
          */
         stop_reason: recordableStopReason(reply.stopReason),
+        /*
+         * ── AND WHETHER THE WEEK REACHED THE PROGRAM PAGE ────────────────
+         *
+         * Migration 0075. `programOutcome` is computed a few hundred lines
+         * above and, until this line, went only to a logger.info - on a
+         * platform that keeps runtime logs for about a day. The comment where
+         * it is computed says it is "the thing that says which fix to build",
+         * and nobody has ever been able to read it.
+         *
+         * workout_programs has only ever held rows for one account. This is
+         * the column that says why.
+         */
+        program_outcome: recordableProgramOutcome(programOutcome),
       });
       if (error) logger.warn('usage.record_failed', { userId: req.user.id, message: error.message });
     } catch (err) {

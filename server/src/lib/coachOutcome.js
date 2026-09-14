@@ -192,6 +192,41 @@ export function recordableStopReason(stopReason) {
 }
 
 /**
+ * Program-block outcomes this product is willing to store, and the bucket for
+ * anything else.
+ *
+ * Mirrors usage_events_program_outcome_check in migration 0075, and the pairing
+ * is asserted by a test for the reason the stop-reason list above gives: two
+ * lists for one rule is how this repository got an integration that worked and
+ * audited nothing.
+ *
+ * Unlike the stop reasons, every value here is computed by our own code rather
+ * than arriving from a vendor - so 'other' should be unreachable. It is here
+ * anyway, because the route builds two of these by string concatenation
+ * (`repair_${outcome}`), and a new outcome added to programRepair.js would
+ * otherwise reach the database as a value the CHECK refuses, turning a new
+ * diagnostic into a failed insert on somebody's coaching turn. A row that reads
+ * 'other' is a bug report; a swallowed write is not.
+ */
+export const RECORDABLE_PROGRAM_OUTCOMES = Object.freeze([
+  'storable',
+  'gated',
+  'unusable',
+  'absent',
+  'repaired',
+  'repair_declined',
+  'repair_unusable',
+  'repair_failed',
+  'repair_skipped_slow',
+]);
+
+/** @param {string|null|undefined} outcome */
+export function recordableProgramOutcome(outcome) {
+  if (outcome == null) return null;
+  return RECORDABLE_PROGRAM_OUTCOMES.includes(outcome) ? outcome : 'other';
+}
+
+/**
  * The line appended to a reply that stopped early.
  *
  * Deliberately in the athlete's reply rather than in a banner: they are about
