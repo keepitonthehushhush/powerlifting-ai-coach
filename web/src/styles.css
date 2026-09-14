@@ -642,13 +642,22 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
 
 .first-week-title { color: var(--text); font-size: 0.92rem; }
 
-/* Struck through AND muted. Either alone is ambiguous at a glance - muted
-   text reads as "not available yet", which is the opposite of done. The line
-   takes the border color so it marks the text without competing with it. */
+/* Muted, and NOT struck through - which is the reverse of what this file said
+   an hour ago, changed by looking at it.
+
+   The argument for a strikethrough was that muted text alone is ambiguous:
+   it reads as "not available yet", which is the opposite of done. That
+   argument is answered by the tick beside it. A filled accent circle carrying
+   a check mark is not "not available yet", and it is the first thing the eye
+   lands on.
+
+   What the strikethrough actually did at 0.92rem, rendered at 390px in both
+   themes, was run a line through the middle of the lowercase letters at almost
+   exactly the weight of the text itself, so a completed step read as damaged
+   rather than as finished. That was invisible in the CSS and obvious in the
+   screenshot. */
 .first-week-steps li.done .first-week-title {
   color: var(--muted);
-  text-decoration: line-through;
-  text-decoration-color: var(--border);
 }
 
 .first-week-why { color: var(--muted); font-size: 0.82rem; }
