@@ -632,8 +632,9 @@ that can break the application it monitors is worse than no monitoring tool.
 The Supabase security advisor reports one warning per `SECURITY DEFINER`
 function in `public` that `authenticated` may execute. There were two when this
 was written. The current set is the list below — every one callable by
-`authenticated`, two of them — `record_auth_failure` and
-`record_guardian_consent` — also by `anon`, each for a reason given here.
+`authenticated`, three of them — `record_auth_failure`,
+`record_guardian_consent` and `record_page_visit` — also by `anon`, each for a
+reason given here.
 Checked against the live catalogue on 2026-09-14: the list and the catalogue
 agree exactly, and every function carries a pinned `search_path`.
 
@@ -650,6 +651,17 @@ The fix for a number nobody checks is not a better number. It is no number: the
 list is the fact, it is one line per function, and a reader who wants the total
 can count it and be right.
 
+- `public.record_page_visit(text, text)` — counts one arrival at a public
+  page. The third function on this list `anon` may execute, and for the same
+  reason as the other two: a visit happens before there is a session, so there
+  is no authenticated call to attach it to. It takes a route and a referrer
+  bucket, both from fixed lists, and silently returns false for anything else -
+  no address, no identifier, no free text, and it never raises, because it is
+  called from a page somebody is reading. Flood-capped globally at 120 rows a
+  minute, because there is no user to rate limit. A determined person can
+  inflate a counter; the blast radius is a wrong number in a table nothing
+  bills on, and migration 0076 records that trade rather than leaving it to be
+  discovered.
 - `public.consume_rate_limit(text)`
 - `public.trial_status()` — reads the caller's free-trial counter and never
   moves it. Takes no arguments, so there is nothing to point at another

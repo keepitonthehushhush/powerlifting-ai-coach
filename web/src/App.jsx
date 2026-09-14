@@ -9,6 +9,7 @@ import { MfaProvider } from './context/MfaContext.jsx';
 import { I18nProvider } from './i18n/index.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { ScrollToTop } from './components/ScrollToTop.jsx';
+import { RecordVisit } from './components/RecordVisit.jsx';
 import { Home } from './pages/Home.jsx';
 import { EasterEggs } from './components/EasterEggs.jsx';
 import { Login } from './pages/Login.jsx';
@@ -94,6 +95,10 @@ export function App() {
                 them. It renders nothing; see the component for why it keys on
                 location.key and leaves the browser's back button alone. */}
             <ScrollToTop />
+            {/* Counts arrivals at the PUBLIC pages only - see lib/visit.js for
+                the allow-list and what is deliberately absent from it. Renders
+                nothing, and inside the router because it reads the location. */}
+            <RecordVisit />
             {/* Mounted once, above the router: the eggs belong to the product
                 rather than to any one page. */}
             <EasterEggs />

@@ -42,6 +42,12 @@ const NOT_PERSONAL_DATA = {
     'raw webhook envelopes from Stripe. The account-relevant state is mirrored into ' +
     'subscriptions, which IS exported, and Stripe holds the originals under its own ' +
     'subject access process - which the export document names.',
+  page_visits:
+    'counts of arrivals at the public pages, with NO user_id and no column that could ' +
+    'hold one - no address, no user agent, no visitor identifier. Two visits by one ' +
+    'person are indistinguishable from visits by two people, which is the design and ' +
+    'not a limitation of it. There is nothing here that is anybody\'s to export, and ' +
+    'that absence is also why the table needs no cascade from auth.users. See 0076.',
 };
 
 /**

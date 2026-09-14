@@ -39,7 +39,7 @@ import { CONTACT_EMAIL } from '../lib/contact.js';
 export function PrivacyPolicy() {
   return (
     <div className="page">
-      <InfoHeader title="Privacy Policy" version="Version pp-2026-08-31b" />
+      <InfoHeader title="Privacy Policy" version="Version pp-2026-09-14a" />
 
       <div className="card draft-banner">
         <strong>Draft — pending legal review.</strong>
@@ -162,8 +162,22 @@ export function PrivacyPolicy() {
         <p>
           Our hosting provider processes the ordinary metadata every web request carries, including
           your IP address, in order to serve the page and to resist abuse. We do not build profiles
-          from it and we do not use it for advertising. There are no advertising or analytics
-          scripts on any page of this site.
+          from it and we do not use it for advertising. There are no advertising scripts and no
+          third-party analytics on any page of this site.
+        </p>
+        <p>
+          We do count arrivals at our public pages, ourselves, and the whole of what we write down
+          is two things: which of those pages you landed on, and one word for where you came from —
+          direct, search, social, AI, or other. Nothing else. No IP address, no browser or device
+          details, no cookie, and no identifier of any kind, which means two visits by the same
+          person are indistinguishable from visits by two different people. That is the design and
+          not a limitation of it: we wanted to know whether anybody was finding us, and that is all
+          the record can answer.
+        </p>
+        <p>
+          Pages you reach after signing in are never counted. Neither are the password-reset page or
+          the guardian consent page, because both are reached from a link sent to one person and
+          recording the visit would say something about that person even without a name attached.
         </p>
       </div>
 

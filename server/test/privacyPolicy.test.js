@@ -61,7 +61,21 @@ describe('the privacy policy exists and is reachable', () => {
   });
 
   test('it carries a version and a draft banner', () => {
-    assert.match(page, /pp-2026-08-31b/);
+    /*
+     * Moved to pp-2026-09-14a when the "Because you visited" section changed:
+     * the page had said "there are no advertising or analytics scripts on any
+     * page of this site", and migration 0076 added first-party counts of
+     * arrivals at the public pages. That sentence would have become false.
+     *
+     * Pinned rather than pattern-matched on purpose, so a version bump is a
+     * decision somebody makes here rather than a string that drifts. And safe
+     * to bump: policy_versions holds five consent types and privacy is not one
+     * of them, so the pp- identifier is display-only and moving it supersedes
+     * nobody's consent. That was read from the table before the bump, because
+     * a version bump invalidating every consent is what locked three accounts
+     * out of this product in early September.
+     */
+    assert.match(page, /pp-2026-09-14a/);
     assert.match(page, phrase('has not been reviewed by an attorney', 'i'));
   });
 });
