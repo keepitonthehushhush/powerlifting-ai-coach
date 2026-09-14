@@ -10,6 +10,19 @@
  *
  * Run after `npm run build`. Exits non-zero on a finding, so it can gate a
  * deploy in CI.
+ *
+ * ── AND IT HAS TO BE THE BUILD OF THIS SOURCE ─────────────────────────────
+ *
+ * On 2026-09-14 this printed "Scanned 24 files in web/dist" and PASSED over a
+ * bundle built two days earlier. The feature under review had been built to a
+ * directory outside the mount - the device VM refuses to unlink, so `vite
+ * build` cannot empty web/dist - and this script's path is hardcoded, so it
+ * read whatever happened to be sitting there.
+ *
+ * Nothing failed. "No secrets in the bundle" and "no secrets in a bundle from
+ * before your change" are the same sentence from outside, forever, which is
+ * the shape every serious defect in this project has had. So the staleness is
+ * now the first thing checked, before a byte is scanned.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -60,6 +73,58 @@ try {
   files = walk(BUNDLE_DIR);
 } catch {
   console.error(`No build output at ${BUNDLE_DIR}. Run \`npm run build\` first.`);
+  process.exit(2);
+}
+
+/**
+ * Refuse to scan a bundle older than the source it claims to be a build of.
+ *
+ * Compares the NEWEST file under web/src, plus the two build inputs that live
+ * outside it, against the OLDEST file in the bundle - the strict comparison in
+ * both directions, so a partially-refreshed dist (the copy-over-the-top that
+ * the no-unlink mount forces) is caught rather than averaged away.
+ *
+ * Two seconds of slack, because a build writes its own outputs over a span and
+ * some filesystems round mtimes to the second. Any real staleness is minutes.
+ */
+const SOURCE_DIRS = [new URL('../web/src/', import.meta.url).pathname];
+const SOURCE_FILES = [
+  new URL('../web/index.html', import.meta.url).pathname,
+  new URL('../web/vite.config.js', import.meta.url).pathname,
+];
+
+function newestSourceMtime() {
+  let newest = { at: 0, file: null };
+  const consider = (file) => {
+    let at;
+    try {
+      at = statSync(file).mtimeMs;
+    } catch {
+      return; // An optional input that does not exist here. Not a finding.
+    }
+    if (at > newest.at) newest = { at, file };
+  };
+  for (const dir of SOURCE_DIRS) for (const file of walk(dir)) consider(file);
+  for (const file of SOURCE_FILES) consider(file);
+  return newest;
+}
+
+const source = newestSourceMtime();
+const oldest = files.reduce(
+  (worst, file) => {
+    const at = statSync(file).mtimeMs;
+    return at < worst.at ? { at, file } : worst;
+  },
+  { at: Infinity, file: null },
+);
+
+if (source.file && oldest.file && source.at > oldest.at + 2000) {
+  console.error(
+    `STALE - ${relative(BUNDLE_DIR, oldest.file)} in the bundle is older than ` +
+      `${relative(process.cwd(), source.file)}.\n` +
+      'This scan would have reported on a build that predates your change, and ' +
+      'passing it would have meant nothing. Run `npm run build` first.',
+  );
   process.exit(2);
 }
 

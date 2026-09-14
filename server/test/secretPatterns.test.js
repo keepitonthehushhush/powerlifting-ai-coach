@@ -166,3 +166,40 @@ test('the bundle scan covers every server-side credential we hold', () => {
     `these are server-side credentials and the bundle scan does not look for them: ${unscanned.join(', ')}`
   );
 });
+
+/**
+ * ── THE SCAN HAS TO BE ABOUT THE BUILD OF THIS SOURCE ─────────────────────
+ *
+ * On 2026-09-14 the bundle scan printed "Scanned 24 files in web/dist" and
+ * PASSED over a build from two days earlier. The change under review had been
+ * built to a directory outside the mount, because the device VM refuses to
+ * unlink and `vite build` therefore cannot empty web/dist; the script's path
+ * is hardcoded, so it read whatever was sitting there.
+ *
+ * Nothing failed, and nothing could have: "no secrets in the bundle" and "no
+ * secrets in a bundle that predates your change" are the same sentence from
+ * outside. This is the assertion that the staleness check exists, because the
+ * defect it prevents is invisible by construction.
+ */
+test('the bundle scan refuses to report on a stale build', () => {
+  const scanner = readRaw(new URL('../../scripts/scan-bundle-for-secrets.mjs', import.meta.url));
+
+  // It compares source against bundle at all.
+  assert.match(scanner, /newestSourceMtime/, 'the scan does not look at when the source changed');
+
+  /*
+   * And it EXITS rather than warning. A warning on a scan that gates a deploy
+   * is a green build with a line of text above it, which is the shape of the
+   * CI job this project has already been bitten by - the one that skipped with
+   * a ::notice:: and left "the safety evaluation passed" and "it never ran"
+   * indistinguishable.
+   */
+  const at = scanner.indexOf('STALE -');
+  assert.ok(at > 0, 'the stale build is not reported');
+  assert.match(scanner.slice(at, at + 600), /process\.exit\(2\)/, 'a stale bundle does not fail the scan');
+
+  // The strict direction: NEWEST source against OLDEST bundle file. Comparing
+  // against the newest bundle file would pass a dist that was copied over the
+  // top of an older one, which is exactly what the no-unlink mount forces.
+  assert.match(scanner, /at < worst\.at/, 'the comparison does not use the oldest file in the bundle');
+});
