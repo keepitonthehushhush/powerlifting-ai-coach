@@ -628,11 +628,21 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
 }
 
 /* A text button, not a control. Dismissing is allowed and is not the point of
-   the panel, so it takes the quietest treatment the design has. */
+   the panel, so it takes the quietest treatment the design has.
+
+   Quiet is about weight, not about size. At footnote size with no padding this
+   measured 58x20 - under the 24x24 WCAG 2.5.8 asks for at AA - and it is the
+   one control on the panel a brand new athlete is most likely to press. It is
+   the same defect `button.link` and `a.link` already carry a floor for, on a
+   third class name that neither selector reaches; the padding is what buys the
+   height, so the underline stays on the words rather than growing a box. */
 .first-week-hide {
   border: 0;
   background: none;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: var(--space-1) 0;
   color: var(--muted);
   font: inherit;
   font-size: var(--text-footnote);

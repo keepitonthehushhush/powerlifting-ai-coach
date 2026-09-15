@@ -1966,6 +1966,91 @@ media query, which is the point of it. An empty array reads exactly like a
 deleted rule.
 
 
+### ADR-31 · The review harness was reviewing a profile the API would have rejected
+
+**Context.** `web/harness/fixtures.js` opens by stating the rule it exists to
+enforce — *"Every shape is taken from the server route that produces it, never
+from what a page appears to want. Shapes come from routes."* — and records two
+earlier bugs that wrote it. The profile object in that same file predates the
+rule and was never held to it.
+
+Five of its eleven keys were names nothing in this repository reads:
+`experience`, `training_days`, `injuries`, `restrictions`, `leaderboard_opt_in`.
+`GET /api/profile` is `select('*')` on `user_profile` and returns the row
+unchanged, so the fixture's keys *are* the column names, and the real ones are
+`experience_level`, `days_per_week`, `health_restrictions` (there is no separate
+injuries column) and `cleared_to_train`. There is no `leaderboard_opt_in` column
+at all — opting in is a row in the leaderboard projection, which is the entire
+point of ADR-22's design. Two of the values were outside their CHECK constraints
+as well: the database permits no `experience_level` of `'intermediate'` and no
+`goal` of `'strength'`.
+
+**Nothing failed.** The only screen that reads past `units` and `display_name`
+is the intake form, and it reads with `Object.entries`: an unknown key is
+dropped in silence, and a missing one leaves its input blank. Measured on the
+rendered page:
+
+| | Intake fields filled |
+|---|---|
+| Before | **3 of 32** |
+| After | **22 of 33** (the 11 remaining are the gym chains this athlete did not pick, plus the free-text field that belongs to one of them) |
+
+So every sweep this project has run — the eighteen-screen check of ADR-29, the
+scroll-cue sweep of ADR-27, the 1,278-capture style snapshot — reviewed the
+longest form in the product as a blank one.
+
+**And a second fixture in the same file had invented three ids.** The chat
+starters were `['program', 'formCheck', 'whatIsThis']`, which `startersFor`
+cannot return and neither locale defines. `t()` returns the key on a miss, so
+the first screen a new account opens rendered three buttons reading
+`chat.starters.program`, `chat.starters.formCheck` and
+`chat.starters.whatIsThis`.
+
+**That is the bug ADR-29's detector exists for, and it did not see it.** The
+sweep ran `mode=full` only, and the starters render only when there is *no*
+conversation. Proved rather than argued, by planting the old fixture back and
+running the same build twice:
+
+| Sweep | Result |
+|---|---|
+| `MODES = ['full']` — as it was | `OK … 632 targets`, exit **0** |
+| `MODES = ['full', 'sparse']` | `FAIL coach (sparse): chat.starters.program, chat.starters.formCheck, chat.starters.whatIsThis`, exit **1** |
+
+**Decision.**
+
+1. The fixture profile is the real column set, and every value passes
+   `ProfileUpdate` — the same zod schema `PUT /api/profile` parses with. It is
+   `.strict()`, so an invented key returns `unrecognized_keys` and an invented
+   value fails its enum, which makes one production validator cover both
+   classes of fixture bug with nothing to keep in step.
+2. The starters are no longer written down twice. The fixture calls
+   `startersFor(PROFILE)`, the server's own selector, so the ids cannot drift.
+3. `check-screens.mjs` runs **both data modes**, at both widths: 18 × 2 × 2 =
+   72 combinations, 1,229 targets. `sparse` is not a hypothetical — the
+   fixtures' own header calls it "production as it actually stands today", and
+   it is the state every account is in for its first session.
+4. `.first-week-hide` gets a 24px floor. The dismiss button on the first-week
+   panel measured **58×20**, under what WCAG 2.5.8 asks for at AA — the same
+   defect `button.link` and `a.link` already carry floors for, on a third class
+   name that neither selector reaches. It was invisible for the same reason as
+   the starters: that panel only renders before there is data.
+
+**What this says about the other direction.** Two of the three defects here
+were in the *harness*, not the product, and the third was a stylesheet rule.
+The coach, the routes and the database were all correct throughout. That is the
+expected ratio once the controls are good — and reporting a harness defect as a
+product defect is the more expensive mistake, because somebody then changes
+behavior that was already right.
+
+**Consequences.** Guarded by `server/test/harnessFixtures.test.js` (five tests,
+seven planted mutants, seven caught) and three new assertions in
+`appMounts.test.js` (three planted, three caught). The remaining honest gap:
+the style snapshot covers the intake page but captures headings and palette
+rather than form values, so it would not have seen an empty form either. It is
+not extended here — `check:screens` is the right place for that question and
+now asks it.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

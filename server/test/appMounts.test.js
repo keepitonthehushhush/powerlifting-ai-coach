@@ -335,16 +335,29 @@ describe('every screen is looked at, not just the ones a signed-out browser can 
 
   test('an empty run cannot pass, and CI runs it after the build it reads', () => {
     /*
-     * The floor moved when the sweep gained a second viewport: it counts
-     * screen/width COMBINATIONS now, so the expected total is the product. The
-     * assertion follows it rather than pinning the old expression, and both
-     * halves are checked - a product with one factor dropped is exactly how
-     * this would silently stop covering the desktop pass.
+     * The floor moved twice: once when the sweep gained a second viewport, and
+     * again when it gained a second DATA MODE. It counts screen/width/mode
+     * combinations now, so the expected total is the three-way product, and
+     * each factor is asserted separately - a product with one factor dropped
+     * is exactly how this would silently stop covering the desktop pass or the
+     * empty-account pass, and dropping `MODES` is what made a screen full of
+     * untranslated keys read as a clean run.
      */
     assert.match(
       screens,
-      /const expected = SCREENS\.length \* VIEWPORTS\.length;/,
-      'the expected sweep size is no longer every screen at every width',
+      /const expected = SCREENS\.length \* VIEWPORTS\.length \* MODES\.length;/,
+      'the expected sweep size is no longer every screen at every width in every data mode',
+    );
+    assert.match(
+      screens,
+      /const MODES = \['full', 'sparse'\];/,
+      "the sweep no longer runs both data modes, so everything that renders only before there is data - " +
+        'the first-week panel, the conversation starters, every empty state - is outside it',
+    );
+    assert.match(
+      screens,
+      /for \(const mode of MODES\)/,
+      'MODES is declared and never looped over',
     );
     assert.match(screens, /screensSeen !== expected/, 'a sweep that reached no screens would pass');
     assert.match(screens, /targetsChecked < 40/, 'a harness rendering nothing would pass');

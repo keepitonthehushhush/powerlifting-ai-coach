@@ -12,9 +12,10 @@
  * every screen and asked whether it is a thing a person can use.
  *
  * So this walks the review harness - which mounts all eighteen signed-in
- * screens with the network replaced by fixtures - at 390px with touch
- * emulation on, and asserts four properties that are cheap to measure, easy to
- * regress, and each of which has been broken here before:
+ * screens with the network replaced by fixtures - at a phone width with touch
+ * emulation on AND at a laptop width without it, in BOTH of its data modes,
+ * and asserts four properties that are cheap to measure, easy to regress, and
+ * each of which has been broken here before:
  *
  *   1. ONE h1, and no skipped heading level. A screen reader's outline is the
  *      only table of contents a blind reader gets, and `h2 -> h4` tells them a
@@ -83,6 +84,24 @@ const VIEWPORTS = [
   { width: 390, height: 900, touch: true },
   { width: 1280, height: 900, touch: false },
 ];
+
+/**
+ * ── AND TWO DATA MODES, WHICH IS THE OTHER HALF OF THE SAME MISTAKE ───────
+ *
+ * This ran `mode=full` only, and `full` is an account with a year of training
+ * in it. Every control that exists ONLY before there is data was therefore
+ * outside the sweep: the first-week panel and its dismiss button, the
+ * conversation starters, every empty state. Pointed at `sparse` the first time,
+ * it found a 58x20 target on the panel a new athlete meets first, and three
+ * conversation starters rendering as raw translation keys - which is the exact
+ * bug the detector below exists for, sitting on the one screen it had never
+ * been shown.
+ *
+ * `sparse` is not a hypothetical. The fixtures' own header calls it
+ * "production as it actually stands today", and it is the state every account
+ * is in for its first session.
+ */
+const MODES = ['full', 'sparse'];
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -183,31 +202,35 @@ async function main() {
     for (const viewport of VIEWPORTS) {
       const page = await launch(chromePath, { ...viewport, offline: true, label: 'screens' });
       try {
-        for (const id of SCREENS) {
-          const query = `?page=${id}&mode=full${id === 'login' ? '&auth=out' : ''}`;
-          await page.goto(`http://127.0.0.1:${port}/${query}`);
+        for (const mode of MODES) {
+          for (const id of SCREENS) {
+            const query = `?page=${id}&mode=${mode}${id === 'login' ? '&auth=out' : ''}`;
+            await page.goto(`http://127.0.0.1:${port}/${query}`);
 
-          const report = await page.evaluate(AUDIT);
-          const where = `${id} at ${viewport.width}px`;
+            const report = await page.evaluate(AUDIT);
+            const where = `${id} (${mode}) at ${viewport.width}px`;
 
-          screensSeen += 1;
-          targetsChecked += report.measured ?? 0;
+            screensSeen += 1;
+            targetsChecked += report.measured ?? 0;
 
-          for (const line of report.fail) {
-            console.error(`FAIL ${where}: ${line}`);
-            failures += 1;
-          }
-
-          /*
-           * Only once per screen. A leaked translation key is a property of
-           * the markup, not of the viewport, and reporting it twice would make
-           * one bug look like two.
-           */
-          if (viewport.width === VIEWPORTS[0].width) {
-            const leaked = await untranslatedKeys(await page.html(), localePath);
-            if (leaked.length) {
-              console.error(`FAIL ${id}: translation keys rendered as visible text: ${leaked.join(', ')}`);
+            for (const line of report.fail) {
+              console.error(`FAIL ${where}: ${line}`);
               failures += 1;
+            }
+
+            /*
+             * Once per screen PER MODE, not once per width. A leaked key is a
+             * property of the markup and not of the viewport, so reporting it
+             * at both widths would make one bug look like two - but the two
+             * modes render different markup, and the only leak this has ever
+             * found lives in the one `full` does not draw.
+             */
+            if (viewport.width === VIEWPORTS[0].width) {
+              const leaked = await untranslatedKeys(await page.html(), localePath);
+              if (leaked.length) {
+                console.error(`FAIL ${id} (${mode}): translation keys rendered as visible text: ${leaked.join(', ')}`);
+                failures += 1;
+              }
             }
           }
         }
@@ -225,9 +248,9 @@ async function main() {
    * assumed - a harness that stopped rendering controls would otherwise report
    * eighteen silent passes.
    */
-  const expected = SCREENS.length * VIEWPORTS.length;
+  const expected = SCREENS.length * VIEWPORTS.length * MODES.length;
   if (screensSeen !== expected) {
-    console.error(`FAIL: ${screensSeen} of ${expected} screen/width combinations were reached`);
+    console.error(`FAIL: ${screensSeen} of ${expected} screen/width/mode combinations were reached`);
     failures += 1;
   }
   if (targetsChecked < 40) {
@@ -241,8 +264,8 @@ async function main() {
     process.exit(1);
   }
   console.log(
-    `OK   ${SCREENS.length} screens at ${VIEWPORTS.map((v) => v.width + 'px').join(' and ')}: ` +
-    'one h1 each, no skipped heading level, ' +
+    `OK   ${SCREENS.length} screens at ${VIEWPORTS.map((v) => v.width + 'px').join(' and ')}, ` +
+    `${MODES.join(' and ')}: one h1 each, no skipped heading level, ` +
     `${targetsChecked} targets all at least 24x24, no sideways page scroll, no untranslated keys.`,
   );
 }

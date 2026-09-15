@@ -28,6 +28,8 @@
  * fine.
  */
 
+import { startersFor } from '../../server/src/lib/starters.js';
+
 const LIFTS = ['Squat', 'Bench press', 'Deadlift', 'Overhead press'];
 
 function logsOver(weeks) {
@@ -85,19 +87,61 @@ const MORE = [
   ['chin-up', 'Chin-up', 'accessory'], ['bulgarian-split-squat', 'Bulgarian split squat', 'accessory'],
 ].map(([s, n, c]) => EXERCISE(s, n, c));
 
-// Health fields are invented. See the note at the top of this file.
-const PROFILE = {
+/*
+ * ── FIVE OF THIS OBJECT'S ELEVEN KEYS WERE NOT COLUMNS ───────────────────
+ *
+ * `experience`, `training_days`, `injuries`, `restrictions` and
+ * `leaderboard_opt_in` are names nothing in this repository reads.
+ * `GET /api/profile` is `select('*')` on `user_profile` and returns the row
+ * unchanged, so the fixture's keys ARE the column names, and the real ones are
+ * `experience_level`, `days_per_week`, `health_restrictions` (there is no
+ * separate injuries column) and `cleared_to_train`. There is no
+ * `leaderboard_opt_in` column at all - opting in is a row in the leaderboard
+ * projection, which is the entire point of that design.
+ *
+ * Two of the values were also outside their CHECK constraints: the database
+ * permits no `experience_level` of 'intermediate' and no `goal` of 'strength'.
+ *
+ * Nothing failed, because the only screen that reads more than `units` and
+ * `display_name` is the intake form, and it reads with `Object.entries`: an
+ * unknown key is dropped and a missing one leaves its field blank. Measured
+ * before this change, the intake screen rendered 3 of its 32 fields filled -
+ * so the longest form in the product has been reviewed as a blank one by every
+ * sweep this harness has ever run.
+ *
+ * Every value below is checked against `user_profile`'s CHECK constraints in
+ * harnessFixtures.test.js, which is how this stops being true again.
+ *
+ * Health fields are invented. See the note at the top of this file.
+ */
+export const PROFILE = {
   display_name: 'Big_Daddy_Ed',
   units: 'lb',
-  experience: 'intermediate',
-  training_days: 5,
-  goal: 'strength',
-  intake_completed_at: '2026-04-02T15:04:00.000Z',
-  smallest_plate_pair: null,
-  injuries: 'Sample placeholder - no real health data in this harness.',
-  restrictions: null,
+  experience_level: 'over_2_years',
+  progress_cadence: 'every_month_or_slower',
+  goal: 'general_strength',
+  competition_date: null,
+  days_per_week: 5,
+  bodyweight: 231,
+  current_squat: 450,
+  current_bench: 315,
+  current_deadlift: 505,
+  equipment_available: 'Barbell gym: calibrated plates, competition bench, mono, no belt squat.',
+  gym_chains: ['barbell_gym'],
+  gym_label: null,
+  gender: 'man',
+  gender_self_described: null,
+  pronouns: 'he/him',
+  smallest_plate_pair: 2.5,
   date_of_birth: '1994-06-01',
-  leaderboard_opt_in: true,
+  health_restrictions: 'Sample placeholder - no real health data in this harness.',
+  cleared_to_train: true,
+  glp1_status: 'none',
+  sleep_hours_typical: 7,
+  alcohol_units_per_week: 2,
+  nicotine_use: 'none',
+  nutrition_notes: 'Sample placeholder - no real health data in this harness.',
+  intake_completed_at: '2026-04-02T15:04:00.000Z',
 };
 
 /**
@@ -308,7 +352,24 @@ function conversation(full) {
     return {
       conversation: null,
       limits: { maxMessageLength: 4000 },
-      starters: ['program', 'formCheck', 'whatIsThis'],
+      /*
+       * ── THE BUG THIS FIXTURE WAS ──────────────────────────────────────
+       *
+       * These were `['program', 'formCheck', 'whatIsThis']` - three ids that
+       * `startersFor` cannot return and that have no entry in either locale.
+       * `t()` returns the key on a miss, so the first screen a new athlete
+       * opens rendered three buttons reading `chat.starters.program`,
+       * `chat.starters.formCheck` and `chat.starters.whatIsThis`.
+       *
+       * check-screens.mjs has carried a detector for exactly that since
+       * ADR-29 and did not see it, because it ran `mode=full` only and the
+       * starters render only when there is NO conversation. It runs both
+       * modes now; pointed at this screen before the fix it names all three.
+       *
+       * Calling the server's own selector is what stops the two lists
+       * drifting again - the ids are no longer written down twice.
+       */
+      starters: startersFor(PROFILE),
       onboarding: {
         steps: [
           { id: 'profile', done: true },
