@@ -65,7 +65,35 @@ export function RecordVisit() {
       typeof window === 'undefined' ? '' : window.location.hostname,
     );
 
-    supabase.rpc('record_page_visit', { p_route: route, p_referrer: referrer }).catch(() => {});
+    /*
+     * ── .then(noop, noop) AND NOT .catch(), WHICH CRASHED THE WHOLE APP ────
+     *
+     * `supabase.rpc()` does not return a Promise. It returns a
+     * PostgrestFilterBuilder, which is a THENABLE: it has `then` and runs the
+     * request when something awaits it. It has no `catch`.
+     *
+     * So `.catch(() => {})` was not a no-op safety net. It was
+     * `undefined(() => {})` - a TypeError thrown synchronously inside this
+     * effect, which React escalated to the ErrorBoundary. Every route in the
+     * product rendered "Something broke on our side", including the front
+     * page, for anybody who loaded the site.
+     *
+     * And because the builder only sends the request when `then` is called, it
+     * never sent one: `page_visits` had zero rows for the entire time the
+     * feature was live. The symptom that was supposed to prove the feature
+     * worked was the symptom of it being broken.
+     *
+     * Verified rather than reasoned about:
+     *   typeof builder.then  === 'function'
+     *   typeof builder.catch === 'undefined'
+     *
+     * `then` with two handlers awaits it properly and swallows a rejection
+     * without ever touching a method the builder does not have. A pageview
+     * that cannot be recorded must never be visible to the person visiting.
+     */
+    supabase
+      .rpc('record_page_visit', { p_route: route, p_referrer: referrer })
+      .then(() => {}, () => {});
   }, [location.key, location.pathname]);
 
   return null;

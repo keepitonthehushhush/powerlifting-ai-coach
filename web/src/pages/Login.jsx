@@ -223,9 +223,18 @@ export function Login() {
        * error on the page they are already stuck on. A failed sign-up has no
        * session, so this goes through record_auth_failure (migration 0043),
        * which takes a code and nothing else.
+       *
+       * `.then(noop, noop)` and NOT `.catch()`. supabase.rpc() returns a
+       * PostgrestFilterBuilder - a thenable with `then` and no `catch` - so
+       * `.catch(() => {})` threw a TypeError, and the comment above about
+       * never showing somebody a second error described the exact opposite of
+       * what the line did: it replaced "that password is wrong" with the
+       * whole-app crash screen, at the moment a person is already stuck. See
+       * components/RecordVisit.jsx, where the same mistake took out every
+       * route in the product.
        */
       if (shouldRecord(code)) {
-        supabase.rpc('record_auth_failure', { p_code: code }).catch(() => {});
+        supabase.rpc('record_auth_failure', { p_code: code }).then(() => {}, () => {});
       }
       return;
     }

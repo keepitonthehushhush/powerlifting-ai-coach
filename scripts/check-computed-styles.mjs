@@ -542,6 +542,31 @@ async function main() {
           // it - but only after a confusing failure, so it is handled here.
           const join = route.includes('?') ? '&' : '?';
           const dom = await dumpDom(chrome, `http://127.0.0.1:${port}${route}${join}__scheme=${scheme}`);
+          /*
+           * ── NEVER RECORD A CRASHED PAGE ────────────────────────────────
+           *
+           * This check measured `/` and `/login` for weeks while both were
+           * rendering the ErrorBoundary. A React effect was calling `.catch`
+           * on a supabase query builder - a thenable with no `catch` - so
+           * every route threw, and the baseline dutifully recorded the h1 of
+           * "Something broke on our side" as the home page's headline: 22.4px
+           * where the real one is 56px.
+           *
+           * It compared clean every run, because it was comparing a crash to
+           * the same crash. `__structure` could not tell either: the fallback
+           * renders exactly one h1 too.
+           *
+           * The fallback carries `data-error-boundary`, which is the same
+           * marker check-app-mounts looks for. A capture of a page that threw
+           * is not a weaker measurement, it is a measurement of something
+           * else, so this refuses rather than records.
+           */
+          if (dom.includes('data-error-boundary')) {
+            throw new Error(
+              `${key} rendered the ErrorBoundary. A component threw during its first render, ` +
+              'so there is nothing here worth recording. Fix the crash, then re-run.',
+            );
+          }
           const styles = readProbe(dom);
           if (!styles) throw new Error(`the probe wrote nothing for ${key} - did the app mount?`);
           captured[key] = styles;

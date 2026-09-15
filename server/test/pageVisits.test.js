@@ -253,7 +253,28 @@ describe('where it runs', () => {
   });
 
   test('a failed count never reaches the person reading the page', () => {
-    assert.match(component, /\.catch\(\(\) => \{\}\)/);
+    /*
+     * ── THIS TEST ASSERTED THE BUG, AND PASSED FOR IT ─────────────────────
+     *
+     * It required `.catch(() => {})` on the rpc call. supabase.rpc() returns a
+     * PostgrestFilterBuilder, which is a thenable with `then` and NO `catch` -
+     * so the line this test was pinning in place threw a TypeError inside a
+     * React effect and put every route in the product behind the
+     * ErrorBoundary, front page included.
+     *
+     * The test was green the entire time, because it was checking that the
+     * wrong code was still there. Written to protect the reader from a failed
+     * count, it protected the crash instead.
+     *
+     * The lesson is not "the regex was wrong". It is that this asserted an
+     * IMPLEMENTATION - a specific method name - rather than the property that
+     * matters, which is that a rejection is handled and nothing is shown. An
+     * assertion about a spelling can only ever confirm the spelling.
+     * server/test/thenableBuilders.test.js checks the actual contract against
+     * the installed client.
+     */
+    assert.match(component, /\.then\(\(\) => \{\}, \(\) => \{\}\)/);
+    assert.doesNotMatch(component, /\.rpc\([^)]*\)[^;]*\.catch\(/);
   });
 
   test('StrictMode cannot double-count', () => {
