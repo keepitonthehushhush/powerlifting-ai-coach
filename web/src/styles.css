@@ -1421,9 +1421,25 @@ form > button.secondary {
   /* 24px is the AA floor for a target (WCAG 2.5.8); the padding and the type
      together clear it without making a quiet hint look like a submit button. */
   min-height: 24px;
-  border: 1px solid var(--border);
+  /*
+   * ── THESE THREE TOKENS, AND NOT THE OBVIOUS ONES ────────────────────────
+   *
+   * There are ten themes in two modes, so a color chosen by eye here is a
+   * color chosen by eye twenty times. The first version used --border on
+   * --surface, which measured 1.32:1 in light and 1.22:1 in dark: a control
+   * whose boundary was very nearly invisible, and which had no guarantee at
+   * all in the other eighteen palettes.
+   *
+   * --field-border on --surface-2 is the pair the theme solver already
+   * guarantees to 3:1 - it is what a text field's edge is made of, which is
+   * the same job this edge is doing (WCAG 1.4.11). --secondary-text is
+   * guaranteed to 4.5:1 against bg, surface AND surface-2, so the words clear
+   * AA wherever the chip sits. All three are asserted for all twenty palettes
+   * in palette.test.js, so this control cannot be born failing either.
+   */
+  border: 1px solid var(--field-border);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--secondary-text);
   font: inherit;
   font-size: var(--text-caption-1);
@@ -1432,8 +1448,13 @@ form > button.secondary {
   cursor: pointer;
 }
 .scroll-cue-arrow { flex: 0 0 auto; }
+/* Hover moves the boundary up rather than sideways into a hue: --accent is a
+   fill color, guaranteed against its own LABEL rather than against surface-2,
+   and a hover state that drops under 3:1 in one of twenty palettes is a state
+   nobody would ever see fail. --secondary-text already clears 4.5:1 on this
+   fill, so borrowing it for the edge is strictly stronger than --field-border. */
 @media (hover: hover) {
-  .scroll-cue:hover { border-color: var(--accent); color: var(--text); }
+  .scroll-cue:hover { border-color: var(--secondary-text); color: var(--text); }
 }
 .scroll-cue:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

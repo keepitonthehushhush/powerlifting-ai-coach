@@ -248,6 +248,45 @@ describe('a box that scrolls sideways says so', () => {
     assert.match(cue[0].body, /min-height:\s*24px/, 'the cue can be smaller than the AA target floor');
   });
 
+  test('the cue is built from tokens the palette guarantees for all twenty', () => {
+    /*
+     * ── THE DEFECT THIS CATCHES ───────────────────────────────────────────
+     *
+     * "Make sure the scroll cue also is set up for the other themes."
+     *
+     * It was not. The first version used --border on --surface, which measures
+     * 1.32:1 in Miami light and 1.22:1 in Miami dark - a control whose edge is
+     * very nearly invisible - and had no guarantee whatever in the other
+     * eighteen palettes, because --border is documented as decorative and is
+     * deliberately NOT held to a contrast floor.
+     *
+     * palette.test.js already proves, for all ten themes in both modes, that
+     * --field-border clears 3:1 against --surface-2 and that --secondary-text
+     * clears 4.5:1 against bg, surface AND surface-2. Building the cue out of
+     * exactly those tokens is how it inherits twenty proofs instead of needing
+     * twenty of its own.
+     *
+     * Named tokens rather than "contains a var()", and asserted with
+     * deepEqual rather than a count, because a ceiling lets a mutant under it.
+     * The rendered check (scripts/check-scroll-cues.mjs) repaints all twenty
+     * palettes and measures what actually reaches the element; this is the
+     * half of the question a browser cannot answer - WHICH token was reached
+     * for, and therefore whether the guarantee exists at all.
+     */
+    const cue = rulesFor('.scroll-cue');
+    assert.equal(cue.length, 1, 'the cue has no rule of its own');
+    const declared = Object.fromEntries(
+      cue[0].body
+        .split(';')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => [line.slice(0, line.indexOf(':')).trim(), line.slice(line.indexOf(':') + 1).trim()]),
+    );
+    assert.equal(declared.color, 'var(--secondary-text)', 'the words are not on a guaranteed ink');
+    assert.equal(declared.background, 'var(--surface-2)', 'the chip is not on the fill --field-border is solved against');
+    assert.equal(declared.border, '1px solid var(--field-border)', 'the edge is not on the control-boundary token');
+  });
+
   test('a focused box drops the mask, so the focus ring is whole', () => {
     // A mask paints the ring too. Tabbing into the table would otherwise give
     // an outline whose right-hand end dissolves, which is the one place an

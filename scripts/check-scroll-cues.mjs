@@ -38,6 +38,8 @@ import { readFile, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { THEME_IDS, MODES, tokensFor } from '../web/src/lib/themes.js';
+import { contrast, AA_TEXT, AA_NON_TEXT } from '../web/src/lib/contrast.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const harnessDir = path.resolve(repoRoot, process.env.HARNESS_DIR ?? 'web/harness-dist');
@@ -58,7 +60,7 @@ const harnessDir = path.resolve(repoRoot, process.env.HARNESS_DIR ?? 'web/harnes
 const VIEWPORTS = [
   { width: 320, height: 800, touch: true, expectOverflow: true },
   { width: 360, height: 800, touch: true, expectOverflow: true },
-  { width: 390, height: 844, touch: true, expectOverflow: true },
+  { width: 390, height: 844, touch: true, expectOverflow: true, sweepThemes: true },
   { width: 1280, height: 900, touch: false, expectOverflow: false },
 ];
 
@@ -282,6 +284,94 @@ const AUDIT = `
            media: { hover: matchMedia('(hover: hover)').matches, coarse: matchMedia('(pointer: coarse)').matches } };
 `;
 
+/**
+ * Applying a palette the way the application applies it: inline custom
+ * properties on the root element. applyTheme.js does exactly this, and does it
+ * for the same reason - an inline property beats both `:root` and the
+ * prefers-color-scheme block, so once we are painting we own the palette.
+ *
+ * Written as an expression the page evaluates rather than importing the app's
+ * own module, because the harness bundle does not expose one. The CATALOG is
+ * the app's, imported above, so a theme added tomorrow is swept tomorrow with
+ * no edit here.
+ */
+const paint = (tokens) => `
+  const t = ${JSON.stringify(tokens)};
+  for (const [name, value] of Object.entries(t)) {
+    document.documentElement.style.setProperty('--' + name, value);
+  }
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const cue = document.querySelector('.scroll-cue');
+  if (!cue) return null;
+  const card = cue.closest('.card') ?? document.body;
+  const cs = getComputedStyle(cue);
+  return {
+    label: cs.color,
+    chip: cs.backgroundColor,
+    edge: cs.borderTopColor,
+    card: getComputedStyle(card).backgroundColor,
+    arrowStroke: getComputedStyle(cue.querySelector('svg path')).stroke,
+  };
+`;
+
+const hexOf = (value) => {
+  const parts = String(value).match(/[\d.]+/g);
+  if (!parts || parts.length < 3) return null;
+  return `#${parts.slice(0, 3).map((n) => Math.round(Number(n)).toString(16).padStart(2, '0')).join('')}`;
+};
+
+/**
+ * ── WHY THIS SWEEPS TWENTY PALETTES AND NOT TWO ───────────────────────────
+ *
+ * The athlete picks a theme. Ten of them, in light and dark, and the first
+ * version of this control used --border on --surface: 1.32:1 in light, 1.22:1
+ * in dark, and no guarantee at all in the other eighteen. A control whose
+ * boundary is invisible is a control nobody presses.
+ *
+ * The palette test already proves the TOKENS clear their thresholds for all
+ * twenty. This proves the tokens actually reach this element - which is a
+ * different question, and the one a `var()` typo answers wrongly in silence.
+ */
+async function sweepThemes(page) {
+  const problems = [];
+  let measured = 0;
+
+  for (const themeId of THEME_IDS) {
+    for (const mode of MODES) {
+      const seen = await page.evaluate(paint(tokensFor(themeId, mode)));
+      if (!seen) {
+        problems.push(`${themeId}/${mode}: no cue on the page to measure`);
+        continue;
+      }
+      const [label, chip, edge, card] = [seen.label, seen.chip, seen.edge, seen.card].map(hexOf);
+      if (!label || !chip || !edge || !card) {
+        problems.push(`${themeId}/${mode}: a color came back unreadable (${JSON.stringify(seen)})`);
+        continue;
+      }
+      measured += 1;
+
+      const words = contrast(label, chip);
+      const boundary = contrast(edge, chip);
+      const onCard = contrast(edge, card);
+      if (words < AA_TEXT) problems.push(`${themeId}/${mode}: the words are ${words.toFixed(2)}:1 on the chip, need ${AA_TEXT}`);
+      if (boundary < AA_NON_TEXT) problems.push(`${themeId}/${mode}: the chip's edge is ${boundary.toFixed(2)}:1 on its own fill, needs ${AA_NON_TEXT}`);
+      if (onCard < AA_NON_TEXT) problems.push(`${themeId}/${mode}: the chip's edge is ${onCard.toFixed(2)}:1 against the card behind it, needs ${AA_NON_TEXT}`);
+      // The arrow is the thing the report asked for, and it is drawn in
+      // currentColor. If it ever stops being, it stops being themed.
+      if (hexOf(seen.arrowStroke) !== label) {
+        problems.push(`${themeId}/${mode}: the arrow is not drawn in the label's color (${seen.arrowStroke} vs ${seen.label})`);
+      }
+    }
+  }
+
+  // An empty sweep compares equal to a clean one.
+  const expected = THEME_IDS.length * MODES.length;
+  if (measured !== expected) {
+    problems.push(`only ${measured} of ${expected} palettes were actually measured`);
+  }
+  return { problems, measured, expected };
+}
+
 async function main() {
   if (typeof WebSocket !== 'function') {
     console.error('This check needs the WebSocket client built into node 22 or newer.');
@@ -341,6 +431,20 @@ async function main() {
         console.error(`FAIL ${viewport.width}px: ${line}`);
         failures += 1;
       }
+
+      // Once, at the width where the cue exists. The palette does not change
+      // with the viewport, and twenty repaints in one page is cheap.
+      if (viewport.sweepThemes) {
+        const { problems, measured, expected } = await sweepThemes(page);
+        for (const line of problems) {
+          console.error(`FAIL themes: ${line}`);
+          failures += 1;
+        }
+        if (!problems.length) {
+          console.log(`OK   themes  ${measured} of ${expected} palettes: words, edge and arrow all clear`);
+        }
+      }
+
       if (!report.fail.length) {
         console.log(
           `OK   ${viewport.width}px  ${report.regions} regions, ${report.overflowing} overflowing` +

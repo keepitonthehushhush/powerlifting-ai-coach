@@ -1583,6 +1583,29 @@ links, so tabbing already scrolls them, and a tab stop in front of a link is a
 stop that does nothing. It is also conditional on the box actually overflowing,
 for the same reason the fade is.
 
+**Decision: the cue is made of tokens that are already proven, in all twenty
+palettes.** "Make sure the scroll cue also is set up for the other themes." It
+was not. The first version used `--border` on `--surface`, which measures
+**1.32:1 in Miami light and 1.22:1 in Miami dark** — a control whose edge is
+very nearly invisible — and had no guarantee at all in the other eighteen
+palettes, because `--border` is documented as decorative and is deliberately
+not held to a floor.
+
+There are ten themes in two modes, so a color chosen by eye here is a color
+chosen by eye twenty times. `--field-border` on `--surface-2` is the pair the
+theme solver already holds to 3:1 (it is what a text field's edge is made of,
+which is the same job), and `--secondary-text` is already held to 4.5:1 against
+`bg`, `surface` **and** `surface-2`. Built from those, the control inherits
+twenty proofs rather than needing twenty of its own. Measured across the whole
+catalog afterwards anyway: words 4.50–8.46:1, edge 3.00–3.94:1 on its own fill
+and 3.46–4.32:1 against the card, focus ring 4.51–12.66:1.
+
+Hover moves the edge *up* — to `--secondary-text`, which already clears 4.5:1
+on that fill — rather than sideways into `--accent`, which is a fill color
+guaranteed against its own label and not against `surface-2`. A hover state
+that drops below 3:1 in one of twenty palettes is a state nobody would ever
+see fail.
+
 **Decision: a second rendered check, not a bigger baseline.**
 `check-computed-styles.mjs` renders at 1280x900 and compares values. It could
 not have caught this and cannot guard it, for two independent reasons: the
@@ -1602,7 +1625,13 @@ It asserts, at each width, that every overflowing box is faded, carries a cue
 with words and an arrow, and is focusable if it is a table; that every box that
 does **not** overflow has none of those things; that pressing the cue changes
 `scrollLeft`; that at the far end the control is still there and now returns;
-and that the page itself never scrolls sideways. Eight mutants — no cue, a cue
+and that the page itself never scrolls sideways. It then repaints the page in
+each of the twenty palettes — the application's own catalog, imported, so a
+theme added tomorrow is swept tomorrow with no edit — and measures what
+actually reaches the element, which is the half of the question the token
+guard cannot answer: `palette.test.js` proves the tokens clear their
+thresholds, and only a browser can say whether a `var()` typo stopped them
+reaching this control. Eight mutants — no cue, a cue
 that never flips, a dead button, no tab stop, an unnamed region, no arrow, the
 fade scoped back to the navigation, and a fade that is always on — are each
 caught, and each names the specific fault rather than failing generically.
