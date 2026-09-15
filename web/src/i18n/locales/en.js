@@ -25,6 +25,14 @@ export const en = {
      * from the FAQ was sent to a settings screen they had never seen.
      */
     editPrivacyChoices: 'Edit your privacy choices',
+    /*
+     * The program table and the week strip are wider than a phone, and
+     * nothing said so. Words rather than a bare arrow on purpose: people
+     * do not expect a page to move sideways, so an unlabeled chevron is
+     * read as decoration. See components/ScrollRegion.jsx.
+     */
+    scrollForMore: 'Scroll for more',
+    scrollBackToStart: 'Back to the start',
     appName: 'Coach Diaz',
     forYourClinician: 'Information for your doctor or physical therapist',
     faq: 'Questions people ask',

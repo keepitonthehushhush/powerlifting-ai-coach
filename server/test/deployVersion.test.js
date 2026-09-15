@@ -33,18 +33,25 @@ describe('the diagnosis was checked, not assumed', () => {
     // If this ever fails, the app has grown lazy routes and the OTHER failure
     // becomes real - at which point a chunk-load recovery handler is worth
     // writing. Until then it would be a guard for something that cannot happen.
-    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { readdirSync, statSync } = await import('node:fs');
     const walk = (dir, acc = []) => {
       for (const entry of readdirSync(dir)) {
         const full = new URL(entry, dir);
         if (statSync(full).isDirectory()) walk(new URL(`${entry}/`, dir), acc);
-        else if (/\.jsx?$/.test(entry)) acc.push(readFileSync(full, 'utf8'));
+        // readSource, not readFileSync: this asks whether the app SPLITS, and
+        // a JSDoc annotation reading `import('react').RefObject` is not a
+        // dynamic import. Grepping raw text for `import(` fired on exactly
+        // that - the same shape as the guard that once matched the word
+        // `schedule` inside a YAML comment. A real `import(` in real code
+        // survives comment stripping; only the false positives do not.
+        else if (/\.jsx?$/.test(entry)) acc.push({ name: entry, code: readSource(full) });
       }
       return acc;
     };
-    const sources = walk(webSrc);
-    const lazy = sources.filter((s) => /React\.lazy|\blazy\(|import\(/.test(s));
-    assert.equal(lazy.length, 0, 'the app now code-splits - revisit chunk-load recovery');
+    const lazy = walk(webSrc)
+      .filter(({ code }) => /React\.lazy|\blazy\(|import\(/.test(code))
+      .map(({ name }) => name);
+    assert.deepEqual(lazy, [], `the app now code-splits (${lazy.join(', ')}) - revisit chunk-load recovery`);
   });
 
   test('and the reasoning is recorded so it is not re-litigated', () => {

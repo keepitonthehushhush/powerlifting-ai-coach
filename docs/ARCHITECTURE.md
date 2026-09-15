@@ -776,6 +776,7 @@ the check rather than passing it, because a check that quietly does not run is
 indistinguishable from the eleven that were quietly looking elsewhere.
 
 **It immediately found a second live bug.** On the fixed bundle it failed again,
+
 this time reporting that the literal text `auth.password` was rendering as the
 sign-in form's field label: `auth` declared `password` twice in the locale file,
 once a string and once an object of password-strength messages, and the object
@@ -1535,6 +1536,76 @@ The new dependency is a platform we do not control: they can change their terms,
 their pricing, or their API. That is named rather than hidden — the imported
 sessions are ours once written, the manual form never goes away, and
 disconnecting deletes the credential and leaves the history.
+
+
+### ADR-25 · A box that scrolls sideways says so, and a check presses the thing that says it
+
+**The report.** "When showing their workout, it cuts off after reps and then
+the end user needs to scroll over. Can we add an arrow or something to indicate
+that the end user needs to scroll over?"
+
+**The measurement, before anything was written.** Program screen, review
+harness, touch emulation on:
+
+| Width | Table inside its card | What is hidden |
+|---|---|---|
+| 320px | 320px in a 243px box | **WEIGHT clipped by 16px**, LOGGED entirely off |
+| 360px | 320px in a 281px box | LOGGED clipped by 39px |
+| 390px | 320px in a 309px box | LOGGED clipped by 11px |
+| 414px+ | fits | nothing |
+
+So the report is exact, and it names the worst case: on a narrow phone the
+column that gets cut is the load, which is the number somebody is standing at a
+rack to read. The week strip was worse and nobody had reported it — 743px of
+day chips inside a 359px box, four of seven days off screen, no cue.
+
+**Decision: three cues, not one.** Nielsen Norman's work on horizontal
+scrolling finds that people do not anticipate sideways movement at all and that
+[even arrows are frequently missed](https://www.nngroup.com/articles/horizontal-scrolling/)
+on their own, and recommends several persistent cues plus a way back to the
+start. So the cut edge fades (the mask the navigation already used, now keyed
+on the `[data-fade]` attribute so three components share three declarations), a
+labeled arrow sits above the box, and at the right-hand end that arrow turns
+around and offers the way back rather than vanishing under the finger that
+pressed it — which would otherwise take the keyboard focus with it.
+
+**Decision: the words are not optional.** An unlabeled chevron is read as
+decoration, which is the failure mode the research describes. `Scroll for more`
+and `Back to the start`, in both languages.
+
+**Decision: `role="region"` + `tabindex="0"`, on the table only.** A scrolling
+box whose contents cannot be focused is unreachable by keyboard — there is
+nothing inside a table to tab to, so its hidden columns stay hidden. That is
+[Adrian Roselli's remedy](https://adrianroselli.com/2020/11/under-engineered-responsive-tables.html),
+and it is named by the day heading rather than by a hand-written label. The week
+strip and the navigation deliberately do **not** get it: their children are
+links, so tabbing already scrolls them, and a tab stop in front of a link is a
+stop that does nothing. It is also conditional on the box actually overflowing,
+for the same reason the fade is.
+
+**Decision: a second rendered check, not a bigger baseline.**
+`check-computed-styles.mjs` renders at 1280x900 and compares values. It could
+not have caught this and cannot guard it, for two independent reasons: the
+table does not overflow at 1280, and **a snapshot cannot press a button**. A
+cue that says "Scroll for more" and does nothing has exactly the computed
+styles of one that works — a state this work produced twice while it was being
+built.
+
+`scripts/check-scroll-cues.mjs` drives Chrome over the DevTools protocol at
+320, 360, 390 and 1280, with real touch emulation, and clicks. CDP rather than
+`--dump-dom` because a narrow window is **not a phone**: at 390px a desktop
+Chrome still reports `hover: hover` and `pointer: coarse` is never set, and
+this project has already withdrawn one review finding for believing otherwise.
+No new dependency — node 22 ships a WebSocket client and CDP is JSON over one.
+
+It asserts, at each width, that every overflowing box is faded, carries a cue
+with words and an arrow, and is focusable if it is a table; that every box that
+does **not** overflow has none of those things; that pressing the cue changes
+`scrollLeft`; that at the far end the control is still there and now returns;
+and that the page itself never scrolls sideways. Eight mutants — no cue, a cue
+that never flips, a dead button, no tab stop, an unnamed region, no arrow, the
+fade scoped back to the navigation, and a fade that is always on — are each
+caught, and each names the specific fault rather than failing generically.
 
 
 ## 5. Operational notes

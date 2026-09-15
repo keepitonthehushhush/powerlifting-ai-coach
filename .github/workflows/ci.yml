@@ -104,6 +104,14 @@ jobs:
       - name: Rendered styles match the baseline
         run: npm run check:styles
 
+      # The styles baseline renders at 1280x900, where the program table does
+      # not overflow, so it can neither see the phone-width defect nor press
+      # the control that fixes it. This one drives the browser at 320, 360 and
+      # 390 with touch emulation on and clicks the cue. See the script's header
+      # for why a narrow window is not a phone.
+      - name: Every sideways-scrolling box says so, and saying so works
+        run: npm run check:scroll
+
       # Builds every safety scenario's prompt and runs every deterministic
       # check, with no API key and no cost. The paid run happens monthly; this
       # is what stops it dying on scenario 19 because of a typo in scenario 20,

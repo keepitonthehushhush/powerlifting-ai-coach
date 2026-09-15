@@ -5,6 +5,8 @@ import { readSource, stripComments } from './helpers/source.js';
 
 const css = stripComments(readFileSync(new URL('../../web/src/styles.css', import.meta.url), 'utf8'));
 const siteNav = readSource(new URL('../../web/src/components/SiteNav.jsx', import.meta.url));
+const edgeFade = readSource(new URL('../../web/src/lib/useEdgeFade.js', import.meta.url));
+const scrollRegion = readSource(new URL('../../web/src/components/ScrollRegion.jsx', import.meta.url));
 
 /** Flat rules, brace-matched. A regex finds the wrong one. */
 function rules(text) {
@@ -51,47 +53,71 @@ describe('the navigation only fades an edge that has something past it', () => {
    * under a mask like anything else.
    */
   test('the mask is never applied unconditionally', () => {
-    for (const rule of rulesFor('.nav-places')) {
-      assert.ok(
-        !/mask-image/.test(rule.body),
-        'a bare `.nav-places` rule sets a mask, so the last tab is faded whether or ' +
-          'not the row can actually scroll - which is a visible tab dimmed for no reason'
-      );
+    // Every selector that could carry the mask, not only the one the bug was
+    // first seen on. The rule moved to `[data-fade]` so that the program table
+    // and the week strip get it too, and the same unconditional mistake is
+    // available to all three of them now.
+    for (const sel of ['.nav-places', '.week-strip', '.program-table-scroll', '.scroll-region']) {
+      for (const rule of rulesFor(sel)) {
+        assert.ok(
+          !/mask-image/.test(rule.body),
+          `a bare \`${sel}\` rule sets a mask, so its last item is faded whether or ` +
+            'not the row can actually scroll - which is visible content dimmed for no reason'
+        );
+      }
     }
   });
 
   test('it is applied per edge, keyed on measured overflow', () => {
     for (const state of ['end', 'start', 'both']) {
-      const r = rulesFor(`.nav-places[data-fade='${state}']`);
+      const r = rulesFor(`[data-fade='${state}']`);
       assert.equal(r.length, 1, `no rule for data-fade='${state}'`);
       assert.match(r[0].body, /mask-image/, `data-fade='${state}' fades nothing`);
     }
     // 'none' must have no mask rule at all rather than a mask that happens to
     // be transparent - the absence is the point.
-    assert.equal(rulesFor(".nav-places[data-fade='none']").length, 0);
+    assert.equal(rulesFor("[data-fade='none']").length, 0);
   });
 
   test('the component measures the element rather than guessing a breakpoint', () => {
     // Where this row overflows depends on how many destinations there are and
     // how long their TRANSLATED labels are. Any width hard-coded here would be
     // correct in one language.
-    assert.match(siteNav, /scrollWidth\s*-\s*el\.clientWidth/, 'nothing measures the overflow');
-    assert.match(siteNav, /data-fade=\{fade\}/, 'the measurement never reaches the DOM');
-    assert.match(siteNav, /scrollLeft/, 'the scroll position does not decide which edge fades');
+    assert.match(edgeFade, /scrollWidth\s*-\s*el\.clientWidth/, 'nothing measures the overflow');
+    assert.match(siteNav, /data-fade=\{fade\}/, 'the navigation never puts the measurement in the DOM');
+    assert.match(
+      scrollRegion,
+      /data-fade=\{fade\}/,
+      'the shared region never puts the measurement in the DOM'
+    );
+    assert.match(edgeFade, /scrollLeft/, 'the scroll position does not decide which edge fades');
   });
 
   test('the measurement survives a language change', () => {
-    // A ResizeObserver alone misses it: swapping "Log session" for "Registrar
-    // sesion" changes the content width without resizing the box.
-    const effect = siteNav.slice(siteNav.indexOf('function useEdgeFade'));
-    const deps = effect.match(/\}\);?\s*$/m);
-    assert.ok(!/\}, \[\]\);/.test(effect), 'the effect has an empty dependency array, so it measures once and never again');
-    assert.ok(deps !== null);
+    /*
+     * A ResizeObserver alone misses it: swapping "Log session" for "Registrar
+     * sesion" changes the content width without resizing the box. So the
+     * measuring effect deliberately has NO dependency array and runs after
+     * every render.
+     *
+     * The first version of this test searched the whole file for `}, []);`,
+     * which is a substring trap and duly fired the moment the hook grew a
+     * `useCallback(..., [])` - a stable callback, which is correct and is not
+     * the effect. It reads the effect's own terminator now.
+     */
+    const from = edgeFade.indexOf('useEffect(');
+    assert.ok(from > -1, 'the hook no longer has an effect in it');
+    const to = edgeFade.indexOf('\n  });', from);
+    const terminator = edgeFade.indexOf('\n  }, [', from);
+    assert.ok(
+      to > -1 && (terminator === -1 || to < terminator),
+      'the measuring effect has a dependency array, so it measures once and never again',
+    );
   });
 
   test('it does not assume ResizeObserver exists', () => {
     // The suite renders this component under jsdom, which has none.
-    assert.match(siteNav, /typeof ResizeObserver === 'function'/, 'an unguarded ResizeObserver will throw in the tests');
+    assert.match(edgeFade, /typeof ResizeObserver === 'function'/, 'an unguarded ResizeObserver will throw in the tests');
   });
 });
 
@@ -140,5 +166,106 @@ describe('a tap target is made of height, not of type size', () => {
           'Height and padding make a target; type size makes it look zoomed.'
       );
     }
+  });
+});
+
+describe('a box that scrolls sideways says so', () => {
+  /**
+   * ── THE BUG ───────────────────────────────────────────────────────────
+   *
+   * "When showing their workout, it cuts off after reps and then the end user
+   * needs to scroll over. Can we add an arrow or something to indicate that
+   * the end user needs to scroll over?"
+   *
+   * Measured on the real program screen with touch emulation on: at 320px the
+   * WEIGHT column is clipped by 16px and LOGGED is off the screen entirely; at
+   * 360px LOGGED is clipped by 39px; at 390px by 11px; at 414px and wider
+   * nothing is hidden. The week strip was worse - 743px of chips inside a
+   * 359px box - and neither of them said anything.
+   *
+   * The behavior of the affordance is checked by driving a browser
+   * (scripts/check-scroll-cues.mjs). These are the things a rendered check
+   * cannot see: that the page still goes through the shared component at all,
+   * that CI runs the browser check after the build that feeds it, and that
+   * both languages have the words.
+   */
+  const program = readSource(new URL('../../web/src/pages/Program.jsx', import.meta.url));
+  const en = readSource(new URL('../../web/src/i18n/locales/en.js', import.meta.url));
+  const es = readSource(new URL('../../web/src/i18n/locales/es.js', import.meta.url));
+  const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+
+  test('the program table and the week strip both go through it', () => {
+    // A bare `<div className="program-table-scroll">` is what shipped the
+    // defect: the box scrolled and nothing on the page said so. Naming the
+    // class is not enough - it has to be the class ON a ScrollRegion.
+    for (const cls of ['program-table-scroll', 'week-strip']) {
+      assert.match(
+        program,
+        new RegExp(`<ScrollRegion[^>]*\\n?[^>]*className="${cls}"`, 's'),
+        `${cls} is not wrapped in a ScrollRegion, so nothing measures it`,
+      );
+      assert.doesNotMatch(
+        program,
+        new RegExp(`<div className="${cls}"`),
+        `${cls} is back to a plain div, which is the original defect`,
+      );
+    }
+  });
+
+  test('the table names itself, because a table has nothing inside it to tab to', () => {
+    // `keyboard` is what turns on role=region + tabindex, and the region needs
+    // an accessible name to be worth landing on. The week strip deliberately
+    // does NOT get it: its children are links, so tabbing already scrolls it.
+    assert.match(program, /labeledBy=\{`day-\$\{index\}-name`\}/, 'the table region is not named');
+    assert.match(program, /id=\{`day-\$\{index\}-name`\}/, 'nothing carries the id the region points at');
+    assert.match(program, /keyboard\s*\n?\s*>/, 'the table region is not keyboard reachable');
+    const strip = program.slice(program.indexOf('className="week-strip"'));
+    assert.doesNotMatch(
+      strip.slice(0, strip.indexOf('</ScrollRegion>')),
+      /keyboard/,
+      'the week strip took a tab stop it does not need - its chips are links',
+    );
+  });
+
+  test('the cue has words in both languages, not only an arrow', () => {
+    // Nielsen Norman on horizontal scrolling: people do not expect a page to
+    // move sideways, and an unlabeled chevron is read as decoration. An
+    // untranslated one is worse - it is English on a Spanish page.
+    for (const [name, locale] of [['en', en], ['es', es]]) {
+      for (const key of ['scrollForMore', 'scrollBackToStart']) {
+        assert.match(locale, new RegExp(`${key}:`), `${name} has no ${key}`);
+      }
+    }
+  });
+
+  test('the control clears the AA target floor', () => {
+    // WCAG 2.5.8 is 24x24 CSS pixels at AA. The padding and the caption type
+    // together do it; a quiet hint should not have to look like a submit
+    // button to be tappable.
+    const cue = rulesFor('.scroll-cue');
+    assert.equal(cue.length, 1, 'the cue has no rule of its own');
+    assert.match(cue[0].body, /min-height:\s*24px/, 'the cue can be smaller than the AA target floor');
+  });
+
+  test('a focused box drops the mask, so the focus ring is whole', () => {
+    // A mask paints the ring too. Tabbing into the table would otherwise give
+    // an outline whose right-hand end dissolves, which is the one place an
+    // outline has to be solid (WCAG 2.4.7).
+    const focused = rulesFor('[data-fade]:focus-visible');
+    assert.equal(focused.length, 1, 'nothing restores the sharp edge while the box is focused');
+    assert.match(focused[0].body, /mask-image:\s*none/);
+    assert.match(focused[0].body, /outline:/, 'the mask is dropped and no ring is drawn');
+  });
+
+  test('CI builds the harness before it presses the buttons in it', () => {
+    // The same ordering trap as check:styles: a build step after the check it
+    // feeds is the same as no build step, and the check exits 1 rather than
+    // skipping, so the failure would be loud but late.
+    assert.equal(pkg.scripts['check:scroll'], 'node scripts/check-scroll-cues.mjs');
+    const buildAt = ci.indexOf('npm run build:harness');
+    const checkAt = ci.indexOf('npm run check:scroll');
+    assert.ok(checkAt > -1, 'CI never runs the scroll-cue check');
+    assert.ok(buildAt > -1 && buildAt < checkAt, 'the harness is built after the check that reads it');
   });
 });

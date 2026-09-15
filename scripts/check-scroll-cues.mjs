@@ -1,0 +1,366 @@
+#!/usr/bin/env node
+/**
+ * Does every box that scrolls sideways say so, and does the control that says
+ * so actually work?
+ *
+ * ── WHY THIS IS A SEPARATE CHECK ──────────────────────────────────────────
+ *
+ * `check-computed-styles.mjs` renders the whole application and compares
+ * computed values against a committed snapshot. It is the strongest net this
+ * repository has and it could not have caught the defect this file exists for,
+ * for two reasons:
+ *
+ *   1. It renders at 1280x900. The program table does not overflow above
+ *      414px, so at the only width that check looks at there is nothing to
+ *      indicate and nothing to indicate it with. The bug was invisible to it
+ *      by construction - "it cuts off after reps" happens at 320 and 360.
+ *
+ *   2. A snapshot compares values. It cannot press a button. A cue that says
+ *      "Scroll for more" and does nothing when pressed has exactly the same
+ *      computed styles as one that works, and while writing this affordance I
+ *      produced that result twice - once for real, once because the probe
+ *      canceled the smooth scroll it was measuring. Both times the styles
+ *      were correct and the control was a lie.
+ *
+ * So this one drives a real browser over the DevTools protocol, which is the
+ * only way to get TOUCH emulation. A 390px-wide desktop Chrome still reports
+ * `hover: hover` and `pointer: fine`; a narrow window is not a phone, and this
+ * project has already withdrawn one review finding for believing that it was.
+ *
+ * No dependencies: node 22 ships a WebSocket client, and CDP is JSON over one.
+ *
+ * Usage:  node scripts/check-scroll-cues.mjs
+ */
+
+import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
+import { readFile, access } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const harnessDir = path.resolve(repoRoot, process.env.HARNESS_DIR ?? 'web/harness-dist');
+
+/**
+ * The widths are not decoration. Measured on the real program screen before
+ * this affordance existed:
+ *
+ *   320px  the WEIGHT column is clipped by 16px and LOGGED is entirely off
+ *   360px  LOGGED is clipped by 39px
+ *   390px  LOGGED is clipped by 11px
+ *   1280px nothing overflows, so nothing may be indicated
+ *
+ * The last one is as important as the first three. An affordance that is
+ * always on is the same defect as one that is never on: the navigation shipped
+ * a permanent fade once and it read as a tab hiding behind a wall.
+ */
+const VIEWPORTS = [
+  { width: 320, height: 800, touch: true, expectOverflow: true },
+  { width: 360, height: 800, touch: true, expectOverflow: true },
+  { width: 390, height: 844, touch: true, expectOverflow: true },
+  { width: 1280, height: 900, touch: false, expectOverflow: false },
+];
+
+const MIME = {
+  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon',
+};
+
+const exists = (p) => access(p, constants.F_OK).then(() => true, () => false);
+
+async function findChrome() {
+  const candidates = [
+    process.env.CHROME_BIN, process.env.CHROMIUM_BIN,
+    '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium',
+    '/usr/bin/chromium-browser', '/snap/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  ].filter(Boolean);
+  for (const candidate of candidates) if (await exists(candidate)) return candidate;
+  return null;
+}
+
+async function serve(root) {
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url, 'http://x');
+    try {
+      const body = await readFile(path.join(root, url.pathname));
+      res.writeHead(200, { 'content-type': MIME[path.extname(url.pathname)] ?? 'application/octet-stream' });
+      res.end(body);
+    } catch {
+      // A client-rendered app: anything that is not a file is the shell.
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(await readFile(path.join(root, 'index.html')));
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { server, port: server.address().port };
+}
+
+/** The whole CDP client. One socket, one id counter, one map of promises. */
+async function connect(url) {
+  const socket = new WebSocket(url);
+  await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+  let id = 0;
+  const pending = new Map();
+  socket.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    if (!message.id || !pending.has(message.id)) return;
+    const { resolve, reject } = pending.get(message.id);
+    pending.delete(message.id);
+    if (message.error) reject(new Error(JSON.stringify(message.error)));
+    else resolve(message.result);
+  };
+  return {
+    send(method, params = {}, sessionId) {
+      const message = { id: (id += 1), method, params, ...(sessionId ? { sessionId } : {}) };
+      return new Promise((resolve, reject) => {
+        pending.set(message.id, { resolve, reject });
+        socket.send(JSON.stringify(message));
+      });
+    },
+  };
+}
+
+async function launch(chromePath, { width, height, touch }) {
+  const chrome = spawn(chromePath, [
+    '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
+    '--no-first-run', '--no-default-browser-check',
+    // The harness talks to nothing, and an unexpected outbound request would
+    // be a finding in itself rather than something to wait for.
+    '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
+    '--remote-debugging-port=0',
+    `--user-data-dir=${path.join(process.env.TMPDIR ?? '/tmp', `scroll-cues-${process.pid}-${width}`)}`,
+    'about:blank',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const wsUrl = await new Promise((resolve, reject) => {
+    let noise = '';
+    const timer = setTimeout(
+      () => reject(new Error(`Chrome never announced a DevTools endpoint.\n${noise}`)),
+      30000,
+    );
+    chrome.stderr.on('data', (chunk) => {
+      noise += chunk;
+      const found = noise.match(/ws:\/\/\S+/);
+      if (found) { clearTimeout(timer); resolve(found[0]); }
+    });
+    chrome.on('error', (error) => { clearTimeout(timer); reject(error); });
+  });
+
+  const browser = await connect(wsUrl);
+  const { targetId } = await browser.send('Target.createTarget', { url: 'about:blank' });
+  const { sessionId } = await browser.send('Target.attachToTarget', { targetId, flatten: true });
+  const send = (method, params) => browser.send(method, params, sessionId);
+
+  await send('Page.enable');
+  await send('Runtime.enable');
+  await send('Emulation.setDeviceMetricsOverride', {
+    width, height, deviceScaleFactor: 1, mobile: touch, screenWidth: width, screenHeight: height,
+  });
+  if (touch) {
+    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+    await send('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
+    // The part a narrow window cannot give you, and the reason this file drives
+    // CDP rather than passing --window-size to --dump-dom.
+    await send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }],
+    });
+  }
+
+  return {
+    async goto(url) {
+      await send('Page.navigate', { url });
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        await new Promise((r) => setTimeout(r, 150));
+        const { result } = await send('Runtime.evaluate', {
+          expression: 'document.querySelector("#root")?.children.length ?? 0', returnByValue: true,
+        });
+        if (result.value > 0) break;
+      }
+      await new Promise((r) => setTimeout(r, 400));
+    },
+    async evaluate(expression) {
+      const { result, exceptionDetails } = await send('Runtime.evaluate', {
+        expression: `(async () => { ${expression} })()`, returnByValue: true, awaitPromise: true,
+      });
+      if (exceptionDetails) {
+        throw new Error(exceptionDetails.exception?.description ?? JSON.stringify(exceptionDetails));
+      }
+      return result.value;
+    },
+    close() { chrome.kill('SIGKILL'); },
+  };
+}
+
+/**
+ * Everything below runs inside the page. It returns findings rather than
+ * throwing, so one run reports every fault instead of the first one.
+ */
+const AUDIT = `
+  const fail = [];
+  const note = [];
+  if (document.querySelector('[data-error-boundary]')) {
+    return { fail: ['the page rendered its error boundary, so nothing here was measured'], note };
+  }
+
+  const regions = [...document.querySelectorAll('.scroll-region')];
+  if (!regions.length) return { fail: ['no .scroll-region on the program page at all'], note };
+
+  let overflowing = 0;
+  for (const region of regions) {
+    const box = region.querySelector('[data-fade]');
+    const cue = region.querySelector('.scroll-cue');
+    if (!box) { fail.push('a .scroll-region has no measured box inside it'); continue; }
+
+    const name = box.className;
+    const slack = box.scrollWidth - box.clientWidth;
+    const scrolls = slack > 1;
+    const masked = getComputedStyle(box).maskImage !== 'none';
+
+    if (scrolls) {
+      overflowing += 1;
+      if (box.dataset.fade === 'none') fail.push(name + ' hides ' + slack + 'px and reports data-fade="none"');
+      if (!masked) fail.push(name + ' hides ' + slack + 'px and its cut edge is not faded');
+      if (!cue) fail.push(name + ' hides ' + slack + 'px with no cue saying so');
+      if (cue && !cue.textContent.trim()) fail.push(name + ' has a cue with no words in it');
+      if (cue && !cue.querySelector('svg')) fail.push(name + ' has a cue with no arrow in it');
+    } else {
+      if (box.dataset.fade !== 'none') fail.push(name + ' hides nothing and reports data-fade="' + box.dataset.fade + '"');
+      if (masked) fail.push(name + ' hides nothing and is faded anyway');
+      if (cue) fail.push(name + ' hides nothing and offers to scroll it anyway');
+      if (box.getAttribute('tabindex') !== null) fail.push(name + ' hides nothing and is still a tab stop');
+    }
+
+    // A table has nothing inside it to tab to, so the box itself has to be
+    // reachable or its hidden columns are unreachable by keyboard.
+    if (box.getAttribute('role') === 'region') {
+      const labeledBy = box.getAttribute('aria-labelledby');
+      const named = labeledBy ? document.getElementById(labeledBy)?.textContent.trim() : box.getAttribute('aria-label');
+      if (!named) fail.push(name + ' is a region with no accessible name');
+      if (scrolls && box.getAttribute('tabindex') !== '0') fail.push(name + ' scrolls and cannot be focused');
+      note.push(name + ' named "' + named + '"');
+    }
+  }
+
+  // The part a computed-style snapshot cannot do: press it.
+  for (const region of regions) {
+    const box = region.querySelector('[data-fade]');
+    const cue = region.querySelector('.scroll-cue');
+    if (!cue || box.scrollWidth - box.clientWidth <= 1) continue;
+    const before = box.scrollLeft;
+    const firstWords = cue.textContent.trim();
+    cue.click();
+    await new Promise((r) => setTimeout(r, 900));
+    if (box.scrollLeft === before) {
+      fail.push(box.className + ' offers "' + firstWords + '" and pressing it moved nothing');
+      continue;
+    }
+    // At the far end the control must still be there and must now go back,
+    // because a control that disappears under the finger takes focus with it.
+    box.scrollLeft = box.scrollWidth;
+    await new Promise((r) => setTimeout(r, 400));
+    const back = region.querySelector('.scroll-cue');
+    if (!back) { fail.push(box.className + ' loses its control at the right-hand end'); continue; }
+    if (back.textContent.trim() === firstWords) {
+      fail.push(box.className + ' still says "' + firstWords + '" with nothing left to scroll to');
+    }
+    const returned = back.cloneNode(true);
+    back.click();
+    await new Promise((r) => setTimeout(r, 900));
+    if (box.scrollLeft !== 0) fail.push(box.className + ' offers "' + returned.textContent.trim() + '" and did not return');
+    box.scrollLeft = 0;
+  }
+
+  if (document.documentElement.scrollWidth > document.documentElement.clientWidth) {
+    fail.push('the PAGE scrolls sideways, which is the fault these boxes exist to prevent');
+  }
+
+  return { fail, note, overflowing, regions: regions.length,
+           media: { hover: matchMedia('(hover: hover)').matches, coarse: matchMedia('(pointer: coarse)').matches } };
+`;
+
+async function main() {
+  if (typeof WebSocket !== 'function') {
+    console.error('This check needs the WebSocket client built into node 22 or newer.');
+    process.exit(1);
+  }
+  if (!(await exists(path.join(harnessDir, 'index.html')))) {
+    console.error(`No review harness at ${harnessDir}. Run \`npm run build:harness\` first.`);
+    console.error('This check is deliberately not skippable: a check that quietly does not run');
+    console.error('is indistinguishable from one that passed.');
+    process.exit(1);
+  }
+  const chromePath = await findChrome();
+  if (!chromePath) {
+    console.error('Could not find Chrome. Set CHROME_BIN.');
+    process.exit(1);
+  }
+
+  const { server, port } = await serve(harnessDir);
+  let failures = 0;
+
+  for (const viewport of VIEWPORTS) {
+    const page = await launch(chromePath, viewport);
+    try {
+      await page.goto(`http://127.0.0.1:${port}/?page=program&mode=full`);
+      const report = await page.evaluate(AUDIT);
+
+      // The trap every check in this repository has fallen into once: an empty
+      // run reports success having looked at nothing.
+      if (!report.regions) {
+        console.error(`FAIL ${viewport.width}px: no scrolling regions were found at all`);
+        failures += 1;
+        continue;
+      }
+      if (viewport.touch && report.media.hover) {
+        console.error(`FAIL ${viewport.width}px: asked for a touch screen and got a mouse`);
+        failures += 1;
+        continue;
+      }
+      if (viewport.expectOverflow && !report.overflowing) {
+        console.error(
+          `FAIL ${viewport.width}px: nothing overflowed, so the cue was never exercised. ` +
+          'Either the table got narrower - in which case say so here - or the fixture stopped ' +
+          'having a week in it.',
+        );
+        failures += 1;
+        continue;
+      }
+      if (!viewport.expectOverflow && report.overflowing > 1) {
+        // The week strip is seven days wide and overflows on a laptop too;
+        // more than that at 1280px means a table has started overflowing where
+        // it used to fit, which is the original defect arriving on a desktop.
+        console.error(`FAIL ${viewport.width}px: ${report.overflowing} regions overflow where at most the week strip should`);
+        failures += 1;
+      }
+
+      for (const line of report.fail) {
+        console.error(`FAIL ${viewport.width}px: ${line}`);
+        failures += 1;
+      }
+      if (!report.fail.length) {
+        console.log(
+          `OK   ${viewport.width}px  ${report.regions} regions, ${report.overflowing} overflowing` +
+          `${viewport.touch ? ' (touch)' : ''}`,
+        );
+      }
+    } finally {
+      page.close();
+    }
+  }
+
+  server.close();
+  if (failures) {
+    console.error(`\n${failures} problem${failures === 1 ? '' : 's'} with the sideways-scroll affordances.`);
+    process.exit(1);
+  }
+  console.log('OK   every box that scrolls sideways says so, and saying so works.');
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

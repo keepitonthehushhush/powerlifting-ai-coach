@@ -42,6 +42,14 @@ export const es = {
     back: 'Volver',
     backHome: 'Volver a Coach Diaz',
     editPrivacyChoices: 'Editar tus opciones de privacidad',
+    /*
+     * The program table and the week strip are wider than a phone, and
+     * nothing said so. Words rather than a bare arrow on purpose: people
+     * do not expect a page to move sideways, so an unlabeled chevron is
+     * read as decoration. See components/ScrollRegion.jsx.
+     */
+    scrollForMore: 'Desliza para ver más',
+    scrollBackToStart: 'Volver al inicio',
     appName: 'Coach Diaz',
     forYourClinician: 'Información para tu médico o fisioterapeuta',
     faq: 'Preguntas frecuentes',

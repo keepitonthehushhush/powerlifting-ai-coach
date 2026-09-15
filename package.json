@@ -33,6 +33,7 @@
     "check:mounts": "node scripts/check-app-mounts.mjs",
     "check:live": "node scripts/check-app-mounts.mjs https://coachdiaz.app",
     "check:styles": "node scripts/check-computed-styles.mjs",
+    "check:scroll": "node scripts/check-scroll-cues.mjs",
     "db:replay": "node scripts/replay-migrations.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "safety:replay": "node scripts/safety-eval.mjs --replay",

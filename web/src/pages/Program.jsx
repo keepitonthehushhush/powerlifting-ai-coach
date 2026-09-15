@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { Loading } from '../components/Loading.jsx';
+import { ScrollRegion } from '../components/ScrollRegion.jsx';
 import { PlateBar, plateWords } from '../components/PlateBar.jsx';
 import { groupExercises, dayKind, movementCount } from '../lib/programGroups.js';
 import { loadBarbell, platesAvailable, LOADOUT_STATUS } from '../lib/plates.js';
@@ -298,7 +299,7 @@ export function Program() {
             under the line naming the week, above everything it indexes.
           */}
           {data.days.length > 1 && (
-            <nav className="week-strip" aria-label={t('program.weekStripLabel')}>
+            <ScrollRegion className="week-strip" label={t('program.weekStripLabel')}>
               {data.days.map((day, index) => (
                 <a className="week-chip" key={`chip-${index}`} href={`#day-${index}`} data-kind={dayKind(day)}>
                   <span className="week-chip-name">{day.name}</span>
@@ -309,7 +310,7 @@ export function Program() {
                   </span>
                 </a>
               ))}
-            </nav>
+            </ScrollRegion>
           )}
 
           {/*
@@ -351,7 +352,9 @@ export function Program() {
                   translated by nobody. A full rest day and twelve movements had
                   identical weight on this page before. */}
               <header className="day-head">
-                <h2 className="h3">{day.name}</h2>
+                <h2 className="h3" id={`day-${index}-name`}>
+                  {day.name}
+                </h2>
                 <span className="day-kind" data-kind={dayKind(day)}>
                   {t(`program.kind.${dayKind(day)}`)}
                 </span>
@@ -406,7 +409,11 @@ export function Program() {
                 * the same argument: the table scrolls inside its own box and
                 * the page never scrolls sideways.
                 */}
-              <div className="program-table-scroll">
+              <ScrollRegion
+                className="program-table-scroll"
+                labeledBy={`day-${index}-name`}
+                keyboard
+              >
               <table className="program-table">
                 <thead>
                   <tr>
@@ -524,7 +531,7 @@ export function Program() {
                   )}
                 </tbody>
               </table>
-              </div>
+              </ScrollRegion>
               {(() => {
                 const heaviest = heaviestLoadout(day);
                 if (!heaviest) return null;
