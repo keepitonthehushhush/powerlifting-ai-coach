@@ -48,6 +48,7 @@ export const es = {
      * do not expect a page to move sideways, so an unlabeled chevron is
      * read as decoration. See components/ScrollRegion.jsx.
      */
+    coachTableLabel: 'Una tabla de tu entrenador',
     scrollForMore: 'Desliza para ver más',
     scrollBackToStart: 'Volver al inicio',
     appName: 'Coach Diaz',
@@ -872,6 +873,9 @@ export const es = {
     empty: 'Todavía nadie ha registrado ese levantamiento.',
     rank: '#',
     lifter: 'Atleta',
+    /* Names the scrolling board for a screen reader, which cannot see the
+       selected tab above it. */
+    boardLabel: 'Tabla de {lift}',
     best: 'Mejor',
     thatsYou: '(tú)',
     converted: '(registrado como {weight} {units})',

@@ -767,9 +767,16 @@ asserting anyway, because it is what a visitor behind a corporate filter sees.
 
 **Rejected: Playwright.** A much nicer API, a large dependency, a browser
 download in CI, and a version to keep current - for one page load and one DOM
-read. Chrome's own `--dump-dom` is the entire feature required, and Chrome and
-Chromium are both preinstalled on GitHub's ubuntu runners, so the step needs no
-setup.
+read. Chrome and Chromium are both preinstalled on GitHub's ubuntu runners, so
+the step needs no setup.
+
+> **Corrected 2026-09-15.** This paragraph used to end "Chrome's own
+> `--dump-dom` is the entire feature required". That was true of the local
+> check and false of the remote one, and the difference was not academic: a
+> flag cannot inject a probe into a page it did not serve, so **the remote mode
+> could not pass for as long as it existed**. See ADR-27. The rejection stands;
+> what replaced the flag is `scripts/lib/browser.mjs`, a few hundred lines of
+> JSON over the WebSocket client node already ships.
 
 **Rejected: making it skippable.** There is no `SKIP=1`. A missing browser fails
 the check rather than passing it, because a check that quietly does not run is
@@ -1707,6 +1714,133 @@ numbers. An athlete who switches from pounds to kilograms silently reinterprets
 every session they have ever logged, and every chart drawn from them. Fixing it
 is a migration plus a backfill, not a label, so it is named here rather than
 half-done.
+
+
+### ADR-27 · The monitor added after the outage had never been able to pass
+
+**Context.** ADR-15's check gained a remote mode after an eighteen-hour
+production outage, on the argument that "nothing was watching production", and
+a workflow runs it against coachdiaz.app every six hours. Two faults were found
+in it on the same afternoon, by running it rather than reading it.
+
+**Fault one: it could not pass.** The probe — the script that records uncaught
+exceptions and counts what mounted — was a `<script>` spliced into `<head>` by
+the local file server on the way out. `--dump-dom` cannot inject anything into a
+page it did not serve, so on a deployed origin there was no probe, and the
+check read its own absence as a failure. Measured against a local origin serving
+the *exact* build that passes locally:
+
+| Mode | Result | Exit |
+|---|---|---|
+| local | 11 routes mount and render | 0 |
+| remote, same build | 11 failures, every one "the probe never ran", **0 content failures** | 1 |
+
+The app was fine in both. A monitor that reports red unconditionally is worse
+than no monitor: it is a signal nobody reads, and this one existed precisely
+because nobody was reading anything.
+
+**Fault two: it could not tell "unreachable" from "broken".** Pointed at
+coachdiaz.app from a sandbox whose egress proxy refuses that host, it printed
+twenty-two lines under the heading `https://coachdiaz.app is broken` —
+character-for-character the board it printed during the real outage. The site
+was fine: 30 `page_visits` in the preceding 48 hours and zero client errors.
+
+**Decision: one browser driver, and it can inject.**
+`Page.addScriptToEvaluateOnNewDocument` runs before any of the page's own
+script, on any origin, which is the whole thing the file-serving trick was
+buying and is not limited to pages we serve. `scripts/lib/browser.mjs` now
+carries the DevTools client that `check-scroll-cues.mjs` had grown privately,
+and both checks use it. The local server serves the built `index.html`
+byte-for-byte — it had been measuring a page that does not exist.
+
+Simulated the original outage to confirm the remote mode now catches it:
+replacing the deployed bundle with a module that throws on load produced
+`the page threw: Uncaught Error: … @ /assets/index-*.js:1:7`, with the stack,
+on every route. It could never have said that before.
+
+**Decision: a gate before the browser, and a third exit code.** `servedThisApp`
+asks one narrow question — did this origin return a 2xx carrying
+`<div id="root">`? — and anything else exits **2** with what actually happened,
+having said nothing about the app. A socket error, an expired certificate, an
+NXDOMAIN, a proxy's 403 and a 404 for a deleted deployment all land there. None
+of them is swallowed; they are simply not the same failure as "the site loaded
+and is broken".
+
+The first version of that gate sent `HEAD` and accepted anything under 500. Run
+from the sandbox it printed "answered HEAD / with 403" and then reported eleven
+broken routes anyway, because the 403 came from the proxy. One run was enough to
+see it; the narrower question is the fix.
+
+The same shape applies one level up: if the probe is missing from **every**
+page, the instrumentation broke, not the site, and that is one line and exit 2
+rather than eleven route failures.
+
+Google's SRE book sets the bar for anything that pages a human — "urgent,
+actionable, and actively or imminently user-visible", from rules that
+"represent a clear failure". This is the ordinary black-box distinction
+underneath it: a failure of the collection path is not a failure of the
+service, and a monitor that cannot tell them apart is not trustworthy the one
+time it is right.
+
+**Eleven mutants, eleven caught** — two of them only after the first version of
+their assertions survived. `if (false)` left the literal `<div id="root"` in the
+message inside the branch, and a call replaced by `{ ok: true }` left the
+function it no longer calls still defined above; both assertions had matched
+text the mutation never needed to touch. They assert the conditional and the
+call site now, and an ordering test checks `> -1` first, because an absent call
+has index -1 and would otherwise pass on its own absence.
+
+
+### ADR-28 · Four more boxes scrolled sideways, and one of them was hiding the numbers
+
+**Context.** ADR-25 built the affordance for the page the defect was reported
+on. Four other boxes in this application scroll sideways and none of them said
+so: the leaderboard's board, the progress table, the coach's own tables in the
+transcript — which is where an athlete reads a prescription out of a reply —
+and the week strip. Fixing the reported instance of a defect and leaving its
+siblings is how a thing gets reported twice.
+
+**The fixture was lying again, and this time it had hidden a whole screen.**
+`boards` is an object keyed by lift, because that is what `rankEntries`
+returns. The harness invented an array of `{ lift, entries }`, so
+`data.boards['squat']` was `undefined`, `rows` was empty, and the leaderboard
+rendered "Nobody has logged that lift yet" in *both* modes. The board had
+therefore never been looked at with anything in it: not the ranking, not the
+row that highlights the viewer, not a converted kilogram figure, not what a
+twenty-nine character handle does to a column on a phone. The computed-styles
+baseline had been recording the empty state as though it were the page.
+
+This is the third time the harness's first rule has been learned — shapes come
+from routes — so it is asserted now rather than remembered.
+
+**And with data in it, the board was hiding the point of itself.** 376px inside
+a 309px card at 390px, and what was off the right edge was **BEST**: the weight.
+A leaderboard you have to scroll sideways to read the numbers on is not a
+leaderboard.
+
+**Decision: make it fit rather than label it.** A cue would have been the wrong
+fix. Ranks are two characters and weights are a fixed shape, so both are held to
+their content and the *name* is the column that gives — it wraps, mid-word,
+because a handle has no spaces to break at. A name on two lines is a smaller
+loss than every number being invisible. The board now fits at **320px** with
+nothing hidden at all.
+
+The check reported that change itself. Its page list carried
+`leaderboard: overflows: true`, and after the fix it failed with "nothing
+overflowed, so no cue was exercised — either the table got narrower, in which
+case say so here, or the fixture stopped having data in it". The list says
+`false` now, with the reason, and the page stays in the sweep because the other
+half of the audit still applies: a box that hides nothing must have no fade, no
+cue and no tab stop.
+
+**Decision: the sweep covers screens, not the one screen.**
+`check-scroll-cues.mjs` walks four pages at four widths. The progress table is
+behind a "Show table" toggle, so the sweep presses it first — a named selector,
+because one that stops matching has to fail loudly rather than quietly audit
+nothing. Nine regions, checked at 320, 360, 390 and 1280.
+
+**Also.** `.table-scroll { overflow-x: auto; }` was declared twice, six hundred
+lines apart, the same two words. Two rules for one thing is how they drift.
 
 
 ## 5. Operational notes

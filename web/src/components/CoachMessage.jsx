@@ -1,4 +1,6 @@
 import { parseCoachMarkdown } from '../lib/coachMarkdown.js';
+import { useI18n } from '../i18n/index.jsx';
+import { ScrollRegion } from './ScrollRegion.jsx';
 
 /**
  * A coach reply, rendered as typography rather than as the characters the
@@ -28,6 +30,7 @@ function Spans({ spans }) {
 }
 
 export function CoachMessage({ text }) {
+  const { t } = useI18n();
   const blocks = parseCoachMarkdown(text);
 
   return (
@@ -59,7 +62,12 @@ export function CoachMessage({ text }) {
           return (
             // Wrapped because a meet-prep block is five columns wide and a
             // phone is not. The table scrolls; the page must not.
-            <div key={i} className="coach-table-scroll">
+            <ScrollRegion
+              key={i}
+              className="coach-table-scroll"
+              label={t('common.coachTableLabel')}
+              keyboard
+            >
               <table className="coach-table">
                 <thead>
                   <tr>
@@ -82,7 +90,7 @@ export function CoachMessage({ text }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           );
         }
 

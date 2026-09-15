@@ -410,3 +410,56 @@ describe('the rate limit bucket exists', () => {
     }
   });
 });
+
+describe('the harness fixture has the shape the route actually sends', () => {
+  /**
+   * ── THE THIRD TIME THIS RULE HAS BEEN LEARNED ─────────────────────────
+   *
+   * `boards` is an OBJECT KEYED BY LIFT, because that is what rankEntries
+   * returns. The harness invented an ARRAY of `{ lift, entries }`, so
+   * `data.boards['squat']` was undefined, `rows` was empty, and the page
+   * rendered "Nobody has logged that lift yet" in BOTH modes.
+   *
+   * The consequence is not cosmetic. The board has therefore never been looked
+   * at with anything in it: not the ranking, not the row that highlights the
+   * viewer, not a converted kilogram figure, not what a twenty-nine character
+   * display name does to a column on a phone. The computed-styles baseline has
+   * been recording the empty state as though it were the page.
+   *
+   * The same mistake wrote the harness README's first rule, and then the
+   * conversation fixture, and then the program one. It is asserted here rather
+   * than remembered.
+   */
+  const fixtures = readSource(new URL('../../web/harness/fixtures.js', import.meta.url));
+
+  test('boards is keyed by lift, not a list of lifts', () => {
+    assert.match(fixtures, /return \{ squat: \[/, 'sparseBoards is not keyed by lift');
+    assert.match(fixtures, /boards\[lift\] = LIFTERS\.map/, 'fullBoards is not keyed by lift');
+    assert.doesNotMatch(fixtures, /\{\s*lift,\s*\n\s*entries:/, 'the invented {lift, entries} shape is back');
+  });
+
+  test('an entry carries the fields rankEntries produces', () => {
+    // displayName, not display_name: the route maps the column to a camelCase
+    // field and the page reads the mapped one.
+    /*
+     * Scoped to the entry builder, and the first version of this was not. It
+     * searched the whole file for `display_name:` and fired on the PROFILE
+     * fixture, where that is the right name because it is the database
+     * column - and on the string 'a_very_long_display_name_here', which is a
+     * lifter's handle. The same substring trap this repository keeps writing.
+     */
+    const builder = fixtures.slice(fixtures.indexOf('function entry('), fixtures.indexOf('function sparseBoards'));
+    assert.ok(builder.length > 100, 'the entry builder moved, so this test is reading the wrong thing');
+    for (const field of ['rank', 'displayName', 'loggedWeight', 'loggedUnits', 'weight', 'converted']) {
+      assert.match(builder, new RegExp(`\\b${field}[,:]`), `the fixture entry has no ${field}`);
+    }
+    assert.doesNotMatch(builder, /display_name/, 'the fixture entry is sending the database column name');
+  });
+
+  test('one lifter logs in kilograms, so the converted note is ever rendered', () => {
+    // A board that has never shown a converted figure has never shown the note
+    // that stops somebody reading a rounded 440.9 as a number on a bar.
+    assert.match(fixtures, /kg_lifter_from_abroad/);
+    assert.match(fixtures, /converted: inKg/, 'nothing in the fixture is marked as converted');
+  });
+});

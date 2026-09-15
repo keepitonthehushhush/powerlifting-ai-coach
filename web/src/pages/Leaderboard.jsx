@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { ScrollRegion } from '../components/ScrollRegion.jsx';
 import { StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { AchievementShelf } from '../components/AchievementShelf.jsx';
@@ -206,7 +207,11 @@ export function Leaderboard() {
         {rows.length === 0 ? (
           <p className="muted small">{t('leaderboard.empty')}</p>
         ) : (
-          <div className="table-scroll">
+          <ScrollRegion
+            className="table-scroll"
+            label={t('leaderboard.boardLabel', { lift: t(`leaderboard.lift.${board}`) })}
+            keyboard
+          >
             <table className="board">
               <thead>
                 <tr>
@@ -239,7 +244,7 @@ export function Leaderboard() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         )}
         <p className="muted small">{t('leaderboard.loggedOnly')}</p>
       </section>

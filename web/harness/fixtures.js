@@ -236,17 +236,58 @@ export function fixtures(mode, program) {
   };
 }
 
+/*
+ * ── THE SHAPE, AND THE THIRD TIME THIS RULE HAS BEEN LEARNED ──────────────
+ *
+ * `boards` is an OBJECT KEYED BY LIFT - `{ squat: [...], bench: [...],
+ * deadlift: [...] }` - because that is what lib/leaderboard.js `rankEntries`
+ * returns and what the route sends. This file invented an ARRAY of
+ * `{ lift, entries }`, so `data.boards['squat']` was undefined, `rows` was
+ * empty, and the page rendered "Nobody has logged that lift yet" in BOTH
+ * modes.
+ *
+ * The consequence is not cosmetic. The leaderboard's table has therefore never
+ * been reviewed with anything in it: not the ranking, not the row that
+ * highlights the viewer, not a converted kilogram figure, not what a
+ * twenty-nine character display name does to a column on a phone. The
+ * computed-styles baseline has been recording the empty state as though it
+ * were the page.
+ *
+ * Entry fields are rankEntries' own: rank, displayName, loggedWeight,
+ * loggedUnits, weight, converted.
+ */
+const LIFTERS = [
+  'Big_Daddy_Ed', 'nordic_bench', 'Marisol_R', 'quiet_deadlift', 'PlateCollector99',
+  'a_very_long_display_name_here', 'Tom', 'kg_lifter_from_abroad', 'Jules', 'RackPuller',
+];
+
+/** One entry, in the viewer's units, marked when it was converted. */
+function entry(rank, name, pounds) {
+  // One lifter logs in kilograms, because a board that has never shown a
+  // converted figure has never shown the note that explains one.
+  const inKg = name === 'kg_lifter_from_abroad';
+  return {
+    rank,
+    displayName: name,
+    loggedWeight: inKg ? Math.round((pounds / 2.2046226218) * 10) / 10 : pounds,
+    loggedUnits: inKg ? 'kg' : 'lb',
+    weight: pounds,
+    converted: inKg,
+  };
+}
+
 function sparseBoards() {
-  return [{ lift: 'squat', entries: [{ rank: 1, display_name: 'Big_Daddy_Ed', weight: 450, units: 'lb' }] }];
+  // One board with one entry, and two empty ones - a real state, and the one
+  // the very first lifter on this leaderboard sees.
+  return { squat: [entry(1, 'Big_Daddy_Ed', 450)], bench: [], deadlift: [] };
 }
 
 function fullBoards() {
-  const names = ['Big_Daddy_Ed', 'nordic_bench', 'Marisol_R', 'quiet_deadlift', 'PlateCollector99',
-    'a_very_long_display_name_here', 'Tom', 'kg_lifter_from_abroad', 'Jules', 'RackPuller'];
-  return ['squat', 'bench', 'deadlift'].map((lift, l) => ({
-    lift,
-    entries: names.map((n, i) => ({ rank: i + 1, display_name: n, weight: 520 - i * 17 - l * 60, units: 'lb' })),
-  }));
+  const boards = {};
+  ['squat', 'bench', 'deadlift'].forEach((lift, l) => {
+    boards[lift] = LIFTERS.map((name, i) => entry(i + 1, name, 520 - i * 17 - l * 60));
+  });
+  return boards;
 }
 
 function conversation(full) {

@@ -111,9 +111,21 @@ describe('a query builder is never treated as a promise', () => {
 
     const mounts = readSource(new URL('../../scripts/check-app-mounts.mjs', import.meta.url));
     assert.match(mounts, /const remoteTarget/, 'the mount check lost its remote mode');
-    // The offline rule is what makes the LOCAL check meaningful and would make
-    // the remote one meaningless.
-    assert.match(mounts, /offline \? \['--host-resolver-rules/, 'the remote check would block its own target');
+    /*
+     * The offline rule is what makes the LOCAL check meaningful and would make
+     * the remote one meaningless. It is now in two halves, in two files, and
+     * both are asserted: the caller decides, the driver applies.
+     *
+     * It used to be one regex against the flag inside check-app-mounts' own
+     * dumpDom. dumpDom is gone - `--dump-dom` could not inject a probe into a
+     * page it did not serve, which is why the remote mode had never been able
+     * to pass - so this follows the rule to where it went rather than
+     * asserting the shape of a function that no longer exists.
+     */
+    assert.match(mounts, /offline: !remoteTarget/, 'the remote check would block its own target');
+    const driver = readSource(new URL('../../scripts/lib/browser.mjs', import.meta.url));
+    assert.match(driver, /offline \? \['--host-resolver-rules/, 'the driver no longer honours the offline rule');
+    assert.match(driver, /offline = false/, 'the driver cuts the network off by default, which is the dangerous direction');
   });
 
   test('and the two that did are written the way that works', () => {

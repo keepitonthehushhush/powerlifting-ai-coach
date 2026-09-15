@@ -2004,7 +2004,9 @@ form > button.secondary {
 /* The board. A table, because it is one: three columns of ranked numbers with
    a header row is exactly what <table> was built for, and it is what a screen
    reader announces usefully. */
-.table-scroll { overflow-x: auto; }
+/* `.table-scroll` is declared once, above with .data-table. It was here too,
+   the same two words twice, which is how two rules for one thing drift. */
+
 .board { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .board th, .board td { padding: var(--space-2) var(--space-2); text-align: left; border-bottom: 1px solid var(--border); }
 .board th { color: var(--muted); font-weight: 600; font-size: var(--text-footnote); }
@@ -2013,6 +2015,30 @@ form > button.secondary {
    it is still findable when the hue is not. */
 .board tr.you td { background: var(--accent-soft); }
 .board tr.you td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+/*
+ * ── THE NUMBER IS THE POINT OF A LEADERBOARD ──────────────────────────────
+ *
+ * Rendered with entries in it for the first time (the harness fixture had the
+ * wrong shape, so this table had only ever been reviewed empty), the board
+ * came to 376px inside a 309px card on a 390px phone. What was off the right
+ * edge was the BEST column - the weight - because the Lifter column takes
+ * whatever it asks for and one of these handles is twenty-nine characters.
+ *
+ * A leaderboard you have to scroll sideways to see the numbers on is not a
+ * leaderboard. Ranks are two characters and weights are a fixed shape, so the
+ * two of them are held to their content and the NAME is the column that gives:
+ * it wraps, including mid-word, because a handle has no spaces to break at.
+ * A name on two lines is a smaller loss than every number being invisible.
+ */
+.board td:first-child,
+.board th:first-child { width: 1%; white-space: nowrap; }
+.board td:last-child,
+.board th:last-child { width: 1%; }
+.board td:last-child { white-space: nowrap; }
+/* The converted note is a second line under the weight, not part of it. */
+.board td:last-child .small { display: block; white-space: normal; }
+.board td:nth-child(2) { overflow-wrap: anywhere; }
 
 .badges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .badge {

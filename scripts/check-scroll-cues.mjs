@@ -33,11 +33,11 @@
  */
 
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
 import { readFile, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findChrome, launch } from './lib/browser.mjs';
 import { THEME_IDS, MODES, tokensFor } from '../web/src/lib/themes.js';
 import { contrast, AA_TEXT, AA_NON_TEXT } from '../web/src/lib/contrast.js';
 
@@ -57,6 +57,48 @@ const harnessDir = path.resolve(repoRoot, process.env.HARNESS_DIR ?? 'web/harnes
  * always on is the same defect as one that is never on: the navigation shipped
  * a permanent fade once and it read as a tab hiding behind a wall.
  */
+/**
+ * ── EVERY SCREEN WITH A SIDEWAYS BOX ON IT, NOT JUST THE ONE REPORTED ─────
+ *
+ * This checked `program` only, which is the page the defect was reported on.
+ * Four more boxes scroll sideways in this application and none of them said
+ * so: the leaderboard's board, the progress table, the coach's own tables in
+ * the transcript, and the week strip.
+ *
+ * `overflows` is what each page is expected to hide at phone width. It is an
+ * assertion in both directions - a page listed as scrolling that stops
+ * scrolling has had its fixture emptied, which is the failure that makes every
+ * other line here vacuous.
+ */
+const PAGES = [
+  { id: 'program', overflows: true },
+  /*
+   * FALSE, and this line is the record of why. The board DID overflow - 376px
+   * inside a 309px card at 390px - and what was off the right edge was the
+   * BEST column, which is the number a leaderboard exists to show. The fix was
+   * not a cue. Ranks are two characters and weights are a fixed shape, so both
+   * are held to their content and the NAME column gives instead; the board now
+   * fits at 320px with nothing hidden.
+   *
+   * Left in the sweep with `overflows: false` rather than removed, because the
+   * other half of the audit still applies and is worth holding: a box that
+   * hides nothing must have no fade, no cue and no tab stop. This check
+   * reported the change itself - "either the table got narrower, in which case
+   * say so here" - which is the line it was written to produce.
+   */
+  { id: 'leaderboard', overflows: false },
+  /*
+   * The progress table is behind a "Show table" toggle, so on load this page
+   * has no scrolling box at all - which the sweep correctly reported as a
+   * failure the first time it ran, and which would have been silently skipped
+   * by a check that only looked at what happens to be on screen. `reveal` is
+   * pressed first. Named rather than guessed at, because a selector that stops
+   * matching has to fail loudly instead of quietly auditing nothing.
+   */
+  { id: 'progress', overflows: true, reveal: 'button.link' },
+  { id: 'coach', overflows: true },
+];
+
 const VIEWPORTS = [
   { width: 320, height: 800, touch: true, expectOverflow: true },
   { width: 360, height: 800, touch: true, expectOverflow: true },
@@ -71,18 +113,6 @@ const MIME = {
 };
 
 const exists = (p) => access(p, constants.F_OK).then(() => true, () => false);
-
-async function findChrome() {
-  const candidates = [
-    process.env.CHROME_BIN, process.env.CHROMIUM_BIN,
-    '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium',
-    '/usr/bin/chromium-browser', '/snap/bin/chromium',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-  ].filter(Boolean);
-  for (const candidate of candidates) if (await exists(candidate)) return candidate;
-  return null;
-}
 
 async function serve(root) {
   const server = createServer(async (req, res) => {
@@ -99,102 +129,6 @@ async function serve(root) {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return { server, port: server.address().port };
-}
-
-/** The whole CDP client. One socket, one id counter, one map of promises. */
-async function connect(url) {
-  const socket = new WebSocket(url);
-  await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
-  let id = 0;
-  const pending = new Map();
-  socket.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (!message.id || !pending.has(message.id)) return;
-    const { resolve, reject } = pending.get(message.id);
-    pending.delete(message.id);
-    if (message.error) reject(new Error(JSON.stringify(message.error)));
-    else resolve(message.result);
-  };
-  return {
-    send(method, params = {}, sessionId) {
-      const message = { id: (id += 1), method, params, ...(sessionId ? { sessionId } : {}) };
-      return new Promise((resolve, reject) => {
-        pending.set(message.id, { resolve, reject });
-        socket.send(JSON.stringify(message));
-      });
-    },
-  };
-}
-
-async function launch(chromePath, { width, height, touch }) {
-  const chrome = spawn(chromePath, [
-    '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
-    '--no-first-run', '--no-default-browser-check',
-    // The harness talks to nothing, and an unexpected outbound request would
-    // be a finding in itself rather than something to wait for.
-    '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
-    '--remote-debugging-port=0',
-    `--user-data-dir=${path.join(process.env.TMPDIR ?? '/tmp', `scroll-cues-${process.pid}-${width}`)}`,
-    'about:blank',
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
-
-  const wsUrl = await new Promise((resolve, reject) => {
-    let noise = '';
-    const timer = setTimeout(
-      () => reject(new Error(`Chrome never announced a DevTools endpoint.\n${noise}`)),
-      30000,
-    );
-    chrome.stderr.on('data', (chunk) => {
-      noise += chunk;
-      const found = noise.match(/ws:\/\/\S+/);
-      if (found) { clearTimeout(timer); resolve(found[0]); }
-    });
-    chrome.on('error', (error) => { clearTimeout(timer); reject(error); });
-  });
-
-  const browser = await connect(wsUrl);
-  const { targetId } = await browser.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await browser.send('Target.attachToTarget', { targetId, flatten: true });
-  const send = (method, params) => browser.send(method, params, sessionId);
-
-  await send('Page.enable');
-  await send('Runtime.enable');
-  await send('Emulation.setDeviceMetricsOverride', {
-    width, height, deviceScaleFactor: 1, mobile: touch, screenWidth: width, screenHeight: height,
-  });
-  if (touch) {
-    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
-    await send('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
-    // The part a narrow window cannot give you, and the reason this file drives
-    // CDP rather than passing --window-size to --dump-dom.
-    await send('Emulation.setEmulatedMedia', {
-      features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }],
-    });
-  }
-
-  return {
-    async goto(url) {
-      await send('Page.navigate', { url });
-      for (let attempt = 0; attempt < 80; attempt += 1) {
-        await new Promise((r) => setTimeout(r, 150));
-        const { result } = await send('Runtime.evaluate', {
-          expression: 'document.querySelector("#root")?.children.length ?? 0', returnByValue: true,
-        });
-        if (result.value > 0) break;
-      }
-      await new Promise((r) => setTimeout(r, 400));
-    },
-    async evaluate(expression) {
-      const { result, exceptionDetails } = await send('Runtime.evaluate', {
-        expression: `(async () => { ${expression} })()`, returnByValue: true, awaitPromise: true,
-      });
-      if (exceptionDetails) {
-        throw new Error(exceptionDetails.exception?.description ?? JSON.stringify(exceptionDetails));
-      }
-      return result.value;
-    },
-    close() { chrome.kill('SIGKILL'); },
-  };
 }
 
 /**
@@ -393,44 +327,77 @@ async function main() {
   let failures = 0;
 
   for (const viewport of VIEWPORTS) {
-    const page = await launch(chromePath, viewport);
+    // The harness talks to nothing, so an unexpected outbound request would be
+    // a finding rather than something to wait for.
+    const page = await launch(chromePath, { ...viewport, offline: true, label: 'scroll-cues' });
     try {
-      await page.goto(`http://127.0.0.1:${port}/?page=program&mode=full`);
-      const report = await page.evaluate(AUDIT);
+      let regionsSeen = 0;
+      let overflowingSeen = 0;
 
-      // The trap every check in this repository has fallen into once: an empty
-      // run reports success having looked at nothing.
-      if (!report.regions) {
-        console.error(`FAIL ${viewport.width}px: no scrolling regions were found at all`);
-        failures += 1;
-        continue;
+      for (const { id, overflows, reveal } of PAGES) {
+        await page.goto(`http://127.0.0.1:${port}/?page=${id}&mode=full`);
+        const where = `${viewport.width}px ${id}`;
+
+        if (reveal) {
+          const opened = await page.evaluate(`
+            const control = document.querySelector(${JSON.stringify(reveal)});
+            if (!control) return false;
+            control.click();
+            await new Promise((r) => setTimeout(r, 400));
+            return true;
+          `);
+          if (!opened) {
+            console.error(`FAIL ${where}: nothing matched "${reveal}", so the box behind it was never opened`);
+            failures += 1;
+            continue;
+          }
+        }
+
+        const report = await page.evaluate(AUDIT);
+
+        // The trap every check in this repository has fallen into once: an
+        // empty run reports success having looked at nothing.
+        if (!report.regions) {
+          console.error(`FAIL ${where}: no scrolling regions on this page at all`);
+          failures += 1;
+          continue;
+        }
+        if (viewport.touch && report.media.hover) {
+          console.error(`FAIL ${where}: asked for a touch screen and got a mouse`);
+          failures += 1;
+          continue;
+        }
+        if (viewport.expectOverflow && overflows && !report.overflowing) {
+          console.error(
+            `FAIL ${where}: nothing overflowed, so no cue was exercised. Either the table got ` +
+            'narrower - in which case say so here - or the fixture stopped having data in it, ' +
+            'which is what made the leaderboard unreviewable for as long as it did.',
+          );
+          failures += 1;
+          continue;
+        }
+
+        regionsSeen += report.regions;
+        overflowingSeen += report.overflowing;
+
+        for (const line of report.fail) {
+          console.error(`FAIL ${where}: ${line}`);
+          failures += 1;
+        }
       }
-      if (viewport.touch && report.media.hover) {
-        console.error(`FAIL ${viewport.width}px: asked for a touch screen and got a mouse`);
-        failures += 1;
-        continue;
-      }
-      if (viewport.expectOverflow && !report.overflowing) {
-        console.error(
-          `FAIL ${viewport.width}px: nothing overflowed, so the cue was never exercised. ` +
-          'Either the table got narrower - in which case say so here - or the fixture stopped ' +
-          'having a week in it.',
-        );
-        failures += 1;
-        continue;
-      }
-      if (!viewport.expectOverflow && report.overflowing > 1) {
+
+      if (!viewport.expectOverflow && overflowingSeen > 1) {
         // The week strip is seven days wide and overflows on a laptop too;
         // more than that at 1280px means a table has started overflowing where
         // it used to fit, which is the original defect arriving on a desktop.
-        console.error(`FAIL ${viewport.width}px: ${report.overflowing} regions overflow where at most the week strip should`);
+        console.error(`FAIL ${viewport.width}px: ${overflowingSeen} regions overflow where at most the week strip should`);
         failures += 1;
       }
+      const report = { regions: regionsSeen, overflowing: overflowingSeen, fail: [] };
 
-      for (const line of report.fail) {
-        console.error(`FAIL ${viewport.width}px: ${line}`);
-        failures += 1;
-      }
+      // Back to the program page for the palette sweep, which needs a cue on
+      // screen and should measure the same one every run.
+      if (viewport.sweepThemes) await page.goto(`http://127.0.0.1:${port}/?page=program&mode=full`);
 
       // Once, at the width where the cue exists. The palette does not change
       // with the viewport, and twenty repaints in one page is cheap.

@@ -26,10 +26,16 @@
  *
  * It would be one npm install and a much nicer API. It would also be a large
  * dependency, a browser download in CI, and a second thing to keep current -
- * for a check that needs two page loads and a DOM read each. Chrome's own
- * `--dump-dom` prints the DOM after the page settles, which is the entire
- * feature required. Chrome is preinstalled on GitHub's ubuntu runners
- * (Ubuntu 24.04 ships Google Chrome AND Chromium), so CI needs no new step.
+ * for a check that needs a page load and a DOM read per route. Chrome is
+ * preinstalled on GitHub's ubuntu runners (Ubuntu 24.04 ships Google Chrome
+ * AND Chromium), so CI needs no new step.
+ *
+ * This used to say `--dump-dom` was "the entire feature required", and that
+ * was true of the local check and false of the remote one. A flag cannot
+ * inject a probe into a page it did not serve, which is why the remote mode
+ * could not pass for as long as it existed. It drives the DevTools protocol
+ * now - scripts/lib/browser.mjs, a few hundred lines of JSON over the
+ * WebSocket client node ships - and the rejection above still holds.
  *
  * ── WHY THE BROWSER IS CUT OFF FROM THE INTERNET ──────────────────────────
  *
@@ -45,17 +51,24 @@
  */
 
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
 import { readFile, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findChrome, launch } from './lib/browser.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = path.resolve(repoRoot, process.env.DIST_DIR ?? 'web/dist');
 
-/** How long the page gets to mount, in virtual milliseconds. */
-const BUDGET_MS = 10000;
+/**
+ * How long the page gets to mount, in REAL milliseconds.
+ *
+ * It used to be virtual: --virtual-time-budget fast-forwards timers, and the
+ * probe's own setTimeout fired inside that budget. The driver polls #root
+ * instead, so this is a ceiling on a wait that is normally a few hundred
+ * milliseconds rather than a duration every route pays.
+ */
+const MOUNT_TIMEOUT_MS = 12000;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -72,42 +85,51 @@ const MIME = {
 };
 
 /**
- * Captures what a visitor cannot: uncaught exceptions, and whether anything
- * was ever mounted. It writes into the DOM because --dump-dom is the only
- * channel out of the browser.
+ * Installed BEFORE any of the page's own script, on whatever origin it is
+ * served from, and left there to collect what a visitor cannot report:
+ * uncaught exceptions and unhandled rejections.
+ *
+ * ── WHY IT IS NO LONGER A <script> TAG SPLICED INTO index.html ────────────
+ *
+ * Because that only worked on pages this process served. `--dump-dom` cannot
+ * inject anything into a deployed site, so the REMOTE mode - added after an
+ * eighteen-hour outage, run unattended every six hours - could never pass.
+ * Pointed at an origin serving a build that passes 11 routes out of 11
+ * locally, it reported 11 failures, every one of them "the probe never ran".
+ * The app was fine. The probe was never there.
+ *
+ * `Page.addScriptToEvaluateOnNewDocument` has no such limit, and the same
+ * probe now runs in both modes, which is also the only way the two modes can
+ * be said to be asking the same question.
  *
  * Only ErrorEvent is recorded. A failed `<script src>` or `<img>` fires a
  * plain Event during the capture phase, and with the network cut off those are
  * expected - Turnstile's loader is exactly one of them.
  */
-const PROBE = [
-  '<script>',
-  '(function () {',
-  '  var errs = [];',
-  '  function write(id, text) {',
-  '    var el = document.getElementById(id);',
-  "    if (!el) { el = document.createElement('pre'); el.id = id; document.documentElement.appendChild(el); }",
-  '    el.textContent = text;',
-  '  }',
-  "  function record() { write('__probe_errors', errs.join('\\n--\\n')); }",
-  "  addEventListener('error', function (e) {",
-  '    if (!(e instanceof ErrorEvent)) return;',
-  "    errs.push(e.message + ' @ ' + e.filename + ':' + e.lineno + ':' + e.colno +",
-  "      (e.error && e.error.stack ? '\\n' + e.error.stack : ''));",
-  '    record();',
-  '  }, true);',
-  "  addEventListener('unhandledrejection', function (e) {",
-  "    errs.push('unhandled rejection: ' + ((e.reason && e.reason.stack) || e.reason));",
-  '    record();',
-  '  });',
-  '  setTimeout(function () {',
-  "    var root = document.getElementById('root');",
-  "    write('__probe_mounted', root ? String(root.childNodes.length) : 'NO_ROOT_ELEMENT');",
-  '    if (errs.length) record();',
-  `  }, ${BUDGET_MS - 2000});`,
-  '})();',
-  '</script>',
-].join('\n');
+const PROBE_JS = `
+  (function () {
+    var errs = [];
+    window.__probe = { errors: errs };
+    addEventListener('error', function (e) {
+      if (!(e instanceof ErrorEvent)) return;
+      errs.push(e.message + ' @ ' + e.filename + ':' + e.lineno + ':' + e.colno +
+        (e.error && e.error.stack ? '\\n' + e.error.stack : ''));
+    }, true);
+    addEventListener('unhandledrejection', function (e) {
+      errs.push('unhandled rejection: ' + ((e.reason && e.reason.stack) || e.reason));
+    });
+  })();
+`;
+
+/** Read back out of the page once it has had its chance to mount. */
+const REPORT_JS = `
+  var root = document.getElementById('root');
+  return {
+    installed: !!window.__probe,
+    errors: (window.__probe && window.__probe.errors) || [],
+    mounted: root ? root.childNodes.length : null,
+  };
+`;
 
 async function exists(target) {
   try {
@@ -118,11 +140,18 @@ async function exists(target) {
   }
 }
 
-/** Serves dist/ the way vercel.json does: real files win, everything else is index.html. */
+/**
+ * Serves dist/ the way vercel.json does: real files win, everything else is
+ * index.html.
+ *
+ * Unmodified now. It used to splice the probe into `<head>` on the way out,
+ * which meant the local check measured a page that does not exist and the
+ * remote check could not be given a probe at all. The probe is injected by the
+ * browser in both modes, so what this serves is byte-for-byte what Vercel
+ * serves.
+ */
 async function serveDist() {
-  const indexHtml = await readFile(path.join(distDir, 'index.html'), 'utf8');
-  if (!indexHtml.includes('<head>')) throw new Error('index.html has no <head> to inject the probe into');
-  const probed = indexHtml.replace('<head>', `<head>\n${PROBE}`);
+  const probed = await readFile(path.join(distDir, 'index.html'), 'utf8');
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -153,85 +182,6 @@ async function serveDist() {
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return { server, port: server.address().port };
-}
-
-/**
- * Chrome, wherever this machine keeps it. Deliberately NOT skippable: a check
- * that quietly does not run is how the last two blank pages reached
- * production. Set CHROME_BIN if it lives somewhere unusual.
- */
-async function findChrome() {
-  const candidates = [
-    process.env.CHROME_BIN,
-    process.env.CHROMIUM_BIN,
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/snap/bin/chromium',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-  ].filter(Boolean);
-
-  for (const candidate of candidates) if (await exists(candidate)) return candidate;
-  return null;
-}
-
-function dumpDom(chrome, url, { offline = true } = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      chrome,
-      [
-        '--headless=new',
-        '--disable-gpu',
-        '--no-sandbox', // CI containers run as root, and there is no untrusted content here.
-        '--disable-dev-shm-usage',
-        '--no-first-run',
-        '--no-default-browser-check',
-        /*
-         * Everything but loopback is unreachable. See the header comment.
-         *
-         * NOT when checking a deployed site, for the obvious reason: the whole
-         * point there is to fetch it. The offline rule is what makes the local
-         * check meaningful - it proves the app mounts without reaching
-         * Supabase - and applying it to a URL would have produced a confident
-         * pass against a page that never loaded.
-         */
-        ...(offline ? ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'] : []),
-        `--virtual-time-budget=${BUDGET_MS}`,
-        '--dump-dom',
-        url,
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'] }
-    );
-
-    let out = '';
-    let err = '';
-    child.stdout.on('data', (chunk) => (out += chunk));
-    child.stderr.on('data', (chunk) => (err += chunk));
-
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      reject(new Error(`Chrome did not exit within 60s.\n${err}`));
-    }, 60000);
-
-    child.on('error', (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code !== 0 && !out) reject(new Error(`Chrome exited ${code}.\n${err}`));
-      else resolve(out);
-    });
-  });
-}
-
-/** Pulls the text of one <pre> the probe wrote. */
-function probeValue(dom, id) {
-  const match = dom.match(new RegExp(`<pre id="${id}">([\\s\\S]*?)</pre>`));
-  return match ? match[1] : null;
 }
 
 function decodeEntities(value) {
@@ -331,16 +281,27 @@ const ROUTES = [
  */
 
 /** Everything a file cannot tell you, asked of one rendered page. */
-async function checkRoute(dom) {
+async function checkRoute(dom, report) {
   const failures = [];
 
-  const errors = probeValue(dom, '__probe_errors');
-  if (errors) failures.push(`the page threw:\n${decodeEntities(errors).replace(/^/gm, '        ')}`);
+  /*
+   * `installed` is asked first and is not a formality. It is the difference
+   * between "this page is broken" and "nothing was measured", and getting
+   * those two confused is what made the remote mode useless: it reported the
+   * absence of its own probe as eleven broken routes. If the injection ever
+   * stops working, this says so in those words, once, instead.
+   */
+  if (!report.installed) {
+    failures.push('the probe was never installed in this page, so nothing here was measured.');
+    return failures;
+  }
 
-  const mounted = probeValue(dom, '__probe_mounted');
-  if (mounted === null) failures.push('the probe never ran - the page did not reach its first timer.');
-  else if (mounted === 'NO_ROOT_ELEMENT') failures.push('index.html has no #root for React to mount into.');
-  else if (Number(mounted) === 0) failures.push('#root is empty: React mounted nothing.');
+  if (report.errors.length) {
+    failures.push(`the page threw:\n${report.errors.join('\n--\n').replace(/^/gm, '        ')}`);
+  }
+
+  if (report.mounted === null) failures.push('index.html has no #root for React to mount into.');
+  else if (Number(report.mounted) === 0) failures.push('#root is empty: React mounted nothing.');
 
   if (!dom.includes('Coach Diaz')) {
     failures.push('the rendered page does not contain "Coach Diaz" - something mounted, but not this app.');
@@ -393,6 +354,106 @@ async function checkRoute(dom) {
  * same question. verify-deployment.mjs already asks what the public is
  * downloading; this asks whether what they downloaded runs.
  */
+/**
+ * ── CAN THIS MACHINE REACH THE SITE AT ALL? ───────────────────────────────
+ *
+ * Asked BEFORE the browser runs, because the answer changes what every later
+ * failure means.
+ *
+ * The defect: pointed at coachdiaz.app from a sandbox whose egress proxy
+ * refuses that host, this check printed
+ *
+ *     https://coachdiaz.app is broken in a browser (chrome):
+ *       - /: the probe never ran - the page did not reach its first timer.
+ *       - /: the rendered page does not contain "Coach Diaz" ...
+ *       ... eleven routes, twenty-two lines ...
+ *
+ * which is character-for-character the board it printed during the real
+ * eighteen-hour outage. The site was fine: 30 page_visits in the preceding 48
+ * hours and zero client errors. A monitor that reports its own blindness as
+ * the thing it is watching cannot be trusted the one time it is right, and
+ * this one runs unattended every six hours.
+ *
+ * Google's SRE book states the bar a page has to clear - "urgent, actionable,
+ * and actively or imminently user-visible" - and that alert rules "should be
+ * simple to understand and represent a clear failure". "I could not open a
+ * socket" is a clear failure of THIS PROCESS, and naming it as such is the
+ * whole fix. It is the ordinary black-box monitoring distinction: a failure of
+ * the collection path is not a failure of the service.
+ *
+ * What it does NOT do is swallow anything. A refused connection, expired
+ * certificate or NXDOMAIN on the real origin is a genuine outage and is still
+ * reported and still exits non-zero - it just exits 2 and says what happened,
+ * so a person reads "DNS did not resolve" rather than "eleven routes render
+ * the wrong app".
+ */
+const UNREACHABLE = 2;
+
+/**
+ * Did THIS APP arrive from that origin, over this machine's connection?
+ *
+ * ── THE SECOND VERSION OF THIS FUNCTION, AND WHY THERE WAS A FIRST ────────
+ *
+ * The first one sent HEAD and accepted anything that was not a 5xx. Run from
+ * this sandbox it printed "answered HEAD / with 403" and then cheerfully
+ * reported eleven broken routes - because the 403 came from an egress proxy
+ * that refuses this host, not from the site. A reachability probe that treats
+ * "something answered" as "the site answered" has added a step and fixed
+ * nothing, and it took running it once to see that.
+ *
+ * So the question is narrower and has one right answer: did the ORIGIN serve
+ * the HTML shell of THIS application? A 2xx carrying `<div id="root"` is the
+ * only thing that licenses the rest of this check to talk about the app. Any
+ * other outcome - a socket error, a redirect to a login wall, a proxy's 403, a
+ * Vercel 404 for a deleted deployment - means nothing was measured about the
+ * app, and saying so is the entire job.
+ *
+ * It does not swallow outages. Every one of those still exits non-zero. It
+ * exits 2 rather than 1 and names what happened, so a person reads "the origin
+ * answered 404" instead of a twenty-two line board identical to the one the
+ * real eighteen-hour outage produced.
+ *
+ * Google's SRE book sets the bar for anything that pages a human - "urgent,
+ * actionable, and actively or imminently user-visible", and rules that
+ * "represent a clear failure". This is the ordinary black-box distinction
+ * underneath that: a failure of the collection path is not a failure of the
+ * service, and a monitor that cannot tell them apart is not trustworthy the
+ * one time it is right.
+ */
+async function servedThisApp(origin) {
+  const control = new AbortController();
+  const timer = setTimeout(() => control.abort(), 20000);
+  try {
+    const res = await fetch(`${origin}/`, { signal: control.signal, redirect: 'follow' });
+    // Reported whatever happens next: on a refusal these say at a glance
+    // whether you are looking at the origin or at something in front of it.
+    const via = ['server', 'x-vercel-id', 'x-vercel-cache', 'via']
+      .map((name) => (res.headers.get(name) ? `${name}: ${res.headers.get(name)}` : null))
+      .filter(Boolean)
+      .join(', ') || 'no origin headers';
+
+    if (!res.ok) return { ok: false, why: `the origin answered ${res.status} ${res.statusText} (${via})` };
+
+    const body = await res.text();
+    if (!body.includes('<div id="root"')) {
+      return {
+        ok: false,
+        why: `${res.status} but the body is not this application's shell - no <div id="root"> (${via})`,
+      };
+    }
+    return { ok: true, note: `${res.status}, shell served (${via})` };
+  } catch (error) {
+    const cause = error?.cause ?? error;
+    const why = [error?.name, cause?.code, cause?.message ?? error?.message]
+      .filter(Boolean)
+      .filter((part, at, all) => all.indexOf(part) === at)
+      .join(': ');
+    return { ok: false, why: `no response at all - ${why}` };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const remoteTarget = process.argv[2] ?? process.env.DEPLOY_URL ?? null;
 
 async function main() {
@@ -411,29 +472,79 @@ async function main() {
     process.exit(1);
   }
 
-  const doms = {};
+  const pages = {};
   let origin;
   let server = null;
   if (remoteTarget) {
     // Normalized so a trailing slash or a bare host both work, and so a route
     // is appended rather than replacing a path somebody meant to keep.
     origin = new URL(remoteTarget).origin;
+
+    const served = await servedThisApp(origin);
+    if (!served.ok) {
+      console.error(`NOT MEASURED: ${origin} did not serve this application to this machine.`);
+      console.error(`  ${served.why}`);
+      console.error('');
+      console.error('Nothing below this line is a statement about whether the app works, because');
+      console.error('the app was never loaded. This is still worth a look - a refused connection,');
+      console.error('an expired certificate, an NXDOMAIN and a 404 for a deleted deployment all');
+      console.error('land here - but it is a DIFFERENT failure from "the site loaded and is');
+      console.error('broken", and it exits 2 rather than 1 so the two are never confused.');
+      process.exit(UNREACHABLE);
+    }
+    console.log(`${origin}: ${served.note}`);
   } else {
     const served = await serveDist();
     server = served.server;
     origin = `http://127.0.0.1:${served.port}`;
   }
+  /*
+   * One browser for all eleven routes rather than one process each. The probe
+   * is an init script, so it survives every navigation, and the pages are
+   * independent of each other: nothing here logs in or leaves state behind.
+   */
+  const browser = await launch(chrome, {
+    // Everything but loopback unreachable, which is what makes the LOCAL check
+    // meaningful - the app has to mount without reaching Supabase. Exactly
+    // wrong for a deployed site, where fetching it is the entire point.
+    offline: !remoteTarget,
+    label: 'app-mounts',
+  });
   try {
+    await browser.addInitScript(PROBE_JS);
     for (const route of ROUTES) {
-      doms[route] = await dumpDom(chrome, `${origin}${route}`, { offline: !remoteTarget });
+      await browser.goto(`${origin}${route}`, { timeoutMs: MOUNT_TIMEOUT_MS });
+      pages[route] = { dom: await browser.html(), report: await browser.evaluate(REPORT_JS) };
     }
   } finally {
+    browser.close();
     if (server) server.close();
   }
 
+  /*
+   * ── THE INSTRUMENTATION FAILED, WHICH IS NOT THE APP FAILING ──────────────
+   *
+   * If the probe is missing from EVERY page, the thing that broke is this
+   * script, not the site. Printing eleven identical route failures under the
+   * heading "the app does not work" is precisely the over-claim that made the
+   * remote mode worthless, and it would be a shame to fix it in one place and
+   * reintroduce it in another.
+   *
+   * One route missing a probe is different and stays a route failure: that is
+   * a page whose script never ran.
+   */
+  const uninstrumented = Object.values(pages).filter((page) => !page.report?.installed).length;
+  if (uninstrumented === ROUTES.length) {
+    console.error('NOT MEASURED: the probe was not installed in any of the pages.');
+    console.error('  Page.addScriptToEvaluateOnNewDocument did not take effect, so nothing was');
+    console.error('  asked of the application. This is a fault in this script or in the browser');
+    console.error('  driving it - it is not a statement about the app, and it exits 2 to say so.');
+    process.exit(UNREACHABLE);
+  }
+
   const failures = [];
-  for (const [route, dom] of Object.entries(doms)) {
-    for (const failure of await checkRoute(dom)) failures.push(`${route}: ${failure}`);
+  for (const [route, page] of Object.entries(pages)) {
+    for (const failure of await checkRoute(page.dom, page.report)) failures.push(`${route}: ${failure}`);
   }
 
   if (failures.length) {

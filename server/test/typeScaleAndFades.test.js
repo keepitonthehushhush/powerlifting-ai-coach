@@ -308,3 +308,83 @@ describe('a box that scrolls sideways says so', () => {
     assert.ok(buildAt > -1 && buildAt < checkAt, 'the harness is built after the check that reads it');
   });
 });
+
+describe('every box that scrolls sideways goes through the one component', () => {
+  /**
+   * ── WHAT THE FIRST PASS MISSED ────────────────────────────────────────
+   *
+   * The affordance was built for the page the defect was reported on. Four
+   * more boxes in this application scroll sideways and none of them said so:
+   * the leaderboard's board, the progress table, the coach's own tables in the
+   * transcript - which is the one an athlete reads a prescription out of - and
+   * the week strip.
+   *
+   * Fixing the reported instance of a defect and leaving its four siblings is
+   * how a thing gets reported twice.
+   */
+  const files = {
+    'pages/Leaderboard.jsx': 'table-scroll',
+    'pages/Progress.jsx': 'table-scroll',
+    'components/CoachMessage.jsx': 'coach-table-scroll',
+    'pages/Program.jsx': 'program-table-scroll',
+  };
+
+  for (const [file, cls] of Object.entries(files)) {
+    test(`${file} wraps .${cls} rather than leaving it a bare div`, () => {
+      const source = readSource(new URL(`../../web/src/${file}`, import.meta.url));
+      assert.match(
+        source,
+        new RegExp(`<ScrollRegion[\\s\\S]{0,200}className="${cls}"`),
+        `.${cls} is not measured, so it can hide a column silently`,
+      );
+      assert.doesNotMatch(
+        source,
+        new RegExp(`<div className="${cls}"`),
+        `.${cls} is back to a plain div, which is the original defect`,
+      );
+    });
+  }
+
+  test('a table names itself for the keyboard; a strip of links does not need to', () => {
+    // A table has nothing inside it to tab to, so its wrapper has to be
+    // reachable. The week strip's children are links and already are.
+    for (const file of ['pages/Leaderboard.jsx', 'pages/Progress.jsx', 'components/CoachMessage.jsx']) {
+      const source = readSource(new URL(`../../web/src/${file}`, import.meta.url));
+      assert.match(source, /keyboard\s*\n?\s*>/, `${file}'s table cannot be reached by keyboard`);
+      assert.match(
+        source,
+        /(labeledBy=|label=\{t\()/,
+        `${file}'s scrolling region has no accessible name`,
+      );
+    }
+  });
+
+  test('the rule that makes them scroll is declared once', () => {
+    // `.table-scroll { overflow-x: auto; }` appeared twice, six hundred lines
+    // apart, the same two words. Two rules for one thing is how they drift.
+    assert.equal(
+      rulesFor('.table-scroll').length,
+      1,
+      '.table-scroll has more than one rule again',
+    );
+  });
+
+  test('the browser check looks at every screen with one on it, not just the reported one', () => {
+    const check = readSource(new URL('../../scripts/check-scroll-cues.mjs', import.meta.url));
+    const block = check.slice(check.indexOf('const PAGES = ['), check.indexOf('];', check.indexOf('const PAGES = [')));
+    const swept = [...block.matchAll(/\{ id: '([a-z]+)', overflows: (true|false)/g)]
+      .map((m) => `${m[1]}:${m[2]}`);
+    /*
+     * The page AND what it is expected to hide, because the second half is the
+     * half that rots. The leaderboard is `false` on purpose: its board used to
+     * overflow by 67px with the WEIGHT off the right edge, and the fix was to
+     * make it fit rather than to label it. If it starts overflowing again this
+     * list is what says so.
+     */
+    assert.deepEqual(
+      swept,
+      ['program:true', 'leaderboard:false', 'progress:true', 'coach:true'],
+      'the page sweep changed - every screen with a sideways box belongs in it',
+    );
+  });
+});

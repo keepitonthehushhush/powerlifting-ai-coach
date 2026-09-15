@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useI18n } from '../i18n/index.jsx';
+import { ScrollRegion } from '../components/ScrollRegion.jsx';
 import { BackToTop, StickyHeader } from '../components/StickyHeader.jsx';
 import { SiteNav } from '../components/SiteNav.jsx';
 import { LiftChart } from '../components/LiftChart.jsx';
@@ -191,9 +192,19 @@ export function Progress() {
           </button>
 
           {showTable && (
-            <div className="card table-scroll">
+            <div className="card">
+              {/* The card and the scrolling box are two things now. They were
+                  one element, so the fade would have been painted over the
+                  card's own padding and the cue would have sat outside it. */}
+              <ScrollRegion
+                className="table-scroll"
+                labeledBy="progress-table-caption"
+                keyboard
+              >
               <table className="data-table">
-                <caption className="muted small">{t('progress.tableCaption')}</caption>
+                <caption className="muted small" id="progress-table-caption">
+                  {t('progress.tableCaption')}
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">{t('progress.colDate')}</th>
@@ -222,6 +233,7 @@ export function Progress() {
                   )}
                 </tbody>
               </table>
+              </ScrollRegion>
             </div>
           )}
         </>
