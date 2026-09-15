@@ -22,11 +22,35 @@
 #
 # This closes the second one. It cannot prevent a bad deploy; it makes one
 # impossible to miss.
+#
+# ── AND ONE IT DID MISS, ON 2026-09-15 ─────────────────────────────────────
+#
+# Vercel's "Require Verified Commits" was switched on. Their docs: "When
+# enabled, Vercel will only create deployments for commits that have been
+# verified by GitHub. For all other commits, the deployment will be
+# automatically canceled." The commit was signed but GitHub had not verified
+# it, so the deployment was CANCELED before it ever built.
+#
+# A canceled deployment never emits `deployment_status.state == 'success'`, so
+# the `if` below skipped the whole job - and A GATE THAT SKIPS IS A GATE THAT
+# PASSED, the rule this repository already learned from a CI job that skipped
+# when its secret was missing. Production quietly stayed on the previous
+# commit, /api/health answered "status": "ok" for hours, and every check in the
+# repository was green.
+#
+# The `landed` job below is the repair, and it deliberately does NOT listen for
+# another event. A canceled deploy, a failed build, a deploy that never fired
+# and a deploy still running are four events and one question - IS PRODUCTION
+# SERVING THE COMMIT I PUSHED - so it asks that on every push instead.
 name: Post-deploy
 
 on:
   # Fired by Vercel's GitHub integration when a deployment finishes.
   deployment_status:
+  # Every push to main, which is what makes a canceled deploy visible. This
+  # trigger needs no event from the host at all.
+  push:
+    branches: [main]
   # And on a schedule, because a deploy is not the only way a site goes down -
   # an expired certificate or a DNS change breaks it with no push at all.
   schedule:
@@ -39,10 +63,20 @@ jobs:
     # Only a successful PRODUCTION deployment is worth checking. A preview that
     # succeeded is not the site, and a deployment that failed has nothing to
     # look at.
+    #
+    # ENUMERATED, NOT NEGATED, and that is not a style preference. This was
+    # `github.event_name != 'deployment_status' || (...)`, which opts IN every
+    # trigger added later. Adding `push` to this workflow silently opted this
+    # job into running the instant a commit lands - before any deploy could
+    # have happened - so `verify-deployment.mjs` would have compared production
+    # against a commit that was seconds old and failed on every single push.
+    # A negated condition is a list of the triggers somebody had thought of.
     if: >-
-      github.event_name != 'deployment_status' ||
-      (github.event.deployment_status.state == 'success' &&
-       github.event.deployment.environment == 'Production')
+      (github.event_name == 'deployment_status' &&
+       github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production') ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -62,3 +96,20 @@ jobs:
       # right file" and "does that file run".
       - name: The deployed bundle carries its config and no secrets
         run: node scripts/verify-deployment.mjs https://coachdiaz.app
+
+  landed:
+    name: Production is serving the commit that was pushed
+    # Only on a push. On a deployment_status the smoke job above already runs,
+    # and asking twice would make one deploy look like two checks.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # Standard library only, like the steps above: a check on whether a
+      # deploy landed must not depend on the npm registry being up.
+      - name: Wait for /api/health to report this commit
+        run: node scripts/check-deploy-landed.mjs "${{ github.sha }}" https://coachdiaz.app

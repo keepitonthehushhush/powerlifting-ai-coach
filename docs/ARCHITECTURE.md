@@ -2246,6 +2246,89 @@ whole block and was satisfied by the wrong string in it while the title's
 accent was stripped.
 
 
+### ADR-34 · The deploy was canceled, and the job that watches production skipped
+
+**Context.** ADR-33's fix was committed, verified across 3,735 tests and five
+rendered checks, pushed — and never shipped. Production ran the previous commit
+for the rest of the day, and nothing said so.
+
+The cause is a chain of three correct-looking things:
+
+1. **Vercel's "Require Verified Commits" was enabled.** Their documentation:
+   *"When enabled, Vercel will only create deployments for commits that have
+   been verified by GitHub. For all other commits, the deployment will be
+   automatically canceled."*
+2. **The commit was signed but not verified.** `git cat-file` shows a `gpgsig
+   -----BEGIN SSH SIGNATURE-----` header, so signing works; Vercel's deployment
+   record says `githubCommitVerification: "unverified"`, so GitHub does not
+   accept it. The SSH key is registered on the account under the wrong type —
+   an *authentication* key rather than a *signing* key — and GitHub verifies
+   nothing with the former.
+3. **`post-deploy.yml` skipped itself.** Its condition ran the job only for
+   `deployment_status.state == 'success'`. A canceled deployment never emits
+   one, so the job that exists to notice a broken production skipped precisely
+   when production had failed to update.
+
+**A gate that skips is a gate that passed.** This repository already learned
+that from a CI job that skipped when its secret was missing. It appeared again
+one layer up, and it is worth naming that the second occurrence was not caught
+by the rule — it was caught by reading a Vercel deployment record by hand.
+
+The deployment's own fields are unambiguous: `state: "CANCELED"`,
+`buildingAt == ready == createdAt` (it never built), and
+`errorLink: ".../git-settings#verified-commits"`. Meanwhile `/api/health`
+answered `{"status": "ok", "commit": "e9d2f8d4..."}` — a perfectly good build of
+the wrong thing, which is why every other check stayed green.
+
+**Decision. Ask, do not listen.**
+
+A canceled deploy, a failed build, a deploy that never fired and a deploy still
+running are four events and **one question**: is production serving the commit
+that was pushed? Catching a fifth event would be the same bug again. So
+`post-deploy.yml` now runs on `push` to main as well, and a new `landed` job
+polls `/api/health` until it reports that commit, or reports that it did not.
+
+- The decision is a pure function in `server/src/lib/deployLanded.js`, so every
+  branch is exercisable without a deploy or a network.
+- **Three-valued**, per the rule this repository has now paid for twice: a
+  health endpoint that cannot be read is `unknown` (exit 2), not `stale` (exit
+  1). "The site did not answer" and "the site answered with the wrong commit"
+  are a network problem and a deploy that did not happen, and collapsing them
+  is how somebody learns to ignore the alarm.
+- The failure message names the cause and links the setting, because a red line
+  that does not say what to go and fix is a mystery rather than an action.
+- The health request carries a cache-buster. A cached answer is the whole
+  failure mode this check lives inside.
+
+**A defect this change nearly introduced, caught while writing it.** The smoke
+job's condition was `github.event_name != 'deployment_status' || (...)` — a
+negation, which opts IN every trigger added later. Adding `push` would have
+silently opted that job into running the instant a commit landed, before any
+deploy could have happened, so `verify-deployment.mjs` would have compared
+production against a seconds-old commit and failed on **every push**. The
+condition now enumerates its three triggers. A negated condition is a list of
+the triggers somebody had thought of.
+
+**And an old trap, made again in the test for it.** The assertion that the
+negation is gone first read the raw workflow and failed — because the comment
+added in the same change *quotes* the old condition while explaining why it is
+gone. That is the first entry in this repository's test-idioms list, and
+`readSource` could not help: it strips JavaScript comments and this is YAML.
+The test now carries a small YAML comment stripper, used for absence checks
+only, plus an assertion that the stripper is doing something so the check
+cannot go vacuous.
+
+**Consequences.** `deployLanded.test.js` (ten tests), ten mutants planted, ten
+caught. `npm run check:landed` runs it by hand. Note what this does and does
+not do: it cannot prevent a canceled deploy, and it is not a substitute for
+fixing the key — it converts a silent stale production into a red line within
+five minutes.
+
+**Still open, and it is the actual fix:** the signing key has to be registered
+on GitHub as a **Signing Key**. Until it is, every deployment will be canceled
+and every push will now say so loudly instead of quietly.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
