@@ -24,6 +24,7 @@ import { Leaderboard } from '../src/pages/Leaderboard.jsx';
 import { Account } from '../src/pages/Account.jsx';
 import { Intake } from '../src/pages/Intake.jsx';
 import { Faq } from '../src/pages/Faq.jsx';
+import { NotFound } from '../src/pages/NotFound.jsx';
 import { Terms } from '../src/pages/Terms.jsx';
 import { PrivacyPolicy } from '../src/pages/PrivacyPolicy.jsx';
 import { HealthDataPolicy } from '../src/pages/HealthDataPolicy.jsx';
@@ -36,6 +37,7 @@ const PAGES = {
   home: Home, login: Login, coach: Chat, program: Program, log: LogSession,
   progress: Progress, library: Library, leaderboard: Leaderboard, account: Account,
   intake: Intake, faq: Faq, terms: Terms, privacy: PrivacyPolicy,
+  notfound: NotFound,
   health: HealthDataPolicy, ai: AiProcessing, lbpolicy: LeaderboardPolicy,
   clinician: ForYourClinician, consent: Consent,
 };
@@ -43,6 +45,23 @@ const PAGES = {
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') === 'sparse' ? 'sparse' : 'full';
 const page = params.get('page') ?? 'program';
+
+/*
+ * ── THE NOT-FOUND SCREEN IS ABOUT ITS OWN URL ────────────────────────────
+ *
+ * NotFound reads `window.location.pathname` and prints it, because naming the
+ * address is the whole point - it is what tells somebody a link is stale
+ * rather than that they mistyped it. Under the harness that pathname is `/`,
+ * so the screen would be reviewed showing a single character and the one
+ * property worth reviewing would be invisible.
+ *
+ * So the harness gives it a path to show. `replaceState` before React mounts,
+ * query string kept intact so `?page=` still resolves on a reload, and a
+ * realistic length rather than `/x` - a long path is what tests the wrapping.
+ */
+if (page === 'notfound') {
+  history.replaceState(null, '', `/policies/pricing${location.search}`);
+}
 
 /*
  * A signed-in session, invented. Every page behind ProtectedRoute reads one,

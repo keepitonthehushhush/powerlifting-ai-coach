@@ -59,6 +59,7 @@ const ALLOWED_LITERALS = [
   '1.5rem',        // .egg-title
   '0.85em',        // .prose a[href^="/"]::after - relative on purpose
   '0.88em',        // .coach-copy code - relative on purpose
+  '0.88em',        // .not-found-path code - the SAME value, deliberately
   '1.5rem',        // .code-input-field
   '1.5rem',        // .code-box
   'max(1rem, 16px)', // the iOS focus-zoom floor

@@ -2150,6 +2150,102 @@ so it runs in the container or on a machine with a browser, never on the device
 VM. The test fails with that command in its message when the headline moves.
 
 
+### ADR-33 · A URL that does not exist said nothing, and asked for a password
+
+**Context.** The catch-all route was `<Route path="*" element={<Navigate
+to="/coach" replace />} />`. `/coach` sits behind `ProtectedRoute`, so every
+unknown address redirected a signed-out visitor to `/login`. Measured on the
+built app with the network cut off:
+
+| asked for | landed on |
+|---|---|
+| `/this-page-does-not-exist` | `/login` |
+| `/policies/pricing` | `/login` |
+| `/program` (real, protected) | `/login` |
+
+All three rendered **byte-identical screens**. "That page does not exist" and
+"you need an account for that page" were the same screen — shown to the person
+with the least context, who had followed a stale link, mistyped an address, or
+opened an old bookmark. They asked for a page and got a password field, with
+nothing anywhere saying why.
+
+This is the third entry in the same family. ADR-19 records a navigation
+destination that rendered no navigation; ADR-20 records five "Back" buttons
+that did not go back. The shared defect is a URL that quietly becomes a
+different URL.
+
+**Decision.**
+
+1. **Render in place, do not redirect.** `<Route path="*" element={<NotFound
+   />} />`. A redirect is the problem rather than the mechanism: it changes the
+   address before anybody can see what was wrong with it. Rendering in place
+   keeps the URL in the bar, which is what lets the page name it.
+
+2. **Built to NN/g's three properties for an error message.** Their 404
+   guidance asks for language that is *plain* — "written in plain language that
+   is easy to understand for non-technical users and that does not imply that
+   the mistake is the user's fault", so no status code in the headline and no
+   "you"; *precise* — "precise in specifying exactly what was done wrong (that
+   is, not be generic or vague)", so the page prints the path that was asked
+   for, which is what tells somebody whether they mistyped it or the link is
+   simply old; and *constructive* — "constructive in suggesting steps the user
+   can take to correct the problem", so two real destinations chosen by whether
+   there is a session.
+
+3. **The path is rendered. The query and the fragment are not.** This matters
+   more than the layout. Supabase puts the recovery token in the URL fragment
+   of a password-reset link, and a malformed or expired one can land on the
+   catch-all — so a page echoing `location.href` would print a live credential
+   on screen, into a screenshot, into a support ticket. React escapes the
+   value, so the risk here is *disclosure*, not injection, and the fix is not
+   reading the fields that can hold a secret. `notFound.test.js` asserts the
+   absence of `location.hash`, `location.search` and `location.href` from the
+   comment-stripped source, so the paragraph explaining the rule cannot satisfy
+   the check enforcing it.
+
+4. **Two headers, via `InfoHeader`.** Signed in the page is a tab and keeps the
+   navigation, so nobody is trapped; signed out it shows zero nav bars, which is
+   correct rather than a gap — a bar of destinations that all bounce to a
+   password field is the other half of the trapdoor. Measured in the harness:
+   signed in, 1 nav bar and `["Back to Coach"]`; signed out, 0 nav bars and
+   `["Go to the front page", "Sign in"]`.
+
+5. **No new button style.** `.cta` is already the product's primary action, 44px
+   tall and swept in twenty palettes; measured here at 241×50. A fourth button
+   invented for one page is how a design system stops being one.
+
+**Two guards caught this change while it was being written, and both were
+right.** `reviewHarness.test.js` refused the new screen until the style
+baseline had actually been recorded for it — the list being right is not the
+same as the baseline having been taken with it. And `typeScale.test.js` refused
+a `font-size: 0.95em` on the path readout, because `.coach-copy code` already
+settles what size inline code is: `0.88em`. Inline code being slightly smaller
+than its surroundings is one decision, and the guard is the only reason it is
+not now two numbers. The allowlist names each literal individually, so the
+second `0.88em` had to be added by hand with its own comment.
+
+**Considered and deferred: the soft 404.** Every unknown path still returns
+HTTP 200 with the app shell, which is what Google's Search Console reports as a
+soft 404 — "the content suggests an error for Google Search, an empty page or
+an error message" while the server says success. Returning a real 404 status
+would mean enumerating every real route in `vercel.json` and letting everything
+else fall through, which creates a second list of the route table and a way for
+a working route to start 404ing in production. That trade is worth making only
+alongside a test asserting the two lists are equal — the shape this repository
+already uses for the harness page lists. Recorded here rather than done, so the
+next reader knows it was considered rather than missed.
+
+**Consequences.** `notFound.test.js` (seven tests) plus the screen added to the
+review harness, `check-screens.mjs` and `check-computed-styles.mjs`, which are
+held equal by an existing test — so the new page is inside every sweep rather
+than only its own file. The sweep is now 19 screens × 2 widths × 2 data modes =
+76 combinations, 1,281 targets. Thirteen mutants planted, thirteen caught, two
+of them only after mutation testing exposed weak assertions of mine: a `.cta`
+check whose anchor was not unique, and a Spanish-accent check that read the
+whole block and was satisfied by the wrong string in it while the title's
+accent was stripped.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

@@ -32,6 +32,7 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy.jsx';
 import { ResetPassword } from './pages/ResetPassword.jsx';
 import { ForYourClinician } from './pages/ForYourClinician.jsx';
 import { Faq } from './pages/Faq.jsx';
+import { NotFound } from './pages/NotFound.jsx';
 import { AiProcessing } from './pages/AiProcessing.jsx';
 
 export function App() {
@@ -225,7 +226,24 @@ export function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="*" element={<Navigate to="/coach" replace />} />
+              {/*
+                ── A URL THAT DOES NOT EXIST SAYS SO ─────────────────────────
+
+                This was `<Navigate to="/coach" replace />`, and /coach is
+                behind ProtectedRoute, so a signed-out visitor asking for any
+                unknown address was bounced to /login. Measured on the built
+                app: `/this-page-does-not-exist`, `/policies/pricing` and the
+                real-but-protected `/program` all landed on /login and rendered
+                BYTE-IDENTICAL screens. A missing page and a page needing an
+                account were the same screen, shown to the person with the
+                least context - somebody who followed a stale link.
+
+                Not `<Navigate>` at all now, because a redirect is the problem:
+                it changes the address before anybody can see what was wrong
+                with it. NotFound renders IN PLACE, so the URL stays visible in
+                the bar and the page can name it.
+              */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </ConsentProvider>

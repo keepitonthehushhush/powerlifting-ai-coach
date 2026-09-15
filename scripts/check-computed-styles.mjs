@@ -102,7 +102,7 @@ const harnessDir = path.resolve(repoRoot, process.env.HARNESS_DIR ?? 'web/harnes
 const HARNESS_PAGES = [
   'home', 'login', 'coach', 'program', 'log', 'progress', 'library',
   'leaderboard', 'account', 'intake', 'faq', 'terms', 'privacy', 'health',
-  'ai', 'lbpolicy', 'clinician', 'consent',
+  'ai', 'lbpolicy', 'clinician', 'consent', 'notfound',
 ];
 
 const HARNESS_ROUTES = HARNESS_PAGES.map(

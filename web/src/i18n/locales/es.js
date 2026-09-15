@@ -977,6 +977,20 @@ export const es = {
     },
   },
 
+  /*
+   * Escrito para las tres propiedades que NN/g le pide a un mensaje de error:
+   * lenguaje claro que no culpa a quien lee, preciso sobre lo que se pidio, y
+   * util sobre que hacer despues. Sin el numero 404 en el titulo.
+   */
+  notFound: {
+    title: 'No encontramos esa página',
+    detail: 'Puede que el enlace ya no exista, o que la dirección tenga un error pequeño. Tu cuenta está bien.',
+    asked: 'Pediste',
+    toHome: 'Ir a la página principal',
+    toLogin: 'Iniciar sesión',
+    toCoach: 'Volver a Coach',
+  },
+
   nav: {
     primary: 'Navegación principal',
     coach: 'Coach',

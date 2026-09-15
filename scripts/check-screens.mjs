@@ -66,7 +66,7 @@ const localePath = path.join(repoRoot, 'web/src/i18n/locales/en.js');
 const SCREENS = [
   'home', 'login', 'coach', 'program', 'log', 'progress', 'library',
   'leaderboard', 'account', 'intake', 'faq', 'terms', 'privacy', 'health',
-  'ai', 'lbpolicy', 'clinician', 'consent',
+  'ai', 'lbpolicy', 'clinician', 'consent', 'notfound',
 ];
 
 /**

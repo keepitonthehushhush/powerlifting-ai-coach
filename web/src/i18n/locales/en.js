@@ -1052,6 +1052,22 @@ export const en = {
     },
   },
 
+  /*
+   * The page for an address that does not exist. Written to NN/g's three
+   * properties for an error message: plain language that does not blame the
+   * reader, precise about what was asked for, and constructive about what to
+   * do next. The headline carries no status code - "404" means nothing to
+   * somebody who followed a link from a message.
+   */
+  notFound: {
+    title: 'We could not find that page',
+    detail: 'The link may be out of date, or the address may have a small typo in it. Nothing is wrong with your account.',
+    asked: 'You asked for',
+    toHome: 'Go to the front page',
+    toLogin: 'Sign in',
+    toCoach: 'Back to Coach',
+  },
+
   nav: {
     primary: 'Main navigation',
     coach: 'Coach',

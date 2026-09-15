@@ -3219,6 +3219,45 @@ form > button.secondary {
   padding: 0.05em 0.32em;
 }
 
+/*
+ * ── THE PAGE FOR AN ADDRESS THAT DOES NOT EXIST ───────────────────────────
+ *
+ * Two rules, because everything else on this page is already in the system:
+ * the header is InfoHeader, the card is `.card`, the primary action is `.cta`
+ * and the secondary is `.link`. A page that needs four new class names is a
+ * page that stopped using the design system.
+ */
+.not-found-path {
+  margin: 0 0 var(--space-5);
+  /* `anywhere`, not `break-word`: a long path has no spaces to break at, and
+     without this it pushes the card wider than a 320px screen. */
+  overflow-wrap: anywhere;
+}
+
+.not-found-path code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  /* 0.88em, matching `.coach-copy code` exactly. The first draft of this rule
+     said 0.95em and typeScale.test.js refused it - correctly. Inline code
+     being slightly smaller than its surroundings is ONE decision, and a second
+     value for it is how a type scale stops being one. The guard is the reason
+     this is not two numbers. */
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.12em 0.4em;
+  color: var(--text);
+}
+
+.not-found-ways {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  /* Row gap matches the column gap so a wrapped second action does not sit
+     tighter to the pill than it did beside it. */
+  gap: var(--space-3) var(--space-5);
+}
+
 /* A meet-prep block is five columns wide and a phone is not. The table
    scrolls inside its own box; the page never scrolls sideways. */
 .coach-table-scroll { overflow-x: auto; margin: 0 0 var(--space-3); }
