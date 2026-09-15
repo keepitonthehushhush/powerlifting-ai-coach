@@ -388,3 +388,46 @@ describe('every box that scrolls sideways goes through the one component', () =>
     );
   });
 });
+
+describe('the last piece of operating-system furniture is gone', () => {
+  /**
+   * ── THE DEFECT ────────────────────────────────────────────────────────
+   *
+   * Measured on the signed-out pages: `.lang select` had `appearance: auto`.
+   * Every other property was already set - a --field-border edge, a
+   * --surface-2 fill, an 8px radius - and the browser drew its own bevelled
+   * box and its own arrow on top of all of it, because that is what
+   * `appearance: auto` means. Beside a drawn wordmark it reads as a control
+   * somebody forgot, and it is on every screen in the application.
+   *
+   * Not caught by check-screens: a native select is a visual regression, not a
+   * measurable one - it was still 27px tall and still had an accessible name.
+   * This is the half a browser sweep cannot see, which is why it is asserted
+   * here instead of claimed there.
+   */
+  test('the language control draws its own chrome', () => {
+    const rule = rulesFor('.lang select');
+    assert.equal(rule.length, 1, '.lang select has no rule of its own');
+    assert.match(rule[0].body, /(?<!-webkit-)appearance:\s*none/, 'the browser still draws this control');
+    assert.match(rule[0].body, /-webkit-appearance:\s*none/, 'older WebKit still draws this control');
+  });
+
+  test('and draws the arrow that appearance:none takes away', () => {
+    // A data URI cannot carry currentColor, and a hard-coded stroke would be
+    // one hue chosen by eye for twenty palettes - the mistake the scroll cue
+    // made once already. Two borders on a pseudo-element inherit.
+    const chevron = rulesFor('.lang::after');
+    assert.equal(chevron.length, 1, 'nothing draws the dropdown arrow');
+    assert.match(chevron[0].body, /border-right:[^;]*currentColor/, 'the arrow is not drawn in the inherited color');
+    assert.match(chevron[0].body, /rotate\(45deg\)/, 'the arrow is not an arrow');
+    // Without an explicit top it keeps its static position, which put it near
+    // the top of the box - visible in a screenshot, invisible in the source.
+    assert.match(chevron[0].body, /top:\s*50%/, 'the arrow is not centered against the control');
+    assert.match(chevron[0].body, /pointer-events:\s*none/, 'the arrow swallows clicks meant for the select');
+  });
+
+  test('the control is a thumb-sized target', () => {
+    const rule = rulesFor('.lang select');
+    assert.match(rule[0].body, /min-height:\s*32px/, 'the language control lost its height');
+  });
+});

@@ -437,6 +437,37 @@ button.link {
   padding-block: var(--space-1);
 }
 
+/*
+ * ── AND THE ANCHORS THAT ARE ALSO CONTROLS ────────────────────────────────
+ *
+ * The rule above was scoped to `button` on the reasoning that every `<a>`
+ * carrying `.link` is inside a sentence, where SC 2.5.8's inline exception
+ * applies. Measured across all eighteen screens, that was wrong for five of
+ * them: the policy footer ends with "Back to Coach Diaz" (145x23) and "Edit
+ * your privacy choices" (189x23), two standalone navigation controls sitting
+ * in a row of their own at the bottom of a document. A row of two links is not
+ * a sentence, and 23px is not 24.
+ *
+ * So the floor is the DEFAULT for an anchor styled as a control, and the
+ * inline exception is stated where it actually applies - inside running text.
+ * Positively and negatively, so that a link added to a paragraph tomorrow
+ * keeps prose leading and one added to a toolbar gets a target.
+ */
+a.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding-block: var(--space-1);
+}
+p a.link,
+li a.link,
+figcaption a.link,
+.fineprint a.link {
+  display: inline;
+  min-height: 0;
+  padding-block: 0;
+}
+
 /* A fieldset is the right element for a group of related questions - it is
    what a screen reader announces the legend against - but its default box is
    nothing like a div's. It carries a browser border, its own padding, and a
@@ -741,12 +772,67 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
 /* The counter sits on its own line, right-aligned under the box it counts. */
 .composer .counter { margin: 0; text-align: right; }
 
-/* --- i18n switcher, account screen ---------------------------------------- */
+/* --- i18n switcher ---------------------------------------------------------
+ *
+ * ── THE ONE PIECE OF OPERATING-SYSTEM FURNITURE LEFT IN THE PRODUCT ───────
+ *
+ * Measured on the signed-out pages: `appearance: auto`. Every other property
+ * here was already set - a --field-border edge, --surface-2 fill, an 8px
+ * radius - and the browser drew its own bevelled box and its own arrow on top
+ * of all of it anyway, because that is what `appearance: auto` means. Beside a
+ * drawn wordmark it reads as a control somebody forgot, and it is on every
+ * screen in the application.
+ *
+ * `appearance: none` takes the native arrow with it, so one is drawn here.
+ * Two borders on a pseudo-element rather than a background SVG: a data URI
+ * cannot carry `currentColor`, and a hard-coded stroke would be one hue chosen
+ * by eye for twenty palettes - which is the mistake the scroll cue already
+ * made once. This one inherits.
+ */
+.lang {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* Guaranteed 4.5:1 against bg, surface and surface-2 in all twenty
+     palettes; the select and the chevron both inherit it. */
+  color: var(--muted);
+}
 .lang select {
+  appearance: none;
+  -webkit-appearance: none;
   width: auto;
-  padding: var(--space-1) var(--space-2);
+  /* Room on the right for the chevron, at both type sizes - a coarse pointer
+     raises this to 16px further down, and iOS does not zoom a select. */
+  padding: var(--space-1) var(--space-6) var(--space-1) var(--space-2);
   font-size: var(--text-footnote);
+  color: inherit;
   background: var(--surface-2);
+  /* 24px is the AA floor for a target (WCAG 2.5.8). It measured 27px, which
+     passed and still sat oddly short beside a 36px sign-out button. */
+  min-height: 32px;
+  cursor: pointer;
+}
+.lang::after {
+  content: '';
+  position: absolute;
+  right: var(--space-3);
+  /*
+   * Centered against the CONTROL, not left at its static position. Without the
+   * `top` an absolutely positioned pseudo-element keeps whatever place it
+   * would have had in flow, which put the chevron near the top of the box -
+   * visible immediately in a screenshot and invisible in the source.
+   *
+   * -70% rather than -50%: only two borders are drawn, so the visual mark is
+   * the lower-right corner of the square and sits below the box's own center.
+   * Verified by measuring both midpoints rather than by eye.
+   */
+  top: 50%;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
 }
 
 .visually-hidden {
@@ -1353,7 +1439,7 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
 .page-title { margin: var(--space-2) 0 var(--space-0-5); font-size: 1.45rem; letter-spacing: -0.02em; }
 
 /* ── What is centered, and what is deliberately not ─────────────────────────
-   The ask was `centre all the text so it looks better on every device` -
+   The ask was `center all the text so it looks better on every device` -
    backticked because it is quoted verbatim, and somebody's own words are not
    ours to respell. Half
    of that is right and half of it would make the app harder to read, so this
@@ -1493,9 +1579,10 @@ form > button.secondary {
 .site-nav .lang select {
   background: none;
   border: 1px solid transparent;
-  color: var(--muted);
   font-size: var(--text-footnote);
-  padding: var(--space-1) var(--space-2);
+  /* Same right-hand room as the base rule; the chevron is drawn by .lang and
+     does not know which bar it is in. */
+  padding: var(--space-1) var(--space-6) var(--space-1) var(--space-2);
   border-radius: 6px;
 }
 @media (hover: hover) { .site-nav .lang select:hover{ color: var(--text); background: var(--surface-2); } }

@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readSource, readRaw } from './helpers/source.js';
+import { readSource, readRaw, phrase } from './helpers/source.js';
 
 /**
  * THE CHECK THAT LOADS THE BUILT APP, AND THE TWO WAYS IT CAN LIE.
@@ -239,5 +239,101 @@ describe('there is one browser driver, not one per check', () => {
     // `offline: true` against a deployed site is a confident pass on a page
     // that never loaded.
     assert.match(driver, /offline = false/, 'the shared driver cuts the network off by default');
+  });
+});
+
+describe('every screen is looked at, not just the ones a signed-out browser can reach', () => {
+  const screens = readSource(new URL('../../scripts/check-screens.mjs', import.meta.url));
+  const styles = readSource(new URL('../../scripts/check-computed-styles.mjs', import.meta.url));
+  const leak = readSource(new URL('../../scripts/lib/i18nLeak.mjs', import.meta.url));
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+  const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+
+  /** The screen list out of a script, parsed rather than retyped. */
+  const listIn = (source, name) => {
+    const at = source.indexOf(`const ${name} = [`);
+    return [...source.slice(at, source.indexOf('];', at)).matchAll(/'([a-z]+)'/g)].map((m) => m[1]);
+  };
+
+  test('the two lists of screens are the same list', () => {
+    /*
+     * check-screens walks SCREENS and check-computed-styles walks
+     * HARNESS_PAGES, and they are the same eighteen screens. Two copies of one
+     * fact is how one of them quietly stops covering something - which is the
+     * failure mode this repository has hit with a route list, a locale key and
+     * a fixture shape already.
+     */
+    const a = listIn(screens, 'SCREENS');
+    const b = listIn(styles, 'HARNESS_PAGES');
+    assert.ok(a.length >= 18, `parsed ${a.length} screens - the SCREENS block moved`);
+    assert.deepEqual(a, b, 'check-screens and check-computed-styles disagree about which screens exist');
+  });
+
+  test('it closes the gap check-app-mounts names in its own header', () => {
+    /*
+     * `t()` returns the key itself on a miss, so a missing string renders as
+     * the literal `activity.action.clearance_asserted`. That is what every
+     * athlete who had confirmed medical clearance saw - eight rows in
+     * production, which was every row that card had ever had.
+     *
+     * check-app-mounts has had the detector for a year and found nothing,
+     * because a signed-out browser cannot reach the page the bug was on. Its
+     * header says so in as many words.
+     */
+    /*
+     * `scriptRaw` and `phrase`, and the first version of this was neither. It
+     * matched a single-line regex against `script` - which is comment-stripped
+     * - for a sentence that is a comment and wraps across three lines. It
+     * could not have matched anything.
+     */
+    assert.match(scriptRaw, phrase('It was named in this comment rather than left to be rediscovered'),
+      'check-app-mounts no longer says where the page it cannot reach IS checked');
+    assert.match(scriptRaw, phrase('check-screens.mjs runs the same detector'),
+      'the pointer from the gap to the thing that closes it is gone');
+    assert.match(screens, /untranslatedKeys\(dom, localePath\)/, 'the screen sweep does not look for leaked keys');
+    assert.match(screens, /'account'/, 'the screen sweep does not include the page the bug was on');
+  });
+
+  test('one detector, imported by both, not two copies', () => {
+    assert.match(leak, /export async function untranslatedKeys\(/, 'the shared detector has no export');
+    for (const [name, source] of [['check-app-mounts', script], ['check-screens', screens]]) {
+      assert.match(
+        source,
+        /import \{ untranslatedKeys[^}]*\} from '\.\/lib\/i18nLeak\.mjs'/,
+        `${name} does not use the shared detector`,
+      );
+      assert.doesNotMatch(
+        source,
+        /matchAll\(\/\^ \{2\}/,
+        `${name} has grown its own copy of the namespace parser`,
+      );
+    }
+  });
+
+  test('it measures a phone, with touch, and says so', () => {
+    // A narrow desktop window reports `hover: hover` and never `pointer:
+    // coarse`. This project has already withdrawn one review finding for
+    // taking one to be a phone.
+    assert.match(screens, /width: 390[\s\S]{0,40}touch: true/, 'the sweep is not emulating a phone');
+    assert.match(screens, /offline: true/, 'the sweep lets the harness reach the network');
+  });
+
+  test('it honors the inline exception rather than ignoring the rule', () => {
+    // SC 2.5.8 exempts a target inside a sentence or block of text. Without
+    // the exception this would fail on every link in a policy paragraph; with
+    // it applied too widely it misses the two standalone footer links that
+    // were 145x23 and 189x23.
+    assert.match(screens, /el\.closest\('p, li, figcaption'\)/, 'the inline exception is gone or widened');
+    assert.match(screens, /el\.closest\('label'\) \?\? el/, 'a control inside a label is measured instead of its target');
+  });
+
+  test('an empty run cannot pass, and CI runs it after the build it reads', () => {
+    assert.match(screens, /screensSeen !== SCREENS\.length/, 'a sweep that reached no screens would pass');
+    assert.match(screens, /targetsChecked < 40/, 'a harness rendering nothing would pass');
+    assert.equal(pkg.scripts['check:screens'], 'node scripts/check-screens.mjs');
+    const buildAt = ci.indexOf('npm run build:harness');
+    const checkAt = ci.indexOf('npm run check:screens');
+    assert.ok(checkAt > -1, 'CI never runs the screen sweep');
+    assert.ok(buildAt > -1 && buildAt < checkAt, 'the harness is built after the check that reads it');
   });
 });

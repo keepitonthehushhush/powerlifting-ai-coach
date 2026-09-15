@@ -124,7 +124,7 @@ describe('a query builder is never treated as a promise', () => {
      */
     assert.match(mounts, /offline: !remoteTarget/, 'the remote check would block its own target');
     const driver = readSource(new URL('../../scripts/lib/browser.mjs', import.meta.url));
-    assert.match(driver, /offline \? \['--host-resolver-rules/, 'the driver no longer honours the offline rule');
+    assert.match(driver, /offline \? \['--host-resolver-rules/, 'the driver no longer honors the offline rule');
     assert.match(driver, /offline = false/, 'the driver cuts the network off by default, which is the dangerous direction');
   });
 

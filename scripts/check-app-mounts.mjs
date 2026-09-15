@@ -56,6 +56,7 @@ import { constants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findChrome, launch } from './lib/browser.mjs';
+import { untranslatedKeys } from './lib/i18nLeak.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = path.resolve(repoRoot, process.env.DIST_DIR ?? 'web/dist');
@@ -184,44 +185,6 @@ async function serveDist() {
   return { server, port: server.address().port };
 }
 
-function decodeEntities(value) {
-  return value
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&');
-}
-
-/**
- * An i18n key that reached the screen.
- *
- * `t()` returns the key itself when the lookup misses, so a miss renders as a
- * label and nothing fails. That is how a duplicate `password:` in en.js - one
- * a string, one an object, the object silently winning - put the literal text
- * "auth.password" on the sign-in page of a live product.
- *
- * The namespaces are read out of the locale file so this cannot drift from it.
- */
-async function untranslatedKeys(dom) {
-  const en = await readFile(path.join(repoRoot, 'web/src/i18n/locales/en.js'), 'utf8');
-  const namespaces = [...en.matchAll(/^ {2}([a-zA-Z][a-zA-Z0-9_]*): \{$/gm)].map((match) => match[1]);
-  if (namespaces.length === 0) {
-    throw new Error('found no top-level namespaces in en.js - has the shape of the locale file changed?');
-  }
-
-  // Visible text only: attributes legitimately contain dotted names.
-  const text = decodeEntities(
-    dom
-      .replace(/<script[\s\S]*?<\/script>/g, ' ')
-      .replace(/<style[\s\S]*?<\/style>/g, ' ')
-      .replace(/<[^>]+>/g, ' ')
-  );
-
-  const pattern = new RegExp(`(?:^|\\s)((?:${namespaces.join('|')})(?:\\.[a-zA-Z][a-zA-Z0-9_]*)+)`, 'g');
-  return [...new Set([...text.matchAll(pattern)].map((match) => match[1]))];
-}
-
 /**
  * The routes worth loading.
  *
@@ -242,9 +205,17 @@ async function untranslatedKeys(dom) {
  * was running on two routes, neither of which was the one with the bug.
  *
  * So: every route a signed-out browser can reach. The account page itself
- * still cannot be checked here - it is behind auth, and a signed-out load
- * renders the sign-in screen rather than the page - which is a real remaining
- * gap and is named in the list below rather than left to be rediscovered.
+ * still cannot be checked HERE - it is behind auth, and a signed-out load
+ * renders the sign-in screen rather than the page.
+ *
+ * ── AND THAT GAP IS CLOSED NOW, SOMEWHERE ELSE ────────────────────────────
+ *
+ * It was named in this comment rather than left to be rediscovered, and then
+ * it sat here named. scripts/check-screens.mjs runs the same detector over the
+ * review harness, which mounts all eighteen screens SIGNED IN - including the
+ * account page, which is the one the bug was on. The detector is shared
+ * (lib/i18nLeak.mjs) rather than copied, because two copies would drift and
+ * only one of them would be the one that found anything.
  *
  * Each route is one page load of a few hundred milliseconds. Eleven of them is
  * still a check somebody will wait for.
@@ -322,7 +293,7 @@ async function checkRoute(dom, report) {
     failures.push('the ErrorBoundary fallback rendered: a component threw during its first render.');
   }
 
-  const leaked = await untranslatedKeys(dom);
+  const leaked = await untranslatedKeys(dom, path.join(repoRoot, 'web/src/i18n/locales/en.js'));
   if (leaked.length) {
     failures.push(`untranslated i18n keys rendered as visible text: ${leaked.join(', ')}`);
   }

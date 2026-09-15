@@ -1843,6 +1843,74 @@ nothing. Nine regions, checked at 320, 360, 390 and 1280.
 lines apart, the same two words. Two rules for one thing is how they drift.
 
 
+### ADR-29 · Eighteen screens, four questions, and the gap that had been named for a week
+
+**Context.** Three rendered checks existed and each asked one narrow question
+of a few pages: `check-app-mounts` asks "does anything appear" of the eleven
+routes a signed-out browser can reach, `check-computed-styles` compares values
+at 1280px, `check-scroll-cues` presses buttons on four screens. Nothing walked
+**every** screen and asked whether it is a thing a person can use on a phone.
+
+Swept by hand first, at 390px with touch emulation, across all eighteen. The
+structure held up: exactly one `h1` on every screen, zero skipped heading
+levels, no sideways page scroll anywhere, line lengths 31–47 characters. Two
+things did not.
+
+**Finding: two policy-footer links were 145×23 and 189×23, on five screens.**
+`button.link` had been given the 24×24 floor SC 2.5.8 asks for at AA, scoped to
+`button` on the reasoning that every `<a>` carrying `.link` is inside a
+sentence, where the **inline exception** applies. That was wrong for the policy
+footer, which ends with "Back to Coach Diaz" and "Edit your privacy choices" —
+two standalone navigation controls in a row of their own. A row of two links is
+not a sentence. The floor is now the default for a link-styled anchor and the
+exception is stated where it actually applies, in both directions, so a link
+added to a paragraph tomorrow keeps prose leading and one added to a toolbar
+gets a target. Verified: prose links stayed `display: inline` and their line
+boxes still measure 25px, the same as paragraphs with no link in them.
+
+**Finding: the language switcher was still operating-system furniture.**
+`appearance: auto`, on every screen in the application. Every other property
+was already set — a `--field-border` edge, a `--surface-2` fill, an 8px radius
+— and the browser drew its own bevelled box and its own arrow on top of all of
+it, because that is what `appearance: auto` means. Beside a drawn wordmark it
+reads as the one control somebody forgot. `appearance: none` takes the native
+arrow with it, so one is drawn: two borders on a pseudo-element rather than a
+background SVG, because a data URI cannot carry `currentColor` and a hard-coded
+stroke would be one hue chosen by eye for twenty palettes — the mistake the
+scroll cue already made once. The first attempt left the chevron near the top
+of the box, because an absolutely positioned pseudo-element with no `top` keeps
+its static position: visible in a screenshot, invisible in the source.
+
+**Decision: `scripts/check-screens.mjs`, and the fourth question is the point.**
+It walks all eighteen at 390px with touch and asserts one `h1` and no skipped
+heading level, no target under 24×24 **honoring the inline exception**, no
+sideways page scroll, and **no translation key rendered as visible text**.
+
+That last one closes a gap this repository had already named and then left
+sitting. `t()` returns the key on a miss, so a missing string is not an error
+and not a blank — it is the literal `activity.action.clearance_asserted` on the
+page, which is what every athlete who had confirmed medical clearance actually
+saw: eight rows in production, every row that card had ever had.
+`check-app-mounts` has carried the detector for a year and found nothing,
+because a signed-out browser cannot reach the account page. Its own header said
+so — *"a real remaining gap and is named in the list below rather than left to
+be rediscovered"* — and there it stayed. The harness mounts all eighteen
+screens signed in, including that one. The detector is shared
+(`lib/i18nLeak.mjs`) rather than copied, because two copies drift and only one
+of them is the one that finds anything.
+
+**Proved by planting the original bug.** Renaming one key in `en.js` so the
+account page loses a string produces
+`FAIL account: translation keys rendered as visible text: account.exportHeading`.
+Reverting the anchor floor produces the five policy screens with their exact
+measurements back. A native `<select>` does **not** fail this check and should
+not — it is a visual regression, not a measurable one — so it is guarded in the
+stylesheet test instead, which is the half a browser sweep cannot see.
+
+**Eighteen mutants, eighteen caught**, across the two families. Current
+coverage: 318 targets measured across 18 screens.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

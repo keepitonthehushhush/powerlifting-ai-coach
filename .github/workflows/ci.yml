@@ -104,6 +104,15 @@ jobs:
       - name: Rendered styles match the baseline
         run: npm run check:styles
 
+      # Eighteen screens at 390px with touch on, asked the four things a
+      # stylesheet cannot answer about itself: one h1 and no skipped heading
+      # level, no target under the 24x24 SC 2.5.8 asks for, no sideways page
+      # scroll, and no translation key rendered as visible text. That last one
+      # is the gap check:mounts names in its own header and cannot close: the
+      # account page is behind auth, and it is where the bug was.
+      - name: Every screen is usable on a phone
+        run: npm run check:screens
+
       # The styles baseline renders at 1280x900, where the program table does
       # not overflow, so it can neither see the phone-width defect nor press
       # the control that fixes it. This one drives the browser at 320, 360 and

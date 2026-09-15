@@ -69,6 +69,28 @@ describe('the log form is a thing you can use in a gym', () => {
           'those are exempt under the inline exception and should not be spaced out',
       );
     }
+
+    /*
+     * ── AND THE ANCHORS, WHICH THE FIRST VERSION OF THIS GOT WRONG ────────
+     *
+     * The rule was scoped to `button` on the reasoning that every `<a>`
+     * carrying `.link` is inside a sentence. Measured across all eighteen
+     * screens, that was wrong for five of them: the policy footer ends with
+     * "Back to Coach Diaz" (145x23) and "Edit your privacy choices" (189x23),
+     * two standalone navigation controls in a row of their own.
+     *
+     * So an anchor styled as a control gets the floor by DEFAULT, and the
+     * inline exception is stated where it actually applies - which has to be
+     * asserted in both directions, or the reset quietly swallows the rule.
+     */
+    const anchor = rulesFor('a.link');
+    assert.equal(anchor.length, 1, 'a standalone link anchor has no rule of its own');
+    assert.match(anchor[0].body, /min-height:\s*24px/, 'a standalone link anchor is under the AA floor');
+
+    const inProse = RULES.filter((r) => r.selectors.includes('p a.link'));
+    assert.equal(inProse.length, 1, 'the inline exception is gone, so prose links get spaced out');
+    assert.match(inProse[0].body, /min-height:\s*0/, 'the inline exception does not undo the floor');
+    assert.match(inProse[0].body, /display:\s*inline\b/, 'a link in a sentence is not inline, so it breaks the line box');
   });
 
   test('the two controls on this form are real controls, not footnotes', () => {
