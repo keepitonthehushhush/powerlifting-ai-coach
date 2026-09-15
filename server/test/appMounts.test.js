@@ -333,6 +333,52 @@ describe('every screen is looked at, not just the ones a signed-out browser can 
     assert.match(screens, /el\.closest\('label'\) \?\? el/, 'a control inside a label is measured instead of its target');
   });
 
+  test('the one asset no route loads is fetched, and judged by its BYTES', () => {
+    /*
+     * ── WHY THIS IS IN THE MOUNT CHECK AND NOT ONLY IN A UNIT TEST ────────
+     *
+     * socialCard.test.js holds the tag, the locale and the file together in
+     * the SOURCE tree. None of that says the deployed origin serves it, and
+     * `og:image` is fetched by somebody else's crawler and by nothing in this
+     * application - so a card missing from a deploy breaks every shared link
+     * and is invisible to every other check here. This one runs against the
+     * origin that is actually serving, which under `check:live` is production.
+     *
+     * Judged by bytes rather than by status or content-type, and that is the
+     * whole point: a single-page app rewrites an unknown path to index.html,
+     * so a DELETED card and an SPA REWRITE are indistinguishable from outside
+     * - both answer 200. Measured, they produce the identical message here.
+     */
+    assert.match(script, /async function fetchCard\(/, 'nothing fetches the social card');
+    assert.match(
+      script,
+      /bytes\.subarray\(1, 4\)\.toString\('latin1'\) !== 'PNG'/,
+      'the card is no longer judged by its bytes, so index.html served at that path reads as healthy',
+    );
+    assert.match(
+      script,
+      /bytes\.readUInt32BE\(16\)\}x\$\{bytes\.readUInt32BE\(20\)/,
+      'the served dimensions are no longer read, so a resized card passes',
+    );
+    assert.match(script, /card\?\.problem\) failures\.push/, 'the verdict is computed and never reaches the failure list');
+
+    /*
+     * ORDER, which is not observable through a function and is what the first
+     * version of this got wrong: the fetch sat after the `finally` that closes
+     * the local server, so it reported `fetch failed` on a build where the
+     * card was sitting in `dist` all along. Anchored on both strings, and both
+     * are asserted to exist so a rename cannot make this vacuously true.
+     */
+    const fetchAt = script.indexOf('card = await fetchCard(');
+    const closeAt = script.indexOf('if (server) server.close();');
+    assert.ok(fetchAt > -1, 'the card fetch is no longer called from the browse block');
+    assert.ok(closeAt > -1, 'the local server is no longer closed, or the close moved');
+    assert.ok(
+      fetchAt < closeAt,
+      'the card is fetched after the local server is closed, which fails as `fetch failed` and reads like a missing asset',
+    );
+  });
+
   test('an empty run cannot pass, and CI runs it after the build it reads', () => {
     /*
      * The floor moved twice: once when the sweep gained a second viewport, and

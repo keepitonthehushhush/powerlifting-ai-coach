@@ -94,9 +94,25 @@ describe('the front door is a door', () => {
     for (const tag of ['og:type', 'og:title', 'og:description', 'og:url', 'og:image']) {
       assert.match(indexHtml, new RegExp(`property="${tag}"`), `missing ${tag}`);
     }
-    // summary, not summary_large_image: the image is the square app icon and
-    // the wide card would crop it.
-    assert.match(indexHtml, /name="twitter:card" content="summary"/);
+    /*
+     * `summary_large_image` now, and the comment this replaces is worth
+     * keeping in view: it said summary "because the image is the square app
+     * icon and the wide card would crop it", which was the right call for a
+     * 512x512 mark and was never the right end state. There is a real
+     * 1200x630 card now, so the wide treatment is the honest one.
+     *
+     * The full contract - the file is the size the tags claim, the alt text
+     * contains the headline the card actually draws, the served bytes really
+     * are a PNG - lives in socialCard.test.js rather than being restated here.
+     * This asserts the one fact the landing page owns: a link to it renders as
+     * a card.
+     */
+    assert.match(indexHtml, /name="twitter:card" content="summary_large_image"/);
+    assert.doesNotMatch(
+      indexHtml,
+      /property="og:image" content="[^"]*icon-\d+\.png"/,
+      'og:image is back to the app icon, which is below the 600x315 Meta treats as a working minimum',
+    );
   });
 });
 

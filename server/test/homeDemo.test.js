@@ -59,12 +59,37 @@ describe('it is the app\'s own markup, which is the point', () => {
     const block = css.slice(css.indexOf('.home-demo {'), css.indexOf('.home-honest {'));
     assert.doesNotMatch(block, /url\(/, 'the demo now loads an image after all');
 
-    // And nothing content-shaped was added to the static directory.
+    /*
+     * And nothing content-shaped was added to the static directory.
+     *
+     * ── ONE NAMED EXCEPTION, AND WHY IT IS NOT A HOLE ─────────────────────
+     *
+     * `social-card.png` is allowed. This rule is about images the PAGE
+     * renders: a screenshot in the markup is correct in one of twenty palettes
+     * and stale the day after it is taken, which is the whole argument above.
+     * The social card is never rendered by this application at all - it is
+     * fetched by somebody else's crawler for a link preview, where a flat
+     * image is the only thing the format accepts and `prefers-color-scheme`
+     * does not exist.
+     *
+     * The exception is by NAME rather than by extension, so a screenshot
+     * dropped in beside it still fails, and the card itself is not on trust:
+     * socialCard.test.js checks its dimensions, its byte size, that the meta
+     * tags agree with the file, and that the headline it was drawn from is
+     * still the headline the site shows.
+     */
+    const ALLOWED = ['social-card.png'];
     const publicDir = fileURLToPath(new URL('../../web/public/', import.meta.url));
-    const stray = readdirSync(publicDir, { withFileTypes: true })
+    const rasters = readdirSync(publicDir, { withFileTypes: true })
       .filter((e) => e.isFile() && /\.(png|jpe?g|webp|gif|avif)$/i.test(e.name))
       .map((e) => e.name);
+    const stray = rasters.filter((name) => !ALLOWED.includes(name));
     assert.deepEqual(stray, [], `raster files landed in web/public: ${stray.join(', ')}`);
+
+    // The exception is not a license to delete the thing it excuses.
+    for (const name of ALLOWED) {
+      assert.ok(rasters.includes(name), `${name} is gone from web/public, so every shared link 404s its image`);
+    }
   });
 
   test('the check does not animate here', () => {

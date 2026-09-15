@@ -30,10 +30,30 @@
       preview from these four tags. Without them it renders the bare URL, which
       reads as something dubious.
 
-      The image is the app icon, and twitter:card is "summary" rather than
-      "summary_large_image" for that reason: summary_large_image crops to
-      roughly 1.91:1 and would take a bite out of a square mark. A wide social
-      image is worth making; it is not worth faking with a square one.
+      This used to point at the 512x512 app icon under a comment saying a wide
+      image was worth making and not worth faking with a square one. It is made
+      now: `scripts/make-social-card.mjs` renders one at 1200x630 from the
+      palette in styles.css, the headline in the English locale and the mark in
+      Logo.jsx, so the card cannot drift from the product or claim something
+      the site does not say.
+
+      1200x630 is Meta's recommended size and the 1.91:1 they ask for to
+      "display the full image in Feed without any cropping". 512 was under
+      their 600x315 working minimum on the long edge, and their guidance is
+      explicit about what that costs: an image below it "will still display in
+      the link page post, but the size will be much smaller" - a thumbnail
+      beside the text rather than a card.
+
+      og:image:alt because the Open Graph specification says that "if the page
+      specifies an og:image it should specify og:image:alt", and because a
+      preview card is content somebody may be hearing rather than seeing. The
+      width and height are declared so a crawler can lay the card out before
+      the image has finished downloading.
+
+      X's own card documentation now redirects to a generic developer overview,
+      so summary_large_image is set on the strength of Meta's numbers and the
+      shared 1.91:1 convention rather than on a figure quoted from a page that
+      no longer exists.
 
       These are static, so they do not change per route - correct for an SPA
       with no server rendering, since a crawler that does not run JavaScript
@@ -48,8 +68,19 @@
       content="An AI strength coach that programs, adjusts, and progresses powerlifters over time."
     />
     <meta property="og:url" content="https://coachdiaz.app/" />
-    <meta property="og:image" content="https://coachdiaz.app/icons/icon-512.png" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://coachdiaz.app/social-card.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Coach Diaz. A strength coach that reads what you actually lifted."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:image:alt"
+      content="Coach Diaz. A strength coach that reads what you actually lifted."
+    />
 
     <link rel="manifest" href="/manifest.webmanifest" />
 

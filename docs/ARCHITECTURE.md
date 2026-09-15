@@ -2051,6 +2051,105 @@ not extended here — `check:screens` is the right place for that question and
 now asks it.
 
 
+### ADR-32 · The first impression was a thumbnail, and nothing here could see it
+
+**Context.** `og:image` pointed at `icons/icon-512.png` — the app icon, square,
+512 px. Meta's own guidance recommends 1200×630, gives 600×315 as the working
+minimum, asks for "as close to 1.91:1 aspect ratio as possible to display the
+full image in Feed without any cropping", and is explicit about the cost of
+going under: an image below 600×315 "will still display in the link page post,
+but the size will be much smaller". 512 is under that floor on the long edge, so
+every link anybody pasted into a message rendered a small square beside the text
+rather than a card.
+
+The comment in `index.html` had said so since the tags were written — *"A wide
+social image is worth making; it is not worth faking with a square one."* This
+is the making of it.
+
+**A link preview is this project's failure mode in miniature.** It is rendered
+by somebody else's crawler, in somebody else's app, for somebody who has not
+visited the site. No page in the product displays it, no route loads it, nothing
+in the repository looked at it, and it is the first thing anyone sees.
+
+**Decision.**
+
+1. **The card is generated, not drawn.** `scripts/make-social-card.mjs` reads
+   the palette out of `web/src/styles.css`, the headline out of the English
+   locale and the mark out of `Logo.jsx`, lays them out in HTML and renders them
+   with the same engine that draws the application. A hand-made PNG is a second
+   copy of the brand that drifts from the first; there is nothing in this
+   picture that is not already in the product, so the card cannot claim
+   something the site does not say.
+
+2. **The one thing it cannot inherit is the font.** `--font` is `system-ui`
+   deliberately — the reader's own interface font. A flat image has no reader,
+   so it picks Liberation Sans, which is designed to be metric-compatible with
+   Arial; a machine with Arial renders identical glyph positions, so the
+   committed PNG is reproducible off this container rather than only on it.
+
+3. **The render signs itself.** The headline ends up in three places: the locale
+   file, the pixels, and `og:image:alt`. A test can hold the first and third
+   together by reading both. It cannot read the pixels — and a card still
+   showing last month's headline, with tags and locale agreeing perfectly about
+   a sentence the picture does not contain, is exactly the quiet kind of wrong
+   this project keeps finding. So the run that draws the card writes the
+   headline it drew into a PNG `tEXt` chunk. That is not proof the glyphs are
+   legible, and nothing cheap is, but the chunk and the pixels come out of one
+   render, so it is evidence about *this file* rather than a claim about it.
+   Verified to still decode in Chromium and in Pillow after the splice.
+
+4. **`og:image:alt`, because the Open Graph specification asks for it** — "if
+   the page specifies an og:image it should specify og:image:alt" — and because
+   a preview card is content somebody may be hearing rather than seeing. Width,
+   height and type are declared so a crawler can lay the card out before the
+   image finishes downloading.
+
+5. **`twitter:card` is `summary_large_image`.** Noted honestly: X's own card
+   documentation now redirects to a generic developer overview, so this is set
+   on the strength of Meta's numbers and the shared 1.91:1 convention rather
+   than on a figure quoted from a page that no longer exists.
+
+**Two guards, because they answer different questions.**
+`socialCard.test.js` holds the source tree together — the file really is
+1200×630 read from its own IHDR, the tags agree with the file rather than with
+each other, the alt text contains the headline, the chunk has not fallen behind
+the locale. None of that says the deployed origin serves it, so
+`check-app-mounts.mjs` fetches `og:image` from whatever origin is serving, which
+under `check:live` is production every six hours.
+
+**And it judges the bytes, not the status.** A single-page app rewrites an
+unknown path to `index.html`, so a deleted card and an SPA rewrite both answer
+**200** — measured here, they produce the byte-identical failure message. A
+status or content-type check would have called both healthy.
+
+**A guard the change had to argue with.** `homeDemo.test.js` forbids raster
+files in `web/public`, on the reasoning that a screenshot is correct in one of
+twenty palettes and stale the day after it is taken. That rule is right and is
+about images the *page* renders; the social card is never rendered by this
+application. The exception is by NAME rather than by extension, so a screenshot
+dropped in beside it still fails, and it asserts the card is still *there* as
+well as still allowed.
+
+**Known limit, written down rather than designed around.** The layout is
+left-aligned, so content sits in the left two thirds. At 1.91:1 — the ratio
+every platform whose documentation is still readable asks for — that is the
+whole card. A consumer that center-crops to a square would cut into the
+headline. No primary source for such a crop could be found, and designing for
+an unverified behavior is how the last comment on these tags ended up wrong.
+
+**Consequences.** Guarded by `socialCard.test.js` (six tests) and one new test
+in `appMounts.test.js`, plus amendments to `landing.test.js` and
+`homeDemo.test.js` where the old decision was pinned. Fifteen mutants planted
+across the four files, fifteen caught — including the ordering bug this change
+actually made, where the fetch sat after the `finally` that closes the local
+server and reported the card unreachable on a build where it was sitting in
+`dist` all along.
+
+**Regenerating** is `node scripts/make-social-card.mjs`, and it needs Chrome —
+so it runs in the container or on a machine with a browser, never on the device
+VM. The test fails with that command in its message when the headline moves.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

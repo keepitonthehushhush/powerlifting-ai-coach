@@ -425,6 +425,37 @@ async function servedThisApp(origin) {
   }
 }
 
+/**
+ * The social card, read as BYTES from the origin that is serving.
+ *
+ * Not from the content-type header: a single-page app that rewrites unknown
+ * paths to index.html answers 200 with HTML for a missing image, and that is
+ * the exact shape a header check reports as healthy.
+ */
+async function fetchCard(origin, homeDom) {
+  const href = homeDom?.match(/property="og:image"\s+content="([^"]+)"/)?.[1];
+  if (!href) return { problem: '/: the page carries no og:image, so a shared link renders a bare URL' };
+
+  const route = new URL(href, origin).pathname;
+  try {
+    const response = await fetch(`${origin}${route}`);
+    if (!response.ok) return { problem: `${route}: og:image answered ${response.status} ${response.statusText}` };
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.subarray(1, 4).toString('latin1') !== 'PNG') {
+      return { problem: `${route}: og:image served ${bytes.length} bytes that are not a PNG ` +
+        '(an SPA rewrite answering 200 with index.html looks exactly like this)' };
+    }
+    const size = `${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`;
+    if (size !== '1200x630') {
+      return { problem: `${route}: og:image is served at ${size}, not the 1200x630 the tags declare` };
+    }
+    return { note: `og:image: ${route} is a ${size} PNG, ${(bytes.length / 1024).toFixed(0)} kB` };
+  } catch (error) {
+    return { problem: `${route}: og:image could not be fetched - ${error.message}` };
+  }
+}
+
 const remoteTarget = process.argv[2] ?? process.env.DEPLOY_URL ?? null;
 
 async function main() {
@@ -469,6 +500,9 @@ async function main() {
     server = served.server;
     origin = `http://127.0.0.1:${served.port}`;
   }
+  /** The social card's verdict, filled in below while the server is still up. */
+  let card;
+
   /*
    * One browser for all eleven routes rather than one process each. The probe
    * is an init script, so it survives every navigation, and the pages are
@@ -487,6 +521,14 @@ async function main() {
       await browser.goto(`${origin}${route}`, { timeoutMs: MOUNT_TIMEOUT_MS });
       pages[route] = { dom: await browser.html(), report: await browser.evaluate(REPORT_JS) };
     }
+    /*
+     * Fetched HERE, inside the try, because the `finally` below closes the
+     * local server - and a request to a closed port fails with `fetch failed`,
+     * which reads exactly like a missing asset. The first version of this had
+     * it after the block and reported the card as unreachable on a build where
+     * it was sitting in `dist` all along.
+     */
+    card = await fetchCard(origin, pages['/']?.dom);
   } finally {
     browser.close();
     if (server) server.close();
@@ -517,6 +559,18 @@ async function main() {
   for (const [route, page] of Object.entries(pages)) {
     for (const failure of await checkRoute(page.dom, page.report)) failures.push(`${route}: ${failure}`);
   }
+
+  /*
+   * ── AND THE ONE ASSET NO ROUTE LOADS ──────────────────────────────────────
+   *
+   * `og:image` is fetched by somebody else's crawler and by nothing in this
+   * application, so a 404 there breaks every shared link and is invisible to
+   * every other check in the repository. socialCard.test.js holds the tag, the
+   * locale and the file in the SOURCE tree together; this asks the origin that
+   * is actually serving - which in `check:live` is production, every six hours.
+   */
+  if (card?.problem) failures.push(card.problem);
+  else if (card?.note) console.log(card.note);
 
   if (failures.length) {
     const what = remoteTarget ? `${new URL(remoteTarget).origin} is broken` : 'The built app does not work';
