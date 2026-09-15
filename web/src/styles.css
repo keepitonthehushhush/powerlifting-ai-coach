@@ -2674,6 +2674,11 @@ form > button.secondary {
   font-size: var(--text-title-3);
   font-weight: 600;
   margin: 0 0 var(--space-2);
+  /* "Get a program, not a template" does not fit one line in a 336px column at
+     this size. Balanced, it breaks after the comma instead of orphaning the
+     last word on a line of its own - which is the same treatment .home-h2
+     already gets, for the same reason. */
+  text-wrap: balance;
 }
 
 /* Centered, and narrow. A centered line much past this is harder to read than a
@@ -2705,6 +2710,59 @@ form > button.secondary {
 @media (min-width: 40rem) {
   .home-steps {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/*
+ * ── THE DESKTOP LAYOUT WAS WORSE THAN THE PHONE ONE ───────────────────────
+ *
+ * Measured, because every sweep this project had run was at 390px:
+ *
+ *   390px phone     each step 351px wide, all three headings on ONE line
+ *   1280px laptop   each step 240px wide, TWO of three headings wrap
+ *
+ * A screen 3.3 times wider, giving each column two thirds of the room. The
+ * body copy came to 23-24 characters a line, against the 45 Butterick puts at
+ * the bottom of the readable range - a column of fragments, and the visible
+ * symptom was "Get a program, not a / template" breaking a three-word heading
+ * in half on the page that decides whether anybody believes a company made
+ * this.
+ *
+ * ── WHY THE ROW BREAKS OUT RATHER THAN THE PAGE WIDENING ──────────────────
+ *
+ * `.home` is capped at 832px, and that cap is doing almost nothing: every
+ * piece of text inside it is ALREADY capped in `ch` - the headline at 701px,
+ * the subhead 534, each h2 490, each paragraph 498, the fine print 380. The
+ * only thing the 832px was actually constraining was this grid.
+ *
+ * So widening `.home` would have moved nothing except the one thing that needs
+ * to move, and would have left the hero floating in a frame far wider than its
+ * own text. The row breaks out of the measure instead, which is what a
+ * three-up feature grid does on a page whose prose stays narrow.
+ *
+ * 66rem, and the media query is 72rem so that 1056px plus the page's own 64px
+ * of padding always fits with room to spare - a break-out that overflows is a
+ * page that scrolls sideways, which is the one thing no screen here may do.
+ * Each track comes to 336px: a little wider than the phone's 351px columns
+ * were, which is the bar this failed to clear.
+ */
+@media (min-width: 62rem) {
+  .home-steps {
+    /*
+     * Fluid rather than one step, because a single 72rem breakpoint left
+     * everything between 1024 and 1151 on the cramped layout - a common laptop
+     * range, and precisely the widths that were wrong to begin with.
+     *
+     * `100vw - var(--space-24)`, not `- var(--space-16)`: 100vw includes the
+     * scrollbar in Chrome, and this page always has one. 96px of subtraction
+     * keeps the row clear of the edge even when 15px of it is a scrollbar that
+     * 100vw pretended was not there. Verified at ten widths from 768 to 1680,
+     * looking for a document that scrolls sideways rather than trusting the
+     * arithmetic.
+     */
+    --steps-width: min(66rem, 100vw - var(--space-24));
+    width: var(--steps-width);
+    margin-inline: calc((100% - var(--steps-width)) / 2);
   }
 }
 

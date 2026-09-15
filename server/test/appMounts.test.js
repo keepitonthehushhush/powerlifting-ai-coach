@@ -290,7 +290,13 @@ describe('every screen is looked at, not just the ones a signed-out browser can 
       'check-app-mounts no longer says where the page it cannot reach IS checked');
     assert.match(scriptRaw, phrase('check-screens.mjs runs the same detector'),
       'the pointer from the gap to the thing that closes it is gone');
-    assert.match(screens, /untranslatedKeys\(dom, localePath\)/, 'the screen sweep does not look for leaked keys');
+    // `[\s\S]*?` and not `[^)]*`: the argument is `await page.html()`, which
+    // has a closing paren of its own inside the call.
+    assert.match(
+      screens,
+      /untranslatedKeys\([\s\S]*?localePath\)/,
+      'the screen sweep does not look for leaked keys',
+    );
     assert.match(screens, /'account'/, 'the screen sweep does not include the page the bug was on');
   });
 
@@ -328,7 +334,19 @@ describe('every screen is looked at, not just the ones a signed-out browser can 
   });
 
   test('an empty run cannot pass, and CI runs it after the build it reads', () => {
-    assert.match(screens, /screensSeen !== SCREENS\.length/, 'a sweep that reached no screens would pass');
+    /*
+     * The floor moved when the sweep gained a second viewport: it counts
+     * screen/width COMBINATIONS now, so the expected total is the product. The
+     * assertion follows it rather than pinning the old expression, and both
+     * halves are checked - a product with one factor dropped is exactly how
+     * this would silently stop covering the desktop pass.
+     */
+    assert.match(
+      screens,
+      /const expected = SCREENS\.length \* VIEWPORTS\.length;/,
+      'the expected sweep size is no longer every screen at every width',
+    );
+    assert.match(screens, /screensSeen !== expected/, 'a sweep that reached no screens would pass');
     assert.match(screens, /targetsChecked < 40/, 'a harness rendering nothing would pass');
     assert.equal(pkg.scripts['check:screens'], 'node scripts/check-screens.mjs');
     const buildAt = ci.indexOf('npm run build:harness');

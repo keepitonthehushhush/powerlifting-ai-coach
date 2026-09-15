@@ -431,3 +431,74 @@ describe('the last piece of operating-system furniture is gone', () => {
     assert.match(rule[0].body, /min-height:\s*32px/, 'the language control lost its height');
   });
 });
+
+describe('the landing page was worse on a laptop than on a phone', () => {
+  /**
+   * ── THE DEFECT, AND WHY NOTHING HAD SEEN IT ───────────────────────────
+   *
+   * Every rendered sweep this project had run was at 390px. Measured across
+   * desktop widths for the first time:
+   *
+   *   390px phone     each step 351px wide, all three headings on ONE line
+   *   1280px laptop   each step 240px wide, TWO of three headings wrap
+   *
+   * A screen 3.3 times wider giving each column two thirds of the room, and
+   * body copy at 23-24 characters a line against the 45 Butterick puts at the
+   * bottom of the readable range. The visible symptom was a three-word heading
+   * broken in half - "Get a program, not a / template" - on the page that
+   * decides whether anybody believes a company made this.
+   *
+   * `.home` is capped at 832px and that cap was doing almost nothing: every
+   * piece of text inside is ALREADY capped in `ch`. The only thing it
+   * constrained was this grid.
+   */
+  test('the step row breaks out of the prose measure on a wide screen', () => {
+    /*
+     * Sliced out of the raw stylesheet rather than looked up in RULES. The
+     * brace-matching parser at the top of this file deliberately SKIPS any
+     * block whose prelude contains `@`, so nothing inside a media query is in
+     * RULES at all - and the first version of this test looked there and found
+     * an empty array, which reads exactly like a deleted rule. The break-out
+     * only exists inside a media query, which is the point of it.
+     */
+    const at = css.indexOf('@media (min-width: 62rem)');
+    assert.ok(at > -1, 'the wide-screen breakpoint for the step row is gone');
+    const block = css.slice(at, css.indexOf('\n}', at));
+    assert.match(block, /\.home-steps/, 'the 62rem block no longer contains the step row');
+    assert.match(block, /--steps-width:\s*min\(66rem,/, 'the break-out lost its cap, so it grows without limit');
+    assert.match(
+      block,
+      /margin-inline:\s*calc\(\(100% - var\(--steps-width\)\) \/ 2\)/,
+      'the row is no longer centered on the column it breaks out of',
+    );
+    const wide = [{ body: block }];
+    /*
+     * `100vw - var(--space-24)`, not `--space-16`. 100vw includes the
+     * scrollbar in Chrome and this page always has one, so subtracting only
+     * the page padding leaves the row about 15px wider than the client area -
+     * a document that scrolls sideways, which is the one thing no screen here
+     * may do. Verified at ten widths from 768 to 1680 rather than reasoned
+     * about.
+     */
+    assert.match(wide[0].body, /100vw - var\(--space-24\)/, 'the break-out does not allow for the scrollbar');
+  });
+
+  test('and a step heading that has to wrap wraps evenly', () => {
+    // "Get a program, not a template" does not fit one line in a 336px column
+    // at title-3. Balanced, it breaks after the comma instead of orphaning the
+    // last word - the treatment .home-h2 already gets, for the same reason.
+    const h3 = rulesFor('.home-h3');
+    assert.equal(h3.length, 1, '.home-h3 has no rule of its own');
+    assert.match(h3[0].body, /text-wrap:\s*balance/, 'a wrapped step heading orphans its last word');
+  });
+
+  test('the screen sweep looks at a desktop width, not only a phone', () => {
+    // This defect was the opposite shape from every one before it: worse on
+    // the bigger screen. A sweep that only knows about phones cannot see that.
+    const check = readSource(new URL('../../scripts/check-screens.mjs', import.meta.url));
+    const block = check.slice(check.indexOf('const VIEWPORTS = ['), check.indexOf('];', check.indexOf('const VIEWPORTS = [')));
+    const widths = [...block.matchAll(/width: (\d+)/g)].map((m) => Number(m[1]));
+    assert.deepEqual(widths, [390, 1280], 'the screen sweep no longer covers both a phone and a laptop');
+    assert.match(block, /width: 390[\s\S]{0,40}touch: true/, 'the phone viewport stopped being a phone');
+  });
+});

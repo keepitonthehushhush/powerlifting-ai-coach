@@ -68,8 +68,21 @@ const SCREENS = [
   'ai', 'lbpolicy', 'clinician', 'consent',
 ];
 
-/** 390px is an iPhone 14/15/16. Touch, because a narrow window is not a phone. */
-const VIEWPORT = { width: 390, height: 900, touch: true };
+/**
+ * ── TWO WIDTHS, AND THE SECOND ONE IS THE POINT ───────────────────────────
+ *
+ * 390px is an iPhone 14/15/16, with touch on because a narrow window is not a
+ * phone. That is the width every sweep in this project had been run at, and it
+ * hid a defect of exactly the opposite shape: the landing page's three-step
+ * row gave each column 351px on a phone and 240px on a 1280px laptop, so two
+ * of its three headings wrapped on the bigger screen and none did on the
+ * smaller one. A layout can be worse on a desktop than on a phone, and only
+ * looking at phones cannot see that.
+ */
+const VIEWPORTS = [
+  { width: 390, height: 900, touch: true },
+  { width: 1280, height: 900, touch: false },
+];
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -161,35 +174,48 @@ async function main() {
   }
 
   const { server, port } = await serve(harnessDir);
-  const page = await launch(chromePath, { ...VIEWPORT, offline: true, label: 'screens' });
 
   let failures = 0;
   let screensSeen = 0;
   let targetsChecked = 0;
 
   try {
-    for (const id of SCREENS) {
-      const query = `?page=${id}&mode=full${id === 'login' ? '&auth=out' : ''}`;
-      await page.goto(`http://127.0.0.1:${port}/${query}`);
+    for (const viewport of VIEWPORTS) {
+      const page = await launch(chromePath, { ...viewport, offline: true, label: 'screens' });
+      try {
+        for (const id of SCREENS) {
+          const query = `?page=${id}&mode=full${id === 'login' ? '&auth=out' : ''}`;
+          await page.goto(`http://127.0.0.1:${port}/${query}`);
 
-      const report = await page.evaluate(AUDIT);
-      const dom = await page.html();
-      const leaked = await untranslatedKeys(dom, localePath);
+          const report = await page.evaluate(AUDIT);
+          const where = `${id} at ${viewport.width}px`;
 
-      screensSeen += 1;
-      targetsChecked += report.measured ?? 0;
+          screensSeen += 1;
+          targetsChecked += report.measured ?? 0;
 
-      for (const line of report.fail) {
-        console.error(`FAIL ${id}: ${line}`);
-        failures += 1;
-      }
-      if (leaked.length) {
-        console.error(`FAIL ${id}: translation keys rendered as visible text: ${leaked.join(', ')}`);
-        failures += 1;
+          for (const line of report.fail) {
+            console.error(`FAIL ${where}: ${line}`);
+            failures += 1;
+          }
+
+          /*
+           * Only once per screen. A leaked translation key is a property of
+           * the markup, not of the viewport, and reporting it twice would make
+           * one bug look like two.
+           */
+          if (viewport.width === VIEWPORTS[0].width) {
+            const leaked = await untranslatedKeys(await page.html(), localePath);
+            if (leaked.length) {
+              console.error(`FAIL ${id}: translation keys rendered as visible text: ${leaked.join(', ')}`);
+              failures += 1;
+            }
+          }
+        }
+      } finally {
+        page.close();
       }
     }
   } finally {
-    page.close();
     server.close();
   }
 
@@ -199,8 +225,9 @@ async function main() {
    * assumed - a harness that stopped rendering controls would otherwise report
    * eighteen silent passes.
    */
-  if (screensSeen !== SCREENS.length) {
-    console.error(`FAIL: ${screensSeen} of ${SCREENS.length} screens were reached`);
+  const expected = SCREENS.length * VIEWPORTS.length;
+  if (screensSeen !== expected) {
+    console.error(`FAIL: ${screensSeen} of ${expected} screen/width combinations were reached`);
     failures += 1;
   }
   if (targetsChecked < 40) {
@@ -214,7 +241,8 @@ async function main() {
     process.exit(1);
   }
   console.log(
-    `OK   ${screensSeen} screens at ${VIEWPORT.width}px (touch): one h1 each, no skipped heading level, ` +
+    `OK   ${SCREENS.length} screens at ${VIEWPORTS.map((v) => v.width + 'px').join(' and ')}: ` +
+    'one h1 each, no skipped heading level, ' +
     `${targetsChecked} targets all at least 24x24, no sideways page scroll, no untranslated keys.`,
   );
 }

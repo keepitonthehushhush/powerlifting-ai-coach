@@ -1911,6 +1911,61 @@ stylesheet test instead, which is the half a browser sweep cannot see.
 coverage: 318 targets measured across 18 screens.
 
 
+### ADR-30 · The landing page was worse on a laptop than on a phone
+
+**Context.** Every rendered sweep this project had run was at 390px. ADR-29's
+screen check included. Measured across desktop widths for the first time, the
+landing page's three-step row:
+
+| Width | Column | Headings that wrap | Body |
+|---|---|---|---|
+| 390px phone | **351px** | none of three | 4–6 lines |
+| 1280px laptop | **240px** | **two of three** | 6–9 lines |
+
+A screen 3.3 times wider giving each column two thirds of the room. Body copy
+came to **23–24 characters a line** against the 45 Butterick puts at the bottom
+of the readable range, and the visible symptom was a three-word heading broken
+in half — *"Get a program, not a / template"* — on the page that decides whether
+anybody believes a company made this.
+
+**Decision: the row breaks out of the measure; the page does not widen.**
+`.home` is capped at 832px, and that cap was doing almost nothing: every piece
+of text inside it is already capped in `ch` — headline 701px, subhead 534, each
+`h2` 490, each paragraph 498, fine print 380. The only thing the 832px was
+constraining was this grid. Widening `.home` would have moved nothing except
+the one thing that needed to move, and left the hero floating in a frame far
+wider than its own text. So the row breaks out, which is what a three-up
+feature grid does on a page whose prose stays narrow. Columns are 336px at
+1280px — a little under the phone's 351px, which was the bar this failed to
+clear.
+
+**`100vw - var(--space-24)`, not `--space-16`.** `100vw` includes the scrollbar
+in Chrome and this page always has one, so subtracting only the page's own
+padding leaves the row about 15px wider than the client area — a document that
+scrolls sideways, which is the one thing no screen here may do. Verified at ten
+widths from 768 to 1680 by measuring `scrollWidth - clientWidth`, rather than
+trusting the arithmetic.
+
+**Fluid rather than one step.** A single 72rem breakpoint left everything
+between 1024 and 1151 on the cramped layout — a common laptop range, and
+exactly the widths that were wrong to begin with.
+
+**Decision: the screen sweep gets a desktop width.** This defect was the
+opposite shape from every one before it — worse on the bigger screen — and a
+sweep that only knows about phones cannot see that. `check-screens.mjs` now
+walks all eighteen screens at **390px with touch and 1280px without**: 630
+targets measured, against 318 before. The leaked-key detector runs once per
+screen rather than once per width, because a leaked key is a property of the
+markup and reporting it twice would make one bug look like two.
+
+**Eight mutants, eight caught.** One assertion had to be rewritten first: it
+looked the rule up in the brace-matching parser at the top of the test file,
+which deliberately skips any block whose prelude contains `@`. Nothing inside a
+media query is in that list at all — and the break-out only exists inside a
+media query, which is the point of it. An empty array reads exactly like a
+deleted rule.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
