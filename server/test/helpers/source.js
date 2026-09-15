@@ -242,3 +242,31 @@ export function latestDefinition(declaration) {
 
   throw new Error(`No migration defines ${declaration}`);
 }
+
+/**
+ * A YAML file with its `#` comments removed, for ABSENCE assertions.
+ *
+ * ── WHY THIS IS NOT `readSource` ──────────────────────────────────────────
+ *
+ * `readSource` strips JavaScript comments. A workflow file is YAML, and the
+ * idiom this repository keeps rediscovering is that an absence assertion
+ * matching the paragraph written to EXPLAIN the absence is not an assertion:
+ * `post-deploy.yml` quotes the negated condition it replaced, and the first
+ * version of the test asserting that condition was gone matched the quote.
+ *
+ * It bit a second time on 2026-09-15 from the other direction. A PRESENCE
+ * assertion - "CI runs `npm run check:chart`" - was satisfied by
+ * `run: true # npm run check:chart`, so a mutant that disabled the step
+ * survived. Presence and absence both have to read the same stripped text.
+ *
+ * Deliberately simple: it does not parse strings, so a `#` inside a quoted
+ * value cuts its line short. That makes an absence assertion stricter and a
+ * presence assertion no weaker than the raw file, which is the safe direction
+ * for both.
+ */
+export function withoutYamlComments(yaml) {
+  return yaml
+    .split('\n')
+    .map((line) => line.replace(/(^|\s)#.*$/, ''))
+    .join('\n');
+}

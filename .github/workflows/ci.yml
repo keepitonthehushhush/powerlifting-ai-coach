@@ -121,6 +121,15 @@ jobs:
       - name: Every sideways-scrolling box says so, and saying so works
         run: npm run check:scroll
 
+      # A viewBox is a scale factor, so the number in the stylesheet is not the
+      # number on screen: the chart axis label declared 10px and rendered at
+      # 8.9px for as long as the charts existed. Neither the type-scale test
+      # (which reads the stylesheet) nor the styles baseline (getComputedStyle
+      # reports the DECLARED size on an SVG text node) can see that. This one
+      # multiplies by the rendered scale. See the script's header.
+      - name: The charts are drawn at the size they declare
+        run: npm run check:chart
+
       # Builds every safety scenario's prompt and runs every deterministic
       # check, with no API key and no cost. The paid run happens monthly; this
       # is what stops it dying on scenario 19 because of a typo in scenario 20,

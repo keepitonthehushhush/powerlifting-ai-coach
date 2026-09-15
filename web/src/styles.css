@@ -1194,7 +1194,12 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
 }
 .chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
 .chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
-.chart-axis-label { fill: var(--muted); font-size: 10px; }
+/* On the ladder, and now it reaches the eye at its own size. This said
+   `10px` and rendered at 8.9px for as long as it existed, because the
+   viewBox was fixed at 340 units and the element is 302 CSS pixels wide.
+   The charts size their viewBox from the element now, so one user unit is
+   one pixel and `--text-caption-2` is 11px on screen. lib/useMeasuredWidth.js */
+.chart-axis-label { fill: var(--muted); font-size: var(--text-caption-2); }
 .chart-readout { min-height: 1.4em; margin: var(--space-1) 0 0; font-size: var(--text-footnote); }
 .chart-key { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; margin: var(--space-1) 0 0; }
 .key-mark { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }

@@ -38,8 +38,16 @@ const raw = readRaw(new URL('../../web/src/styles.css', import.meta.url));
  *   0.85em / 0.88em  Deliberately RELATIVE: a printed-link suffix and an
  *                    inline code span should track the text they sit inside,
  *                    which is the one job `em` is right for.
- *   10px             An SVG chart axis label inside a scaled viewBox. It is
- *                    not 10px on screen and it is not on the text ladder.
+ *   (removed 2026-09-15) `10px`, the SVG chart axis label. This entry used to
+ *                    say "it is not 10px on screen and it is not on the text
+ *                    ladder" - true, and it never said what it WAS. Measured:
+ *                    8.9px on every desktop viewport and 9.1px on a phone,
+ *                    because the viewBox was fixed at 340 units and the chart
+ *                    renders at 302 CSS pixels. The charts size their viewBox
+ *                    from the element now, so the label is `--text-caption-2`
+ *                    and is 11px on screen. A note that a number is wrong,
+ *                    without the right number, is how a defect survives being
+ *                    noticed - which is why this line is kept rather than cut.
  *   1.5rem / 1.15rem A page title, an easter-egg title, a brand lockup and two
  *   1.45rem          MFA code boxes. These are the DISPLAY end, which the
  *                    09-09 review already worked on, and the code boxes are
@@ -54,7 +62,6 @@ const raw = readRaw(new URL('../../web/src/styles.css', import.meta.url));
 const ALLOWED_LITERALS = [
   '1.5rem',        // h1
   '1.15rem',       // .brand.small
-  '10px',          // .chart-axis-label, inside an SVG viewBox
   '1.45rem',       // .page-title
   '1.5rem',        // .egg-title
   '0.85em',        // .prose a[href^="/"]::after - relative on purpose

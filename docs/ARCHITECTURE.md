@@ -2484,6 +2484,72 @@ and the original production probe now refuses with `permission denied` at both
 steps.
 
 
+### ADR-37 · The number in the stylesheet was not the number on the screen
+
+**Context.** The next item on the 09-14 UI review was "let tables and charts
+opt out of the 760px measure". Measuring it first killed both of its premises -
+the program table does not overflow at any desktop width, and a chart inside a
+fixed `viewBox` gets magnified by extra width rather than filled by it. Finding
+8 of that review is corrected in place with the numbers.
+
+The measuring turned up something else. `.chart-axis-label` declares
+`font-size: 10px`. Both chart components declare `viewBox="0 0 340 170"` and
+both render in a grid track 302 CSS pixels wide, and a viewBox is a scale
+factor, so every number in the picture was multiplied by 302/340 = 0.888:
+
+| declared | on screen |
+|---|---|
+| `font-size: 10px` | **8.9px** at 834, 1024, 1280 and 1680; 9.1px at 390 |
+| `stroke-width: 2` | 1.78px |
+| dot `r=4` | 3.55px |
+
+8.9px is below the smallest rung on the type ladder, `--text-caption-2` at
+11px, on the screen an athlete opens to read four numbers.
+
+**Why three checks could not see it.** `typeScale.test.js` reads the
+stylesheet, so it saw the declared 10px - and its allowlist entry for that
+value literally said *"It is not 10px on screen and it is not on the text
+ladder"*, without ever saying what it was. A note that a number is wrong,
+without the right number, is how a defect survives being noticed.
+`check-computed-styles.mjs` calls `getComputedStyle`, which on an SVG text node
+reports the declared size whatever viewBox surrounds it - its 1332 captures are
+**byte-identical before and after this fix**, which is the cleanest possible
+demonstration that the strongest net here passes this straight through.
+`check-screens.mjs` takes pictures, and 8.9px and 11px are both small gray text
+at review size.
+
+**Decision.** `lib/useMeasuredWidth.js` measures the element in a layout effect
+and a `ResizeObserver`, and the charts size their viewBox from it. One user
+unit is one CSS pixel, so the stylesheet can be read literally. The axis label
+moves to `--text-caption-2` and the allowlist entry is deleted, which makes the
+type-scale guard stronger rather than weaker.
+
+**Rejected: raise the declared size until it lands on 11px.** 11/0.888 = 12.4,
+and 0.888 is a layout outcome - it is 0.908 on a phone and something else the
+day the grid changes. That is the same defect with a different constant in it.
+
+**The height is fixed at 170 and the aspect ratio is not.** A chart whose
+height follows its width is aspect-locked, which is the magnification problem
+pointing the other way: it stays 1:1, so the first assertion still passes, and
+a wider chart becomes a taller chart instead of a longer one. Fixing the height
+is what would let the review's original item 10 be worth doing later.
+
+**`scripts/check-chart-scale.mjs`**, and a fourth browser check rather than a
+line in an existing one, because the fault is geometry rather than a property
+value - the same reason the scroll cues needed their own. It multiplies
+declared size by rendered scale, compares against a floor **read out of
+`styles.css`** rather than written in the script, asserts nothing is clipped by
+the viewBox, and then narrows the grid and measures again: once at mount is
+enough to pass and not enough to keep the property, because a window resize is
+not a render.
+
+**Consequences.** The page grows 19px per chart - 2184px to 2260px at 1280,
+3790px to 3914px on a phone - because a real 170px is taller than 170 scaled
+units. Six mutants planted, six caught, after one survivor added the assertion
+that the height does not move when the width does. Every other check is
+unchanged and green, including the styles baseline, which is the point.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

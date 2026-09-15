@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { buildChart, shortDate } from '../lib/chartData.js';
+import { useMeasuredWidth } from '../lib/useMeasuredWidth.js';
 import { useI18n } from '../i18n/index.jsx';
 
 /**
@@ -22,7 +23,18 @@ export function LiftChart({ title, points, units }) {
   const [hover, setHover] = useState(null);
   const clipId = useId();
 
-  const width = 340;
+  /*
+   * The viewBox is sized from the element rather than fixed at 340, so one
+   * user unit is one CSS pixel and the axis label is the size the stylesheet
+   * says it is. See lib/useMeasuredWidth.js for what it was before: 8.9px.
+   *
+   * 340 is kept only as the pre-measurement fallback, because it is what this
+   * chart drew at for its whole life and is therefore the value every test
+   * that renders without layout was written against.
+   */
+  const [svgRef, width] = useMeasuredWidth(340);
+  // A real 170 CSS pixels, not 170 scaled units. Fixing the height rather than
+  // the aspect ratio is what makes a wider chart WIDER instead of taller.
   const height = 170;
   const chart = buildChart(points, { width, height });
 
@@ -97,6 +109,7 @@ export function LiftChart({ title, points, units }) {
       <figcaption className="chart-title">{title}</figcaption>
 
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={t('progress.chartLabel', { lift: title, count: points.length })}

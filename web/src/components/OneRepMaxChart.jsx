@@ -1,4 +1,5 @@
 import { buildChart, shortDate } from '../lib/chartData.js';
+import { useMeasuredWidth } from '../lib/useMeasuredWidth.js';
 import { useI18n } from '../i18n/index.jsx';
 
 /**
@@ -25,10 +26,20 @@ import { useI18n } from '../i18n/index.jsx';
  */
 export function OneRepMaxChart({ title, points, units }) {
   const { t, locale } = useI18n();
+  /*
+   * ABOVE the early return, because a hook after one is a hook that stops
+   * being called the moment an athlete has no sessions for this lift - which
+   * is the state every new athlete starts in.
+   *
+   * Same reason as LiftChart: the viewBox was fixed at 340 and the element is
+   * 302, so everything drawn here was scaled by 0.888 and the axis label was
+   * 8.9px. See lib/useMeasuredWidth.js.
+   */
+  const [svgRef, width] = useMeasuredWidth(340);
 
   if (points.length === 0) return null;
 
-  const width = 340;
+  // A real 170 CSS pixels. See LiftChart for why the height is what is fixed.
   const height = 170;
 
   // The scale has to hold the band, not just the line it surrounds.
@@ -60,6 +71,7 @@ export function OneRepMaxChart({ title, points, units }) {
       <figcaption className="chart-title">{title}</figcaption>
 
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={t('progress.e1rmChartLabel', {

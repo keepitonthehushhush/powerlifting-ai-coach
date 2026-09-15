@@ -1,32 +1,24 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_DEADLINE_MS, describeLanding, staleMessage } from '../src/lib/deployLanded.js';
-import { readSource, readRaw } from './helpers/source.js';
+import { readSource, readRaw, withoutYamlComments } from './helpers/source.js';
 
 const workflow = readRaw(new URL('../../.github/workflows/post-deploy.yml', import.meta.url));
 
-/**
+/*
  * The workflow with its `#` comments removed.
  *
- * ── AND THE REASON THIS FUNCTION EXISTS ───────────────────────────────────
+ * This used to be a local function here, written because the first version of
+ * the enumerate-don't-negate assertion below read the RAW file and failed: the
+ * comment added in the same change QUOTES the old negated condition while
+ * explaining why it is gone.
  *
- * The first version of the enumerate-don't-negate assertion below read the RAW
- * file and failed - because the comment added in the same change QUOTES the old
- * negated condition while explaining why it is gone. An absence assertion
- * matching the paragraph written to explain the absence is the first entry in
- * this repository's test-idioms list, and `readSource` cannot help here: it
- * strips JavaScript comments and this is YAML.
- *
- * Deliberately simple, and only used for ABSENCE checks. It does not parse
- * strings, so a `#` inside a quoted value would cut the line short - acceptable
- * because a false ABSENCE makes this assertion stricter, never weaker.
+ * It moved into helpers/source.js on 2026-09-15, when the same trap caught a
+ * PRESENCE assertion in `chartScale.test.js` - a mutant that turned a CI step
+ * into `run: true # npm run check:chart` survived, because the step name was
+ * still in the file as a comment. One rule, one place.
  */
-function withoutComments(yaml) {
-  return yaml
-    .split('\n')
-    .map((line) => line.replace(/(^|\s)#.*$/, ''))
-    .join('\n');
-}
+const withoutComments = withoutYamlComments;
 const script = readSource(new URL('../../scripts/check-deploy-landed.mjs', import.meta.url));
 const pkg = JSON.parse(readRaw(new URL('../../package.json', import.meta.url)));
 
