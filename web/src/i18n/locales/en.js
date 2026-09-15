@@ -555,6 +555,10 @@ export const en = {
   },
 
   chat: {
+    // The page's heading. Visually hidden: the transcript starts at the top
+    // of this screen by design and a visible title would push it down, but a
+    // screen reader needs something to land on.
+    pageTitle: 'Coach',
     characterCount: '{count} of {limit} characters',
     emptyPrompt:
       'Tell the coach where you are starting and it will build your first week — it asks what it needs before writing anything.',

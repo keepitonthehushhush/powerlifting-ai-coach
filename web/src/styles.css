@@ -736,7 +736,7 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -var(--space-0-5);
+  margin: -1px; /* not spacing - see below */
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
@@ -862,7 +862,7 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
-  margin: -var(--space-0-5); padding: 0; border: 0;
+  margin: -1px; padding: 0; border: 0; /* not spacing - see below */
   clip-path: inset(50%);
   overflow: hidden;
   white-space: nowrap;

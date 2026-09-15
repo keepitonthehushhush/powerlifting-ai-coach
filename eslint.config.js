@@ -85,7 +85,7 @@ const shared = {
 export default defineConfig([
   {
     // Build output, dependencies, and the icon generator, which is Python.
-    ignores: ['**/node_modules/**', 'web/dist/**', 'coverage/**'],
+    ignores: ['**/node_modules/**', 'web/dist/**', 'web/harness-dist/**', 'coverage/**'],
   },
 
   js.configs.recommended,

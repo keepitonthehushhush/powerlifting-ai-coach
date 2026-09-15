@@ -87,7 +87,17 @@ export function Account() {
 
       <section className="card stack">
         <h2 className="h3">{t('consent.title')}</h2>
-        <p className="muted small">{t('consent.withdrawAnytime')}</p>
+        {/*
+          `consent.withdrawAnytime` was printed here AND by ConsentPanel, which
+          this section mounts - the same sentence twice, separated by a rule,
+          which reads as deliberate. Found by rendering the page rather than by
+          reading it: the two live in different files and neither one looks
+          wrong on its own.
+          It stays in the panel, because the sentence is about the toggles the
+          panel draws, and it lands after them where a reassurance belongs
+          rather than before them as a preamble. Consent.jsx mounts the same
+          panel and so keeps the line too.
+        */}
         <ConsentPanel />
       </section>
 

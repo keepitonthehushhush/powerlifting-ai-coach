@@ -426,6 +426,22 @@ export function Chat() {
       </header>
       </StickyHeader>
 
+      {/*
+        ── THE ONLY SCREEN IN THE PRODUCT WITH NO HEADING AT ALL ───────────
+        Measured across all eighteen: every other page has exactly one h1 and
+        no level skipped. This one had none - not a missing h1, no heading of
+        any level - so a screen reader user landing on the app's MAIN screen
+        had nothing to orient by, and heading navigation, which is one of the
+        primary ways that reader moves around a page, found nothing here.
+
+        Visually hidden rather than drawn. The transcript deliberately starts
+        at the top of this screen and a visible title would push the newest
+        message down on the smallest phones, which is the opposite of what
+        this page is for. `.visually-hidden` keeps it in the accessibility
+        tree while taking no space.
+      */}
+      <h1 className="visually-hidden">{t('chat.pageTitle')}</h1>
+
       <div className="transcript" role="log" aria-live="polite">
         {loading && <Loading size={72} />}
 

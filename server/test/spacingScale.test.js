@@ -93,12 +93,46 @@ describe('spacing comes off one scale', () => {
      * and removing one of these fails too.
      */
     const ALLOWED = [
-      // The page gutter, which has to stay fluid. Nothing else.
+      // The page gutter, which has to stay fluid.
       'padding-inline: clamp(0.85rem, 4vw, 1.25rem)',
+      // The two screen-reader clip margins. See the test below for why a 1px
+      // value on a 1px box is not on the spacing scale.
+      'margin: -1px',
+      'margin: -1px',
     ];
     assert.deepEqual(literals().sort(), [...ALLOWED].sort());
     const uses = (css.match(/var\(--space-/g) ?? []).length;
     assert.ok(uses >= 250, `only ${uses} declarations take a spacing token`);
+  });
+
+  test('no value is negated by putting a minus in front of var()', () => {
+    /*
+     * `margin: -var(--space-0-5)` is not valid CSS. A function cannot be
+     * negated by prefixing a minus; the declaration is dropped ENTIRELY and
+     * silently, which is the worst way for a style to fail. The correct form
+     * is calc(var(--x) * -1).
+     *
+     * The snap that introduced the spacing scale wrote two of these, both on
+     * `.visually-hidden` - so the screen-reader-only clip lost its margin and
+     * nothing anywhere reported it. Not the browser, not the test suite, and
+     * not the computed-style baseline, because `.visually-hidden` is not one
+     * of its watched selectors.
+     */
+    assert.doesNotMatch(css, /-var\(/, 'a var() is being negated with a minus prefix');
+  });
+
+  test('the two 1px clip margins stay 1px, because they are not spacing', () => {
+    /*
+     * -1px on a 1px-square absolutely positioned box is half of the standard
+     * screen-reader-only clip. Snapping it to the nearest step would put a
+     * layout-rhythm token inside a hack that has nothing to do with rhythm,
+     * and it would change a 1px value by 1px.
+     */
+    const hidden = css.match(/\.visually-hidden \{[^}]*\}/g) ?? [];
+    assert.ok(hidden.length >= 1, '.visually-hidden has gone');
+    for (const rule of hidden) {
+      if (/margin:/.test(rule)) assert.match(rule, /margin: -1px/, 'the clip margin has been snapped to the scale');
+    }
   });
 
   test('the proximity rule is written down where somebody will read it', () => {

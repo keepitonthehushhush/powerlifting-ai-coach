@@ -360,6 +360,37 @@ const PROBE = `<script>
       for (var j = 0; j < PROPS.length; j++) row2[PROPS[j]] = cs[PROPS[j]];
       out[WATCHED[i]] = row2;
     }
+
+    /*
+     * ── ONE STRUCTURAL FACT, RECORDED THE SAME WAY AS THE STYLES ──────────
+     *
+     * Not a style, and here anyway, because this is the only check in the
+     * repository that renders every screen and it costs one line to ask.
+     *
+     * /coach shipped with NO HEADING AT ALL - not a missing h1, nothing at any
+     * level - while the other seventeen screens each had exactly one h1 and no
+     * level skipped. Nothing caught it, and a static test could not: eight
+     * pages get their h1 from <InfoHeader>, which renders one in each of two
+     * branches, so counting the h1 tags in a page file says nothing about what
+     * reaches the screen, and counting them in the component passes even when
+     * one branch is broken.
+     *
+     * The rendered count cannot be argued with. It lands in the same baseline,
+     * so a page that loses its heading fails CI next to a page that changed
+     * color.
+     */
+    var headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    var levels = [];
+    for (var h = 0; h < headings.length; h++) levels.push(Number(headings[h].tagName.charAt(1)));
+    var skips = [];
+    for (var k = 1; k < levels.length; k++) {
+      if (levels[k] - levels[k - 1] > 1) skips.push('h' + levels[k - 1] + '->h' + levels[k]);
+    }
+    out['__structure'] = {
+      h1Count: String(document.querySelectorAll('h1').length),
+      firstHeadingLevel: String(levels.length ? levels[0] : 0),
+      headingSkips: skips.join(',') || 'none',
+    };
     return out;
   }
 

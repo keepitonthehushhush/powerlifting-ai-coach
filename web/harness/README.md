@@ -43,3 +43,22 @@ week, not an export of a real one.
 
 It renders and measures; it asserts nothing on its own. What asserts is
 `scripts/check-computed-styles.mjs`, which drives it.
+
+## A phone viewport is not a phone
+
+Headless Chromium answers `hover: hover` and `pointer: fine` at 390px unless
+touch is emulated. This app branches on those queries in at least two places -
+the chart hint (`.hint-pointer` / `.hint-touch`) and the 16px focus-zoom floor
+on form controls - so a review that only resizes the window reads the desktop
+answer and reports it as a phone bug. One finding in
+`docs/UI_REVIEW_2026-09-14.md` was withdrawn for exactly this.
+
+When looking at phone behavior, set both:
+
+```js
+browser.newContext({ viewport: { width: 390, height: 900 }, hasTouch: true, isMobile: true })
+```
+
+`scripts/check-computed-styles.mjs` deliberately does NOT emulate touch: it
+measures the theme and the cascade, where pointer capability is not a factor,
+and adding it would change every recorded value for no gain.

@@ -131,6 +131,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark app/login": {
@@ -265,6 +270,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light app/": {
@@ -399,6 +409,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light app/login": {
@@ -533,6 +548,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=home&mode=full": {
@@ -1255,6 +1275,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "left"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=login&mode=full&auth=out": {
@@ -1704,6 +1729,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=coach&mode=full": {
@@ -1747,6 +1777,27 @@
       "paddingTop": "0px",
       "paddingLeft": "0px",
       "marginTop": "0px",
+      "gap": "normal",
+      "display": "block",
+      "boxShadow": "none",
+      "opacity": "1",
+      "textDecorationLine": "none",
+      "letterSpacing": "normal",
+      "textAlign": "start"
+    },
+    "h1": {
+      "color": "rgb(245, 243, 247)",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopColor": "rgb(245, 243, 247)",
+      "borderTopWidth": "0px",
+      "borderRadius": "0px",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "lineHeight": "37.2px",
+      "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "paddingTop": "0px",
+      "paddingLeft": "0px",
+      "marginTop": "-1px",
       "gap": "normal",
       "display": "block",
       "boxShadow": "none",
@@ -2069,6 +2120,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=program&mode=full": {
@@ -2833,6 +2889,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "left"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=log&mode=full": {
@@ -3303,6 +3364,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=progress&mode=full": {
@@ -3752,6 +3818,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=library&mode=full": {
@@ -4243,6 +4314,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=leaderboard&mode=full": {
@@ -4692,6 +4768,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=account&mode=full": {
@@ -4788,16 +4869,16 @@
     "p": {
       "color": "rgb(168, 158, 196)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(168, 158, 196)",
-      "borderTopWidth": "0px",
+      "borderTopColor": "rgb(44, 39, 69)",
+      "borderTopWidth": "1px",
       "borderRadius": "0px",
       "fontSize": "13px",
       "fontWeight": "400",
       "lineHeight": "20.15px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
-      "paddingTop": "0px",
+      "paddingTop": "12px",
       "paddingLeft": "0px",
-      "marginTop": "13px",
+      "marginTop": "8px",
       "gap": "normal",
       "display": "block",
       "boxShadow": "none",
@@ -4812,13 +4893,13 @@
       "borderTopColor": "rgb(168, 158, 196)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
-      "fontSize": "13px",
+      "fontSize": "16px",
       "fontWeight": "400",
-      "lineHeight": "20.15px",
+      "lineHeight": "24.8px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "paddingTop": "0px",
       "paddingLeft": "0px",
-      "marginTop": "13px",
+      "marginTop": "16px",
       "gap": "normal",
       "display": "block",
       "boxShadow": "none",
@@ -5204,6 +5285,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=intake&mode=full": {
@@ -5674,6 +5760,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=faq&mode=full": {
@@ -6144,6 +6235,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=terms&mode=full": {
@@ -6572,6 +6668,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=privacy&mode=full": {
@@ -7021,6 +7122,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=health&mode=full": {
@@ -7449,6 +7555,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=ai&mode=full": {
@@ -7877,6 +7988,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=lbpolicy&mode=full": {
@@ -8305,6 +8421,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=clinician&mode=full": {
@@ -8754,6 +8875,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "dark harness/?page=consent&mode=full": {
@@ -9035,6 +9161,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=home&mode=full": {
@@ -9757,6 +9888,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "left"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=login&mode=full&auth=out": {
@@ -10206,6 +10342,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=coach&mode=full": {
@@ -10249,6 +10390,27 @@
       "paddingTop": "0px",
       "paddingLeft": "0px",
       "marginTop": "0px",
+      "gap": "normal",
+      "display": "block",
+      "boxShadow": "none",
+      "opacity": "1",
+      "textDecorationLine": "none",
+      "letterSpacing": "normal",
+      "textAlign": "start"
+    },
+    "h1": {
+      "color": "rgb(26, 21, 38)",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopColor": "rgb(26, 21, 38)",
+      "borderTopWidth": "0px",
+      "borderRadius": "0px",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "lineHeight": "37.2px",
+      "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "paddingTop": "0px",
+      "paddingLeft": "0px",
+      "marginTop": "-1px",
       "gap": "normal",
       "display": "block",
       "boxShadow": "none",
@@ -10571,6 +10733,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=program&mode=full": {
@@ -11335,6 +11502,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "left"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=log&mode=full": {
@@ -11805,6 +11977,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=progress&mode=full": {
@@ -12254,6 +12431,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=library&mode=full": {
@@ -12745,6 +12927,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=leaderboard&mode=full": {
@@ -13194,6 +13381,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=account&mode=full": {
@@ -13290,16 +13482,16 @@
     "p": {
       "color": "rgb(93, 84, 112)",
       "backgroundColor": "rgba(0, 0, 0, 0)",
-      "borderTopColor": "rgb(93, 84, 112)",
-      "borderTopWidth": "0px",
+      "borderTopColor": "rgb(223, 223, 233)",
+      "borderTopWidth": "1px",
       "borderRadius": "0px",
       "fontSize": "13px",
       "fontWeight": "400",
       "lineHeight": "20.15px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
-      "paddingTop": "0px",
+      "paddingTop": "12px",
       "paddingLeft": "0px",
-      "marginTop": "13px",
+      "marginTop": "8px",
       "gap": "normal",
       "display": "block",
       "boxShadow": "none",
@@ -13314,13 +13506,13 @@
       "borderTopColor": "rgb(93, 84, 112)",
       "borderTopWidth": "0px",
       "borderRadius": "0px",
-      "fontSize": "13px",
+      "fontSize": "16px",
       "fontWeight": "400",
-      "lineHeight": "20.15px",
+      "lineHeight": "24.8px",
       "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "paddingTop": "0px",
       "paddingLeft": "0px",
-      "marginTop": "13px",
+      "marginTop": "16px",
       "gap": "normal",
       "display": "block",
       "boxShadow": "none",
@@ -13706,6 +13898,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=intake&mode=full": {
@@ -14176,6 +14373,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=faq&mode=full": {
@@ -14646,6 +14848,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=terms&mode=full": {
@@ -15074,6 +15281,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=privacy&mode=full": {
@@ -15523,6 +15735,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=health&mode=full": {
@@ -15951,6 +16168,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=ai&mode=full": {
@@ -16379,6 +16601,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=lbpolicy&mode=full": {
@@ -16807,6 +17034,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "-0.464px",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=clinician&mode=full": {
@@ -17256,6 +17488,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "center"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   },
   "light harness/?page=consent&mode=full": {
@@ -17537,6 +17774,11 @@
       "textDecorationLine": "none",
       "letterSpacing": "normal",
       "textAlign": "start"
+    },
+    "__structure": {
+      "h1Count": "1",
+      "firstHeadingLevel": "1",
+      "headingSkips": "none"
     }
   }
 }

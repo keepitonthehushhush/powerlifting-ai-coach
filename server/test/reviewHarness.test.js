@@ -146,6 +146,24 @@ describe('the review harness covers what it claims to cover', () => {
     assert.match(between, /VITE_SUPABASE_PUBLISHABLE_KEY/);
   });
 
+  test('its build output is not linted, like every other build output', () => {
+    /*
+     * `npx eslint .` reported 200-odd no-undef errors inside the minified
+     * harness bundle. CI happened not to notice because it lints BEFORE it
+     * builds, so the failure was local-only and depended on step order - which
+     * is the kind of green that stops meaning anything the moment somebody
+     * reorders a workflow.
+     *
+     * web/dist was already ignored. harness-dist is the same kind of thing.
+     */
+    const config = readRaw(new URL('../../eslint.config.js', import.meta.url));
+    const ignores = config.match(/ignores: \[([^\]]+)\]/);
+    assert.ok(ignores, 'the eslint ignore list has moved');
+    for (const built of ['web/dist/**', 'web/harness-dist/**']) {
+      assert.ok(ignores[1].includes(built), `${built} is linted as if it were source`);
+    }
+  });
+
   test('no real athlete data rides along in the fixtures', () => {
     /*
      * The fixtures carry a profile with injury and restriction FIELDS, because

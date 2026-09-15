@@ -539,6 +539,10 @@ export const es = {
   },
 
   chat: {
+    // The page's heading. Visually hidden: the transcript starts at the top
+    // of this screen by design and a visible title would push it down, but a
+    // screen reader needs something to land on.
+    pageTitle: 'Entrenador',
     showEarlier: 'Mostrar {count} mensajes anteriores',
     characterCount: '{count} de {limit} caracteres',
     emptyPrompt:
