@@ -113,7 +113,21 @@ describe('yes and no are the same size', () => {
     const primary = css.slice(css.indexOf('.primary {'), css.indexOf('}', css.indexOf('.primary {')));
     const secondary = css.slice(css.indexOf('.secondary {'), css.indexOf('}', css.indexOf('.secondary {')));
     assert.ok(secondary, '.secondary has no rule');
-    for (const property of ['padding: 0.7rem 1.1rem', 'font-weight: 600']) {
+    /*
+     * The padding is compared BETWEEN the two rules rather than against a
+     * literal. It was `padding: 0.7rem 1.1rem` written out here, and when the
+     * spacing scale landed and both buttons moved to the same token, this
+     * failed - reporting that .primary had "lost" a padding it had simply
+     * stopped hardcoding. The rule that matters is that the accept and the
+     * decline are the same box, not what number that box happens to be.
+     */
+    const paddingOf = (rule) => (rule.match(/(?<![-a-z])padding:\s*([^;]+);/) ?? [])[1];
+    assert.ok(paddingOf(primary), '.primary has no padding');
+    assert.equal(
+      paddingOf(secondary), paddingOf(primary),
+      'the decline is a different size from the accept',
+    );
+    for (const property of ['font-weight: 600']) {
       assert.ok(primary.includes(property), `.primary lost ${property}`);
       assert.ok(secondary.includes(property), `.secondary does not match .primary on ${property}`);
     }

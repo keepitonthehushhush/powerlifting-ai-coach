@@ -267,8 +267,12 @@ describe("it follows Apple's guidelines, in the ways that are checkable", () => 
     // 8pt with 4pt subdivisions. A convention rather than an Apple mandate,
     // and worth following because an arbitrary 22px beside a 24px is visible
     // even when nobody can say why.
+    /* The step number is the multiple of 4px - Tailwind's convention, so the
+       name states the value. --space-3 used to be 1rem; it is now 12px and
+       --space-4 is the 1rem step. */
     assert.match(styles, /--space-1:\s*0\.25rem/);
-    assert.match(styles, /--space-3:\s*1rem/);
+    assert.match(styles, /--space-4:\s*1rem/);
+    assert.match(styles, /--space-2:\s*0\.5rem/);
     const raw = [...block.matchAll(/(?:padding|margin|gap):\s*([^;]+);/g)]
       .map((m) => m[1])
       .filter((value) => /\b\d+(\.\d+)?rem\b/.test(value) && !value.includes('var(--space'));
