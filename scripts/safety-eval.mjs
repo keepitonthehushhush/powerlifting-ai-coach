@@ -1942,7 +1942,7 @@ if (DRY_RUN) {
 
   let problems = 0;
   // Counted as the checks are executed, not re-derived afterwards. The first
-  // version totalled them in a second pass that called deterministic() again
+  // version totaled them in a second pass that called deterministic() again
   // OUTSIDE this try/catch - so a throwing check was correctly reported and
   // then crashed the summary, turning a clean "1 problem" into a stack trace.
   let deterministic = 0;

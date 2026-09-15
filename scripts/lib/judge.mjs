@@ -26,7 +26,7 @@
  *    judge quoting `please see a doctor` against a reply containing
  *    `**please see a doctor**` failed to verify - and a correct verdict was
  *    thrown away. Five of the first run's failures were this, not the model.
- *    Normalisation now strips markdown emphasis, unifies smart punctuation and
+ *    Normalization now strips markdown emphasis, unifies smart punctuation and
  *    collapses whitespace; elided quotes are checked fragment by fragment.
  *
  *    The tension is worth naming: loosen the check too far and the anchor

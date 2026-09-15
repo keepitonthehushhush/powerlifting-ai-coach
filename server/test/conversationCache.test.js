@@ -20,7 +20,7 @@ import { buildSystemBlocks } from '../src/prompts/systemPrompt.js';
  *
  * And the owner's own observation, which the data supports: use is
  * front-loaded. Day one of the busiest account was 38 replies; the five days
- * after it totalled 19. So the money is concentrated in exactly the sitting
+ * after it totaled 19. So the money is concentrated in exactly the sitting
  * where caching pays most.
  */
 const line = (n) => 'x'.repeat(n);

@@ -7,7 +7,7 @@ a question this document cannot answer.
 
 The short version: the largest exposure in this product is not the training
 programs. It is (a) storing health data, and (b) the line between *coaching*
-and *practising medicine* — a line regulators have recently shown they will
+and *practicing medicine* — a line regulators have recently shown they will
 enforce against AI products using laws written long before AI existed.
 
 ---
@@ -432,7 +432,7 @@ will make it feel better" is treatment.
 
 ## 6. Open questions for counsel
 
-1. Does an AI producing individualised strength programming implicate
+1. Does an AI producing individualized strength programming implicate
    practice-of-medicine or scope-of-practice statutes in our operating states?
 2. Is MHMDA-level compliance sufficient nationally, or are state-specific
    obligations needed?

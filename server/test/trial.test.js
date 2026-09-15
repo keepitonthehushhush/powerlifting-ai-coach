@@ -9,7 +9,7 @@ import { entitlement, TRIAL_REPLY_ALLOWANCE } from '../src/lib/entitlement.js';
  * A fourteen-day trial has no maximum cost - its price is however much
  * somebody chooses to use it. The measured distribution on this product says
  * that is not theoretical: the busiest account's first day was 38 replies and
- * the five days after it totalled 19. Time-boxing therefore gives away exactly
+ * the five days after it totaled 19. Time-boxing therefore gives away exactly
  * the heaviest part of somebody's usage and charges nothing for it.
  *
  * Twenty-five replies is a ceiling the business can name in advance: $1.78 at

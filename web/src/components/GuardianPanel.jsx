@@ -21,7 +21,7 @@ import { useI18n } from '../i18n/index.jsx';
  *
  * Not a disabled section, not an explanation of why it is hidden - nothing.
  * An adult has no business seeing a guardian form on their own profile, and a
- * greyed-out one still asks them to work out whether it is about them.
+ * grayed-out one still asks them to work out whether it is about them.
  *
  * `applicable` is decided by the SERVER, deliberately, rather than recomputed
  * here from the date of birth this page already has. Two implementations of an

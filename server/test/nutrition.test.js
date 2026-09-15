@@ -224,7 +224,7 @@ describe('loosening this did not unlock the things it must not unlock', () => {
     // protocols for this athlete." That was too blunt in one direction and too
     // loose in the other. Too blunt, because refusing to say "3 to 5 grams"
     // while discussing creatine is unhelpful theater, and the profession's own
-    // line is between general information and individualised prescription, not
+    // line is between general information and individualized prescription, not
     // between silence and speech. Too loose, because it said nothing at all
     // about the cases that actually carry risk.
     //

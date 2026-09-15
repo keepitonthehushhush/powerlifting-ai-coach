@@ -65,7 +65,7 @@ export function contactIsUsable() {
  * somebody misuses what we sent them - it is that we are holding something we
  * never wanted.
  *
- * What US state privacy law actually points at is minimisation: collect what
+ * What US state privacy law actually points at is minimization: collect what
  * is reasonably necessary, and dispose of it within a reasonable time once it
  * is not. So the fix is upstream of the disclaimer entirely. Do not ask for
  * the story, tell people plainly not to send it, and delete what arrives
@@ -80,7 +80,7 @@ export function contactIsUsable() {
  * it was rejected, because a form lands in a table somebody has to remember to
  * open, and "a commitment nobody can invoke" is the exact failure this whole
  * contact route was built to fix. Reliability wins; the template recovers most
- * of the minimisation.
+ * of the minimization.
  */
 
 /** The subject line, so the message is filterable the moment it arrives. */

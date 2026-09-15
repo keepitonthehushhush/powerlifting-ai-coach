@@ -2,7 +2,7 @@
 
 An AI strength coach that takes beginners and develops them, over time, into
 competent, injury-free competitive lifters. Users complete an intake, receive a
-personalised program, log what they actually lift, and the coach adjusts the
+personalized program, log what they actually lift, and the coach adjusts the
 next block based on real reported performance rather than a static template.
 
 > **Coach is not a medical professional.** Users who report an injury, pain, or
@@ -53,7 +53,7 @@ time could not have caught them.
 
 1. **Intake.** Experience, current squat/bench/deadlift, bodyweight, units,
    equipment, schedule, goal, and any injuries or medical conditions.
-2. **Programming.** Novice linear progression, intermediate periodisation, or a
+2. **Programming.** Novice linear progression, intermediate periodization, or a
    peaking cycle toward a competition date — selected from the athlete's actual
    state, not chosen by them.
 3. **Logging.** Sessions are recorded as performed: sets, reps, load, RPE, and
@@ -334,7 +334,7 @@ configure secrets.
 │   │   │                     and the pure engines: progression, warm-up, nutrition ranges,
 │   │   │                     max plausibility, token pricing, program-block parsing
 │   │   ├── middleware/       Auth, error handling
-│   │   ├── prompts/          System prompt assembly + sanitising fence
+│   │   ├── prompts/          System prompt assembly + sanitizing fence
 │   │   └── routes/           chat, profile, sessions, program, library, consent, account
 │   └── test/                 Unit tests (584, no credentials required)
 ├── web/                      React + Vite frontend

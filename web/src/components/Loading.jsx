@@ -34,7 +34,7 @@ import { useI18n } from '../i18n/index.jsx';
  * plates seen EDGE-ON as vertical bars, tallest inboard, descending outward to
  * the collars. That is the same way the Coach Diaz mark draws its own barbell,
  * so the animation speaks the product's visual language without reusing the
- * logo. Mixing the two viewpoints is a deliberate stylisation, and it is the
+ * logo. Mixing the two viewpoints is a deliberate stylization, and it is the
  * thing that makes the object legible.
  *
  * The plate sizes are the real ones, scaled. A competition bar sits 225mm off

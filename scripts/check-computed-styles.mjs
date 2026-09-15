@@ -19,7 +19,7 @@
  * So this renders the real built app in a real browser and reads
  * getComputedStyle off a fixed list of elements, comparing to a committed
  * snapshot. Computed styles rather than screenshots on purpose: a screenshot
- * diff is flaky across machines because font rasterisation differs between
+ * diff is flaky across machines because font rasterization differs between
  * macOS and an ubuntu runner, and it tells you a rectangle changed rather than
  * which declaration did it. A computed value is deterministic and names itself.
  *

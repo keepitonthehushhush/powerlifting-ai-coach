@@ -146,8 +146,8 @@ export function asData(value, { maxLength = MAX_FIELD_LENGTH, singleLine = false
 }
 
 /**
- * Recursively sanitise a value destined for JSON.stringify inside the prompt -
- * a stored program, an exercise array. Keys are sanitised as well as values:
+ * Recursively sanitize a value destined for JSON.stringify inside the prompt -
+ * a stored program, an exercise array. Keys are sanitized as well as values:
  * an object key is interpolated verbatim by JSON.stringify and would otherwise
  * be an unescaped channel of its own.
  */

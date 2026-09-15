@@ -84,8 +84,12 @@ const BRITISH = [
   [/\bcoeliac/i, 'coeliac', 'celiac'],
   [/\bfortnight/i, 'fortnight', 'two weeks'],
   [/\bmaths\b/i, 'maths', 'math'],
-  [/\bgrey\b/i, 'grey', 'gray'],
-  // -ise / -isation, listed one by one rather than as a single /is(e|ation)\b/,
+  // Widened 2026-09-15 from `/\bgrey\b/`: the trailing boundary meant
+  // `greyed-out` - the form it actually appears in, three times, in component
+  // and test comments - went straight past it.
+  [/\bgrey(ed|ing|ish)?\b/i, 'grey', 'gray'],
+  // The `-ise` / `-isation` family, listed one by one rather than as a single
+  // `/is(e|ation)\b/`,
   // which also matches advise, exercise, promise, raise, surprise and a dozen
   // others spelled that way in both. A check with false positives gets turned
   // off, so this one has to survive the person it annoys.
@@ -119,6 +123,53 @@ const BRITISH = [
    * addition, so it gets one every time a sweep finds something.
    */
   [/centralis(e|ed|ing|ation)/i, 'centralise', 'centralize'],
+  /*
+   * ── THE ONE BLANKET PATTERN IN THIS LIST, AND WHY IT IS SAFE ──────────
+   *
+   * Added 2026-09-15. Every entry above enumerates a stem because a blanket
+   * `/is(e|ed|ing)/` matches advise, exercise, promise, raise and surprise -
+   * words spelled that way in both. The NOUN half has no such collision.
+   *
+   * The always-`-ise` words are the reason the verb half must be enumerated,
+   * and they are also the reason this half need not be: advise, advertise,
+   * compromise, despise, exercise, improvise, promise, revise, supervise and
+   * surprise are verbs that do not take `-ation` at all. There is no English
+   * word, in either dialect, ending `-isation` that American English spells
+   * that way.
+   *
+   * It is not a theory - the enumerated list had been passing over eight of
+   * them: `generalisation` and `memoisation` in ADR prose, `Internationalisation`
+   * as a heading in two documents, `authorisation` and `optimisation` in the
+   * build log, `stylisation` in a component comment, and `periodisation` in
+   * the README, which is the first thing a hiring manager reads.
+   */
+  [/isation/i, 'isation', 'ization'],
+  /*
+   * The `-ised` misses the enumerated list could not have caught, found by
+   * sweeping for `/[a-z]+is(ed|ing)/` and reading all 22 results by hand
+   * rather than trusting the sweep: most were American (`advertising`,
+   * `compromised`, `exercised`, `promised`, `raised`, `revised`, `supervised`)
+   * and these six were not.
+   */
+  [/externalis(e|ed|ing)/i, 'externalise', 'externalize'],
+  [/individualis(e|ed|ing)/i, 'individualise', 'individualize'],
+  [/personalis(e|ed|ing)/i, 'personalise', 'personalize'],
+  [/serialis(e|ed|ing)/i, 'serialise', 'serialize'],
+  [/sanitis(e|ed|ing|er)/i, 'sanitise', 'sanitize'],
+  // British uses `practise` for the verb and `practice` for the noun;
+  // American uses `practice` for both. In `docs/LEGAL_CONSIDERATIONS.md` it
+  // sat in the phrase `practising medicine`, which is a term of art in the
+  // one document where the American form is the one a regulator would use.
+  [/practis(e|ed|ing)/i, 'practise', 'practice'],
+  /*
+   * Doubled `l` before a suffix. Enumerated, not `/[a-z]+lled/`, because
+   * `spelled`, `filled`, `called` and `pulled` are doubled in both - and
+   * anchored with `\b...\b` because `/totall/` also matches "totally",
+   * which is correct. `cancelled`, `labelled`, `modelling` and `fuelling`
+   * are already above; these two were sitting in the documents.
+   */
+  [/\btotalled\b/i, 'totalled', 'totaled'],
+  [/\bsignalled\b/i, 'signalled', 'signaled'],
 ];
 
 /** Everything between quotes in the locale file: the values, and nothing else. */
@@ -471,5 +522,51 @@ describe('and the check can actually fail', () => {
     const fine = 'We advise an exercise, promise no surprise, and raise the analysis premise.';
     const caught = BRITISH.filter(([pattern]) => pattern.test(fine)).map(([, word]) => word);
     assert.deepEqual(caught, []);
+  });
+
+  test('THE BLANKET -isation PATTERN CATCHES THE FAMILY AND NOTHING ELSE', () => {
+    /*
+     * One pattern in this list is not enumerated, so it is the one that can
+     * quietly start failing on good copy. Both halves are asserted.
+     *
+     * The words on the right are the reason the VERB half has to stay
+     * enumerated - they are spelled with an s in both dialects - and they are
+     * also why the noun half does not: not one of them takes `-ation`.
+     */
+    const family = 'generalisation, memoisation, periodisation, authorisation, minimisation';
+    assert.equal(family.split(', ').filter((w) => !/isation/i.test(w)).length, 0);
+
+    const notTheFamily =
+      'advise advertise compromise despise exercise improvise promise revise supervise surprise ' +
+      'comparison liaison garrison poison prison unison venison';
+    assert.equal(
+      notTheFamily.split(' ').filter((w) => /isation/i.test(w)).join(', '),
+      '',
+      'the blanket pattern has started matching words spelled the same in both'
+    );
+  });
+
+  test('and every new pattern added in 2026-09 is planted and caught', () => {
+    /*
+     * Each of these had been sitting in this repository while this suite
+     * passed. A pattern added to fix a real miss has to be proven able to
+     * catch it again, or the next refactor of this list can silently drop it.
+     */
+    const planted = [
+      ['periodisation', 'isation'],
+      ['externalised', 'externalise'],
+      ['individualised', 'individualise'],
+      ['personalised', 'personalise'],
+      ['serialised', 'serialise'],
+      ['sanitiser', 'sanitise'],
+      ['practising', 'practise'],
+      ['totalled', 'totalled'],
+      ['signalled', 'signalled'],
+      ['greyed-out', 'grey'],
+    ];
+    for (const [word, expected] of planted) {
+      const caught = BRITISH.filter(([pattern]) => pattern.test(word)).map(([, w]) => w);
+      assert.ok(caught.includes(expected), `"${word}" is no longer caught by "${expected}"`);
+    }
   });
 });

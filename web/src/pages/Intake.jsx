@@ -292,7 +292,7 @@ export function Intake() {
       {/* Directly under the header and above the form, on purpose: an athlete
           who cannot be coached yet should learn why before filling anything
           in, not after. It renders nothing at all for an adult - see the
-          component; a greyed-out section still asks the reader to work out
+          component; a grayed-out section still asks the reader to work out
           whether it is about them. */}
       <GuardianPanel />
 

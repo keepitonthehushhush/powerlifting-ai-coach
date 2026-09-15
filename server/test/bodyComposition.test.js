@@ -10,7 +10,7 @@ import { COACH_ROLE, buildSystemPrompt } from '../src/prompts/systemPrompt.js';
  *
  *   1. Having an opinion about somebody's medication. Whether to start, stay
  *      on, or stop a GLP-1 is between them and a prescriber. A fitness app
- *      that weighs in there is practising medicine, and the fact that it would
+ *      that weighs in there is practicing medicine, and the fact that it would
  *      be discouraging rather than encouraging use makes it worse, not better.
  *   2. Storing medication data outside the health-data consent gate. The
  *      trigger from 0008 guarded ONE column by name and fails open for a

@@ -3,7 +3,7 @@ import { en } from './locales/en.js';
 import { es } from './locales/es.js';
 
 /**
- * Minimal internationalisation, no dependency.
+ * Minimal internationalization, no dependency.
  *
  * Why hand-rolled rather than i18next or react-intl: this application has one
  * screenful of copy and needs three things - key lookup with fallback,
@@ -106,7 +106,7 @@ export function I18nProvider({ children }) {
       return interpolate(value, vars);
     };
 
-    // Locale-aware formatting. This is the half of internationalisation that
+    // Locale-aware formatting. This is the half of internationalization that
     // translation files do not cover: 1,234.5 lb in en-US is 1.234,5 lb in
     // es-ES, and getting it wrong looks careless in a way a good translation
     // cannot compensate for.

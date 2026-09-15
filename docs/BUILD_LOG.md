@@ -130,7 +130,7 @@ inside Postgres.
 
 The consequence, stated plainly: a route in this codebase can run
 `select * from user_profile` with no `WHERE` clause and get back exactly one
-row — the caller's. Authorisation is enforced by the database rather than by
+row — the caller's. Authorization is enforced by the database rather than by
 the diligence of whoever writes the next route, which is why `routes/chat.js`
 contains no `user_id` filters at all. With the service role key, one forgotten
 filter is a health-data breach that returns rows and therefore passes tests.
@@ -824,7 +824,7 @@ Migration `0007` plus `server/src/routes/account.js`.
 service role key, which would have undone ADR-1 for the sake of one endpoint.
 The cascade purge it depends on was already verified in section 1.3.
 
-### 1.5.3 Internationalisation — **DONE, TESTED**
+### 1.5.3 Internationalization — **DONE, TESTED**
 
 Closes the gap logged in `ARCHITECTURE.md 5.4`. Every UI string is now in a
 locale catalogue; English and Spanish ship.
@@ -1490,7 +1490,7 @@ remove it.
 
 `prompts/sanitize.js` neutralises the fence tags — any casing, spacing or
 attribute form — and column-zero markdown headings, in every athlete-authored
-value including object keys inside serialised program JSON. It caps each field
+value including object keys inside serialized program JSON. It caps each field
 at 2,000 characters, which is also the answer to Unbounded Consumption.
 
 It deliberately does **not** attempt to detect malicious intent in prose. That
@@ -1566,7 +1566,7 @@ recovery capacity they actually have.
 
 **Hard limits:** no diagnosing dependence or eating disorders; no cessation,
 tapering or withdrawal advice (alcohol withdrawal can be medically dangerous);
-no calorie targets or restriction plans where disordered eating is signalled;
+no calorie targets or restriction plans where disordered eating is signaled;
 no supplement protocols for an individual; no rapid cuts or fluid manipulation.
 Where distress appears, stay engaged and point to help — the same
 engaged-but-not-treating posture as the clearance gate, which was the whole
@@ -1644,7 +1644,7 @@ Every path a real user takes went through the hole.
 Migration **0014** drops the column list. The trigger now fires on every insert
 and update and the function decides; it already returns immediately when the
 fingerprint is unchanged, so an unrelated update costs one string comparison.
-The column list was an optimisation whose correctness depended on remembering
+The column list was an optimization whose correctness depended on remembering
 to extend it — the exact remembering this project just got wrong.
 
 **The two bugs are not equally bad, and the difference is the lesson.** 0013's
