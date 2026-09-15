@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 
 import { readSource, readRaw, phrase, latestDefinition } from './helpers/source.js';
 import { POLICY_VERSIONS, GUARDIAN_CONSENT_VERSION, SELF_SERVICE_CONSENT_TYPES } from '../src/lib/policyVersions.js';
@@ -87,16 +88,87 @@ test('who may do what', async (t) => {
     );
   });
 
-  await t.test('the public path uses the anonymous client, never the service role', () => {
-    // ADR-12 keeps the Stripe webhook as the single service-role path. A second
-    // one turns a documented exception into a habit.
-    assert.match(route, /createAnonymousClient\(\)\.rpc\('record_guardian_consent'/);
-    assert.ok(!/supabaseAdmin/.test(route), 'the guardian flow reaches for the service role');
+  await t.test('NEITHER GUARDIAN PATH IS REACHABLE FROM A BROWSER', () => {
+    /*
+     * ── THE DECISION THIS REPLACES, AND WHY ───────────────────────────────
+     *
+     * This test used to assert the opposite: "the public path uses the
+     * anonymous client, never the service role", because ADR-12 kept the
+     * Stripe webhook as the single service-role path.
+     *
+     * That was right about containment and wrong about the threat. Granting
+     * `record_guardian_consent` to `anon` let ANYBODY call it with a token
+     * hash, and `request_guardian_consent` let the athlete CHOOSE that hash.
+     * Measured against production inside a rolled-back transaction: a 15 year
+     * old produced a granted guardian consent on their own account in two
+     * direct PostgREST calls, with no guardian and no email involved.
+     *
+     * Closing only the approval side would not have been enough either -
+     * `/api/guardian/decision` is public by design and hashes whatever token
+     * it is handed, so a minor who had chosen the token could simply POST it
+     * there. Both sides had to leave the browser. ADR-12 is amended rather
+     * than contradicted; migration 0077 does the revokes.
+     */
+    assert.match(route, /supabaseAdmin\(\)/, 'the guardian routes no longer hold the privilege');
+    assert.match(route, /admin\.rpc\('record_guardian_consent'/, 'the decision is not made by the service role');
+    assert.match(route, /admin\.rpc\('request_guardian_consent'/, 'the request is not made by the service role');
+    assert.doesNotMatch(
+      route,
+      /createAnonymousClient\(\)\.rpc\('record_guardian_consent'/,
+      'the anonymous client is back on the guardian path, which is what let a minor self-approve',
+    );
+    /*
+     * A missing service key must be a logged refusal on BOTH routes, not a
+     * crash. The earlier version of this assertion was a bare
+     * `assert.match(route, /if \(!admin\)/)`, and mutation testing killed it:
+     * the file contains the guard twice, so neutering ONE of them left the
+     * single match satisfied by the other. That is the third time this
+     * session that an assertion anchored on a string appearing more than once
+     * has passed over a real change. The fix is the same one each time - tie
+     * the anchor to something unique. Each route logs its own event name, so
+     * asserting the guard IMMEDIATELY BEFORE each distinct log line pins one
+     * occurrence per route and cannot be satisfied by its sibling.
+     */
+    for (const event of ['guardian.request_no_admin_client', 'guardian.decision_no_admin_client']) {
+      assert.match(
+        route,
+        new RegExp(`if \\(!admin\\) \\{\\s*logger\\.error\\('${event.replace('.', '\\.')}'\\)`),
+        `a missing admin client is not handled before ${event}`,
+      );
+    }
   });
 
-  await t.test('the database grants the redeeming function to anon, and the requesting one not', () => {
-    assert.match(migrationRaw, /grant execute on function public\.record_guardian_consent\(text, boolean\) to anon, authenticated/);
-    assert.match(migrationRaw, /revoke all on function public\.request_guardian_consent\(text, text, int\) from public, anon/);
+  await t.test('and the NEWEST migration touching their grants is the one that revoked them', () => {
+    /*
+     * A migration directory is append-only, so 0045 still contains
+     * `grant execute ... to anon` and always will. The old version of this
+     * test read that file and would have passed forever while the grant it
+     * described no longer existed - the trap this repository has already paid
+     * for twice. So: scan newest-first and read only the LAST word on each
+     * function's privileges.
+     */
+    const dir = new URL('../../supabase/migrations/', import.meta.url);
+    const files = readdirSync(dir).filter((n) => n.endsWith('.sql')).sort().reverse();
+
+    for (const fn of ['record_guardian_consent', 'request_guardian_consent']) {
+      const newest = files.find((f) =>
+        readRaw(new URL(f, dir)).includes(`on function public.${fn}(`));
+      assert.ok(newest, `no migration grants or revokes ${fn}`);
+
+      const sql = readRaw(new URL(newest, dir));
+      const revokedAt = sql.lastIndexOf(`revoke all on function public.${fn}(`);
+      assert.ok(revokedAt > -1, `${newest} is the last word on ${fn} and does not revoke it`);
+      assert.match(
+        sql.slice(revokedAt, revokedAt + 220),
+        /from public, anon, authenticated/,
+        `${fn} is not revoked from all three - a grant to PUBLIC survives the two named revokes`,
+      );
+      assert.match(
+        sql,
+        new RegExp(`grant execute on function public\\.${fn}\\([^)]*\\) to service_role`),
+        `${fn} is not granted to service_role, so the server cannot call it either`,
+      );
+    }
   });
 
   await t.test('and the athlete cannot read a token hash back out', () => {
@@ -278,7 +350,7 @@ test('the athlete can actually start the flow', async (t) => {
   await t.test('the panel renders NOTHING when it does not apply', () => {
     /**
      * Not a disabled section and not an explanation - nothing. An adult has no
-     * business seeing a guardian form on their own profile, and a greyed-out
+     * business seeing a guardian form on their own profile, and a grayed-out
      * one still asks them to work out whether it is about them.
      */
     assert.match(panel, /if \(!state\?\.applicable\) return null;/);

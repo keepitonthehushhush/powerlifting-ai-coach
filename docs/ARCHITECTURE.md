@@ -535,7 +535,7 @@ real specification defect all along without being able to name it.
 
 **Consequences.** Three times a judged assertion has then been corrected for
 being too broad, each time failing behavior the prompt explicitly permits. The
-generalisation: a judged criterion states a prohibition, the judge fills the
+generalization: a judged criterion states a prohibition, the judge fills the
 unstated space around it expansively, and a prohibition alone is half a
 specification — the negative space has to be written down too.
 
@@ -583,6 +583,13 @@ a written intention that depends on a person remembering to re-read it.
 ---
 
 ### ADR-12 · One service-role client, for the webhook only
+
+> **Amended 2026-09-15 by ADR-36.** There are now two importers, not one, and
+> the rule this decision was reaching for is sharper than "the webhook only":
+> the service role is for **a write whose subject is not the caller**. A Stripe
+> subscription row is one. A guardian's answer about a minor is the other. The
+> test that enforces this is exhaustive rather than a count, so a third
+> importer fails rather than quietly widening the exception.
 
 **Context.** ADR-1 says the backend authenticates as the user, never as an
 admin: every query carries the caller's JWT and RLS decides what it can see.
@@ -860,7 +867,7 @@ up in a diff. The disagreement is the argument for the rule, not against it.
 
 Two of the plugin's thirty rules are enabled, registered by hand.
 `configs.recommended` in v7 carries the React Compiler set - purity,
-memoisation, immutability, static components - which is a commitment to a style
+memoization, immutability, static components - which is a commitment to a style
 of writing React rather than a bug detector, and is not a decision this project
 has made. `rules-of-hooks` is the other one: a hook called conditionally is
 always a bug, with no judgment attached.
@@ -1110,7 +1117,7 @@ has ever come close to. The second is this ADR.
 The measured shape of usage is what decides it. Across 69 production model
 calls to 2026-09-04 the mean reply cost $0.0712, and use is front-loaded, hard:
 the busiest account's first day was 38 replies and the five days after it
-totalled 19. The owner predicted that shape before the data showed it, and the
+totaled 19. The owner predicted that shape before the data showed it, and the
 data agrees.
 
 **And the data is one person.** Six accounts exist; one of them holds 80 of the
@@ -2407,6 +2414,76 @@ eleven mutants planted, eleven caught. The hook has to be installed once with
 git hook.
 
 
+### ADR-36 · A minor could approve their own guardian consent
+
+**Context.** Supabase's own advisors flagged a set of SECURITY DEFINER
+functions as executable by `anon`. That is a normal shape here — most of them
+are the user-facing functions ADR-1 relies on, and RLS still applies inside
+them. The finding was only a list, so the definitions were read out of
+`pg_proc` rather than out of the migration that was believed to have created
+them, and two of them did not look like the others:
+
+- `request_guardian_consent(text, text, integer)` derived the athlete from
+  `auth.uid()` and accepted **the token hash as an argument**.
+- `record_guardian_consent(text, boolean)` granted consent to whoever presented
+  a matching hash, and was executable by `anon`.
+
+Read together, the athlete chose the secret in step one and presented it in
+step two. There was no guardian in the loop at any point, and no email had to
+be delivered or read.
+
+**How it was established.** Not by reading. The two calls were made against
+production inside a `DO` block that `set local role` to `authenticated`, set
+`request.jwt.claims` to a real minor's id, and ended in `raise exception` so
+the whole transaction rolled back and returned its findings in the error. A
+15 year old ended that transaction holding a granted guardian consent on their
+own account. Afterwards the tables were counted: nothing persisted.
+
+**What made it not an incident.** `minorsEnabled` defaults false, and there
+have been zero guardian requests and zero guardian consents in the lifetime of
+the database. The hole was real and never walked through. Both of those facts
+are worth stating, and neither excuses the other.
+
+**Decision.** Both functions leave the browser entirely. Migration 0077 drops
+the three-argument `request_guardian_consent` and recreates it taking
+`p_user_id uuid` explicitly, then revokes **both** functions from `public,
+anon, authenticated` and grants them to `service_role` alone. `public` is
+revoked by name because a grant to PUBLIC would survive the two named revokes
+and leave every role holding the privilege.
+
+`server/src/routes/guardian.js` now calls both through `supabaseAdmin()`. The
+guardian still needs no account: they reach the public HTTP route, and the
+**route** holds the privilege rather than their browser.
+
+**Why passing a user id is now safe.** It is the inversion that usually
+introduces a bug — a function that used to derive the caller now believes an
+argument. It is safe here precisely because of the revoke: nobody holding a
+browser JWT can call the function at all, so the only caller able to name a
+user is the server, which names the one it authenticated.
+
+**ADR-12 is amended, not contradicted.** Its rule was "one service-role client,
+for the webhook only". The sharper rule, now written in the test that enforces
+it, is that **the service role is for a write whose subject is not the caller**
+— a Stripe subscription row, or a guardian's answer about somebody else. There
+are two importers; the test is exhaustive, so a third one fails.
+
+**What the old code got wrong, kept in place.** The comment in
+`server/src/lib/supabase.js` argued carefully that the anonymous client was
+correct here because "the token is what authorizes the write". It reasoned
+about *which client* may call the function and never asked *who knows the
+token*. The paragraph is corrected in place with a dated note rather than
+deleted, because the reasoning error is more useful to a reader than a clean
+comment would be.
+
+**Consequences.** Seven mutants planted against the fix, seven caught — after
+one survivor exposed an assertion anchored on a string that appears twice in
+the file, which is the third time this session that a non-unique anchor let a
+real change through. The catalog was asserted directly after the migration
+applied (`anon`: false, `authenticated`: false, `service_role`: true on both),
+and the original production probe now refuses with `permission denied` at both
+steps.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling
@@ -2435,12 +2512,12 @@ window. The mitigation is that durable state — profile, programs, logged
 sessions — lives in the database and is re-injected fresh every turn, so what
 is lost is nuance rather than training history.
 
-### 5.4 Internationalisation readiness
+### 5.4 Internationalization readiness
 
 Units are a first-class profile field (`lb`/`kg`) threaded through the prompt
 builder, the intake form and every rendered weight, rather than assumed. Dates
 are stored as `date`/`timestamptz` and rendered ISO-8601. UI copy is not yet
-externalised for translation — a real gap for non-English markets, and the
+externalized for translation — a real gap for non-English markets, and the
 first thing to address before entering one.
 
 ---

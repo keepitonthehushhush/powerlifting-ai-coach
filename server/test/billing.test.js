@@ -132,7 +132,29 @@ describe('THE ADMIN CLIENT IS AN EXCEPTION TO ADR-1 AND STAYS CONTAINED', () => 
       }
     };
     walk(root);
-    assert.deepEqual(importers, ['billingWebhook.js'], `admin client imported by: ${importers.join(', ')}`);
+    /*
+     * ── TWO NOW, AND THE RULE IS SHARPER THAN "ONE" WAS ──────────────────
+     *
+     * This asserted exactly `['billingWebhook.js']` until 2026-09-15, when
+     * migration 0077 moved the guardian consent pair behind the service role.
+     * The comment above still holds - a second importer means the decision
+     * needs revisiting rather than extending - so it was revisited, and
+     * ADR-12 now states the rule that covers both:
+     *
+     *   the service role is for a write whose SUBJECT is not the caller.
+     *
+     * Stripe has no user at all. A guardian has no account, and the athlete
+     * whose consent it is must not be able to make it - which is exactly what
+     * they could do while `anon` held EXECUTE.
+     *
+     * The list stays EXHAUSTIVE rather than becoming a floor: a third importer
+     * fails this, which is the whole point of counting.
+     */
+    assert.deepEqual(
+      importers.sort(),
+      ['billingWebhook.js', 'guardian.js'],
+      `admin client imported by: ${importers.join(', ')}`,
+    );
   });
 
   test('the reason it is safe enough is written down', () => {

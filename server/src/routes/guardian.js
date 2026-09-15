@@ -4,12 +4,12 @@ import { z } from 'zod';
 
 import { config } from '../config.js';
 import { logger } from '../lib/logger.js';
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { codedError } from '../lib/errorCodes.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { sendGuardianConsentEmail } from '../lib/mailer.js';
 import { adultGateDecision } from '../lib/ageGate.js';
 import { GUARDIAN_CONSENT_VERSION } from '../lib/policyVersions.js';
-import { createAnonymousClient } from '../lib/supabase.js';
 
 /**
  * The guardian consent round trip.
@@ -181,7 +181,28 @@ guardianRouter.post('/request', rateLimit('write'), async (req, res, next) => {
      * The RPC also enforces the 13-17 band, so an adult cannot manufacture a
      * guardian consent for themselves by calling this directly.
      */
-    const { data: requestId, error } = await req.supabase.rpc('request_guardian_consent', {
+    /*
+     * ── SERVICE ROLE, AND THE REVOKE IS THE POINT ─────────────────────────
+     *
+     * This used to run on `req.supabase` - the athlete's own client - and
+     * `request_guardian_consent` was granted to `authenticated`. That meant
+     * the athlete could call it directly through PostgREST with a token hash
+     * THEY chose, and then approve it themselves. Measured on production
+     * inside a rolled-back transaction: a 15 year old produced a granted
+     * guardian consent on their own account in two calls. Migration 0077.
+     *
+     * So the function now takes the athlete explicitly and is revoked from
+     * `authenticated`, which is what makes passing a user id safe: nobody
+     * holding a browser JWT can reach it at all.
+     */
+    const admin = await supabaseAdmin();
+    if (!admin) {
+      logger.error('guardian.request_no_admin_client');
+      throw codedError('storage_unavailable', 'Could not start that request.');
+    }
+
+    const { data: requestId, error } = await admin.rpc('request_guardian_consent', {
+      p_user_id: req.user.id,
       p_guardian_email: parsed.data.guardian_email,
       p_token_hash: sha256(token),
     });
@@ -267,7 +288,20 @@ guardianPublicRouter.post('/decision', async (req, res, next) => {
       throw codedError('invalid_request', 'That link is not valid.', { field: 'token' });
     }
 
-    const { data: outcome, error } = await createAnonymousClient().rpc('record_guardian_consent', {
+    /*
+     * The anonymous client is gone from this path. `record_guardian_consent`
+     * was granted to `anon` so that a guardian with no account could answer,
+     * and that grant is exactly what let the ATHLETE answer instead. The
+     * guardian still needs no account - they reach this HTTP route, and the
+     * route holds the privilege rather than the browser.
+     */
+    const admin = await supabaseAdmin();
+    if (!admin) {
+      logger.error('guardian.decision_no_admin_client');
+      throw codedError('storage_unavailable', 'Could not record your decision.');
+    }
+
+    const { data: outcome, error } = await admin.rpc('record_guardian_consent', {
       p_token_hash: sha256(parsed.data.token),
       p_granted: parsed.data.granted,
     });

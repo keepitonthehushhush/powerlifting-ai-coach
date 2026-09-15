@@ -21,7 +21,7 @@ import { config } from '../config.js';
  *
  * This project uses (b). The consequence is worth stating plainly: if a route
  * in this codebase runs `select * from user_profile` with no WHERE clause at
- * all, it returns exactly one row - the caller's. Authorisation is enforced by
+ * all, it returns exactly one row - the caller's. Authorization is enforced by
  * the database, not by the diligence of whoever writes the next route. The
  * application layer becomes incapable of leaking cross-user data even when it
  * is buggy.
@@ -66,10 +66,28 @@ export function createUserScopedClient(accessToken) {
  * is the same publishable key the browser holds, so this client can do exactly
  * what an anonymous browser can do - which is almost nothing, by design.
  *
- * What it CAN do is call `record_guardian_consent`, a SECURITY DEFINER function
- * granted to `anon` that takes a token and no user id (migration 0045). The
- * privilege is scoped to one function rather than to a role that bypasses RLS,
- * and the token is what authorizes the write.
+ * ── CORRECTION, 2026-09-15: THE PARAGRAPH BELOW WAS WRONG ────────────────
+ *
+ * It used to read: "What it CAN do is call `record_guardian_consent`, a
+ * SECURITY DEFINER function granted to `anon` that takes a token and no user
+ * id (migration 0045). The privilege is scoped to one function rather than to
+ * a role that bypasses RLS, and THE TOKEN IS WHAT AUTHORIZES THE WRITE."
+ *
+ * Every sentence of that is true and the conclusion does not follow. The
+ * REQUESTER chose the token, so the requester could always authorize
+ * themselves - and the requester is a 13-to-17 year old whose guardian is
+ * supposed to be the one deciding. Measured on production inside a rolled-back
+ * transaction: a 15 year old produced a granted guardian consent on their own
+ * account in two direct PostgREST calls. Migration 0077 revokes both guardian
+ * functions from `anon` and `authenticated`; the routes use the service-role
+ * client, and ADR-12 records why the exception now covers two paths.
+ *
+ * The lesson worth keeping: this comment reasoned carefully about WHICH CLIENT
+ * may call the function and never asked WHO KNOWS THE TOKEN.
+ *
+ * What this client is still for: the database-reachability probe in
+ * lib/databaseReachable.js, which calls a definer function that returns true
+ * and touches nothing.
  */
 export function createAnonymousClient() {
   return createClient(config.supabase.url, config.supabase.publishableKey, {
