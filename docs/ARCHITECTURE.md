@@ -2329,6 +2329,84 @@ on GitHub as a **Signing Key**. Until it is, every deployment will be canceled
 and every push will now say so loudly instead of quietly.
 
 
+### ADR-35 · A step somebody has to remember is not a control
+
+**Context.** ADR-34 closed the gap where a canceled deploy went unnoticed. It
+did not close the gap that *caused* the cancellation, and within one push the
+same failure happened again for a new reason.
+
+The agent commits from a machine that cannot reach the signing key — `~/.ssh` is
+deliberately outside the folders it can read — so its commits arrive unsigned
+and have to be amended on the Mac before pushing. That was handed over as a
+sentence in a report. It worked once and was forgotten the next time, so
+`0a45c4a5` reached `origin/main` carrying no signature at all, where it can
+never verify and will be canceled forever. Production sat two commits behind
+with `/api/health` answering `"status": "ok"`.
+
+An unsigned commit does not fail. It pushes cleanly, GitHub accepts it, and
+Vercel cancels the deployment without building — *"the deployment will be
+automatically canceled"*, in their words. Nothing is red anywhere.
+
+**Decision.** `.githooks/pre-push` refuses to push a commit that carries no
+`gpgsig` header, names the commits, and prints the command that fixes them:
+`git commit --amend --no-edit` for one, a `git rebase --exec` anchored on the
+parent of the **oldest** unsigned commit for several. Installed with
+`npm run hooks`, which sets `core.hooksPath` so the hooks are version-controlled
+rather than living in an untracked `.git/hooks`.
+
+`git push --no-verify` is left working deliberately. A control with no bypass
+gets switched off entirely the first time it is wrong, and git's own escape
+hatch is better than one this repository invents.
+
+**Verified by running it**, not by reading it. Fed the real ref lines git sends
+on stdin: the signed commit passes silently and exits 0; the unsigned one exits
+1 and prints the amend form; three unsigned commits print the rebase form
+anchored on the oldest; a branch deletion (all-zero local sha) is not treated as
+a push of commits. `prePushHook.test.js` builds a throwaway repository and runs
+the hook against it, including a **fabricated** `gpgsig` header spliced into a
+real commit object — the right fidelity, because whether a signature is PRESENT
+is the hook's job and whether it is VALID is GitHub's.
+
+### The icons, which turned out to be fine
+
+Looked at the other first-impression surface in the same pass: the favicons, the
+apple-touch icon and the three manifest icons. Every declared size matches the
+file's own IHDR, the small favicons correctly use the simplified mark rather
+than the full one, and the maskable icon's content reaches **32.7%** of its
+width from center against web.dev's safe zone of *"a circular area in the center
+of the icon with a radius equal to 40% of the icon width"*, outside which *"the
+outer 10% edge might be cropped on some platforms"*.
+
+Nothing was wrong. The guard was written anyway, because nothing in the
+repository had ever looked, and the next person to regenerate the branding
+should find out in a second rather than when somebody installs the app on an
+Android launcher that masks to a circle.
+
+**`server/src/lib/pngPixels.js` reads the pixels with no dependency** — ~60 lines
+of inflate and scanline-unfiltering for 8-bit RGBA. Same trade as the DevTools
+client in `scripts/lib/browser.mjs`: a dependency for one measurement on six
+files that change once a year is a supply-chain surface and a lockfile entry for
+a format that has not changed since 1996. It is **deliberately narrow** and
+throws by name on anything else, because a decoder that quietly mis-reads is
+worse than one that refuses — the measurement still comes out looking like a
+measurement.
+
+**Cross-checked against Pillow on all six icons**: identical bounding boxes and
+identical radii to three decimals. Two independent implementations of the same
+geometry agreeing is what makes the number believable, which is the same move
+that proved the deadlift figure's nesting before a frame was drawn.
+
+`contentReach` **throws on a blank image** rather than returning a reach of 0.
+Zero is the safest possible number and would sail through the safe-zone
+assertion — an empty result comparing equal to a good one, which is this
+repository's oldest lesson.
+
+**Consequences.** `prePushHook.test.js` (seven tests) and `icons.test.js` (six),
+eleven mutants planted, eleven caught. The hook has to be installed once with
+`npm run hooks`; until it is, nothing changes, which is the honest limit of a
+git hook.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Refuse to push a commit GitHub will not verify.
+#
+# ── WHY THIS EXISTS ────────────────────────────────────────────────────────
+#
+# Vercel's "Require Verified Commits" is on: "When enabled, Vercel will only
+# create deployments for commits that have been verified by GitHub. For all
+# other commits, the deployment will be automatically canceled."
+#
+# An unsigned commit therefore does not fail. It pushes cleanly, GitHub accepts
+# it, and the deployment is canceled without building - which looked exactly
+# like a healthy repository for a day while production sat two commits behind.
+#
+# The agent working on this repository commits from a machine that cannot reach
+# the signing key, so its commits arrive unsigned and have to be amended on this
+# Mac before pushing. That step is a thing to remember, and it was forgotten
+# once within a day of being introduced. A step somebody has to remember is not
+# a control; this is.
+#
+# Install:  npm run hooks
+# Bypass:   git push --no-verify   (deliberately available, deliberately loud)
+
+remote_ref_base() {
+  # The commits about to be pushed. A new branch reports an all-zero remote sha,
+  # in which case compare against the upstream default rather than walking the
+  # entire history.
+  if [ "$1" = "0000000000000000000000000000000000000000" ]; then
+    git rev-list --max-count=50 "$2"
+  else
+    git rev-list "$1..$2"
+  fi
+}
+
+unsigned=''
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+  for commit in $(remote_ref_base "$remote_sha" "$local_sha"); do
+    if ! git cat-file commit "$commit" | sed -n '1,/^$/p' | grep -q '^gpgsig'; then
+      unsigned="$unsigned $commit"
+    fi
+  done
+done
+
+[ -z "$unsigned" ] && exit 0
+
+count=$(echo "$unsigned" | wc -w | tr -d ' ')
+echo ""
+echo "REFUSED - $count commit(s) about to be pushed carry no signature."
+echo ""
+for commit in $unsigned; do
+  echo "    $(git log --format='%h  %s' -1 "$commit" | cut -c1-70)"
+done
+echo ""
+echo "  These will push fine and then be CANCELED by Vercel without building,"
+echo "  which looks like nothing happening rather than like an error."
+echo ""
+if [ "$count" = "1" ]; then
+  echo "  Fix:  git commit --amend --no-edit && git push"
+else
+  oldest=$(echo "$unsigned" | tr ' ' '\n' | grep -v '^$' | tail -1)
+  echo "  Fix:  git rebase --exec 'git commit --amend --no-edit' $oldest^"
+  echo "        git push --force-with-lease"
+fi
+echo ""
+echo "  Pushing anyway:  git push --no-verify"
+echo ""
+exit 1
