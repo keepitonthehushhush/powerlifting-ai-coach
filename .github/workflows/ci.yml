@@ -85,6 +85,18 @@ jobs:
       - name: Scan built bundle for server-side secrets
         run: npm run verify:bundle
 
+      # check:styles reads BOTH builds: web/dist for the two public routes, and
+      # web/harness-dist for the eighteen signed-in screens. The harness is
+      # deliberately not part of `npm run build` - it hands itself a session,
+      # which must never reach a public origin - so it is built here, and only
+      # here. Without this step the check exits 1 rather than silently
+      # measuring nothing, which is the behavior we want but not the outcome.
+      - name: Build the review harness
+        run: npm run build:harness
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_test
+
       # Reads getComputedStyle off the real rendered app and compares to a
       # committed baseline. The only check here that can see a CSS change that
       # is syntactically fine and visually wrong - a cascade inversion, a

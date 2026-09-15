@@ -15,6 +15,7 @@
     "dev:api": "node --watch server/dev.js",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w web",
+    "build:harness": "npm run harness -w web",
     "lint": "eslint .",
     "test": "node --test \"server/test/*.test.js\"",
     "verify:bundle": "node scripts/scan-bundle-for-secrets.mjs",

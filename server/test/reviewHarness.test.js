@@ -120,6 +120,32 @@ describe('the review harness covers what it claims to cover', () => {
     assert.match(ignored, /web\/harness-dist\//, 'the harness build output is not gitignored');
   });
 
+  test('CI builds the harness before it checks rendered styles', () => {
+    /*
+     * check:styles reads two builds. The harness one is deliberately excluded
+     * from `npm run build` - it hands itself a signed-in session - so CI has
+     * to build it explicitly, and the first version of this work forgot to,
+     * which would have failed the pipeline at the styles step.
+     *
+     * The check exits 1 rather than skipping when a build is missing, so the
+     * failure would have been loud. This makes it impossible instead: the
+     * ORDER is asserted, because a build step after the check it feeds is the
+     * same as no build step.
+     */
+    const ci = readRaw(new URL('../../.github/workflows/ci.yml', import.meta.url));
+    const buildAt = ci.indexOf('npm run build:harness');
+    const checkAt = ci.indexOf('npm run check:styles');
+    assert.ok(buildAt > -1, 'CI never builds the review harness');
+    assert.ok(checkAt > -1, 'CI no longer checks rendered styles');
+    assert.ok(buildAt < checkAt, 'the harness is built after the check that reads it');
+
+    // And the build needs the same configuration the app build gets, or it
+    // renders ConfigError on every screen and the baseline records that.
+    const between = ci.slice(buildAt, checkAt);
+    assert.match(between, /VITE_SUPABASE_URL/, 'the harness build has no Supabase config');
+    assert.match(between, /VITE_SUPABASE_PUBLISHABLE_KEY/);
+  });
+
   test('no real athlete data rides along in the fixtures', () => {
     /*
      * The fixtures carry a profile with injury and restriction FIELDS, because
