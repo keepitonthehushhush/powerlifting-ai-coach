@@ -39,6 +39,33 @@ here, in git, where a correction is a commit.
 The monthly one always reports because Eduardo cannot otherwise tell "all
 clear" from "the task silently stopped running."
 
+## Where the repository is
+
+The folder is `coachdiaz`. It was `powerlifting-ai-coach` until 2026-09-12 and
+every runbook still said so until 2026-09-15, which cost a daily run: the task
+could not read its own instructions and correctly refused to invent any.
+`package.json` still carries the old name internally; that is cosmetic.
+
+| where | path |
+|---|---|
+| on Eduardo's Mac | `~/Documents/coachdiaz` |
+| in a scheduled run's shell | `$HOME/mnt/coachdiaz` |
+
+The shell path depends on which folder is connected to the task: the repo
+folder itself mounts at `$HOME/mnt/coachdiaz`, and if `Documents` is connected
+instead it lands at `$HOME/mnt/Documents/coachdiaz`. Resolve it once rather
+than assuming either:
+
+```
+REPO=$(ls -d "$HOME"/mnt/coachdiaz "$HOME"/mnt/Documents/coachdiaz 2>/dev/null | head -1)
+cd "$REPO" || { echo "repo not found - no folder is connected to this task"; exit 1; }
+```
+
+**A run that cannot find the repo has not found a healthy repo.** No folder
+connected is the same outcome as a missing runbook: say so, name the path you
+tried, and stop. It is a task configuration that was never completed, not a
+file somebody deleted, and the two need different fixes.
+
 ## The rule every runbook shares
 
 Every step reports one of three outcomes: **PASS**, **FAIL**, or **COULD NOT

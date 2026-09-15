@@ -6,8 +6,17 @@ PASS / FAIL / COULD NOT DETERMINE rule that every step below depends on.
 **READ-ONLY.** Do not edit files, commit, push, deploy, run migrations, or
 apply dependency updates. You are reporting, not fixing.
 
-Run everything from the repo root:
-`$HOME/mnt/Documents/powerlifting-ai-coach`
+Run everything from the repo root. The folder is `coachdiaz` — it was
+`powerlifting-ai-coach` until it was renamed. Resolve the path rather than
+assuming it, as `README.md` in this directory describes:
+
+```
+REPO=$(ls -d "$HOME"/mnt/coachdiaz "$HOME"/mnt/Documents/coachdiaz 2>/dev/null | head -1)
+cd "$REPO" || { echo "repo not found - no folder is connected to this task"; exit 1; }
+```
+
+If neither path exists, stop and say so. A run that cannot find the repo has
+not found a healthy repo, and must not improvise a check from memory.
 
 ## 1. Where the repository stands
 

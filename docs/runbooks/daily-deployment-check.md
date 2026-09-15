@@ -56,7 +56,7 @@ be current whatever Vercel did, and that is Eduardo's action, not yours.
 setting:
 
 ```
-grep '^ANTHROPIC_MAX_TOKENS=' ~/mnt/Documents/powerlifting-ai-coach/.env
+grep '^ANTHROPIC_MAX_TOKENS=' $HOME/mnt/coachdiaz/.env
 ```
 
 That variable is a plain number, not a secret. **Do not print any other line of
@@ -437,7 +437,7 @@ If anything above looks wrong, ask Eduardo to run this in his own terminal,
 where there is no proxy:
 
 ```
-cd ~/Documents/powerlifting-ai-coach && node scripts/verify-deployment.mjs https://coachdiaz.app
+cd ~/Documents/coachdiaz && node scripts/verify-deployment.mjs https://coachdiaz.app
 ```
 
 ## How to report

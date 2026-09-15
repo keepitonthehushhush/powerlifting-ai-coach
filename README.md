@@ -225,7 +225,7 @@ Full detail in [`docs/SECURITY.md`](docs/SECURITY.md). In summary:
 
 ```bash
 git clone <your-repo-url>
-cd powerlifting-ai-coach
+cd coachdiaz
 npm install
 
 cp .env.example .env

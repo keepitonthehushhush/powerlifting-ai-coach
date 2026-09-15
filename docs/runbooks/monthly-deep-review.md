@@ -21,7 +21,7 @@ Anthropic can mint. The same request carrying the key returns `401` with **no**
 Report that the evaluation is outstanding, and give Eduardo the command:
 
 ```
-cd ~/Documents/powerlifting-ai-coach
+cd ~/Documents/coachdiaz
 set -a; source .env; set +a
 npm run safety:eval
 ```
@@ -39,7 +39,7 @@ WebFetch `https://coachdiaz.app/api/health?cb=<today's date>` — the query stri
 defeats WebFetch's 15-minute cache — and compare `maxOutputTokens` against:
 
 ```
-grep '^ANTHROPIC_MAX_TOKENS=' ~/mnt/Documents/powerlifting-ai-coach/.env
+grep '^ANTHROPIC_MAX_TOKENS=' $HOME/mnt/coachdiaz/.env
 ```
 
 That variable is a plain number, not a secret. **Print no other line of
