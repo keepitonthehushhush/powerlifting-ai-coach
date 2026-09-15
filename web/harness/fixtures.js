@@ -161,6 +161,41 @@ export const PROGRAM = {
   ],
 };
 
+/*
+ * A week's worth of logged work, invented. Real FIELDS, invented content - the
+ * harness's third rule. The movement names are long enough to be honest about
+ * how the row wraps, and the last one is deliberately incomplete, because a
+ * lifter who stops mid-session is a normal thing this form has to render.
+ */
+const RECENT_SESSIONS = [
+  {
+    id: 's1',
+    date: '2026-09-13',
+    notes: 'Bar speed good through the opener, last single was a grind.',
+    exercises: [
+      { exercise: 'bench press (Smith)', sets: 4, reps: 5, weight: 275, rpe: 9, completed: true },
+      { exercise: 'incline dumbbell press', sets: 4, reps: 10, weight: 65, rpe: 8, completed: true },
+      { exercise: 'chest-supported dumbbell row', sets: 3, reps: 12, weight: 70, rpe: 8, completed: true },
+      { exercise: 'cable lateral raise', sets: 3, reps: 20, weight: 10, rpe: null, completed: false },
+    ],
+  },
+  {
+    id: 's2',
+    date: '2026-09-11',
+    notes: null,
+    exercises: [
+      { exercise: 'squat', sets: 3, reps: 3, weight: 405, rpe: 8.5, completed: true },
+      { exercise: 'Romanian deadlift', sets: 3, reps: 8, weight: 275, rpe: 8, completed: true },
+    ],
+  },
+  {
+    id: 's3',
+    date: '2026-09-09',
+    notes: 'Recovery day, everything easy.',
+    exercises: [{ exercise: 'sled push', sets: 6, reps: 1, weight: 180, rpe: 6, completed: true }],
+  },
+];
+
 export function fixtures(mode, program) {
   const full = mode === 'full';
   return {
@@ -172,7 +207,18 @@ export function fixtures(mode, program) {
     getProgress: { logs: full ? logsOver(26) : [
       { id: 'l1', date: '2026-08-27', lift: 'Squat', weight: 450, reps: 1, rpe: null, notes: null, completed: true },
     ] },
-    getSessions: { sessions: [] },
+    /*
+     * Shape from the route, not from what the page appears to want: GET
+     * /api/sessions returns the athlete's unit beside the list, so the weight
+     * field can say which one it means.
+     *
+     * And `full` now has sessions in it. It did not, so the log screen
+     * rendered one blank row - which is what a brand new account sees exactly
+     * once, and is not the screen anybody spends time on. prefillFrom builds
+     * the form out of the last session, so a returning athlete arrives at four
+     * movements already named, and that is the layout worth looking at.
+     */
+    getSessions: { units: 'lb', sessions: full ? RECENT_SESSIONS : [] },
     getLeaderboard: {
       units: 'lb',
       you: 'Big_Daddy_Ed',

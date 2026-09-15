@@ -1637,6 +1637,78 @@ fade scoped back to the navigation, and a fade that is always on — are each
 caught, and each names the specific fault rather than failing generically.
 
 
+### ADR-26 · The form you fill in at a rack, measured rather than looked at
+
+**Context.** The log form is the screen this whole product stands on —
+progression, the charts and the coach's ability to adjust a block all read
+what gets typed here — and it is used standing up, one-handed, between sets.
+Rendered at 390px with touch emulation, four things were wrong and none of
+them was visible from the source.
+
+| What | Measured | Why it matters |
+|---|---|---|
+| "Remove" | **61 × 23px** | Under the 24 × 24 WCAG 2.5.8 asks for at AA |
+| "Add movement" | **309 × 23px** | Same, and it is the second most pressed control on the screen |
+| The four numbers | wrapped to `Movement \| Sets` then `Reps \| Weight \| RPE` | Sets orphaned beside the movement name; a set a lifter reads as one thing split across two ragged lines |
+| "Weight" | no unit | In a product that supports pounds **and** kilograms |
+
+**Decision: a grid, because the widths were never going to agree.** It was a
+wrapping flex row — movement asking for 12rem, each number for 5rem — so the
+break point was whatever the card happened to be. A grid states the intent
+instead: the movement spans the width, the four numbers take one column each in
+the order they are spoken, and the row's footer spans the bottom. The columns
+are `1fr 1fr 1.5fr 1fr`, not equal, because a weight is four digits plus a unit
+and RPE is one. Above 720px the numbers take fixed widths and the movement
+takes the rest — proportional tracks there let a column widen to fit "10" while
+"incline dumbbell press" was cut off.
+
+**Decision: the unit rides inside the field.** In the label, "Weight (lb)"
+wrapped to two lines in a 65px column and put three labels on one baseline and
+the fourth on two — the exact raggedness the row was rearranged to remove. The
+accessible name still carries it, which WCAG 2.5.3 permits because "Weight
+(lb)" *contains* the visible "Weight".
+
+**Decision: `button.link` gets the target floor; bare `.link` does not.**
+`.link` sets `padding: 0`, so every text-styled button in the application was
+23px tall — eight of them. SC 2.5.8 has an explicit **inline exception** for
+targets inside a sentence, which is what the anchors in the policy pages are,
+so giving those a minimum height would space out running prose to fix something
+that was never a failure. The computed-style baseline confirmed the blast
+radius afterwards: exactly two entries moved, the log page's `.link` (gone —
+both became real buttons) and the Progress page's toggle (0 → 4px of padding).
+
+**Decision: the unit comes from `GET /api/sessions`, not `GET /api/profile`.**
+The obvious call would have been wrong twice. `/api/profile` returns the whole
+row, injuries and restrictions included, to a screen with no use for any of it —
+and health data does not travel where it is not needed. It also stamps
+`profile_first_read_at`, so opening the log form would have recorded that the
+athlete had looked at their profile and quietly corrupted the funnel measuring
+whether anybody ever does. Nothing would break; a number would just stop being
+true. So it is selected narrowly, the way `program.js`, `achievements.js` and
+`integrations.js` already select it.
+
+**The defect this pass produced, and how it was caught.** "Remove" was written
+as `color: var(--error-text)` under a comment of mine asserting the token
+"carries the meaning at 4.5:1 without the fill". It does not. `--error-text` is
+the label that sits **on** the error fill, chosen the same way `--accent-text`
+is, so against a card it is `#ffffff` on `#ffffff` — **1.00:1 in all ten light
+themes** and 1.09–1.13:1 in the dark ones. The button was invisible on every
+screen. It built, linted, passed 3,676 tests and rendered; a screenshot is what
+said so. `--error` is the ink, already asserted to 4.5:1 against a card in all
+twenty palettes, and measured at worst 5.57:1.
+
+That is this repository's dominant defect class appearing inside the work that
+was written to fix another instance of it: a confident claim, in a comment,
+that nobody had measured.
+
+**Still open: a logged weight carries no unit.** `units` lives on
+`user_profile` as a single current value, and `workout_sessions` stores bare
+numbers. An athlete who switches from pounds to kilograms silently reinterprets
+every session they have ever logged, and every chart drawn from them. Fixing it
+is a migration plus a backfill, not a label, so it is named here rather than
+half-done.
+
+
 ## 5. Operational notes
 
 ### 5.1 Cold starts and connection handling

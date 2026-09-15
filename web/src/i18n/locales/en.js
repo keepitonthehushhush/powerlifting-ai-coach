@@ -301,7 +301,15 @@ export const en = {
     completed: 'Completed',
     notCompleted: 'not completed',
     remove: 'Remove',
-    addExercise: '+ Add movement',
+    /* Five rows once offered five buttons all called "Remove". The visible
+       word stays short because its column is narrow; the accessible name
+       says which movement it removes. */
+    removeNumbered: 'Remove movement {number}',
+    /* The field was labeled "Weight" and nothing else, in a product that
+       supports pounds and kilograms, on the one screen filled in at a rack. */
+    weightWithUnits: 'Weight ({units})',
+    rpeHint: 'RPE is how hard a set felt, from 1 to 10: 10 means nothing left, 8 means about two reps left. Leave it blank if you are not sure.',
+    addExercise: 'Add movement',
     notes: 'Notes',
     notesPlaceholder: 'Felt heavy, left knee cranky on the last set, cut it short…',
     submit: 'Save session',

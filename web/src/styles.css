@@ -419,6 +419,24 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   font-size: var(--text-subheadline);
 }
 
+/*
+ * ── A TEXT-STYLED BUTTON IS STILL A BUTTON ────────────────────────────────
+ *
+ * `.link` sets padding: 0, so every `<button class="link">` in the application
+ * measured 23px tall - under the 24x24 CSS pixels WCAG 2.5.8 asks for at AA.
+ * Found on the log form, where "Remove" and "Add movement" were both 23px, and
+ * true of the seven other places the same pattern is used.
+ *
+ * Scoped to `button` on purpose. SC 2.5.8 has an explicit INLINE exception for
+ * targets inside a sentence or block of text, which is exactly what the anchors
+ * in the policy pages are - giving those a minimum height would space out
+ * running prose to fix something that was never a failure.
+ */
+button.link {
+  min-height: 24px;
+  padding-block: var(--space-1);
+}
+
 /* A fieldset is the right element for a group of related questions - it is
    what a screen reader announces the legend against - but its default box is
    nothing like a div's. It carries a browser border, its own padding, and a
@@ -870,19 +888,149 @@ legend { font-weight: 600; font-size: var(--text-subheadline); padding: 0 var(--
 
 /* One logged movement. Wraps to a stack on a phone, because this form is used
    standing up between sets far more often than it is used at a desk. */
+/*
+ * ── A SET IS FOUR NUMBERS, AND THEY HAVE TO LOOK LIKE FOUR NUMBERS ────────
+ *
+ * This was a wrapping flex row: the movement asked for 12rem and each number
+ * for 5rem, so on a 309px card they broke as "Movement | Sets" and then
+ * "Reps | Weight | RPE". Measured at 390px with touch emulation. Sets was
+ * orphaned beside the movement name and the four numbers a lifter reads as one
+ * thing - three by five at two twenty-five - were split across two ragged
+ * lines with no reading order.
+ *
+ * A grid says the intent instead of hoping the widths happen to agree: the
+ * movement takes the full width, the four numbers take one column each and
+ * stay in the order they are spoken, and the row's own footer spans the
+ * bottom. Four columns of (309 - 3 gaps) / 4 = 71px each, which holds three
+ * digits at the 16px these inputs must keep to stop iOS zooming the page.
+ */
 .exercise-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-2);
+  align-items: end;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: var(--space-3);
   margin: 0;
 }
-.exercise-row .grow { flex: 1 1 12rem; }
-.exercise-row .narrow { flex: 0 1 5rem; }
-.exercise-row .checkbox { flex: 0 0 auto; }
+.exercise-row .grow { grid-column: 1 / -1; }
+.exercise-row .narrow { grid-column: span 1; min-width: 0; }
+.exercise-row .narrow input { width: 100%; min-width: 0; }
+
+/* The four are not equally wide, because they do not hold equally wide
+   numbers: sets and reps are one or two digits, RPE is one or "8.5", and a
+   weight is three or four digits PLUS the unit riding inside the field. 1.5fr
+   rather than a pixel value so it stays proportional when the card does. */
+.exercise-row { grid-template-columns: 1fr 1fr 1.5fr 1fr; }
+
+/* The unit sits in the field rather than in the label. In the label,
+   "Weight (lb)" wrapped to two lines in its column and left three labels on
+   one baseline and the fourth on two. `pointer-events: none` so tapping the
+   unit still puts the caret in the box. */
+.with-unit { position: relative; display: block; }
+/* Both off the scale, and they have to agree with each other: the clearance is
+   the unit's own width plus its inset. "lb" and "kg" are both about 14px at
+   footnote size, so --space-2 of inset needs roughly 22px of clearance and
+   --space-8 gives 32px - room for a wider unit without a number ever running
+   under one. Measured with a four-digit weight at 320px, the narrowest this
+   field ever gets. */
+.with-unit[data-unit] input { padding-right: var(--space-8); }
+.with-unit[data-unit]::after {
+  content: attr(data-unit);
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* On a laptop the whole set fits on one line, which is how it is written down.
+   720px rather than a guess: five controls at their comfortable widths plus the
+   card's own padding, checked at 700, 760 and 1280.
+
+   The numbers take fixed widths here and the movement takes the rest. Given
+   proportional tracks the four numbers grew to 94px apiece to hold "10" while
+   "incline dumbbell press" was cut off at 190px - a column widening to fit two
+   digits at the expense of the only field with words in it. */
+@media (min-width: 720px) {
+  .exercise-row { grid-template-columns: minmax(10rem, 1fr) 5rem 5rem 7rem 5rem; }
+  .exercise-row .grow { grid-column: 1; }
+}
+
+/* The thing you do every time on the left, the thing you rarely do on the
+   right. Stacked, they put a destructive control directly under the RPE field
+   and gave it the weight of the checkbox next to it. */
+.exercise-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+/* label.checkbox is flex-start everywhere else, because a consent paragraph
+   wraps to four lines beside its box and has to start at the top of it. Here
+   it is one word next to a control of the same height, so the two things on
+   this line share a center or they sit on visibly different baselines. */
+.exercise-foot .checkbox { flex: 0 0 auto; align-items: center; }
+
+/*
+ * Quiet, and still a control. Not `.destructive` - removing a row you have not
+ * saved yet destroys nothing, and a red button here would be the loudest thing
+ * on a form whose only loud thing should be Save.
+ *
+ * ── THE TOKEN THIS GOT WRONG FIRST ────────────────────────────────────────
+ *
+ * It was --error-text, on a comment of mine asserting that the token "carries
+ * the meaning at 4.5:1 without the fill". It does not, and the comment was
+ * invented rather than measured. --error-text is the LABEL THAT SITS ON the
+ * error fill - the same shape as --accent-text - so against a card it measures
+ * 1.00:1 in all ten light themes (it is #ffffff on #ffffff) and 1.09-1.13:1 in
+ * the dark ones. The button was invisible on every screen, and it rendered,
+ * built, linted and passed the suite that way.
+ *
+ * --error is the ink. palette.test.js already asserts it clears 4.5:1 against
+ * a card in all twenty palettes - "warning and error are readable, not just
+ * alarming" - and measured, the worst of the twenty is 5.57:1.
+ */
+.row-remove {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--error);
+  /* Findable, not loud. At subheadline/600 it outweighed the checkbox beside
+     it, and on this form the only thing allowed to be loud is Save. */
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  /* 44px, not the 24px floor: this is pressed with a thumb, standing up, and
+     it is the one control on the screen you do not want to hit by accident -
+     which is an argument for a target that is easy to aim at, not a small one. */
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .row-remove:hover { border-color: var(--error); }
+}
+.row-remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Almost nobody logs a session with one movement in it, so the control that
+   adds the second one is not a footnote. It was a centered underlined link 23px
+   tall - under the 24x24 WCAG 2.5.8 asks for at AA - and it is a button now. */
+.add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+}
+
+/* Said once, under the fields rather than inside them. */
+.rpe-hint { margin: calc(-1 * var(--space-2)) 0 0; }
 
 /* The policy link sits above the checkbox it belongs to and has to look like
    something you are meant to read first, not a footnote. */

@@ -31,17 +31,44 @@ const SessionCreate = z.object({
   from_coach: z.boolean().optional(),
 });
 
-/** GET /api/sessions - most recent first. */
+/**
+ * GET /api/sessions - most recent first, and the unit the numbers are in.
+ *
+ * ── WHY THE UNIT COMES FROM HERE AND NOT FROM GET /api/profile ────────────
+ *
+ * The log form needs one string - "lb" or "kg" - to put beside a weight field
+ * that was previously unlabeled, which on a screen used in a gym is a real
+ * ambiguity in a product that supports both.
+ *
+ * Asking /api/profile for it would be wrong twice over. It returns the whole
+ * profile row, injuries and restrictions included, to a screen that has no use
+ * for any of it - and this repository's rule is that health data does not
+ * travel anywhere it is not needed. It also STAMPS `profile_first_read_at`, so
+ * opening the log form would silently record that the athlete had looked at
+ * their profile, and quietly corrupt the funnel that measures whether people
+ * ever do.
+ *
+ * So it is selected narrowly, the way program.js, achievements.js and
+ * integrations.js already select it. RLS restricts the row to the caller.
+ *
+ * Both queries run together rather than in series: this is the first request
+ * the log screen makes and the athlete is standing up waiting for it.
+ */
 sessionsRouter.get('/', async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const { data, error } = await req.supabase
-      .from('workout_sessions')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(limit);
-    if (error) throw codedError('storage_unavailable', 'Could not load your sessions.');
-    res.json({ sessions: data ?? [] });
+    const [sessions, profile] = await Promise.all([
+      req.supabase
+        .from('workout_sessions')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(limit),
+      req.supabase.from('user_profile').select('units').maybeSingle(),
+    ]);
+    if (sessions.error) throw codedError('storage_unavailable', 'Could not load your sessions.');
+    // A missing profile is a real state - somebody who has not finished intake
+    // can still log - and pounds is the default the column itself declares.
+    res.json({ sessions: sessions.data ?? [], units: profile.data?.units ?? 'lb' });
   } catch (err) {
     next(err);
   }

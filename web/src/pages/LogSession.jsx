@@ -27,6 +27,9 @@ export function LogSession() {
 
   const [draft, setDraft] = useState({ date: today(), notes: '', exercises: [emptyExercise()] });
   const [recent, setRecent] = useState([]);
+  /* The unit beside the weight field. Pounds until the server says otherwise -
+     this is an American company and the column's own default agrees. */
+  const [units, setUnits] = useState('lb');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -34,8 +37,9 @@ export function LogSession() {
   useEffect(() => {
     api
       .getSessions()
-      .then(({ sessions }) => {
+      .then(({ sessions, units: theirs }) => {
         setRecent(sessions ?? []);
+        if (theirs) setUnits(theirs);
         if (sessions?.length) setDraft(prefillFrom(sessions[0]));
       })
       .catch(() => {
@@ -135,45 +139,117 @@ export function LogSession() {
                 />
               </label>
 
-              {/* inputMode numeric so a phone offers the number pad. */}
+              {/*
+                ── THE KEYPAD IS PER FIELD, NOT PER FORM ───────────────────
+
+                All four were `decimal`, which puts a decimal point on the pad
+                for two fields that cannot use one: sets and reps are integers
+                and the schema rejects anything else (`z.number().int()`).
+                Weight and RPE genuinely are fractional - 2.5lb jumps, RPE 8.5 -
+                so they keep it.
+
+                And the weight now says WHICH unit. The field was labeled
+                "Weight" and nothing else, in a product that supports pounds and
+                kilograms, on the one screen somebody fills in at a rack.
+              */}
               {[
-                ['sets', 'log.sets', '1'],
-                ['reps', 'log.reps', '1'],
-                ['weight', 'log.weight', '2.5'],
-                ['rpe', 'log.rpe', '0.5'],
-              ].map(([field, labelKey, step]) => (
+                ['sets', t('log.sets'), '1', 'numeric', null],
+                ['reps', t('log.reps'), '1', 'numeric', null],
+                ['weight', t('log.weight'), '2.5', 'decimal', units],
+                ['rpe', t('log.rpe'), '0.5', 'decimal', null],
+              ].map(([field, labelText, step, keypad, unit]) => (
                 <label key={field} className="narrow">
-                  {t(labelKey)}
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step={step}
-                    value={row[field]}
-                    onChange={(e) => updateRow(index, field, e.target.value)}
-                  />
+                  {labelText}
+                  {/*
+                    The unit rides INSIDE the field, not in the label. Put in
+                    the label, "Weight (lb)" wrapped to two lines in a 65px
+                    column and left three labels on one baseline and the fourth
+                    on two - which is the raggedness this whole row was
+                    rearranged to remove.
+
+                    The accessible name still carries it. WCAG 2.5.3 asks that
+                    the name CONTAIN the visible label, and "Weight (lb)"
+                    contains "Weight", so a screen reader hears the unit and
+                    voice control can still say "weight".
+                  */}
+                  <span className="with-unit" data-unit={unit ?? undefined}>
+                    <input
+                      type="number"
+                      inputMode={keypad}
+                      min="0"
+                      step={step}
+                      value={row[field]}
+                      onChange={(e) => updateRow(index, field, e.target.value)}
+                      aria-label={unit ? t('log.weightWithUnits', { units: unit }) : undefined}
+                    />
+                  </span>
                 </label>
               ))}
 
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={row.completed !== false}
-                  onChange={(e) => updateRow(index, 'completed', e.target.checked)}
-                />
-                <span>{t('log.completed')}</span>
-              </label>
+              {/*
+                ── ONE ROW, TWO OPPOSITE THINGS ────────────────────────────
 
-              <button type="button" className="link" onClick={() => removeRow(index)}>
-                {t('log.remove')}
-              </button>
+                These were stacked, which put a destructive control directly
+                under the RPE field on a phone and gave it the same weight as
+                the checkbox beside it. They belong on one line at opposite
+                ends: the thing you do every time on the left, the thing you
+                rarely do on the right.
+
+                And the accessible name says WHICH movement. Five rows used to
+                offer five buttons all called "Remove", which is a list a
+                screen-reader user cannot navigate - the visible word stays
+                short because the column it sits in is narrow.
+              */}
+              <div className="exercise-foot">
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={row.completed !== false}
+                    onChange={(e) => updateRow(index, 'completed', e.target.checked)}
+                  />
+                  <span>{t('log.completed')}</span>
+                </label>
+
+                <button
+                  type="button"
+                  className="row-remove"
+                  onClick={() => removeRow(index)}
+                  aria-label={t('log.removeNumbered', { number: index + 1 })}
+                >
+                  {t('log.remove')}
+                </button>
+              </div>
             </fieldset>
           ))}
         </div>
 
-        <button type="button" className="link" onClick={addRow}>
+        {/*
+          ── THE SECOND MOVEMENT IS THE COMMON CASE ────────────────────────
+
+          This was a centered underlined text link 23 pixels tall, which is
+          under the 24x24 WCAG 2.5.8 asks for at AA and reads as a footnote.
+          Almost nobody logs a session with one movement in it, so the control
+          that adds the second one is not a footnote - it is the second most
+          pressed thing on the screen.
+        */}
+        <button type="button" className="secondary add-row" onClick={addRow}>
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+            <path
+              d="M8 3v10M3 8h10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
           {t('log.addExercise')}
         </button>
+
+        {/* Said once, under the fields rather than inside them. RPE is the one
+            piece of jargon on this screen, and a product whose job is taking
+            beginners to competent lifters cannot print it unexplained on the
+            form they fill in after every session. */}
+        <p className="muted small rpe-hint">{t('log.rpeHint')}</p>
 
         <label>
           {t('log.notes')}

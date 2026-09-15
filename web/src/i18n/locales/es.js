@@ -286,7 +286,15 @@ export const es = {
     completed: 'Completado',
     notCompleted: 'sin completar',
     remove: 'Quitar',
-    addExercise: '+ Añadir movimiento',
+    /* Five rows once offered five buttons all called "Remove". The visible
+       word stays short because its column is narrow; the accessible name
+       says which movement it removes. */
+    removeNumbered: 'Quitar movimiento {number}',
+    /* The field was labeled "Weight" and nothing else, in a product that
+       supports pounds and kilograms, on the one screen filled in at a rack. */
+    weightWithUnits: 'Peso ({units})',
+    rpeHint: 'El RPE es qué tan pesada se sintió la serie, del 1 al 10: 10 significa que no te quedaba nada y 8 que te quedaban unas dos repeticiones. Déjalo en blanco si no estás seguro.',
+    addExercise: 'Agregar movimiento',
     notes: 'Notas',
     notesPlaceholder: 'Se sintió pesado, la rodilla izquierda molestó en la última serie, lo corté…',
     submit: 'Guardar sesión',
