@@ -1,0 +1,64 @@
+# ── DOES THE SITE ACTUALLY RUN, AFTER IT IS DEPLOYED ───────────────────────
+#
+# CI answers "should this be merged". It does not answer "is the site up", and
+# on 2026-09-14 the difference cost eighteen hours and fifty minutes.
+#
+# A React effect called `.catch` on a supabase query builder - a thenable with
+# no `catch` - so every PUBLIC route threw on mount: the front page, the
+# sign-in page and all eight policy pages. The signed-in app was untouched,
+# which is why the one person using the product never noticed, and why no
+# error reached any log: the crash happened before the client's own error
+# reporter could run.
+#
+# `npm run check:mounts` catches it, and did, the first time it was pointed at
+# the right thing. Two reasons it did not stop the deploy:
+#
+#   1. Vercel's Git integration builds on push. It does not wait for GitHub
+#      Actions, so a red CI run does not hold a release back.
+#   2. Nothing was watching production. Every check in this repository reads a
+#      local artifact, and a local artifact is not evidence about a remote one
+#      - which is the lesson scripts/verify-deployment.mjs was already written
+#      to record.
+#
+# This closes the second one. It cannot prevent a bad deploy; it makes one
+# impossible to miss.
+name: Post-deploy
+
+on:
+  # Fired by Vercel's GitHub integration when a deployment finishes.
+  deployment_status:
+  # And on a schedule, because a deploy is not the only way a site goes down -
+  # an expired certificate or a DNS change breaks it with no push at all.
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: The deployed site mounts in a browser
+    # Only a successful PRODUCTION deployment is worth checking. A preview that
+    # succeeded is not the site, and a deployment that failed has nothing to
+    # look at.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # No `npm ci`: this script uses only the Node standard library and the
+      # browser already on the runner. Installing would make a health check
+      # depend on the registry being up.
+      - name: Every public route renders, and none of them is the crash screen
+        run: node scripts/check-app-mounts.mjs https://coachdiaz.app
+
+      # The complement: the right thing was downloaded, by the public, with no
+      # server secret in it. Together they answer "is what they downloaded the
+      # right file" and "does that file run".
+      - name: The deployed bundle carries its config and no secrets
+        run: node scripts/verify-deployment.mjs https://coachdiaz.app

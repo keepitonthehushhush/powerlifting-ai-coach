@@ -80,6 +80,42 @@ describe('a query builder is never treated as a promise', () => {
     assert.deepEqual(offenders, [], 'these treat a thenable as a promise:\n  ' + offenders.join('\n  '));
   });
 
+  test('something watches production, since CI does not gate the deploy', () => {
+    /*
+     * The gate that catches this exists and works - `npm run check:mounts`
+     * reported all ten broken routes the first time it was pointed at the
+     * right thing. It did not stop the release for two reasons, and only one
+     * of them is fixable here.
+     *
+     * Vercel's Git integration builds on push and does not wait for GitHub
+     * Actions, so a red CI run holds nothing back. That is a project setting,
+     * not a file in this repository.
+     *
+     * What IS fixable: nothing was looking at production. Every other check
+     * here reads a local artifact, and a local artifact is not evidence about
+     * a remote one - the lesson verify-deployment.mjs already exists to
+     * record. So the mount check gained a remote mode and a workflow runs it
+     * after every production deploy and on a schedule.
+     */
+    const workflow = readSource(new URL('../../.github/workflows/post-deploy.yml', import.meta.url));
+    assert.match(workflow, /check-app-mounts\.mjs https:\/\/coachdiaz\.app/, 'nothing checks that the live site renders');
+    assert.match(workflow, /deployment_status/, 'it does not run after a deploy');
+    /*
+     * The KEY and its cron, not the word. `readSource` strips JavaScript
+     * comments and this is YAML, so a mutant that deleted the whole schedule
+     * block still matched /schedule/ - in the `# And on a schedule, because...`
+     * comment two lines above it. The test agreed with its own prose.
+     */
+    assert.match(workflow, /^ {2}schedule:$/m, 'the schedule key is gone');
+    assert.match(workflow, /^ {4}- cron: /m, 'the schedule has no cron expression');
+
+    const mounts = readSource(new URL('../../scripts/check-app-mounts.mjs', import.meta.url));
+    assert.match(mounts, /const remoteTarget/, 'the mount check lost its remote mode');
+    // The offline rule is what makes the LOCAL check meaningful and would make
+    // the remote one meaningless.
+    assert.match(mounts, /offline \? \['--host-resolver-rules/, 'the remote check would block its own target');
+  });
+
   test('and the two that did are written the way that works', () => {
     // Named, because a regex that finds nothing is indistinguishable from a
     // regex that is broken. These two must keep the working form.

@@ -178,7 +178,7 @@ async function findChrome() {
   return null;
 }
 
-function dumpDom(chrome, url) {
+function dumpDom(chrome, url, { offline = true } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       chrome,
@@ -189,8 +189,16 @@ function dumpDom(chrome, url) {
         '--disable-dev-shm-usage',
         '--no-first-run',
         '--no-default-browser-check',
-        // Everything but loopback is unreachable. See the header comment.
-        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
+        /*
+         * Everything but loopback is unreachable. See the header comment.
+         *
+         * NOT when checking a deployed site, for the obvious reason: the whole
+         * point there is to fetch it. The offline rule is what makes the local
+         * check meaningful - it proves the app mounts without reaching
+         * Supabase - and applying it to a URL would have produced a confident
+         * pass against a page that never loaded.
+         */
+        ...(offline ? ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'] : []),
         `--virtual-time-budget=${BUDGET_MS}`,
         '--dump-dom',
         url,
@@ -361,10 +369,36 @@ async function checkRoute(dom) {
   return failures;
 }
 
+/**
+ * ── THE SAME QUESTION, ASKED OF THE SITE INSTEAD OF THE BUILD ─────────────
+ *
+ * Pass a URL and this checks the DEPLOYED app rather than web/dist:
+ *
+ *     node scripts/check-app-mounts.mjs https://coachdiaz.app
+ *
+ * The reason it exists is an eighteen-hour outage. A React effect called
+ * `.catch` on a supabase query builder - a thenable with no `catch` - so every
+ * PUBLIC route threw on mount and rendered the ErrorBoundary: the front page,
+ * the sign-in page and all eight policy pages. The signed-in app was
+ * untouched, which is why the only person using the product never saw it.
+ *
+ * This check catches that, and did, the first time it was run. It just was not
+ * run against the thing that was broken. `npm run build` on a laptop is not
+ * evidence about what Vercel served, and CI passing is not evidence that a
+ * deploy happened at all - Vercel's Git integration builds on push and does
+ * not wait for GitHub Actions.
+ *
+ * So the local mode answers "should this be merged" and the remote mode
+ * answers "is the site up", and they are the same code because they are the
+ * same question. verify-deployment.mjs already asks what the public is
+ * downloading; this asks whether what they downloaded runs.
+ */
+const remoteTarget = process.argv[2] ?? process.env.DEPLOY_URL ?? null;
+
 async function main() {
-  if (!(await exists(path.join(distDir, 'index.html')))) {
+  if (!remoteTarget && !(await exists(path.join(distDir, 'index.html')))) {
     console.error(`No build found at ${path.relative(repoRoot, distDir)}/index.html.`);
-    console.error('Run `npm run build` first.');
+    console.error('Run `npm run build` first, or pass a URL to check a deployed site.');
     process.exit(1);
   }
 
@@ -377,14 +411,24 @@ async function main() {
     process.exit(1);
   }
 
-  const { server, port } = await serveDist();
   const doms = {};
+  let origin;
+  let server = null;
+  if (remoteTarget) {
+    // Normalized so a trailing slash or a bare host both work, and so a route
+    // is appended rather than replacing a path somebody meant to keep.
+    origin = new URL(remoteTarget).origin;
+  } else {
+    const served = await serveDist();
+    server = served.server;
+    origin = `http://127.0.0.1:${served.port}`;
+  }
   try {
     for (const route of ROUTES) {
-      doms[route] = await dumpDom(chrome, `http://127.0.0.1:${port}${route}`);
+      doms[route] = await dumpDom(chrome, `${origin}${route}`, { offline: !remoteTarget });
     }
   } finally {
-    server.close();
+    if (server) server.close();
   }
 
   const failures = [];
@@ -393,14 +437,17 @@ async function main() {
   }
 
   if (failures.length) {
-    console.error(`\nThe built app does not work in a browser (${path.basename(chrome)}):\n`);
+    const what = remoteTarget ? `${new URL(remoteTarget).origin} is broken` : 'The built app does not work';
+    console.error(`\n${what} in a browser (${path.basename(chrome)}):\n`);
     for (const failure of failures) console.error(`  - ${failure}`);
     console.error('');
     process.exit(1);
   }
 
   console.log(
-    `${ROUTES.length} route(s) mount and render in ${path.basename(chrome)}, with the network cut off: ${ROUTES.join(', ')}`
+    remoteTarget
+      ? `${ROUTES.length} route(s) mount and render on ${new URL(remoteTarget).origin}: ${ROUTES.join(', ')}`
+      : `${ROUTES.length} route(s) mount and render in ${path.basename(chrome)}, with the network cut off: ${ROUTES.join(', ')}`
   );
 }
 
